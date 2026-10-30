@@ -379,6 +379,7 @@ export class BackgroundRegistry {
     description: string,
     deadlineMs: number,
     kind: BackgroundKind,
+    shellHome?: { value: string | undefined },
   ): BackgroundJobDescriptor {
     if (this.closed || this.signal.aborted) throw abortError();
     const deadline = validateDeadline(deadlineMs);
@@ -391,7 +392,7 @@ export class BackgroundRegistry {
     try {
       child = spawn("/bin/sh", ["-c", command], {
         cwd: this.workspace,
-        env: process.env,
+        env: shellHome === undefined ? process.env : { ...process.env, HOME: shellHome.value },
         detached: true, // own process group so the whole tree can be killed
         stdio: ["ignore", "pipe", "pipe"],
       });
@@ -1105,6 +1106,7 @@ function runBackgroundTool(registry: BackgroundRegistry): ToolDefinition {
         description ?? "(no description)",
         timeout_ms ?? RUN_DEFAULT_DEADLINE_MS,
         "run",
+        context.shellHome,
       );
       return capOutput(JSON.stringify(descriptor, null, 2), outputLimit(context));
     },
@@ -1153,6 +1155,7 @@ function monitorTool(registry: BackgroundRegistry, websocket = true): ToolDefini
         description ?? "(no description)",
         timeout_ms ?? MONITOR_DEFAULT_DEADLINE_MS,
         "monitor",
+        context.shellHome,
       );
       return capOutput(JSON.stringify(descriptor, null, 2), outputLimit(context));
     },
@@ -1216,7 +1219,7 @@ function monitorTool(registry: BackgroundRegistry, websocket = true): ToolDefini
         if (!context.allowShell) {
           throw new Error("monitor: shell access is disabled for this agent (allowShell is false)");
         }
-        descriptor = registry.start(parsed.command!, description, deadline, "monitor");
+        descriptor = registry.start(parsed.command!, description, deadline, "monitor", context.shellHome);
       }
       return capOutput(JSON.stringify(descriptor, null, 2), outputLimit(context));
     },

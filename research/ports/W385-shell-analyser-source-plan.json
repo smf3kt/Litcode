@@ -7,7 +7,7 @@
       "path": "shell-analyser-source.ts",
       "chunks": [
         "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\n",
-        "import { yyr } from \"./bash-parser-source.js\";\nimport { homedir as ht } from \"node:os\";\nconst wd = () => false, $Ts = () => true;\n",
+        "import { yyr } from \"./bash-parser-source.js\";\nimport { homedir as ht } from \"./shell-analysis-home.js\";\nconst wd = () => false, $Ts = () => true;\n",
         "",
         {
           "module": "chunk-zjewzgfh.js",
@@ -1543,7 +1543,7 @@
           "bodySha256": "fcdb0b57aa6c6e120e94f66d4ccff27b5700a54ae87d70bed7adf2ee6227e049",
           "declarator": true
         },
-        "export { E6, Yx, pyr };\n"
+        "export { E6, Yx, pyr, Vs, yit, lyr, cyr, dyr, GRt, zRt, mLn, gLn, uyr };\n"
       ]
     }
   ]

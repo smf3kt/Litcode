@@ -1272,6 +1272,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     instructionFiles: addInstructionPaths,
     ...(terminal?.isTTY ? { terminalSequence: (sequence: string) => terminal.writeTerminalSequence(sequence) } : {}),
     hookOptions: activeRuntime.hookOptions?.(session.config, session.id),
+    permissionPrompt: options.residentWorker ? 'unavailable' : 'interactive',
     permission: async request => {
       if (inputClosed || request.signal.aborted) return false;
       const cancelNotification = notifyPermissionPrompt(request.tool, payload => {

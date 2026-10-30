@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.
 import { vS } from "./bash-parser-source.js";
-import { E6 } from "./shell-analyser-source.js";
+import { E6, Yx } from "./shell-analyser-source.js";
 import { Un } from "./permission-rule-source.js";
 import { xX } from "./shell-rule-matcher-source.js";
 const i = () => {};
@@ -10,8 +10,6 @@ const ki = { name: "Bash" };
 function D(n){return[...new Set(n)]}
 // chunk-zjewzgfh.js $e [822,828), UTF-16; sha256 b536a7ee7363b600db68371fc249aa3b5e49e16fd7f466c17d0b4fff476ca396
 var $e=1e4;
-// chunk-zjewzgfh.js Yx [1273,1299), UTF-16; sha256 5cbd3cde29ae7f4c8596970b333a5f4be4f3486d4b825c7643c4a2c3bed574f2
-var Yx=Symbol("parse-aborted");
 // chunk-zjewzgfh.js w6 [1300,1631), UTF-16; sha256 ea6db9ea71d7575b3c49e8da8c83b06e3fbfead22e74b3148cd8c875ca8a585c
 async function w6(e){if(!e)return null;if(e.length>$e)return i("tengu_tree_sitter_parse_abort",{cmdLength:e.length,panic:!1}),Yx;try{let t=vS().parse(e);if(t===null)return i("tengu_tree_sitter_parse_abort",{cmdLength:e.length,panic:!1}),Yx;return t}catch{return i("tengu_tree_sitter_parse_abort",{cmdLength:e.length,panic:!0}),Yx}}
 // chunk-m00pavz3.js m [967,1007), UTF-16; sha256 be22ac1da36bddc48d37bece138ab4894d56a9d4139439f8c16af0ab5d893ef5

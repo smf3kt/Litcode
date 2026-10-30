@@ -1,0 +1,19 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "permission-entry-source-blocks.json",
+  "outputs": [
+    {
+      "path": "permission-entry-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { Dl, X3, m0 } from \"./shell-reading-merge-source.js\";\nexport function createPermissionEntry({ Zwe, G9e, Age, BAn, Be, Cy, Eh, Epn, Gp, M1, M9e, N9, NVt, Nco, Npn, Opn, P9e, Qwe, RVt, Rl, Rnn, Rpn, Tge, Ure, Wx, Xk, Ye, _, _V, a, d, de, eEt, f0, hor, i, jJ, k, lc, opn, p2e, qe, sit, srn, t, x9e }) {\n",
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "WAn", "range": [3354952, 3355049], "bodySha256": "fd4f49679dd5b0511ad0fb199f56250b7dcbf10f94a779f5c28d44ab90d9784b" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "Lpn", "range": [3357036, 3357557], "bodySha256": "f65374f118391f80e0d2767049bf04c38da8db3cf17b7b5aa0f40098596ce687" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "a1", "range": [3357561, 3357590], "bodySha256": "aa8ee7094a84c219b2390789f8444df965bc77aea371b284502f0d4ad367fa8a", "declarator": true },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "$pn", "range": [3360771, 3364305], "bodySha256": "c2d85e5e158c95b150ff8c9a15e381da445ab4f694a044754aa168f1b95d208a" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "vpn", "range": [3365484, 3365554], "bodySha256": "6e11a20890096191b1ef9b69d5f049bea12d45e2852158dba0ff292ab4470477" },
+        "return $pn;\n}\n"
+      ]
+    }
+  ]
+}

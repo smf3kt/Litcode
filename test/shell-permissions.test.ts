@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import os from 'node:os';
 import { test } from 'node:test';
 import { permissionDecision, type PermissionPolicy } from '../src/permissions.js';
+import { vS } from '../src/bash-parser-source.js';
 import { SHELL_READING_LIMIT, shellComplexityReason, shellReadings } from '../src/shell-readings.js';
 import type { ToolDefinition } from '../src/tools.js';
 
@@ -170,6 +172,100 @@ test('the strictest reading decides, and a mode ask ranks below a rule ask', () 
     shellTool, { command: 'echo "hi"' });
   assert.equal(autoRuleAsk.decision, 'ask');
   assert.equal(autoRuleAsk.floor, 'rule');
+});
+
+test('declaration-prefix decisions use the shell HOME when it is absent', () => {
+  const previous = process.env.HOME;
+  delete process.env.HOME;
+  try {
+    const fallback = os.homedir();
+    const decide = (command: string, deny: string[]) =>
+      permissionDecision({ mode: 'bypass', allow: [], deny }, shellTool, { command });
+    assert.equal(decide('X=old; X=new export Y; printf "$X" > marker.txt', ['Bash(printf new)']).decision, 'deny');
+    assert.equal(decide('X=1 export Y; printf "%s" "$HOME" > marker.txt', ['Bash(unrelated)']).decision, 'allow');
+    assert.equal(decide('X=1 export Y; echo $PATH', ['Bash(unrelated)']).decision, 'ask');
+    assert.equal(decide('X=$HOME export Y', [`Bash(X=${fallback} export Y)`]).decision, 'allow');
+    assert.equal(decide('X=$HOME export Y', ['Bash(X= export Y)']).decision, 'deny');
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+  }
+});
+
+test('declaration-prefix readings preserve a denial on a later expanded command', () => {
+  const command = 'X=old; X=new export Y; printf "$X" > marker.txt';
+  for (const mode of ['default', 'bypass', 'ask', 'dontAsk'] as const) {
+    const rules: PermissionPolicy = { mode, allow: [], deny: ['Bash(printf new)'] };
+    assert.equal(permissionDecision(rules, shellTool, { command }).decision, 'deny', mode);
+    const unmatched: PermissionPolicy = { mode, allow: [], deny: ['Bash(printf unrelated)'] };
+    if (mode === 'bypass') assert.equal(permissionDecision(unmatched, shellTool, { command }).decision, 'allow');
+  }
+  const exact: PermissionPolicy = { mode: 'bypass', allow: [], deny: [],
+    inputRules: [{ tool: 'run_command', command: 'printf new', decision: 'deny' }] };
+  assert.equal(permissionDecision(exact, shellTool, { command }).decision, 'deny');
+  const unicode = 'printf "%s" "雪"; X=old; X=new export Y; echo "$X"';
+  assert.equal(permissionDecision({ mode: 'bypass', allow: [], deny: ['Bash(echo new)'] }, shellTool,
+    { command: unicode }).decision, 'deny');
+  const home = process.env.HOME;
+  try {
+    delete process.env.HOME;
+    const fallback = os.homedir();
+    const homeCommand = 'X=old; X=new export Y; printf "$HOME" > marker.txt';
+    assert.equal(permissionDecision({ mode: 'bypass', allow: [], deny: [`Bash(printf ${fallback})`] }, shellTool,
+      { command: homeCommand }).decision, 'allow');
+    const assignment = 'X=$HOME export Y';
+    for (const rule of [`Bash(X=${fallback} export Y)`, 'Bash(unrelated)']) {
+      const decision = permissionDecision({ mode: 'bypass', allow: [], deny: [rule] }, shellTool, { command: assignment });
+      assert.equal(decision.decision, 'allow', rule);
+    }
+    assert.equal(permissionDecision({ mode: 'bypass', allow: [], deny: ['Bash(X= export Y)'] }, shellTool,
+      { command: assignment }).decision, 'deny');
+    assert.equal(permissionDecision({ mode: 'bypass', allow: [], deny: ['Bash(X=$HOME export Y)'] }, shellTool,
+      { command: assignment }).decision, 'deny');
+    process.env.HOME = '/fixture-home';
+    assert.equal(permissionDecision({ mode: 'bypass', allow: [], deny: ['Bash(printf /fixture-home)'] }, shellTool,
+      { command: homeCommand }).decision, 'deny');
+  } finally {
+    if (home === undefined) delete process.env.HOME;
+    else process.env.HOME = home;
+  }
+  const four = 'A=1 B=2 C=3 D=4 export X';
+  assert.equal(permissionDecision({ mode: 'default', allow: [], deny: ['Bash(no-match:*)'] }, shellTool,
+    { command: four }).decision, 'allow');
+  const parser = vS();
+  const parse = parser.parse;
+  try {
+    for (const parseFailure of [() => null, () => { throw new Error('fixture parse failure'); }]) {
+      parser.parse = parseFailure;
+      const failed = permissionDecision({ mode: 'bypass', allow: [], deny: [],
+        inputRules: [{ tool: 'run_command', command: 'printf new', decision: 'deny' }] }, shellTool, { command });
+      assert.equal(failed.decision, 'ask');
+      assert.equal(failed.floor, 'readings');
+    }
+  } finally { parser.parse = parse; }
+});
+
+test('shell content restrictions follow command wrappers without widening allow rules', () => {
+  const deny: PermissionPolicy = { mode: 'default', allow: [], deny: ['Bash(printf:*)'], ask: [] };
+  const ask: PermissionPolicy = { mode: 'default', allow: [], deny: [], ask: ['Bash(printf:*)'] };
+  for (const name of ['run_command', 'run_background', 'bash', 'Bash', 'monitor']) {
+    const tool = { ...shellTool, schema: { ...shellTool.schema, name } };
+    for (const command of ['printf denied > marker.txt', 'env CUSTOM=value printf denied > marker.txt',
+      'command printf denied > marker.txt', 'CUSTOM=value printf denied > marker.txt']) {
+      assert.equal(permissionDecision(deny, tool, { command }).decision, 'deny', `${name}: ${command}`);
+      const decision = permissionDecision(ask, tool, { command });
+      assert.equal(decision.decision, 'ask', `${name}: ${command}`);
+      assert.equal(decision.floor, 'rule', `${name}: ${command}`);
+    }
+    for (const command of ['command -v printf', 'env CUSTOM=value echo allowed']) {
+      assert.equal(permissionDecision(deny, tool, { command }).decision, 'allow', `${name}: ${command}`);
+      assert.equal(permissionDecision(ask, tool, { command }).decision, 'allow', `${name}: ${command}`);
+    }
+  }
+  assert.equal(permissionDecision({ ...deny, mode: 'bypass' }, shellTool,
+    { command: 'command printf denied' }).decision, 'deny');
+  const allow: PermissionPolicy = { mode: 'ask', allow: ['Bash(printf:*)'], deny: [], ask: [] };
+  assert.equal(permissionDecision(allow, shellTool, { command: 'printf ok' }).decision, 'allow');
+  assert.equal(permissionDecision(allow, shellTool, { command: 'command printf ok' }).decision, 'ask');
 });
 
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {

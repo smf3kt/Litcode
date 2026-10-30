@@ -46,8 +46,8 @@
       "bodySha256": "fd055389fe0fc6f6e0f3eb949bd38eb864ddb53322fc5237784e6564c40a7587",
       "output": "shell-reading-scheduler-source.ts",
       "outputRange": [
-        1424,
-        1666
+        1418,
+        1660
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -62,8 +62,8 @@
       "bodySha256": "5f9e05a6352633ecee80f762df1e8e8794b172db09d0902e04135446b6419655",
       "output": "shell-reading-scheduler-source.ts",
       "outputRange": [
-        1801,
-        1829
+        1946,
+        1974
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -78,8 +78,8 @@
       "bodySha256": "61d8ee048fdbe47db9e266ea362e57ba8a23de0fa140f92a2ebf2deba96ec5f4",
       "output": "shell-reading-scheduler-source.ts",
       "outputRange": [
-        1962,
-        2055
+        2107,
+        2200
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -94,8 +94,8 @@
       "bodySha256": "7dae00eb2875c9d5e33d1e25315261968a3c7256c921066970416e7a4fc3731b",
       "output": "shell-reading-scheduler-source.ts",
       "outputRange": [
-        2189,
-        2569
+        2334,
+        2714
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -110,8 +110,8 @@
       "bodySha256": "ac8483f34f268857ab414bb21da87d28292535288f115dabcb1d7318c57340ca",
       "output": "shell-reading-scheduler-source.ts",
       "outputRange": [
-        2701,
-        2710
+        2846,
+        2855
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     }

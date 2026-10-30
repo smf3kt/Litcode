@@ -1,0 +1,23 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "jcn",
+      "range": [
+        3213895,
+        3215588
+      ],
+      "bodySha256": "880a55c558adf1d0c2fd1fccdf94da8d90a9d5437d67c7bc5332f3ee76b84c86",
+      "declarator": true,
+      "output": "shell-single-policy-source.ts",
+      "outputRange": [
+        377,
+        2070
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

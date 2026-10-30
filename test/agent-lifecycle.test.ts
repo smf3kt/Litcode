@@ -25,6 +25,7 @@ import { createTaskTools, readTaskRecord, readTaskRecords } from "../src/tasks.j
 import { StatusLine } from '../src/tui-statusline.js';
 import { createNotebookTools } from '../src/notebooks.js';
 import { createMediaTools } from '../src/media.js';
+import { createBackgroundRegistry } from '../src/background.js';
 
 const roots: string[] = [];
 function workspace(): string {
@@ -461,6 +462,241 @@ test("PermissionRequest allowing updatedInput executes the replacement and expos
     assert.deepEqual(JSON.parse(fs.readFileSync(observed, "utf8")).tool_input, effect.inputs[0]);
     assertBatchAdjacency(session);
   } finally { session.close(); }
+});
+
+test('interactive permission hook rewrites require approval of the current input', async () => {
+  for (const scenario of ['allow', 'reject', 'abort', 'deny-change', 'ask-change', 'input-change', 'input-during-reprompt', 'input-after-approval', 'pre-deny', 'headless', 'resident'] as const) {
+    const root = workspace();
+    const effect = spy('write_file');
+    const observed = path.join(root, 'pre.json');
+    const hook = { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: {
+      behavior: 'allow', updatedInput: { path: 'replacement.txt' },
+      updatedPermissions: [{ type: 'addRules', rules: [{ toolName: 'hook-proposed' }], behavior: 'deny', destination: 'session' }],
+    } } };
+    const pre = scenario === 'pre-deny'
+      ? `cat > ${shellQuote(observed)}; ${emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput: { path: 'blocked.txt' } } })}`
+      : `${scenario === 'input-after-approval' ? 'sleep 0.2; ' : ''}cat > ${shellQuote(observed)}`;
+    const session = Session.open(root, { config: config(root, [effect.tool], {
+      permissions: { mode: 'default', allow: [], deny: ['Edit(blocked.txt)'], ask: ['write_file'] },
+      hooks: { PermissionRequest: [{ command: emit(hook) }], PreToolUse: [{ command: pre }] },
+    }) });
+    const provider = new ScriptedProvider([response([call('one', 'write_file', { path: 'original.txt' })], 'tool_use'), done()]);
+    const turn = new AbortController();
+    const prompts: Array<{ input: unknown; reason: string }> = [];
+    try {
+      const agent = new Agent(session, provider, [effect.tool], {
+        ...(scenario === 'headless' ? {} : { permissionPrompt: scenario === 'resident' ? 'unavailable' as const : 'interactive' as const }),
+        permission: async request => {
+          prompts.push({ input: structuredClone(request.input), reason: request.reason });
+          if (scenario === 'abort') { turn.abort(); return true; }
+          if (scenario === 'reject') return false;
+          if (scenario === 'input-change') Object.assign(request.input as object, { path: 'changed.txt' });
+          if (scenario === 'input-after-approval') setTimeout(() => Object.assign(request.input as object, { path: 'changed.txt' }), 40);
+          if (scenario === 'deny-change') session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'write_file' }], behavior: 'deny', destination: 'session' }]);
+          if ((scenario === 'ask-change' || scenario === 'input-during-reprompt') && prompts.length === 1) {
+            session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'write_file', ruleContent: 'replacement.txt' }], behavior: 'ask', destination: 'session' }]);
+            if (scenario === 'input-during-reprompt') queueMicrotask(() => Object.assign(request.input as object, { path: 'changed.txt' }));
+          }
+          return true;
+        },
+      });
+      await agent.run('exercise approval', turn.signal);
+      const allowed = scenario === 'allow' || scenario === 'ask-change' || scenario === 'input-change' ||
+        scenario === 'input-during-reprompt' || scenario === 'input-after-approval';
+      assert.deepEqual(effect.inputs, allowed ? [{ path: 'replacement.txt' }] : [], scenario);
+      assert.equal(prompts.length, scenario === 'headless' || scenario === 'resident' ? 0 :
+        scenario === 'ask-change' || scenario === 'input-during-reprompt' ? 2 : 1, scenario);
+      for (const prompt of prompts) {
+        assert.deepEqual(prompt.input, { path: 'replacement.txt' }, scenario);
+        assert.match(prompt.reason, /requires approval by permission rule/, scenario);
+      }
+      assert.equal(session.permissionOwner.state().deny.includes('hook-proposed'), false, scenario);
+      const result = resultBatches(session)[0]?.[0];
+      assert.ok(result, scenario);
+      assert.equal(result.is_error === true, !allowed, scenario);
+      assert.equal(fs.existsSync(observed), allowed || scenario === 'pre-deny', scenario);
+      if (fs.existsSync(observed)) assert.deepEqual(JSON.parse(fs.readFileSync(observed, 'utf8')).tool_input, { path: 'replacement.txt' });
+      assert.equal(session.events.filter(event => event.kind === 'hook_start' && event.event === 'PermissionRequest').length, 1, scenario);
+      assertBatchAdjacency(session);
+    } finally { session.close(); }
+  }
+});
+
+test('interactive rewritten shell checks the HOME it executes after approval', async () => {
+  const previous = process.env.HOME;
+  const root = workspace(), tools = createTools();
+  process.env.HOME = '/denied-fixture';
+  const cfg = config(root, tools, { allowShell: true,
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['run_command'] },
+    hooks: { PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: {
+      behavior: 'allow', updatedInput: { command: 'X=old; X=new export Y; printf "$HOME" > marker.txt' },
+    } } }) }] },
+  });
+  const session = Session.open(root, { config: cfg });
+  const provider = new ScriptedProvider([response([call('one', 'run_command', { command: 'printf original' })], 'tool_use'), done()]);
+  let prompts = 0;
+  try {
+    await new Agent(session, provider, tools, { permissionPrompt: 'interactive', permission: async () => {
+      prompts++;
+      process.env.HOME = '/allowed-fixture';
+      session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'printf /denied-fixture' }], behavior: 'deny', destination: 'session' }]);
+      return true;
+    } }).run('check approved shell home');
+    assert.equal(prompts, 1);
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(result?.is_error === true, true);
+    assert.equal(fs.existsSync(path.join(root, 'marker.txt')), false);
+  } finally {
+    session.close();
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+  }
+});
+
+test('an identical PreToolUse rewrite repeats the explicit rule approval', async () => {
+  const root = workspace(), effect = spy('write_file');
+  const cfg = config(root, [effect.tool], { permissions: { mode: 'default', allow: [], deny: [], ask: ['write_file'] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: {
+      behavior: 'allow', updatedInput: { path: 'replacement.txt' },
+    } } }) }],
+    PreToolUse: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput: { path: 'replacement.txt' } } }) }],
+  } });
+  const session = Session.open(root, { config: cfg });
+  const provider = new ScriptedProvider([response([call('one', 'write_file', { path: 'original.txt' })], 'tool_use'), done()]);
+  const prompts: unknown[] = [];
+  try {
+    await new Agent(session, provider, [effect.tool], { permissionPrompt: 'interactive', permission: async request => {
+      prompts.push(structuredClone(request.input)); return true;
+    } }).run('check hook rewrite');
+    assert.deepEqual(prompts, [{ path: 'replacement.txt' }, { path: 'replacement.txt' }]);
+    assert.deepEqual(effect.inputs, [{ path: 'replacement.txt' }]);
+    assert.deepEqual(session.events.filter(event => event.kind === 'hook_start' && (event.event === 'PermissionRequest' || event.event === 'PreToolUse'))
+      .map(event => event.kind === 'hook_start' ? event.event : ''), ['PermissionRequest', 'PreToolUse', 'PermissionRequest']);
+  } finally { session.close(); }
+});
+
+test('shell tools retain the HOME used by sampled permission checks', async () => {
+  const previous = process.env.HOME;
+  try {
+    for (const name of ['run_command', 'run_background', 'monitor'] as const) {
+      const root = workspace();
+      const background = createBackgroundRegistry({ workspace: root });
+      const tools = [...createTools(), ...background.tools];
+      const cfg = config(root, tools, { allowShell: true,
+        permissions: { mode: 'bypass', allow: [], deny: ['Bash(printf /denied-fixture)'] } });
+      const input = { command: 'X=old; X=new export Y; printf "$HOME"',
+        ...(name === 'run_command' ? {} : { description: 'owned fixture' }) };
+      const provider = new ScriptedProvider([response([call('one', name, input)], 'tool_use'), done()]);
+      process.env.HOME = '/allowed-fixture';
+      const session = Session.open(root, { config: cfg });
+      try {
+        await new Agent(session, provider, tools, { status: text => {
+          if (text === `tool: ${name}`) process.env.HOME = '/denied-fixture';
+        } }).run('check shell home');
+        const result = resultBatches(session)[0]?.[0];
+        assert.equal(result?.is_error, undefined, name);
+        const output = name === 'run_command' ? String(result?.content) :
+          (await background.registry.waitFor(JSON.parse(String(result?.content)).id, 5000, new AbortController().signal)).stdout;
+        assert.match(output, /\/allowed-fixture/, name);
+        assert.doesNotMatch(output, /\/denied-fixture/, name);
+      } finally { session.close(); await background.registry.close(); }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+  }
+});
+
+test('auto classification rechecks a changed HOME before accepting its verdict', async () => {
+  const root = workspace();
+  const tools = createTools();
+  const cfg = config(root, tools, { allowShell: true,
+    permissions: { mode: 'auto', allow: [], deny: ['Bash(printf /denied-fixture)'] } });
+  let classifierCalls = 0;
+  let sent = false;
+  const provider: ModelProvider = { count: async () => 1, complete: async request => {
+    if (typeof request.system === 'string' && request.system.startsWith('You are a security monitor')) {
+      classifierCalls++;
+      process.env.HOME = '/denied-fixture';
+      return response([{ type: 'text', text: '<block>no</block>' }]);
+    }
+    if (!sent) {
+      sent = true;
+      return response([call('one', 'run_command', { command: 'X=old; X=new export Y; printf "$HOME" > marker.txt' })], 'tool_use');
+    }
+    return done();
+  } };
+  const previous = process.env.HOME;
+  process.env.HOME = '/allowed-fixture';
+  const session = Session.open(root, { config: cfg });
+  try {
+    await new Agent(session, provider, tools).run('check shell home');
+    assert.equal(classifierCalls, 1);
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, true);
+    assert.equal(fs.existsSync(path.join(root, 'marker.txt')), false);
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    await session.close();
+  }
+});
+
+test('auto classification asks again when HOME changes but both decisions still ask', async () => {
+  const root = workspace();
+  const tools = createTools();
+  const cfg = config(root, tools, { allowShell: true, permissions: { mode: 'auto', allow: [], deny: ['Bash(printf /never-match)'] } });
+  const input = { command: 'X=old; X=new export Y; printf "$HOME" > marker.txt' };
+  let classifierCalls = 0;
+  let approvals = 0;
+  let sent = false;
+  const provider: ModelProvider = { count: async () => 1, complete: async request => {
+    if (typeof request.system === 'string' && request.system.startsWith('You are a security monitor')) {
+      classifierCalls++;
+      process.env.HOME = '/second-fixture';
+      return response([{ type: 'text', text: '<block>no</block>' }]);
+    }
+    if (!sent) {
+      sent = true;
+      return response([call('one', 'run_command', input)], 'tool_use');
+    }
+    return done();
+  } };
+  const previous = process.env.HOME;
+  process.env.HOME = '/first-fixture';
+  const session = Session.open(root, { config: cfg });
+  try {
+    assert.equal(permissionDecision(cfg.permissions, tools.find(tool => tool.schema.name === 'run_command')!, input).decision, 'ask');
+    await new Agent(session, provider, tools, { permission: async () => { approvals++; return false; } }).run('check shell home');
+    assert.equal(permissionDecision(cfg.permissions, tools.find(tool => tool.schema.name === 'run_command')!, input).decision, 'ask');
+    assert.equal(classifierCalls, 1);
+    assert.equal(approvals, 1);
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, true);
+    assert.equal(fs.existsSync(path.join(root, 'marker.txt')), false);
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    await session.close();
+  }
+});
+
+test('a clamped shell rechecks the approved HOME after the permission callback changes it', async () => {
+  const root = workspace();
+  const tools = createTools();
+  const cfg = config(root, tools, { allowShell: true, bashCommandClamp: [['Bash(printf:*)']],
+    permissions: { mode: 'ask', allow: [], deny: [] } });
+  const provider = new ScriptedProvider([response([call('one', 'run_command', { command: 'printf "%s" "$HOME"' })], 'tool_use'), done()]);
+  const session = Session.open(root, { config: cfg });
+  const previous = process.env.HOME;
+  process.env.HOME = '/fixture/home-before';
+  try {
+    await new Agent(session, provider, tools, { permission: async () => {
+      process.env.HOME = '/fixture/home-after';
+      return true;
+    } }).run('check shell home');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(result?.is_error, undefined);
+    assert.match(String(result?.content), /^\/fixture\/home-before\n/);
+    assert.doesNotMatch(String(result?.content), /\/fixture\/home-after/);
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    await session.close();
+  }
 });
 
 test('a clamped shell retains HOME across the final authorization and tool execution', async () => {
@@ -1382,6 +1618,35 @@ test("ordinary permission denial ignores retry hooks reserved for classifier ver
   } finally { session.close(); }
 });
 
+test('ordinary permission approval rechecks live rules', async () => {
+  for (const scenario of ['allow', 'new-deny', 'new-ask', 'new-ask-reject', 'cancel'] as const) {
+    const root = workspace();
+    const tools = createTools();
+    const session = Session.open(root, { config: config(root, tools, { allowShell: true,
+      permissions: { mode: 'ask', allow: [], deny: [] } }) });
+    const provider = new ScriptedProvider([response([call('one', 'run_command', { command: 'printf APPROVED > marker.txt' })], 'tool_use'), done()]);
+    const turn = new AbortController();
+    let prompts = 0;
+    try {
+      await new Agent(session, provider, tools, { permission: async () => {
+        prompts++;
+        if (scenario === 'new-deny' || scenario.startsWith('new-ask') && prompts === 1) {
+          session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'printf APPROVED:*' }],
+            behavior: scenario === 'new-deny' ? 'deny' : 'ask', destination: 'session' }]);
+        }
+        if (scenario === 'cancel') turn.abort();
+        return scenario !== 'new-ask-reject' || prompts !== 2;
+      } }).run('check live rules', turn.signal);
+      const allowed = scenario === 'allow' || scenario === 'new-ask';
+      assert.equal(prompts, scenario.startsWith('new-ask') ? 2 : 1, scenario);
+      assert.equal(resultBatches(session)[0]?.[0]?.is_error === true, !allowed, scenario);
+      assert.equal(fs.existsSync(path.join(root, 'marker.txt')), allowed, scenario);
+      if (allowed) assert.equal(fs.readFileSync(path.join(root, 'marker.txt'), 'utf8'), 'APPROVED');
+      assertBatchAdjacency(session);
+    } finally { session.close(); }
+  }
+});
+
 test("approval callback exceptions leave every call paired and later calls still execute", async () => {
   const root = workspace();
   const effect = spy("mutate");
@@ -1419,6 +1684,47 @@ for (const decision of ["ask", "defer"] as const) for (const approved of [true, 
     } finally { session.close(); }
   });
 }
+
+test('PreToolUse approval retains the reviewed input and rechecks live denial', async () => {
+  for (const scenario of ['unchanged', 'mutate', 'new-deny', 'new-ask', 'new-ask-reject', 'new-ask-cancel', 'cancel', 'mutation-handle'] as const) {
+    const root = workspace();
+    const tools = createTools();
+    const command = 'printf APPROVED > marker.txt';
+    const session = Session.open(root, { config: config(root, tools, { allowShell: true,
+      permissions: { mode: 'default', allow: [], deny: ['Bash(printf BLOCKED:*)'] },
+      hooks: { PreToolUse: [{ matcher: scenario === 'mutation-handle' ? 'write_file' : 'run_command', command: emit({ hookSpecificOutput: {
+        hookEventName: 'PreToolUse', permissionDecision: 'ask', permissionDecisionReason: 'Confirm fixture command',
+      } }) }] },
+    }) });
+    const original = scenario === 'mutation-handle' ? { path: 'original.txt', content: 'approved' } : { command };
+    const provider = new ScriptedProvider([response([call('one', scenario === 'mutation-handle' ? 'write_file' : 'run_command', original)], 'tool_use'), done()]);
+    const turn = new AbortController();
+    let prompts = 0;
+    try {
+      await new Agent(session, provider, tools, { permissionPrompt: 'interactive', permission: async request => {
+        prompts++;
+        assert.deepEqual(request.input, original);
+        if (scenario === 'mutate') Object.assign(request.input as object, { command: 'printf BLOCKED > marker.txt' });
+        if (scenario === 'mutation-handle') Object.assign(request.input as object, { path: 'redirected.txt' });
+        if (scenario === 'new-deny') session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'printf APPROVED:*' }], behavior: 'deny', destination: 'session' }]);
+        if (scenario.startsWith('new-ask') && prompts === 1) session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'printf APPROVED:*' }], behavior: 'ask', destination: 'session' }]);
+        if (scenario === 'cancel' || scenario === 'new-ask-cancel' && prompts === 2) turn.abort();
+        return scenario !== 'new-ask-reject' || prompts !== 2;
+      } }).run('check PreToolUse approval', turn.signal);
+      assert.equal(prompts, scenario.startsWith('new-ask') ? 2 : 1, scenario);
+      const allowed = scenario === 'unchanged' || scenario === 'mutate' || scenario === 'new-ask' || scenario === 'mutation-handle';
+      assert.equal(resultBatches(session)[0]?.[0]?.is_error === true, !allowed, scenario);
+      if (scenario === 'mutation-handle') {
+        assert.equal(fs.readFileSync(path.join(root, 'original.txt'), 'utf8'), 'approved');
+        assert.equal(fs.existsSync(path.join(root, 'redirected.txt')), false);
+      } else {
+        assert.equal(fs.existsSync(path.join(root, 'marker.txt')), allowed, scenario);
+        if (allowed) assert.equal(fs.readFileSync(path.join(root, 'marker.txt'), 'utf8'), 'APPROVED');
+      }
+      assertBatchAdjacency(session);
+    } finally { session.close(); }
+  }
+});
 
 test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", async () => {
   const root = workspace();

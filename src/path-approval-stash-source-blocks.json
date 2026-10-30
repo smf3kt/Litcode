@@ -1,0 +1,55 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "moduleSha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "symbol": "j8e",
+      "range": [
+        50998,
+        51036
+      ],
+      "bodySha256": "781b182d766d12320134c0cfabd97d4607053aaf12ed1e9bbccb31b5e55e3e6d",
+      "declarator": true,
+      "output": "path-approval-stash-source.ts",
+      "outputRange": [
+        229,
+        267
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "moduleSha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "symbol": "Be",
+      "range": [
+        51037,
+        52888
+      ],
+      "bodySha256": "94cc56f72b64bd393d6de38c2b8dffb1eec6ace8b5cad81ea3585c851d880c63",
+      "output": "path-approval-stash-source.ts",
+      "outputRange": [
+        388,
+        2239
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "moduleSha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "symbol": "He",
+      "range": [
+        52888,
+        52926
+      ],
+      "bodySha256": "e1cb0560eb8206bbd1d129baeaff3e5b6606b2cc52e2b01f60c52947d98df7a6",
+      "output": "path-approval-stash-source.ts",
+      "outputRange": [
+        2359,
+        2397
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

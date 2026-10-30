@@ -6,7 +6,7 @@
     {
       "path": "shell-command-clamp-source.ts",
       "chunks": [
-        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { vS } from \"./bash-parser-source.js\";\nimport { E6 } from \"./shell-analyser-source.js\";\nimport { Un } from \"./permission-rule-source.js\";\nimport { xX } from \"./shell-rule-matcher-source.js\";\nconst i = () => {};\nconst ki = { name: \"Bash\" };\n",
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { vS } from \"./bash-parser-source.js\";\nimport { E6, Yx } from \"./shell-analyser-source.js\";\nimport { Un } from \"./permission-rule-source.js\";\nimport { xX } from \"./shell-rule-matcher-source.js\";\nconst i = () => {};\nconst ki = { name: \"Bash\" };\n",
         {
           "module": "chunk-3qabb19b.js",
           "moduleSha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
@@ -26,17 +26,6 @@
             828
           ],
           "bodySha256": "b536a7ee7363b600db68371fc249aa3b5e49e16fd7f466c17d0b4fff476ca396",
-          "declarator": true
-        },
-        {
-          "module": "chunk-zjewzgfh.js",
-          "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
-          "symbol": "Yx",
-          "range": [
-            1273,
-            1299
-          ],
-          "bodySha256": "5cbd3cde29ae7f4c8596970b333a5f4be4f3486d4b825c7643c4a2c3bed574f2",
           "declarator": true
         },
         {

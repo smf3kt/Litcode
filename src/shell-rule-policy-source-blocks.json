@@ -1,0 +1,55 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Uwe",
+      "range": [
+        3208987,
+        3209628
+      ],
+      "bodySha256": "96464519e0179423b7f6fe0a37d5b55646672bf94b0dc77d5f0c425335df8cc4",
+      "declarator": true,
+      "output": "shell-rule-policy-source.ts",
+      "outputRange": [
+        315,
+        956
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Vcn",
+      "range": [
+        3229056,
+        3229494
+      ],
+      "bodySha256": "16419b315837b18be00558bd9805c02a6c8a6e8bf4a45540f971e06fd7f8c689",
+      "output": "shell-rule-policy-source.ts",
+      "outputRange": [
+        1082,
+        1520
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "GTr",
+      "range": [
+        3251642,
+        3252147
+      ],
+      "bodySha256": "873c3f9b0f90dfa4115a3c420a35215b02b0c8c3f23d66fef352fc326399ee0c",
+      "output": "shell-rule-policy-source.ts",
+      "outputRange": [
+        1645,
+        2150
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

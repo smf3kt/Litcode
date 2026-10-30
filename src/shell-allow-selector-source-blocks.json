@@ -1,0 +1,71 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-r2vtj1kh.js",
+      "moduleSha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515",
+      "symbol": "ii",
+      "range": [
+        151745,
+        151805
+      ],
+      "bodySha256": "c8be77ab93cf152cb2c54a97adc7a8524cc2fcb13592d8a37281b20b63765975",
+      "output": "shell-allow-selector-source.ts",
+      "outputRange": [
+        752,
+        812
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "K",
+      "range": [
+        1644,
+        1675
+      ],
+      "bodySha256": "d2982d9287d3f469b3e672ebb59575572479b3e97b090936f3334683af238613",
+      "declarator": true,
+      "output": "shell-allow-selector-source.ts",
+      "outputRange": [
+        933,
+        964
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "E",
+      "range": [
+        2088,
+        2128
+      ],
+      "bodySha256": "dceb0cf32e10bcff730f09a1e72045ee95c52ec54fe408ef902e0229ce15c2a4",
+      "output": "shell-allow-selector-source.ts",
+      "outputRange": [
+        1082,
+        1122
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "U0",
+      "range": [
+        8017,
+        8631
+      ],
+      "bodySha256": "40f9ef182c0e51527b0db06945a2c7273cbd283054719f204865492b531b56eb",
+      "output": "shell-allow-selector-source.ts",
+      "outputRange": [
+        1240,
+        1854
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

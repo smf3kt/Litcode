@@ -1,0 +1,102 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "Bc",
+      "range": [
+        8783,
+        8835
+      ],
+      "bodySha256": "a0a301a46498d64c16201d148a5f319a5690160a2017beb4197aefefef6f37c7",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        441,
+        493
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "xm",
+      "range": [
+        8835,
+        8885
+      ],
+      "bodySha256": "0c6d6ac28d005a894b2518692038be4ebfde937f57142cbdd0cca65ec10faeca",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        611,
+        661
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "Gre",
+      "range": [
+        14183,
+        14224
+      ],
+      "bodySha256": "0e14e8e58793debce4a450a2e4606930101d30f6087d7f2f5257569cf71cab24",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        782,
+        823
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "zM",
+      "range": [
+        14224,
+        14359
+      ],
+      "bodySha256": "9b3a17c83ea8704f6cc694bb20219f12878cfe854041e714f1fefe5fa5236a8f",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        943,
+        1078
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "moduleSha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "symbol": "B_e",
+      "range": [
+        14359,
+        14598
+      ],
+      "bodySha256": "c28aa2bec5fcd3f49bd26d04131e5ab535f3e140a390f16b8ee052a9d048ee61",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        1199,
+        1438
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "dA",
+      "range": [
+        3207029,
+        3207522
+      ],
+      "bodySha256": "9109eaa354ba9e36b652456662b656fcc1a410db2ab444fa6efeb7da9b4bb3ef",
+      "output": "shell-rule-store-source.ts",
+      "outputRange": [
+        1562,
+        2055
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

@@ -45,15 +45,15 @@ try {
   Object.assign(env, { LLM_API_KEY: "owned-shell", LLM_MODEL: "fixture/shell", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`,
     LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" });
 
-  const run = async (label, command, marker, rules = [{ tool: "run_command", command: "echo denied*", decision: "deny" }]) => {
+  const run = async (label, command, marker, rules = [{ tool: "run_command", command: "echo denied*", decision: "deny" }], permissions = {}, childEnv = env) => {
     commanded = command; calls = 0;
     const workspace = path.join(temporary, label), user = path.join(temporary, `${label}-user`);
     fs.mkdirSync(workspace); fs.mkdirSync(user); fs.mkdirSync(path.join(workspace, ".harness"));
     fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true,
-      permissions: { mode: "default", allow: [], deny: [], inputRules: rules } }));
+      permissions: { mode: "default", allow: [], deny: [], inputRules: rules, ...permissions } }));
     child = spawn(process.execPath, [...(compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
       "--workspace", workspace, "--user-dir", user, "--max-turns", "4", "--output-format", "json", "Run the fixture command"],
-      { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+      { cwd: root, env: childEnv, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "", stderr = "";
     child.stdout.on("data", chunk => { stdout += chunk; }); child.stderr.on("data", chunk => { stderr += chunk; });
     const timer = setTimeout(() => child?.kill("SIGKILL"), 20000);
@@ -101,8 +101,58 @@ try {
   assert.equal(fs.existsSync(groupControl.marker), true, "a group around an allowed command still runs");
   assert.equal(groupControl.calls, 2);
 
+  const restricted = { deny: ['Bash(printf:*)'] };
+  for (const [label, command] of [
+    ['content-direct', 'printf denied > marker.txt'],
+    ['content-env', 'env CUSTOM=value printf denied > marker.txt'],
+    ['content-command', 'command printf denied > marker.txt'],
+    ['content-assignment', 'CUSTOM=value printf denied > marker.txt'],
+  ]) {
+    const result = await run(label, command, 'marker.txt', [], restricted);
+    assert.equal(result.result.is_error, true, label);
+    assert.match(result.result.content, /denied/i);
+    assert.equal(fs.existsSync(result.marker), false, label);
+    assert.equal(result.calls, 2);
+  }
+  const wrappedControl = await run('content-control', 'env CUSTOM=value echo allowed > marker.txt', 'marker.txt', [], restricted);
+  assert.equal(wrappedControl.result.is_error, undefined);
+  assert.equal(fs.readFileSync(wrappedControl.marker, 'utf8').trim(), 'allowed');
+  assert.equal(wrappedControl.calls, 2);
+  const ask = await run('content-ask', 'command printf denied > marker.txt', 'marker.txt', [], { ask: ['Bash(printf:*)'] });
+  assert.equal(ask.result.is_error, true);
+  assert.match(ask.result.content, /approval/i);
+  assert.equal(fs.existsSync(ask.marker), false);
+  assert.equal(ask.calls, 2);
+
+  const sampledCommand = 'X=old; X=new export Y; printf "$X" > marker.txt';
+  const sampled = await run('sampled-deny', sampledCommand, 'marker.txt', [], { mode: 'bypass', deny: ['Bash(printf new)'] });
+  assert.equal(sampled.result.is_error, true);
+  assert.match(sampled.result.content, /denied/i);
+  assert.equal(fs.existsSync(sampled.marker), false);
+  assert.equal(sampled.calls, 2);
+  const sampledControl = await run('sampled-control', sampledCommand, 'marker.txt', [], { mode: 'bypass', deny: ['Bash(printf unrelated)'] });
+  assert.equal(sampledControl.result.is_error, undefined);
+  assert.equal(fs.readFileSync(sampledControl.marker, 'utf8'), 'new');
+  assert.equal(sampledControl.calls, 2);
+
+  const absentHome = { ...env };
+  delete absentHome.HOME;
+  const missingHomeDenied = await run('missing-home-deny', sampledCommand, 'marker.txt', [],
+    { mode: 'bypass', deny: ['Bash(printf new)'] }, absentHome);
+  assert.equal(missingHomeDenied.result.is_error, true);
+  assert.match(missingHomeDenied.result.content, /denied/i);
+  assert.equal(fs.existsSync(missingHomeDenied.marker), false);
+  assert.equal(missingHomeDenied.calls, 2);
+  const missingHomeControl = await run('missing-home-control', 'X=1 export Y; printf "%s" "$HOME" > marker.txt',
+    'marker.txt', [], { mode: 'bypass', deny: ['Bash(unrelated)'] }, absentHome);
+  assert.equal(missingHomeControl.result.is_error, undefined);
+  assert.equal(fs.readFileSync(missingHomeControl.marker, 'utf8'), '');
+  assert.equal(missingHomeControl.calls, 2);
+
   console.log(JSON.stringify({ cli: "passed", quotedCommandDenied: true, controlCommandRan: true,
     denial: "alternate reading", analyserRefusalAsks: true, groupedCommandDenied: true, groupControlRan: true,
+    wrappedDeny: 4, wrappedAsk: true, wrappedControlRan: true, sampledDeny: true, sampledControlRan: true,
+    missingHomeDenied: true, missingHomeControlRan: true,
     modelCallsPerCase: 2, ...(compiled ? { compiledCLI: true } : {}), gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");

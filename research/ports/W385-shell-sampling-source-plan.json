@@ -1,0 +1,36 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-sampling-source-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-sampling-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { AsyncLocalStorage as Dbr } from 'node:async_hooks';\nexport function createShellSamplingScope(i) {\n",
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Wun",
+          "range": [3104519, 3104530],
+          "bodySha256": "5be56c2390d16f685e4a4e019c0bd592df81d3c4907bd2a2cc8ecd52f50387b8",
+          "declarator": true
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "OAn",
+          "range": [3104531, 3104568],
+          "bodySha256": "7de05c7da6d83c61b33f9b26330e93146ead854666d4fc5e3238a747c056a529"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "dO",
+          "range": [3104568, 3104621],
+          "bodySha256": "134cdfde186177d2a96a3fccba23a7f4bc68bd4ea54292bd22ae7debf6665515"
+        },
+        "return { OAn, dO };\n}\n"
+      ]
+    }
+  ]
+}

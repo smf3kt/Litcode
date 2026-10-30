@@ -189,6 +189,35 @@ test('the child gate rechecks PermissionRequest and PreToolUse command rewrites'
   }
 });
 
+test('child permission rules recheck wrapped commands supplied by hooks', async () => {
+  for (const event of ['PermissionRequest', 'PreToolUse'] as const) {
+    const replacement = { command: 'env CUSTOM=value printf forbidden > forbidden.txt' };
+    const output = event === 'PermissionRequest'
+      ? { hookEventName: event, decision: { behavior: 'allow', updatedInput: replacement } }
+      : { hookEventName: event, permissionDecision: 'allow', updatedInput: replacement };
+    const hook = `printf '%s' '${JSON.stringify({ hookSpecificOutput: output })}'`;
+    let calls = 0;
+    const f = fixture(async request => {
+      if (++calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+        input: { command: 'echo allowed' } } as Anthropic.ContentBlock]);
+      const result = request.messages.at(-1);
+      const block = Array.isArray(result?.content)
+        ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+      assert.equal(block?.type, 'tool_result');
+      assert.match(String(block && 'content' in block ? block.content : ''), /denied/i);
+      return response('done');
+    });
+    f.config.permissions = { mode: event === 'PermissionRequest' ? 'ask' : 'bypass', allow: [], deny: ['Bash(printf:*)'] };
+    f.config.hooks = { [event]: [{ command: hook }] };
+    try {
+      const child = await f.registry.launch({ prompt: 'work', mode: 'general' });
+      assert.equal(child.status, 'completed', child.error ?? undefined);
+      assert.equal(calls, 2);
+      assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
+    } finally { await f.cleanup(); }
+  }
+});
+
 test('the child gate denies a source parser failure after the initial parse', async () => {
   const parser = vS();
   const parse = parser.parse;

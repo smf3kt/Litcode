@@ -113,7 +113,7 @@
           ],
           "bodySha256": "724ee7599692796f6c6d2c7aa85f60073db9bb760955e046a46c5ff1be9f1743"
         },
-        "return $cn;\n}\n"
+        "return $cn;\n}\nexport { Kg, Emr };\n"
       ]
     }
   ]

@@ -2,9 +2,10 @@ import path from 'node:path';
 import os from 'node:os';
 import ignore from 'ignore';
 import { tNe, en, Wn, Vo, Cf, uZ, jxe } from './permission-content-source.js';
+import { xX } from './shell-rule-matcher-source.js';
 import { Un } from './permission-rule-source.js';
 import { isCompoundReading, prefixMatches, trailingWildcard } from './agent-tool-restrictions.js';
-import { resolveChain } from './path-identity.js';
+import { observePermissionPath, type PathPermissionObservation } from './path-permission-observation.js';
 import type { PermissionPolicy } from './permissions.js';
 
 const contentOwners = new WeakMap<PermissionPolicy, object>();
@@ -29,6 +30,11 @@ export function ruleToolMatches(rule: string, name: string): boolean {
 
 /** xX [3205608,3207630), 3cy uZ/jxe [182221,183008), UTF-16. */
 export function shellContentMatches(content: string, command: string, behavior: 'allow' | 'deny' | 'ask'): boolean {
+  // dA/xX, chunk-sfn1dbxq.js [3207029,3207522)/[3205608,3207029), UTF-16.
+  if (behavior !== 'allow') {
+    const options = { stripAllEnvVars: true, skipCompoundCheck: true, ruleBehavior: behavior };
+    if (xX({ command }, new Map([[content, true]]), 'prefix', options).length > 0) return true;
+  }
   const rule = jxe(content);
   const reading = command.trim();
   if (rule.type === 'exact') return rule.command === reading;
@@ -39,7 +45,7 @@ export function shellContentMatches(content: string, command: string, behavior: 
 
 /** Nn/Ui/ZYt, 2bcy [221752,223408)/[225036,225815)/[226996,227149), UTF-16. */
 export function contentRuleMatches(policy: PermissionPolicy, behavior: 'allow' | 'deny' | 'ask', name: string,
-  input: unknown): boolean {
+  input: unknown, observation?: PathPermissionObservation, executionWorkspace = policy.ruleWorkspace ?? process.cwd()): boolean {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
   const command = Object.getOwnPropertyDescriptor(input, 'command')?.value;
   const file = Object.getOwnPropertyDescriptor(input, 'path')?.value;
@@ -54,8 +60,8 @@ export function contentRuleMatches(policy: PermissionPolicy, behavior: 'allow' |
     return rule.ruleContent !== undefined && ruleToolMatches(rule.toolName, name) &&
       shellContentMatches(rule.ruleContent, command, behavior);
   }));
-  const resolved = resolveChain(workspace, file);
-  const spellings = [...new Set([path.resolve(workspace, file), ...(resolved.spellings ?? []), resolved.path])];
+  const paths = observation ?? observePermissionPath(executionWorkspace, file);
+  const spellings = paths.hostRuleSpellings;
   const owner = contentOwners.get(policy) ?? policy;
   let observed = physicalTwins.get(owner);
   if (!observed) { observed = new Map(); physicalTwins.set(owner, observed); }
@@ -90,7 +96,7 @@ export function contentRuleMatches(policy: PermissionPolicy, behavior: 'allow' |
     for (const retained of twins) add(path.parse(parsed.root).root, source, Wn(retained, false));
   }
   const matched = (spelling: string) => [...groups].some(([root, sources]) => {
-    const relative = path.relative(root ?? workspace, spelling).split(path.sep).join('/');
+    const relative = path.relative(root ?? executionWorkspace, spelling).split(path.sep).join('/');
     if (!relative || !ignore.isPathValid(relative)) return false;
     return [...sources.values()].reverse().some(patterns => ignore().add(patterns).test(relative).ignored);
   });

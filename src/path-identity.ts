@@ -62,6 +62,7 @@ export interface ResolvedPath {
   /** Every link followed, in order. Empty when the path had none. */
   readonly hops: readonly ChainHop[];
   readonly spellings?: readonly string[];
+  readonly leafIsSymlink?: boolean;
   /** Present when the target exists. Absent for a path that does not. */
   readonly identity?: FileIdentity;
 }
@@ -163,6 +164,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
   const parsed = path.parse(absolute);
   let current = parsed.root;
   let remaining = absolute.slice(parsed.root.length).split(path.sep).filter((segment) => segment !== "");
+  let leafIsSymlink = false;
 
   while (remaining.length > 0) {
     const next = path.join(current, remaining[0]!);
@@ -176,7 +178,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
       }
       if (code === "ENOENT" || code === "ENOTDIR") {
         // Absent, not an error here: the caller decides whether that is allowed.
-        return { path: path.join(current, ...remaining), hops, spellings: [...spellings] };
+        return { path: path.join(current, ...remaining), hops, spellings: [...spellings], leafIsSymlink };
       }
       throw error;
     }
@@ -196,6 +198,8 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
     }
     seen.add(key);
     const target = fs.readlinkSync(next);
+    // He/onHop, gyf58rwf [64745,67735), UTF-16: a hop is a leaf after consuming the final segment.
+    if (remaining.length === 1) leafIsSymlink = true;
     hops.push({ link: next, target });
     // Continue from the target, which may itself pass through links, with the
     // unconsumed segments still to walk.
@@ -219,6 +223,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
       path: current,
       hops,
       spellings: [...spellings],
+      leafIsSymlink,
       identity: {
         dev: String(stat.dev),
         ino: String(stat.ino),
@@ -227,7 +232,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
       },
     };
   } catch {
-    return { path: current, hops, spellings: [...spellings] };
+    return { path: current, hops, spellings: [...spellings], leafIsSymlink };
   }
 }
 

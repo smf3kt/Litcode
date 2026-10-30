@@ -1,10 +1,12 @@
 import { toolNameDenied } from './agent-tool-restrictions.js';
 import { spawn } from 'node:child_process';
+import { homedir } from 'node:os';
+import { withShellAnalysisHome } from './shell-analysis-home.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent } from './agent.js';
 import type { AgentRegistry } from './agent-registry.js';
 import { expandSkill, type SkillInfo } from './config.js';
-import { HOOK_EVENTS, flattenHookDefinitions, hooksSchema, type HooksConfig } from './hooks.js';
+import { HOOK_EVENTS, flattenHookDefinitions, hooksSchema, type HookCommandHome, type HooksConfig } from './hooks.js';
 import { permissionDecision, permissionOwner, bindPermissionOwner, childPermissionState, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
@@ -71,10 +73,15 @@ function grant(skill: SkillInfo, tool: ToolDefinition, input?: unknown): boolean
   });
 }
 
-async function approve(tool: ToolDefinition, input: unknown, options: SkillExecutionOptions, explicit = false): Promise<void> {
+async function approve(tool: ToolDefinition, input: unknown, options: SkillExecutionOptions, explicit = false,
+  alternateHome?: string, workspace = options.config.workspace): Promise<void> {
   options.signal.throwIfAborted();
   if ((tool.schema.name === 'run_command') && !options.config.allowShell) throw new Error('Skill shell access is disabled');
-  let decision = permissionDecision(options.config.permissions, tool, input);
+  let decision = permissionDecision(options.config.permissions, tool, input, undefined, workspace);
+  if (alternateHome !== undefined) {
+    const alternate = withShellAnalysisHome(alternateHome, () => permissionDecision(options.config.permissions, tool, input, undefined, workspace));
+    if (alternate.decision === 'deny' || decision.decision === 'allow' && alternate.decision === 'ask') decision = alternate;
+  }
   if (explicit && !options.config.permissions) decision = { decision: 'ask', reason: 'Skill command requires explicit invocation approval' };
   if (decision.decision === 'ask' && options.requestPermission) decision = await options.requestPermission(tool, input, decision);
   options.signal.throwIfAborted();
@@ -88,12 +95,12 @@ const commandTool: ToolDefinition = {
 };
 
 /** Commands use an owned process group and a bounded output window. */
-async function shellOutput(command: string, shell: string, options: SkillExecutionOptions): Promise<string> {
+async function shellOutput(command: string, shell: string, options: SkillExecutionOptions, home: string | undefined): Promise<string> {
   options.signal.throwIfAborted();
   const timeout = options.timeoutMs ?? 30_000;
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 120_000) throw new Error('Skill timeout must be between 1 and 120000ms');
   return new Promise((resolve, reject) => {
-    const child = spawn(shell, ['-c', command], { cwd: options.config.workspace, env: process.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(shell, ['-c', command], { cwd: options.config.workspace, env: { ...process.env, HOME: home }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let finished = false; let failure: Error | undefined; let timer: ReturnType<typeof setTimeout>; let grace: ReturnType<typeof setTimeout> | undefined;
     const chunks: Buffer[] = []; let bytes = 0;
     const kill = () => {
@@ -169,10 +176,14 @@ async function expandedBody(skill: SkillInfo, args: string, options: SkillExecut
   if (!commands.length || (skill.shell === undefined && skill.command === undefined && options.config.features?.skillInlineCommands !== true)) return withArguments;
   const shell = skill.shell ?? '/bin/sh';
   const expandedCommands = commands.map(entry => expand(entry.command));
+  const approvedHomes: (string | undefined)[] = [];
   // Preflight every command before any side effect, including later denied commands.
+  // iye, sfn1dbxq [3368429,3370821); Z, zjewzgfh [68158,68694), UTF-16.
   for (const command of expandedCommands) {
     if (!grant(skill, commandTool, { command })) throw new Error('Skill command is outside allowed-tools');
-    await approve(commandTool, { command }, options, true);
+    const home = process.env.HOME;
+    await approve(commandTool, { command }, options, true, home === undefined && shell !== '/bin/sh' ? homedir() : undefined);
+    approvedHomes.push(home);
   }
   const journal = options.effectJournal;
   // A started span with no terminal record belongs to a process that died after
@@ -189,7 +200,7 @@ async function expandedBody(skill: SkillInfo, args: string, options: SkillExecut
       const command = expandedCommands[index]!;
       const effect = journal?.start(skill.name, index, command);
       let output: string;
-      try { output = await shellOutput(command, shell, options); }
+      try { output = await shellOutput(command, shell, options, approvedHomes[index]); }
       catch (error) {
         if (effect) journal!.finish(effect, 'failed');
         throw error;
@@ -248,11 +259,18 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   const fork = skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.disallowedTools !== undefined;
   if (skill.background && !options.registry) throw new Error('Background skill requires a session-owned agent registry');
   const hooks = overlayHooks(options.config.hooks, skill.hooks);
-  if (skill.hooks) {
+  // qe, htgmc2p1 [3899,4257); UF, sfn1dbxq [2969279,2980094), UTF-16.
+  const hookHomes = new Map<string, HookCommandHome>();
+  if (skill.hooks && hooks) {
     hooksSchema.parse(skill.hooks);
-    for (const event of HOOK_EVENTS) for (const { definition } of flattenHookDefinitions(skill.hooks, event)) {
-      // Preflight grouped commands too before the skill performs any effects.
-      if ('command' in definition) await approve(commandTool, { command: definition.command }, options, true);
+    for (const event of HOOK_EVENTS) {
+      const parentEntries = options.config.hooks?.[event]?.length ?? 0;
+      for (const { definition, entryIndex, identity } of flattenHookDefinitions(hooks, event)) {
+        if (entryIndex < parentEntries || !('command' in definition)) continue;
+        const home = { value: process.env.HOME };
+        await approve(commandTool, { command: definition.command }, options, true);
+        hookHomes.set(identity.key, home);
+      }
     }
   }
   const body = await expandedBody(skill, args, options);
@@ -273,19 +291,19 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   const parentNames = new Set(config.tools.map(tool => tool.name));
   const mode = route?.mode ?? 'general';
   const originals = selectChildTools(options.tools, mode, route?.type?.tools).filter(tool => parentNames.has(tool.schema.name) && grant(skill, tool));
-  const beforeTool = async (tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<void> => {
+  const beforeTool = async (tool: ToolDefinition, input: unknown, signal: AbortSignal, workspace: string): Promise<void> => {
     if (!grant(skill, tool, input)) throw new Error('Skill tool input is outside allowed-tools');
-    await approve(tool, input, { ...options, signal });
+    await approve(tool, input, { ...options, signal }, false, undefined, workspace);
   };
   const selected = originals.map(tool => ({
     ...tool,
     async execute(input: unknown, context: Parameters<ToolDefinition['execute']>[1]): Promise<string> {
-      await beforeTool(tool, input, context.signal);
+      await beforeTool(tool, input, context.signal, context.workspace);
       return tool.execute(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
     },
     ...(tool.executeBlocks ? {
       async executeBlocks(input: unknown, context: Parameters<ToolDefinition['execute']>[1]) {
-        await beforeTool(tool, input, context.signal);
+        await beforeTool(tool, input, context.signal, context.workspace);
         return tool.executeBlocks!(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
       },
     } : {}),
@@ -299,7 +317,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     if (route?.type?.body) registryConfig.system += '\n\nAgent instructions:\n' + route.type.body;
     const descriptor = await options.registry!.launch({ prompt: body, mode, max_turns: Math.min(child.maxTurns, 30), background: skill.background === true,
       ...(model && model !== 'inherit' ? { model } : {}), ...(route?.isolation ? { isolation: route.isolation } : {}) }, options.signal,
-      { config: registryConfig, tools: originals, beforeTool, permissionOwner: childOwner, ...(conversation !== undefined ? { conversation } : {}) });
+      { config: registryConfig, tools: originals, beforeTool, permissionOwner: childOwner, hookHomes, ...(conversation !== undefined ? { conversation } : {}) });
     if (!skill.background) return capChildOutput(JSON.stringify({ session_id: descriptor.session_id, reason: descriptor.reason, text: descriptor.summary, model_calls: descriptor.model_calls }), config.maxOutputBytes);
     return capChildOutput(JSON.stringify(descriptor), config.maxOutputBytes);
   }
@@ -313,7 +331,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   try {
     for (const message of conversation ?? []) session.append({ kind: 'message', message });
     if (conversation !== undefined) session.append({ kind: 'turn_end', reason: 'fork_seed' });
-    asyncHooks = createChildHookLifecycle(session, { hookOptions: options.hookOptions, terminalSequence: options.terminalSequence });
+    asyncHooks = createChildHookLifecycle(session, { hookOptions: options.hookOptions, terminalSequence: options.terminalSequence }, hookHomes);
     agent = new Agent(session, options.provider, selected, { text: options.onText, hookOptions: asyncHooks.hookOptions,
       ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session.config.workspace, paths) } : {}),
       ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session.id, sequence) } : {}),

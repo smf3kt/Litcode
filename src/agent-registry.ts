@@ -8,6 +8,7 @@ import { instructionSources, rebaseChildInstructions } from './config.js';
 import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
+import type { HookCommandHome } from './hooks.js';
 import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, type LivePermissionOwner } from './permissions.js';
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
@@ -125,7 +126,7 @@ type Child = {
   view: AgentDescriptor; config: SessionConfig; readonly resumeConfig: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
   mailbox: MailboxMessage[]; mailboxBytes: number; accepted: number; session?: Session;
   transcript: AgentTranscriptRecord[]; inProgressToolUseIDs: Set<string>; viewLeases: Set<symbol>; activeInput?: string;
-  agent?: Agent; hooks?: ReturnType<typeof createChildHookLifecycle>;
+  agent?: Agent; hooks?: ReturnType<typeof createChildHookLifecycle>; hookHomes?: ReadonlyMap<string, HookCommandHome>;
   worker?: Promise<void>; journalEvents: number; journalBytes: number;
   environment?: ChildEnvironmentLease; environmentClosing?: Promise<void>; fork?: boolean;
   structured?: StructuredOutputState;
@@ -440,8 +441,8 @@ export class AgentRegistry {
   // dne/iCn, sfn1dbxq [4233793,4234807)/[4219665,4219883), UTF-16: retain launch data and progress.
   async launch(raw: AgentLaunch, callerSignal?: AbortSignal, execution?: {
     config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[]; initialPrompt?: string;
-    beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal) => Promise<void>;
-    permissionOwner?: LivePermissionOwner;
+    beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal, workspace: string) => Promise<void>;
+    permissionOwner?: LivePermissionOwner; hookHomes?: ReadonlyMap<string, HookCommandHome>;
   }, conversation?: readonly Anthropic.MessageParam[]): Promise<AgentDescriptor> {
     this.assertOpen(callerSignal);
     const args: AgentLaunch = (this.options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw);
@@ -566,14 +567,14 @@ export class AgentRegistry {
         if (!execution) return tool;
         const authorize = async (input: unknown, context: ToolContext): Promise<ToolContext> => {
           context.signal.throwIfAborted();
-          const decision = permissionDecision(execution.permissionOwner ? scopedPolicy() : parentPolicy(), tool, input);
-          const scopedDecision = permissionDecision(scopedPolicy(), tool, input);
+          const decision = permissionDecision(execution.permissionOwner ? scopedPolicy() : parentPolicy(), tool, input, undefined, config.workspace);
+          const scopedDecision = permissionDecision(scopedPolicy(), tool, input, undefined, config.workspace);
           if (scopedDecision.decision === 'deny') throw new Error(scopedDecision.reason ?? 'Child permission denied tool');
           if (decision.decision === 'deny') throw new Error(decision.reason ?? 'Parent permission denied child tool');
           if ((decision.decision === 'ask' || scopedDecision.decision === 'ask') && !beforeTool) {
             throw new Error(decision.reason ?? scopedDecision.reason ?? 'Parent permission requires approval');
           }
-          await beforeTool?.(tool, input, context.signal);
+          await beforeTool?.(tool, input, context.signal, config.workspace);
           context.signal.throwIfAborted();
           return { ...context, ...(liveOwner ? { workingDirectories: liveOwner.workingDirectories } : {}), workspace: config.workspace, allowShell: context.allowShell && allowShell };
         };
@@ -600,7 +601,7 @@ export class AgentRegistry {
       for (const message of preloads) session.append({ kind: 'message', message, isMeta: true });
       // vC, 40cepjpq [132082,132105), UTF-16: preloads are initial query context.
       if (seedBoundary) session.append({ kind: 'turn_end', reason: seedBoundary });
-      hooks = createChildHookLifecycle(session, this.options);
+      hooks = createChildHookLifecycle(session, this.options, execution?.hookHomes);
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,
         textStart: () => { if (child) this.beginResponse(child); },
@@ -619,7 +620,8 @@ export class AgentRegistry {
         config: session.config, resumeConfig: structuredClone(config), tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
         transcript: session.events.filter(transcriptEvent), inProgressToolUseIDs: new Set(), viewLeases: new Set(),
         prompt: args.prompt, startedAt: Date.now(), progress: createAgentProgress(), streamedChars: 0, backgrounded: args.background === true,
-        accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
+        accepted: 0, session, agent, hooks, ...(execution?.hookHomes ? { hookHomes: execution.hookHomes } : {}),
+        journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
       };
@@ -807,7 +809,7 @@ export class AgentRegistry {
         child.config = child.session.config;
         if (child.adoptionOnly) child.session.inheritPermissionAdoption(child.liveOwner);
         else child.session.inheritPermissions(child.liveOwner);
-        child.hooks = createChildHookLifecycle(child.session, this.options);
+        child.hooks = createChildHookLifecycle(child.session, this.options, child.hookHomes);
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
           textStart: () => this.beginResponse(child), text: text => this.streamResponse(child, text),

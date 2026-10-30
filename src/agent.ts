@@ -15,6 +15,7 @@ import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, ses
 import { DEFAULT_ALLOW_SHELL, parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
 import { fTr } from './shell-command-clamp-source.js';
+import { withShellAnalysisHome } from './shell-analysis-home.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
@@ -116,6 +117,7 @@ export type AgentEvents = { text?: (text: string) => void; status?: (status: str
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
   permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
+  permissionPrompt?: 'interactive' | 'unavailable';
   /** One finished tool call after its post hook, for the live result rows. */
   toolResult?: (result: import('./tui-tool-result.js').ToolDisplayResult) => void;
   /** Abort the turn after a PermissionRequest deny carried `interrupt:true`; the owner of the
@@ -319,7 +321,7 @@ export class Agent {
               const tool = tools.find(candidate => candidate.schema.name === call.name);
               try {
                 if (!tool) throw new Error('Hook tool is unavailable');
-                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionOwner.state());
+                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionOwner.state(), this.session.config.workspace);
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
                 const context: ToolContext = { workspace: this.session.config.workspace, signal: hookSignal,
                   allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384),
@@ -342,7 +344,7 @@ export class Agent {
         const tool = this.tools.get(definition.tool);
         if (!tool || !tool.readOnly || !tool.schema.name.startsWith("mcp__")) throw new Error("MCP hooks require an available read-only namespaced tool");
         const input = definition.arguments ?? {};
-        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state()).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
+        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
         hookSignal.throwIfAborted();
         const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
           allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes });
@@ -569,15 +571,13 @@ export class Agent {
     if (clamp === undefined || clamp.length === 0 || !CLAMPED_SHELL_TOOLS.has(tool.schema.name)) return;
     try {
       signal.throwIfAborted();
-      if (process.env.HOME !== expectedHome) throw new Error('The shell HOME changed before restriction analysis.');
       const command = typeof input === 'object' && input !== null
         ? Object.getOwnPropertyDescriptor(input, 'command')?.value : undefined;
       const failure = typeof command !== 'string'
         ? { kind: 'unverifiable' as const, span: '', group: clamp[0] ?? [] }
-        : expectedHome === undefined ? checkBashCommandClamp(command, clamp) ?? await fTr({ command }, clamp)
-          : await fTr({ command }, clamp);
+        : expectedHome === undefined ? checkBashCommandClamp(command, clamp) ?? await withShellAnalysisHome('', () => fTr({ command }, clamp))
+          : await withShellAnalysisHome(expectedHome, () => fTr({ command }, clamp));
       signal.throwIfAborted();
-      if (process.env.HOME !== expectedHome) throw new Error('The shell HOME changed during restriction analysis.');
       if (failure !== null) {
         if ((failure.kind !== 'unverifiable' && failure.kind !== 'unmatched') || typeof failure.span !== 'string' || !Array.isArray(failure.group)) {
           throw new Error('Invalid shell restriction result');
@@ -591,21 +591,58 @@ export class Agent {
     }
   }
 
-  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
+  // _Wo/Cge, sfn1dbxq [2237279,2240346); host live-owner adaptation, W385.
+  private async confirmPermission(tool: ToolDefinition, input: unknown, reason: string, signal: AbortSignal,
+    shellHome: { value: string | undefined }, skipIfNotRule = false): Promise<string | undefined> {
+    const prompt = this.events.permission;
+    if (!prompt) return reason + '; use an interactive session or an explicit allow rule';
+    const snapshot = JSON.stringify(input);
+    for (;;) {
+      signal.throwIfAborted();
+      if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
+      const policy = this.session.config.permissions;
+      const workspace = this.session.config.workspace;
+      const owner = this.session.permissionOwner.state();
+      const current = withShellAnalysisHome(shellHome.value ?? '', () => permissionDecision(policy, tool, input, owner, workspace));
+      if (current.decision === 'deny') return current.reason ?? 'Permission denied';
+      if (skipIfNotRule && (current.decision !== 'ask' || current.floor !== 'rule')) return;
+      if (!await prompt({ tool: tool.schema.name, input: structuredClone(input), reason, signal })) return 'Permission declined';
+      signal.throwIfAborted();
+      if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
+      const clamp = await this.checkCommandClamp(tool, input, signal, shellHome.value);
+      if (clamp !== undefined) return clamp;
+      signal.throwIfAborted();
+      if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
+      const next = withShellAnalysisHome(shellHome.value ?? '', () => permissionDecision(
+        this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace));
+      if (next.decision === 'deny') return next.reason ?? 'Permission denied';
+      if (next.decision === 'ask' && next.floor === 'rule' &&
+          (policy !== this.session.config.permissions || workspace !== this.session.config.workspace ||
+           owner.alwaysAskRules !== this.session.permissionOwner.state().alwaysAskRules)) {
+        reason = next.reason ?? 'Approval required';
+        continue;
+      }
+      return;
+    }
+  }
+
+  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; shellHome?: { value: string | undefined }; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
     const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
     if (clampDenial !== undefined) return { input, denied: clampDenial };
     this.session.prepareAutoMode();
-    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
+    // checkPermissions/call, sfn1dbxq [4337644,4347621); Z, zjewzgfh [68158,68694), UTF-16.
+    let shellHome = { value: process.env.HOME };
+    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
     // I9r caller, sfn [2288685,2289127), UTF-16. Denied events belong only to auto classification.
-    if (decision.decision === 'allow') return { input };
+    if (decision.decision === 'allow') return { input, shellHome };
     if (decision.decision === 'deny') {
       return { input, denied: decision.reason ?? 'Permission denied' };
     }
     const mode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
     if ((mode === 'auto' || mode === 'plan' && this.session.permissionOwner.state().autoDuringPlan) && decision.floor === undefined && !heldFloor && tool.requiresUserInteraction !== true) {
-      if (deferAuto) return { input };
+      if (deferAuto) return { input, shellHome };
       if (serializeAutoTool(tool, input, callId) === '') {
-        if (!tool.classifierOnly) return { input };
+        if (!tool.classifierOnly) return { input, shellHome };
         return { input, denied: `${tool.schema.name} was not reviewed: its classifier action is empty`, outcome: 'automode-parsing-error' };
       }
       const autoActive = this.session.permissionOwner.state().autoDuringPlan;
@@ -617,12 +654,13 @@ export class Agent {
           this.session.permissionOwner.state().autoMode),
         transcript: classifierTranscript(this.session.messages, this.tools, { name: tool.schema.name, input, id: callId }, this.autoPriorOutcomes), signal });
       signal.throwIfAborted();
-      const current = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
+      const currentHome = { value: process.env.HOME };
+      const current = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
       const currentMode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
-      if (currentMode !== mode || this.session.permissionOwner.state().autoDuringPlan !== autoActive || JSON.stringify(input) !== snapshot || current.floor !== undefined || current.decision !== 'ask') {
+      if (currentMode !== mode || this.session.permissionOwner.state().autoDuringPlan !== autoActive || JSON.stringify(input) !== snapshot || current.floor !== undefined || current.decision !== 'ask' || currentHome.value !== shellHome.value) {
         return this.authorize(tool, input, signal, callId, true);
       }
-      if (verdict.kind === 'allow') return { input };
+      if (verdict.kind === 'allow') return { input, shellHome };
       const noVerdict = verdict.kind === 'no-verdict' || verdict.kind === 'cancelled';
       const denied = verdict.reason;
       const outcome = verdict.kind === 'unavailable' || verdict.kind === 'cancelled' ? 'automode-unavailable' :
@@ -671,7 +709,7 @@ export class Agent {
         event: CLASSIC_PERMISSION_REQUEST,
         hookInput: classicHookInput(CLASSIC_PERMISSION_REQUEST, {
           session_id: this.session.id, cwd: this.session.config.workspace,
-          tool_name: tool.schema.name, tool_input: input,
+          tool_name: tool.schema.name, tool_input: structuredClone(input),
         }),
         signal,
       });
@@ -690,7 +728,7 @@ export class Agent {
         if (chain.interrupt === true) hookInterrupt = true;
       } else if (chainUsable && chain?.behavior === 'allow') {
         requested.permissionDecision = 'allow';
-        if (chain.updatedInput !== undefined) requested.updatedInput = chain.updatedInput;
+        if (chain.updatedInput !== undefined) requested.updatedInput = structuredClone(chain.updatedInput);
         if (chainUpdates?.success) requested.updatedPermissions = chainUpdates.data;
       }
     }
@@ -706,12 +744,17 @@ export class Agent {
       return { input, denied };
     }
     if (requested.updatedInput !== undefined) {
-      input = requested.updatedInput;
+      input = structuredClone(requested.updatedInput);
       const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
       if (clampDenial !== undefined) return { input, denied: clampDenial };
-      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
-      if (updated.decision === 'deny') {
-        return { input, denied: updated.reason ?? 'Permission denied' };
+      shellHome = { value: process.env.HOME };
+      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
+      // g1t.runHooks, 9c5se12s [7100,8340); sxr, sfn1dbxq [3317869,3319984), UTF-16.
+      if (updated.decision === 'deny') return { input, denied: updated.reason ?? 'Permission denied' };
+      if (requested.permissionDecision === 'allow' && updated.decision === 'ask' && updated.floor === 'rule') {
+        if (this.events.permissionPrompt !== 'interactive' || !this.events.permission) return { input, denied: updated.reason ?? 'Permission denied' };
+        const denied = await this.confirmPermission(tool, input, updated.reason ?? 'Approval required', signal, shellHome, true);
+        return denied === undefined ? { input, shellHome } : { input, denied };
       }
     }
     if (requested.permissionDecision === 'allow') {
@@ -719,11 +762,10 @@ export class Agent {
         const outcome = this.session.adoptPermissionUpdates(requested.updatedPermissions);
         if (outcome.blocked !== undefined) return { input, denied: outcome.blocked };
       }
-      return { input };
+      return { input, shellHome };
     }
-    if (!this.events.permission) return { input, denied: reason + '; use an interactive session or an explicit allow rule' };
-    return await this.events.permission({ tool: tool.schema.name, input, reason, signal })
-      ? { input } : { input, denied: 'Permission declined' };
+    const denied = await this.confirmPermission(tool, input, reason, signal, shellHome);
+    return denied === undefined ? { input, shellHome } : { input, denied };
   }
 
   private async ruleContext(toolName: string, input: unknown, signal: AbortSignal): Promise<string[]> {
@@ -878,6 +920,7 @@ export class Agent {
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
           const authorization = await this.authorize(tool, input, signal, call.id, false, true);
           if (authorization.outcome) outcomes[call.id] = authorization.outcome;
+          let shellHome = authorization.shellHome;
           input = authorization.input;
           if (authorization.retry === true) retryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
@@ -888,7 +931,7 @@ export class Agent {
           // (chunk-sfn1dbxq.js `m_t` [504681,505531), `$go` chunk-nyce03br.js [121822,121896)); the
           // answer joins the same permission path below, so a deny or a rewrite is handled once.
           if (classicPreToolUseHooked()) {
-            const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input, signal });
+            const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input: structuredClone(input), signal });
             extra.push(...(permission.additionalContexts ?? []));
             if (permission.permissionBehavior === 'deny') {
               pre.blocked = true;
@@ -898,26 +941,28 @@ export class Agent {
               pre.permissionDecision = 'ask';
               pre.reason ??= permission.hookPermissionDecisionReason ?? 'A classic.PreToolUse hook requested approval';
             }
-            if (permission.updatedInput !== undefined) pre.updatedInput = permission.updatedInput;
+            if (permission.updatedInput !== undefined) pre.updatedInput = structuredClone(permission.updatedInput);
           }
           if (pre.blocked) {
             const asks = pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer';
-            if (!asks || pre.stopRequested || !this.events.permission ||
-              !await this.events.permission({ tool: call.name, input, reason: pre.reason ?? 'PreToolUse hook requested approval', signal })) {
-              throw new Error(pre.reason ?? 'Blocked by PreToolUse hook');
-            }
+            if (!asks || pre.stopRequested || !this.events.permission) throw new Error(pre.reason ?? 'Blocked by PreToolUse hook');
+            const denied = await this.confirmPermission(tool, input, pre.reason ?? 'PreToolUse hook requested approval', signal,
+              shellHome ?? { value: undefined });
+            if (denied !== undefined) throw new Error(denied === 'Permission declined' ? pre.reason ?? 'Blocked by PreToolUse hook' : denied);
           }
           if (pre.updatedInput !== undefined) {
-            const updated = await this.authorize(tool, pre.updatedInput, signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
+            const updated = await this.authorize(tool, structuredClone(pre.updatedInput), signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
             if (updated.outcome) outcomes[call.id] = updated.outcome;
+            shellHome = updated.shellHome;
             input = updated.input;
             if (updated.retry === true) retryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
           }
-          if (pre.updatedInput === undefined && permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state()).floor === undefined &&
+          if (pre.updatedInput === undefined && permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace).floor === undefined &&
             (this.session.permissionOwner.state().mode === 'auto' || this.session.permissionOwner.state().autoDuringPlan)) {
             const finalAuthorization = await this.authorize(tool, input, signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
             input = finalAuthorization.input;
+            shellHome = finalAuthorization.shellHome;
             if (finalAuthorization.outcome) outcomes[call.id] = finalAuthorization.outcome;
             if (finalAuthorization.retry) retryMeta = true;
             if (finalAuthorization.denied) throw new Error(finalAuthorization.denied);
@@ -949,10 +994,11 @@ export class Agent {
           let executionContext = context;
           const clamp = this.session.config.bashCommandClamp;
           if (clamp !== undefined && clamp.length > 0 && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
-            const home = process.env.HOME;
-            const denied = await this.checkCommandClamp(tool, input, signal, home);
+            const denied = await this.checkCommandClamp(tool, input, signal, shellHome?.value);
             if (denied !== undefined) throw new Error(denied);
-            executionContext = { ...context, shellHome: { value: home } };
+          }
+          if (shellHome !== undefined && (CLAMPED_SHELL_TOOLS.has(tool.schema.name) || tool.schema.name === 'monitor')) {
+            executionContext = { ...context, shellHome };
           }
           signal.throwIfAborted();
           this.session.append({ kind: 'tool_start', id: call.id, name: call.name });

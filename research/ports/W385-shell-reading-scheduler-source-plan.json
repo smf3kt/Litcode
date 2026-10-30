@@ -28,7 +28,7 @@
           ],
           "bodySha256": "3d607c8b197353a1d5c1eb7d919aa664c78998d42ff3e111fe77a0c9e958b80f"
         },
-        "export function createReadingScheduler(O3e, de, isReadBlockExempt, OAn) {\nconst Cy = isReadBlockExempt;\nconst Tv = () => true;\n",
+        "export function createShellReadBlockProjection(isReadBlockExempt) {\nconst Cy = isReadBlockExempt;\nconst Tv = () => true;\n",
         {
           "module": "chunk-sfn1dbxq.js",
           "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
@@ -39,6 +39,7 @@
           ],
           "bodySha256": "fd055389fe0fc6f6e0f3eb949bd38eb864ddb53322fc5237784e6564c40a7587"
         },
+        "return sfn;\n}\nexport function createReadingScheduler(O3e, de, isReadBlockExempt, OAn) {\nconst sfn = createShellReadBlockProjection(isReadBlockExempt);\n",
         {
           "module": "chunk-sfn1dbxq.js",
           "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",

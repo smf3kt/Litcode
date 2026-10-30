@@ -204,7 +204,7 @@ export function createLocalPeerFileTool(transport: LocalPeerTransport, options: 
       if (!args.address.startsWith('uds:') || args.address === transport.address) throw new Error('Expected another same-host uds: session');
       for (const file of files) {
         validatePeerFilePath(file);
-        const decision = permissionDecision(options.permissions(), readProbe, { path: file });
+        const decision = permissionDecision(options.permissions(), readProbe, { path: file }, undefined, context.workspace);
         if (decision.decision === 'deny') throw new Error(decision.reason ?? 'Read denied');
       }
       const outcomes: Array<{ path: string; size?: number; sha256?: string; error?: string }> = Array(args.files.length);
@@ -214,7 +214,7 @@ export function createLocalPeerFileTool(transport: LocalPeerTransport, options: 
         try {
           const resolved = confineResolved(context.workspace, path.isAbsolute(file) ? path.relative(context.workspace, file) : file, true, context.workingDirectories?.(true));
           validatePeerFilePath(resolved.path); verifyIdentity(resolved);
-          const decision = permissionDecision(options.permissions(), readProbe, { path: resolved.path });
+          const decision = permissionDecision(options.permissions(), readProbe, { path: resolved.path }, undefined, context.workspace);
           if (decision.decision === 'deny' || resolved.path !== absolute && decision.decision !== 'allow')
             throw new Error(decision.reason ?? 'Resolved file requires Read approval');
           const copy = await stageLocalPeerFile(absolute, options.userDir, resolved);

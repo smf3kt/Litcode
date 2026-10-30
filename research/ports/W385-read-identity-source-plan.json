@@ -1,0 +1,18 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "path-read-identity-source-blocks.json",
+  "outputs": [
+    {
+      "path": "path-read-identity-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport * as $k from 'node:path';\nfunction createReadIdentity(vpe) {\n",
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "whn", "range": [3533321, 3533476], "bodySha256": "534cc3ab69d6fa364347bac7a8be9313c403b1a59fd0282b5f46a61466984a12" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "vhn", "range": [3533476, 3533559], "bodySha256": "946b27c1b3591005346f9876a055a3b945d9d7daf508d6580136298508dcb9e1" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "OIr", "range": [3533559, 3533593], "bodySha256": "b022e88102f052fd78dc8dd5eddc1d7c50a13d953b0913f0d7b057304018d4eb" },
+        { "module": "chunk-sfn1dbxq.js", "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "fXe", "range": [3533593, 3533781], "bodySha256": "581e34e415cad8c80aea6bbef4dbd491255eef76bbcadc209c774b364e569ad8" },
+        "return { whn, vhn, fXe };\n}\nexport { createReadIdentity };\n"
+      ]
+    }
+  ]
+}

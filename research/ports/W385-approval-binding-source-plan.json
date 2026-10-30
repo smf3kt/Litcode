@@ -1,0 +1,214 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "path-approval-binding-source-blocks.json",
+  "outputs": [
+    {
+      "path": "path-approval-binding-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { basename as Ae, dirname as Y, isAbsolute as Tt, join as M } from 'node:path';\nimport { constants as T, promises as nativeFs } from 'node:fs';\nimport { _g, fY } from './path-approval-consumer-source.js';\nfunction createPathApprovalBinding({ ie, yo, di, ywe, UMt, tl, Vut, O, QHt, Z3, lwe, t, ai, zut }) {\nconst { lstat: ue, mkdir: $r, open: Pe, readlink: Wr } = nativeFs;\n",
+        {
+          "module": "chunk-886tf6ja.js",
+          "moduleSha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+          "symbol": "E",
+          "range": [
+            4814,
+            4913
+          ],
+          "bodySha256": "a84ab0a2488aed5689416393c679dde4e7f4b29aa980e121bd56b25ab3e7b5e4"
+        },
+        {
+          "module": "chunk-886tf6ja.js",
+          "moduleSha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+          "symbol": "Jc",
+          "range": [
+            7544,
+            7605
+          ],
+          "bodySha256": "812dae9739d02ae9b5cc21c8d59d2443703a3642b8c9ec98a5afa36552891c8a"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Ur/Nt/ZHt/Yr",
+          "range": [
+            8667,
+            8920
+          ],
+          "bodySha256": "6dc2e06f801cbb69f702c87e40783dbbdb6d493a7230a64be53064e84fc848a5"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "vt",
+          "range": [
+            9027,
+            9396
+          ],
+          "bodySha256": "79fdc272b830f7bb9efe83718704f227902d44d063e98bd81c34c961484a329f"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "zr",
+          "range": [
+            9396,
+            9871
+          ],
+          "bodySha256": "61816db4545e7ade1ee7adeceaefa798de39d2927ab8a5e68a371fa6adc21389"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "XTr",
+          "range": [
+            9871,
+            9969
+          ],
+          "bodySha256": "ac022b0dbe947766a46156b1ed4bd67cde9dafa02fd542015d125b414fbb6cdc"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "At",
+          "range": [
+            9969,
+            10266
+          ],
+          "bodySha256": "938e84f64b225884218053ff9777cd21b77979cf448528002241828f7bbdf975"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "le/jt",
+          "range": [
+            10266,
+            10494
+          ],
+          "bodySha256": "9d23f6b5465772938a8e3ae9757fc585e0afa3db61ac538d5894c6c7e79478a1"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Grn",
+          "range": [
+            10494,
+            11216
+          ],
+          "bodySha256": "c9d537696b9f413c74bea57e81390694d79d14ee9f6cfab5627b271de347967f"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Lt",
+          "range": [
+            11216,
+            11435
+          ],
+          "bodySha256": "60fbd0863dd567c5c2af8824142af038e0a7ccf60ceb5166c78a4a3408b129cf"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "et",
+          "range": [
+            11435,
+            11479
+          ],
+          "bodySha256": "2885d27f3173d7dbe9c838617f95fd5e488e99fdd67c6dc6b34c8232e976f0ff"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "vpe",
+          "range": [
+            11479,
+            11626
+          ],
+          "bodySha256": "68ae0989c38295e3ea58595f0c724c46632d1098627c2c15b3daf6e82e5d5bed"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Ft",
+          "range": [
+            11626,
+            12246
+          ],
+          "bodySha256": "fc3bf119d11c5b7939a8425ef31e4862c4fd030c21f98803c4d008b730ba8455"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "eMt",
+          "range": [
+            12246,
+            14898
+          ],
+          "bodySha256": "43a87490f1eeae92191a2b17153ac2e1a839cf30462958d372a13ce0a521646d"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Le/Dt",
+          "range": [
+            14898,
+            15021
+          ],
+          "bodySha256": "c1d46280da4ffe05c3eef5654ce8bc0430282a41159b09f0faaa60af0c0ce62e"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "ee",
+          "range": [
+            15021,
+            15155
+          ],
+          "bodySha256": "421ae30fcf873e810f9bab3b89700fb7dee912c9f85d4b2c536863ce23c12d37"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "U9e",
+          "range": [
+            15155,
+            15698
+          ],
+          "bodySha256": "adb0b39d90cb708391108df7596f0f5c637b79db5d319c03b980bba8e357bc9c"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "US",
+          "range": [
+            15698,
+            15966
+          ],
+          "bodySha256": "32ff0dc923bce008300752bb0a971987748655924cad9c3d3a05d491c723896f"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "Xr",
+          "range": [
+            15966,
+            20119
+          ],
+          "bodySha256": "c8e47181c7df00dc3eec1b3e8ee08d7f3d7f2a059231ef7d83d65a0df8fb54d8"
+        },
+        {
+          "module": "chunk-bf3z2ftn.js",
+          "moduleSha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+          "symbol": "kpe",
+          "range": [
+            20119,
+            20284
+          ],
+          "bodySha256": "586ed86b2fae4d84b8fc64553af27b55a18b569d6ba5a0a76013561ac7c7b54f"
+        },
+        "return { eMt, US, vpe };\n}\nexport { createPathApprovalBinding };\n"
+      ]
+    }
+  ]
+}

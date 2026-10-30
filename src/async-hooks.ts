@@ -183,6 +183,7 @@ export class AsyncHookRegistry {
     void runHooks(config, request.event, forwarded, controller.signal, {
       onCommandResult: raw => { execution = raw; },
       onCommandHandle: value => { handle = value; },
+      commandHome: () => request.commandHome,
       // This run already owns the process; a header line is ordinary output for
       // `gbt` to skip, not a second handoff (`UF` `_e` forceSync path).
       adoptAsyncHeaders: false,

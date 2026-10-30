@@ -11,7 +11,7 @@ import type { ModelProvider } from './provider.js';
 import { permissionOwner, seedPermissionUpdates } from './permissions.js';
 import type { ToolDefinition } from './tools.js';
 import { AsyncHookRegistry, type AsyncHookCompletion } from './async-hooks.js';
-import type { HookRunOptions } from './hooks.js';
+import type { HookCommandHome, HookRunOptions } from './hooks.js';
 
 export type ChildHookOptions = {
   hookOptions?: (config: SessionConfig, sessionId: string) => HookRunOptions;
@@ -135,7 +135,8 @@ export function validateChildEnvironment(config: SessionConfig, tools: readonly 
 }
 
 /** Async command hooks belong to this open child journal, including shutdown hooks. */
-export function createChildHookLifecycle(session: Session, options: ChildHookOptions = {}): {
+export function createChildHookLifecycle(session: Session, options: ChildHookOptions = {},
+  hookHomes?: ReadonlyMap<string, HookCommandHome>): {
   hookOptions: HookRunOptions; close(): Promise<void>;
 } {
   let journalError: unknown;
@@ -160,7 +161,7 @@ export function createChildHookLifecycle(session: Session, options: ChildHookOpt
   try {
     const supplied = options.hookOptions?.(session.config, session.id) ?? {};
     return {
-      hookOptions: { ...supplied, startAsyncCommand: async request => {
+      hookOptions: { ...supplied, ...(hookHomes ? { commandHome: identity => hookHomes.get(identity.key) ?? supplied.commandHome?.(identity) } : {}), startAsyncCommand: async request => {
         const id = request.handle ? await hooks.adopt(request, request.handle, `async_hook_${request.handle.pid ?? ''}`) : await hooks.start(request);
         session.append({ kind: 'hook_start', id, event: `async:${request.event}`,
           ...(typeof request.payload.tool_use_id === 'string' ? { toolUseId: request.payload.tool_use_id } : {}) });

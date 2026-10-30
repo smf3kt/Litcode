@@ -87,6 +87,25 @@ test('file tool uses Read decisions before effects and keeps feature versions an
     current = { ...current, mode: 'bypass' };
     const failed = JSON.parse(await tool.execute(input, context)); assert.equal(failed.success, false); assert.equal(attempts, 1);
     assert.deepEqual(fs.readdirSync(peerTransferSpool(userDir)), []);
+    const otherWorkspace = path.join(root, 'child');
+    fs.mkdirSync(otherWorkspace); fs.mkdirSync(path.join(otherWorkspace, 'protected'));
+    fs.writeFileSync(path.join(otherWorkspace, 'protected', 'ok.txt'), 'CHILD');
+    fs.symlinkSync('protected', path.join(otherWorkspace, 'alias'));
+    current = { ...current, deny: ['Read(protected/ok.txt)'] };
+    await assert.rejects(tool.execute({ ...input, files: ['alias/ok.txt'] }, { ...context, workspace: otherWorkspace }), /denied/i);
+    assert.equal(attempts, 1);
+    current = { ...current, deny: [] };
+    fs.writeFileSync(path.join(otherWorkspace, 'plain.txt'), 'CHILD_PLAIN');
+    const childPlain = { ...input, files: ['plain.txt'] };
+    let checks = 0;
+    const changingPolicy = createLocalPeerFileTool(transport, { userDir, enabled: () => true,
+      permissions: () => ++checks === 1 ? current : { ...current, deny: ['Read(plain.txt)'] } });
+    const deniedAfterResolution = JSON.parse(await changingPolicy.execute(childPlain, { ...context, workspace: otherWorkspace }));
+    assert.equal(checks, 2);
+    assert.equal(deniedAfterResolution.success, false);
+    assert.match(deniedAfterResolution.files[0].error, /denied/i);
+    assert.equal(attempts, 1);
+    assert.deepEqual(fs.readdirSync(peerTransferSpool(userDir)), []);
     const cancelled = new AbortController(); cancelled.abort();
     await assert.rejects(tool.execute(input, { ...context, signal: cancelled.signal })); assert.equal(attempts, 1);
     fs.symlinkSync(path.join(workspace, 'ok.txt'), path.join(workspace, 'alias.txt'));

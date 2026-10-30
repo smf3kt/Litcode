@@ -1,0 +1,244 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-compound-policy-source-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-compound-policy-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { w6, Yx } from \"./shell-command-clamp-source.js\";\nimport { Kg } from \"./shell-rule-recheck-source.js\";\nimport { Dl, X3, ize, trn } from \"./shell-reading-merge-source.js\";\nexport function createShellCompoundPolicy({ cd, Cwe, EX, se, Rl }) {\nconst ki = { name: \"Bash\" };\nconst q5e = { parse: async e => { const tree = await w6(e); return tree && tree !== Yx ? z5e(e, tree) : null; } };\n",
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "W5e",
+          "range": [
+            3085399,
+            3085913
+          ],
+          "bodySha256": "b4ea155e2ae289c9e4e7efd1967b21a518869edb56f79fe021481d8e2e48444c"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "_br",
+          "range": [
+            3085913,
+            3085998
+          ],
+          "bodySha256": "c75c774932afe33993fbca94dbe43a5b665d28106961c4f85212b4f775088e14"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "vun",
+          "range": [
+            3085998,
+            3086108
+          ],
+          "bodySha256": "84aa6758a6a46491bd27593dac499df121146080bff4ba904d4997b91bb8536b"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "kbr",
+          "range": [
+            3086108,
+            3086243
+          ],
+          "bodySha256": "c5681f562a2f34524b6653743a5a2a12a5094a246ba13d351be91f6b268df306"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Sbr",
+          "range": [
+            3086243,
+            3086386
+          ],
+          "bodySha256": "cb91df2ee5b25ad2ffed4eadaee6de8a03556f65244ef86070c6030d1eaf3d88"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "bbr",
+          "range": [
+            3086386,
+            3086975
+          ],
+          "bodySha256": "93f7aa4befdcdddd69625ba66023a3795b69b1bde0fb5acca7a72426fa9b83e6"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "wbr",
+          "range": [
+            3086975,
+            3088449
+          ],
+          "bodySha256": "f424ae19ac10d21e891623b8fe8221d4eabd63a7ebb2818d3c7f1c26035fd81c"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "vbr",
+          "range": [
+            3088449,
+            3088635
+          ],
+          "bodySha256": "2b724fb51dfac03fcef0857431a68984f542a2db64177c2eeda86cf648fe0a8b"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Tbr",
+          "range": [
+            3088635,
+            3089023
+          ],
+          "bodySha256": "77e412c16485e4b70b8bcdbc86865ada4a2649d1db18ae8f1db02c9a9111b015"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Tun",
+          "range": [
+            3089023,
+            3089153
+          ],
+          "bodySha256": "83e1d428b2f6c0a1f6d1f8028f1c1eb077ce0b15ec1c8910086d66bed862ab3f"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "G5e",
+          "range": [
+            3089153,
+            3089209
+          ],
+          "bodySha256": "0327292c17485c745eb29e9f036cd7288e04518b9c9cc3f60256f271e6b3d8ce"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Ebr",
+          "range": [
+            3089209,
+            3089394
+          ],
+          "bodySha256": "e9fff3efef0c45ff45415e2281534f3dc417e03b702dbbfcc285d682a6cfd730"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Rbr",
+          "range": [
+            3089394,
+            3089657
+          ],
+          "bodySha256": "b03dc25d75f442f395e6b82321dc5d7c43410f6b14208982e55e69c07b04555f"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Eun",
+          "range": [
+            3089657,
+            3090696
+          ],
+          "bodySha256": "0047ef67401767670c6c0c63f369d6f7f6ce4299c50cfb68d05389c3aee58445"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "z5e",
+          "range": [
+            3090696,
+            3090771
+          ],
+          "bodySha256": "6a2e9a9118b2cdc390ca56e108110b80acc77054051a234221b1119430e694fa"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Rcn",
+          "range": [
+            3195199,
+            3195390
+          ],
+          "bodySha256": "a8a621941b5868874d207e26464e423fe017c8c4dc4daa490e84c4032191dc4a"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Kvr",
+          "range": [
+            3195390,
+            3195877
+          ],
+          "bodySha256": "c1b8da29d5c0201729f83b3cf212b0adb82cb7ba98ae00f785029623dd97fa5d"
+        },
+        {
+          "module": "chunk-a60ee1ne.js",
+          "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+          "symbol": "Q$",
+          "range": [
+            2303,
+            2397
+          ],
+          "bodySha256": "23896286b912e1be1e02220b3876918941a106292c042b5ffd76f91aa6540d48"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "CX",
+          "range": [
+            3191988,
+            3192046
+          ],
+          "bodySha256": "de8f9764f2eb3126a704b29367307249c17ebc38502d7492dd6d571c01abea54"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "C3e",
+          "range": [
+            3192046,
+            3192162
+          ],
+          "bodySha256": "a4767e093676233cb7ac92aa932a3a7b9303be3043a235316a6452c8d96b52b0"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Gvr",
+          "range": [
+            3192162,
+            3195089
+          ],
+          "bodySha256": "8eb14490a8a0b16ecb220db7146e78e68bf1b2eff3dbf23d724fce54449e09cb"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "qvr",
+          "range": [
+            3195089,
+            3195199
+          ],
+          "bodySha256": "6ee9f4b736a0ad5c674e6208859cd646dd2372b9096e151dfa52f9d18c157181"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "e$",
+          "range": [
+            3195877,
+            3196014
+          ],
+          "bodySha256": "1210002a0c070ccc388ffe91a32aac19d59fb921b23286660d630b10b39a87c5"
+        },
+        "return { Rcn, z5e };\n}\n"
+      ]
+    }
+  ]
+}

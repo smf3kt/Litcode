@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from './tools.js';
 import { shellReadings } from './shell-readings.js';
+import { vS } from './bash-parser-source.js';
+import { E6, pyr } from './shell-analyser-source.js';
+import { shellAnalysisHome, withShellAnalysisHome } from './shell-analysis-home.js';
 import { KI, Do } from './permission-reducer-source.js';
 import { Un, _n } from './permission-rule-source.js';
 import { bindContentRuleOwner, contentRuleMatches, ruleToolMatches, hasContentConsumer } from './permission-content.js';
@@ -9,6 +12,8 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 import { resolveChain, verifyIdentity } from './path-identity.js';
+import { filePathDecision } from './path-leaf-permission.js';
+import { observePermissionPath, type PathPermissionObservation } from './path-permission-observation.js';
 import { resolvePlanFile } from './plan-file.js';
 
 export const autoPolicySchema = z.object({ deny: z.array(z.string()).optional(), allow: z.array(z.string()).optional(), soft_deny: z.array(z.string()).optional(), hard_deny: z.array(z.string()).optional(), environment: z.array(z.string()).optional(), classifyAllShell: z.boolean().optional() }).strict();
@@ -406,6 +411,8 @@ const EDIT_TOOLS = new Set([
   'write_file', 'edit_file', 'notebook_edit', 'memory_write', 'memory_delete', 'lsp_edit',
 ]);
 const SHELL_TOOLS = new Set(['run_command', 'run_background', 'bash', 'Bash']);
+const FILE_PERMISSION_TOOLS = new Set(['read_file', 'read_media', 'notebook_read', 'list_files', 'search',
+  'write_file', 'edit_file', 'notebook_edit', 'lsp_edit']);
 
 /** The `command` string of a shell invocation, or undefined when there is none. */
 function commandInput(tool: ToolDefinition, input: unknown): string | undefined {
@@ -464,6 +471,33 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
         ...(session?.deny ?? []), ...(session?.ask ?? [])].some(text => {
           const rule = Un(text); return rule.ruleContent !== undefined && ruleToolMatches(rule.toolName, tool.schema.name);
         })) return baseline;
+  // E6/pyr, zjewzgfh [7897,10857)/[7547,7897); D3e/DTr, sfn [3256051,3265763)/[3234534,3234967), UTF-16.
+  let samplingUncertain = false;
+  try {
+    if (command.length <= 10000) {
+      const tree = vS().parse(command, undefined);
+      if (tree) {
+        const sampledDenial: PermissionDecision | undefined = withShellAnalysisHome(shellAnalysisHome(process.env.HOME ?? ''), () => {
+          const initial = E6(command, tree);
+          if (initial.declarationPrefixes !== undefined) {
+            const { readings: vectors } = pyr(initial.declarationPrefixes, initial.declarationPrefixBashKeeps);
+            for (const declarationPrefix of vectors) {
+              const options = { plainUnquotedHeredocs: false, declarationPrefix };
+              const analysis = E6(command, tree, options);
+              if (analysis.kind !== 'simple') { samplingUncertain = true; continue; }
+              for (const entry of analysis.commands) {
+                const decision = decideOnce(policy, tool, withCommand(input, entry.text), session);
+                if (decision.decision === 'deny') {
+                  return { decision: 'deny', reason: `Permission to run this command was denied for an alternate reading: ${tool.schema.name}` };
+                }
+              }
+            }
+          }
+        });
+        if (sampledDenial !== undefined) return sampledDenial;
+      } else if (command.trim() !== '') samplingUncertain = true;
+    } else samplingUncertain = true;
+  } catch { samplingUncertain = true; }
   const { readings, denyOnly, exhaustive } = shellReadings(command);
   // A deny-only reading is the command under a redirect, which the recovered
   // `GTr` checks against deny rules alone: an exact allow on the whole line
@@ -503,6 +537,9 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
   if (winnerReading !== undefined) {
     return { ...winner, reason: `Alternate command reading requires approval: ${winnerReading}` };
   }
+  if (samplingUncertain && winner.decision === 'allow') {
+    return { decision: 'ask', floor: 'readings', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
+  }
   if (baseline.decision === 'allow' && mode !== 'bypass' && !exhaustive) {
     return { decision: 'ask', floor: 'readings', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
   }
@@ -510,7 +547,7 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
 }
 
 export function permissionDecision(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
-  session?: SessionPermissionUpdates): PermissionDecision {
+  session?: SessionPermissionUpdates, workspace?: string): PermissionDecision {
   const owner = session ?? permissionOwner(policy)?.state();
   if (policy?.layers || policy && permissionOwners.has(policy)) {
     policy = effectivePermissionPolicy(policy, owner ?? seedPermissionUpdates(policy));
@@ -528,17 +565,40 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
   }
   let baseline: PermissionDecision;
   try {
-    baseline = decideOnce(policy, tool, input, session, owner?.planFile);
+    const executionWorkspace = workspace ?? owner?.ruleWorkspace ?? policy?.ruleWorkspace ?? process.cwd();
+    const file = typeof input === 'object' && input !== null && !Array.isArray(input)
+      ? Object.getOwnPropertyDescriptor(input, 'path')?.value : undefined;
+    let observed = false;
+    let observation: PathPermissionObservation | undefined;
+    const getObservation = (): PathPermissionObservation | undefined => {
+      if (!observed) {
+        observed = true;
+        if (FILE_PERMISSION_TOOLS.has(tool.schema.name) && typeof file === 'string' && file.length > 0) {
+          observation = observePermissionPath(executionWorkspace, file);
+        }
+      }
+      return observation;
+    };
+    baseline = decideOnce(policy, tool, input, session, owner?.planFile, getObservation, executionWorkspace);
     // SendFileTool/IA, 8t44px9f [22793,31590), 2bcyxj9q [231514,231561), UTF-16.
     if (tool.readPaths && baseline.decision !== 'deny') {
       const readTool: ToolDefinition = { schema: { name: 'read_file', input_schema: { type: 'object' } }, readOnly: true, execute: async () => '' };
       let reading: PermissionDecision | undefined;
       for (const file of tool.readPaths(input)) {
-        const decision = decideOnce(policy, readTool, { path: file }, session, owner?.planFile);
+        let readObservation: PathPermissionObservation | undefined;
+        let decision = decideOnce(policy, readTool, { path: file }, session, owner?.planFile,
+          () => readObservation ??= observePermissionPath(executionWorkspace, file), executionWorkspace);
+        if (decision.decision !== 'deny') {
+          readObservation ??= observePermissionPath(executionWorkspace, file);
+          decision = filePathDecision(readTool.schema.name, readObservation) ?? decision;
+        }
         if (decision.decision === 'deny') { reading = decision; break; }
         if (decision.decision === 'ask' && (reading === undefined || decision.floor === 'rule')) reading = decision;
       }
       if (reading?.decision === 'deny' || reading?.decision === 'ask' && (baseline.decision === 'allow' || reading.floor === 'rule')) baseline = reading;
+    }
+    if (baseline.decision !== 'deny') {
+      baseline = filePathDecision(tool.schema.name, getObservation()) ?? baseline;
     }
   } catch (error) { return { decision: 'deny', reason: `Permission path check failed: ${error instanceof Error ? error.message : String(error)}` }; }
   const result = !policy && !sessionUpdatesActive(session) ? baseline : applyShellReadings(policy, tool, input, baseline, session);
@@ -548,7 +608,7 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
 }
 
 function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
-  session?: SessionPermissionUpdates, planFile?: string): PermissionDecision {
+  session?: SessionPermissionUpdates, planFile?: string, observation?: () => PathPermissionObservation | undefined, workspace?: string): PermissionDecision {
   const active = sessionUpdatesActive(session);
   if (!policy && !active) return { decision: 'allow' };
   const mode = session?.mode ?? policy?.mode ?? 'default';
@@ -564,30 +624,30 @@ function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, 
   // Session rules join the settings-derived rules for the same decision: a
   // deny on either side wins, and a session allow satisfies the allow list.
   if ((policy?.deny ?? []).some(rule => bareRuleMatches(rule, name)) || (session?.deny ?? []).some(rule => bareRuleMatches(rule, name)) ||
-      policy && contentRuleMatches(policy, 'deny', name, input)) {
+      policy && contentRuleMatches(policy, 'deny', name, input, observation?.(), workspace)) {
     return { decision: 'deny', reason: `Tool denied by permission rule: ${name}` };
   }
   const applicable = (policy?.inputRules ?? []).filter(rule => inputRuleMatches(rule, name, input));
   if (applicable.some(rule => rule.decision === 'deny')) {
     return { decision: 'deny', reason: `Tool input denied by permission rule: ${name}` };
   }
-  // c_/aNe/fl, 2bcyxj9q [235473,238027)/[241113,242279)/[205509,205734), UTF-16.
+  // c_/aNe/fl, 2bcyxj9q [235473,238027)/[241113,242279)/[205509,205734); et, wh2vcbh8 [3533,4062), UTF-16.
   const requestedPath = typeof input === 'object' && input !== null
     ? Object.getOwnPropertyDescriptor(input, 'path')?.value : undefined;
   const ownedPlan = planFile !== undefined && ['read_file', 'write_file', 'edit_file'].includes(name)
-    && typeof requestedPath === 'string' && resolvePlanFile(policy?.ruleWorkspace ?? process.cwd(), requestedPath, planFile) !== undefined;
+    && typeof requestedPath === 'string' && resolvePlanFile(workspace ?? policy?.ruleWorkspace ?? process.cwd(), requestedPath, planFile) !== undefined;
   if (mode === 'plan' && !tool.readOnly && !ownedPlan && tool.planOperation !== 'exit') {
     return { decision: 'deny', reason: `Plan mode permits read-only tools: ${name}` };
   }
   const explicitAllow = (policy?.allow ?? []).some(rule => bareRuleMatches(rule, name)) ||
     applicable.some(rule => rule.decision === 'allow') ||
     (session?.allow ?? []).some(rule => bareRuleMatches(rule, name)) ||
-    policy !== undefined && contentRuleMatches(policy, 'allow', name, input);
+    policy !== undefined && contentRuleMatches(policy, 'allow', name, input, observation?.(), workspace);
   if ((policy?.allow.filter(text => Un(text).ruleContent === undefined).length ?? 0) && !explicitAllow) {
     return { decision: 'deny', reason: `Tool is outside the allow list: ${name}` };
   }
   if ((policy?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || applicable.some(rule => rule.decision === 'ask') ||
-      (session?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || policy && contentRuleMatches(policy, 'ask', name, input)) {
+      (session?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || policy && contentRuleMatches(policy, 'ask', name, input, observation?.(), workspace)) {
     return { decision: 'ask', floor: 'rule', reason: `Tool requires approval by permission rule: ${name}` };
   }
   if (ownedPlan || tool.planOperation !== undefined || explicitAllow || mode === 'bypass') return { decision: 'allow' };

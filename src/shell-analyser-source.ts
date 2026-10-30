@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.
 import { yyr } from "./bash-parser-source.js";
-import { homedir as ht } from "node:os";
+import { homedir as ht } from "./shell-analysis-home.js";
 const wd = () => false, $Ts = () => true;
 // chunk-zjewzgfh.js Yx [1273,1299), UTF-16; sha256 5cbd3cde29ae7f4c8596970b333a5f4be4f3486d4b825c7643c4a2c3bed574f2
 var Yx=Symbol("parse-aborted");
@@ -313,4 +313,4 @@ var un=new Set(["-f","-C","-x","-X","-u"]);
 var _e=/\/proc\/.*\/environ/;
 // chunk-zjewzgfh.js q [80902,80912), UTF-16; sha256 fcdb0b57aa6c6e120e94f66d4ccff27b5700a54ae87d70bed7adf2ee6227e049
 var q=/\n\s*#/;
-export { E6, Yx, pyr };
+export { E6, Yx, pyr, Vs, yit, lyr, cyr, dyr, GRt, zRt, mLn, gLn, uyr };

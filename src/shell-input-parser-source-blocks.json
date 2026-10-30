@@ -1,0 +1,54 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Zwe",
+      "range": [
+        3355651,
+        3356264
+      ],
+      "bodySha256": "95e29a86fccb34d21a6068f2a631fba82b957a75beca62b96f3bfe365873fc1a",
+      "output": "shell-input-parser-source.ts",
+      "outputRange": [
+        337,
+        950
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Dpn",
+      "range": [
+        3356264,
+        3356656
+      ],
+      "bodySha256": "c411ec0717a0567eb8860d6c9d5b114c2d8138a54b9782b66c6d16a0282777b4",
+      "output": "shell-input-parser-source.ts",
+      "outputRange": [
+        1075,
+        1467
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "G9e",
+      "range": [
+        3356656,
+        3357036
+      ],
+      "bodySha256": "3e06559b01a9db5a1fc95428f172eba9af21fddd44740214891b111df71b58d2",
+      "output": "shell-input-parser-source.ts",
+      "outputRange": [
+        1592,
+        1972
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

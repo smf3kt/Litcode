@@ -16,6 +16,7 @@ const named = process.argv.includes("--named");
 const aliases = process.argv.includes("--aliases");
 const fenced = process.argv.includes("--fenced");
 const sourceArguments = process.argv.includes("--source-arguments");
+const hookHome = !quoted && !fallback && !extended && !named && !aliases && !fenced && !sourceArguments;
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
 const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir(), "skill-inline-cli-")));
@@ -32,12 +33,18 @@ try {
   writeSkill("preflight", "!`touch preflight-marker` !`printf denied`");
   writeSkill("literal", "args=$ARGUMENTS output=!`printf %s '$ARGUMENTS'`");
   writeSkill("fallback", "output=!`printf fixture`");
+  if (hookHome) {
+    fs.mkdirSync(path.join(workspace, ".harness/skills/hook-home"));
+    fs.writeFileSync(path.join(workspace, ".harness/skills/hook-home/SKILL.md"), `---\nname: hook-home\ndescription: Owned hook environment fixture\ncontext: fork\nhooks:\n  SessionStart:\n    - command: 'printf "%s" "$HOME" > hook-home-result'\n    - command: 'printf "%s" "$HOME" > hook-home-async'\n      async: true\n---\nCheck hook environment.\n`);
+  }
   if (fenced) writeSkill("fenced", "before\n```!\nprintf FENCED\n```\nafter");
   const settings = (enabled, extra = {}) => fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { skillInlineCommands: enabled, skillExtendedArguments: false, ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) }, ...extra }));
-  const run = async (prompt, flags = []) => {
+  const run = async (prompt, flags = [], omitHome = false) => {
+    const env = { ...process.env, LLM_API_KEY: "owned-inline-fixture", LLM_MODEL: "smoke/inline",
+      LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" };
+    if (omitHome) delete env.HOME;
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, ...(flags.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...flags, ...(flags.includes("--interactive") ? [] : [prompt])], {
-      cwd: root, stdio: [flags.includes("--interactive") ? "pipe" : "ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-inline-fixture", LLM_MODEL: "smoke/inline",
-        LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" }
+      cwd: root, stdio: [flags.includes("--interactive") ? "pipe" : "ignore", "pipe", "pipe"], env
     });
     let output = "", errors = "";
     child.stdout.on("data", chunk => { output += chunk; });
@@ -105,6 +112,12 @@ try {
   assert.equal(fs.existsSync(path.join(workspace, "preflight-marker")), false);
   assert.equal(requests.length, before);
   settings(true);
+  if (hookHome) {
+    result = await run("/hook-home", shell);
+    assert.equal(result.code, 0, result.errors);
+    assert.equal(fs.readFileSync(path.join(workspace, "hook-home-result"), "utf8"), process.env.HOME ?? "");
+    assert.equal(fs.readFileSync(path.join(workspace, "hook-home-async"), "utf8"), process.env.HOME ?? "");
+  }
   result = await run("load inline skill", shell);
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes("value=alpha missing=$ARGUMENTS[12]"));
@@ -135,7 +148,7 @@ try {
   result = await run("/inline alpha", [...shell, "--managed-settings", policy]);
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes("!`printf"));
-  assert.equal(requests.length, (fallback ? 9 : 8) + (fenced ? 1 : 0));
+  assert.equal(requests.length, (fallback ? 9 : 8) + (fenced ? 1 : 0) + (hookHome ? 1 : 0));
   if (sourceArguments) {
     writeSkill('source-args', '$target|$0|$1|$2|RAW=$ARGUMENTS');
     const sourceFile = path.join(workspace, '.harness/skills/source-args/SKILL.md');
@@ -192,10 +205,29 @@ try {
       }
     }
   }
+  let customShellHome = false;
+  if (hookHome && fs.existsSync('/bin/zsh')) {
+    const { createPluginTools } = await tsImport('../src/plugins.ts', import.meta.url);
+    const plugin = path.join(workspace, 'shell-home-plugin');
+    fs.mkdirSync(path.join(plugin, 'skills/shell-home'), { recursive: true });
+    fs.writeFileSync(path.join(plugin, 'plugin.json'), JSON.stringify({ name: 'shell-home', version: '1', skills: 'skills' }));
+    fs.writeFileSync(path.join(plugin, 'skills/shell-home/SKILL.md'),
+      '---\nname: shell-home\ndescription: Owned custom-shell fixture\nshell: /bin/zsh\n---\n!`X=old; X=new export Y; printf "$HOME" > shell-home-marker`');
+    const installer = createPluginTools({ enabled: true }).find(tool => tool.schema.name === 'plugin_install');
+    await installer.execute({ directory: plugin }, { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
+    settings(true, { plugins: { enabled: true }, permissions: { mode: 'bypass', allow: [], deny: [`Bash(printf ${os.userInfo().homedir})`] } });
+    const beforeCustom = requests.length;
+    result = await run('/shell-home', shell, true);
+    assert.equal(result.code, 2, result.errors);
+    assert.match(result.errors, /denied/i);
+    assert.equal(fs.existsSync(path.join(workspace, 'shell-home-marker')), false);
+    assert.equal(requests.length, beforeCustom);
+    customShellHome = true;
+  }
   assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
   console.log(JSON.stringify({ cli: "passed", inlineWithoutMetadata: true, modelSkillCall: true, pinnedResume: true,
     disabledLiteral: true, shellGate: true, wholeGroupPreflight: true, injectedDirectivesLiteral: true, managedOverride: true, interactive: true,
-    locksReleased: true, ...(sourceArguments ? { sourceArguments: true, sourceDefault: true, sourcePinnedResume: true, sourceSubstitutionInert: true } : {}), ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(fenced ? { fencedBlock: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
+    ...(hookHome ? { skillHookHome: true } : {}), ...(customShellHome ? { customShellHome: true } : {}), locksReleased: true, ...(sourceArguments ? { sourceArguments: true, sourceDefault: true, sourcePinnedResume: true, sourceSubstitutionInert: true } : {}), ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(fenced ? { fencedBlock: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

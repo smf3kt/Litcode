@@ -14,8 +14,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        356,
-        382
+        373,
+        399
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -30,8 +30,8 @@
       "bodySha256": "0621695c414c05333b5afc72a9b013242f15f5376dd7b5dd29c96d02b69c5839",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        502,
-        582
+        519,
+        599
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -46,8 +46,8 @@
       "bodySha256": "7f5bfa3304a25cc7a75ddebb7380d3577d680ee5d7475e8644a9aad75c1c67da",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        700,
-        761
+        717,
+        778
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -63,8 +63,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        883,
-        947
+        900,
+        964
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -80,8 +80,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1069,
-        1112
+        1086,
+        1129
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -97,8 +97,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1235,
-        1332
+        1252,
+        1349
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -114,8 +114,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1455,
-        1506
+        1472,
+        1523
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -131,8 +131,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1628,
-        1649
+        1645,
+        1666
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -148,8 +148,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1771,
-        1790
+        1788,
+        1807
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -164,8 +164,8 @@
       "bodySha256": "c9adc562c28f08a8b8ec863befedd70f2ce03d3ba6860ec5b086ea167e40acc0",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        1909,
-        1960
+        1926,
+        1977
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -181,8 +181,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2081,
-        2084
+        2098,
+        2101
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -198,8 +198,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2206,
-        2209
+        2223,
+        2226
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -215,8 +215,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2331,
-        2334
+        2348,
+        2351
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -232,8 +232,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2457,
-        2468
+        2474,
+        2485
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -249,8 +249,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2591,
-        2606
+        2608,
+        2623
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -266,8 +266,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        2729,
-        2914
+        2746,
+        2931
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -283,8 +283,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3037,
-        3074
+        3054,
+        3091
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -300,8 +300,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3197,
-        3291
+        3214,
+        3308
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -317,8 +317,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3413,
-        3441
+        3430,
+        3458
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -334,8 +334,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3564,
-        3579
+        3581,
+        3596
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -351,8 +351,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3702,
-        3718
+        3719,
+        3735
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -368,8 +368,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3842,
-        3872
+        3859,
+        3889
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -385,8 +385,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        3996,
-        4072
+        4013,
+        4089
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -402,8 +402,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        4196,
-        4265
+        4213,
+        4282
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -419,8 +419,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        4389,
-        4402
+        4406,
+        4419
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -436,8 +436,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        4526,
-        4578
+        4543,
+        4595
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -453,8 +453,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        4701,
-        4745
+        4718,
+        4762
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -470,8 +470,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        4869,
-        4899
+        4886,
+        4916
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -487,8 +487,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5023,
-        5053
+        5040,
+        5070
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -504,8 +504,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5177,
-        5186
+        5194,
+        5203
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -521,8 +521,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5310,
-        5339
+        5327,
+        5356
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -538,8 +538,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5463,
-        5478
+        5480,
+        5495
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -555,8 +555,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5601,
-        5617
+        5618,
+        5634
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -571,8 +571,8 @@
       "bodySha256": "a45d876429a9de3a4f8043150abeb3ff76b3eb9382281ffb8befac0fa5a483e1",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        5735,
-        6383
+        5752,
+        6400
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -587,8 +587,8 @@
       "bodySha256": "f0ffb512dd2cf2e8c5bd02b9572c6acfa171018d496a0251446eeb8b31cbb48e",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        6501,
-        7315
+        6518,
+        7332
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -604,8 +604,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        7437,
-        7463
+        7454,
+        7480
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -620,8 +620,8 @@
       "bodySha256": "e83d8e9efdad482dfa08c12671e55a614f247d77d7496663bcda4a0abc058be7",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        7582,
-        7678
+        7599,
+        7695
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -636,8 +636,8 @@
       "bodySha256": "f617f6b4c7bfc467796b1bd33b87f6c436842d505299fcceb3f30ec6f5fb2bfa",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        7797,
-        8147
+        7814,
+        8164
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -652,8 +652,8 @@
       "bodySha256": "6d959cd10dfbfb7199bf45f47b93da07a657f6b7db767a10936c06ea2fed85a8",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        8266,
-        11226
+        8283,
+        11243
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -668,8 +668,8 @@
       "bodySha256": "bb1a09e9df978fd319ac8e20020f586572d5c704677c24e5fa67c81968821279",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        11346,
-        11483
+        11363,
+        11500
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -684,8 +684,8 @@
       "bodySha256": "f234c142f3330c569d38da8bd5a14402f192765ecf235a92477ada6d3d765576",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        11603,
-        12022
+        11620,
+        12039
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -700,8 +700,8 @@
       "bodySha256": "3d12372c330238d5a880d57403f4db332220bbecb3625ae2690ca28adb16d209",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        12142,
-        12231
+        12159,
+        12248
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -716,8 +716,8 @@
       "bodySha256": "c1a4222c572fc8ca6b2c12eb9ad4be99d1e103d22abab226680adba9c107002e",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        12351,
-        13851
+        12368,
+        13868
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -733,8 +733,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        13975,
-        14030
+        13992,
+        14047
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -749,8 +749,8 @@
       "bodySha256": "3dcb11fb551708a094d1ae3da7fae669195e047301257b9e0f70a478824cec55",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        14151,
-        18998
+        14168,
+        19015
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -766,8 +766,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19122,
-        19184
+        19139,
+        19201
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -783,8 +783,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19309,
-        19385
+        19326,
+        19402
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -800,8 +800,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19510,
-        19535
+        19527,
+        19552
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -817,8 +817,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19660,
-        19678
+        19677,
+        19695
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -834,8 +834,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19803,
-        19827
+        19820,
+        19844
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -851,8 +851,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        19952,
-        19969
+        19969,
+        19986
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -868,8 +868,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        20093,
-        20121
+        20110,
+        20138
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -885,8 +885,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        20245,
-        20268
+        20262,
+        20285
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -901,8 +901,8 @@
       "bodySha256": "1c69fbdfada212b9d05df1d25cbe48854291132a24b5a63e2272b86a4adf9104",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        20389,
-        20698
+        20406,
+        20715
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -917,8 +917,8 @@
       "bodySha256": "4957068dae45aa7f75cc68f4f85debc974a080d7da85517536de11e3d7d2f7df",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        20817,
-        20903
+        20834,
+        20920
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -933,8 +933,8 @@
       "bodySha256": "afc57265ea4b45dbb0c61f537be9e91eee0a3b9f7f5db3b7197d2dc9a36ecb15",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        21023,
-        21095
+        21040,
+        21112
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -950,8 +950,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        21219,
-        21332
+        21236,
+        21349
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -967,8 +967,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        21457,
-        21464
+        21474,
+        21481
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -983,8 +983,8 @@
       "bodySha256": "aac7297ea4e91fa01de95d86ef19016fecade2fd7b7ed36d009e8de4ef1ef034",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        21585,
-        21983
+        21602,
+        22000
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -999,8 +999,8 @@
       "bodySha256": "8582e026ac1f5e0ebbb27eec5cb9fd5949c5b65fa342c5f2e7c4c878b2681a86",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        22103,
-        22250
+        22120,
+        22267
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1015,8 +1015,8 @@
       "bodySha256": "349dc6001f034d5559bc8b584b9cbc0d2163c7f13f83a1fad490767ca11e0adf",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        22369,
-        23030
+        22386,
+        23047
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1031,8 +1031,8 @@
       "bodySha256": "802f92d131dbb32c51372d83eb062c0d816c2ab4dfd77a6e9ba9b2dc4e321927",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        23149,
-        23430
+        23166,
+        23447
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1047,8 +1047,8 @@
       "bodySha256": "224c23f5f2ee1ddee82ffa9edfa528f5959d05731844fee6a8539047740a75fb",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        23550,
-        23634
+        23567,
+        23651
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1063,8 +1063,8 @@
       "bodySha256": "c17b5974e97d69440dca8aa68e3aa9d3d3178107e35bea8f34fabdbe235a2856",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        23754,
-        23881
+        23771,
+        23898
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1079,8 +1079,8 @@
       "bodySha256": "4a9ff5948ebeec7bb6d1691c77490092000e4b87539e5eedf17111fc6ec65bed",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        24000,
-        24369
+        24017,
+        24386
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1095,8 +1095,8 @@
       "bodySha256": "c645ccf21db8603a580cb0e9b6609088007904e075f12fa3d93dc3fcd1a9073d",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        24488,
-        24598
+        24505,
+        24615
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1112,8 +1112,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        24722,
-        24769
+        24739,
+        24786
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1128,8 +1128,8 @@
       "bodySha256": "e12b0dfeca9de85f7e96fb25666193ce2167b00266b6539d1be207e47dbe013a",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        24890,
-        24933
+        24907,
+        24950
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1144,8 +1144,8 @@
       "bodySha256": "1ad18968fe6537aa455606db77039fe0f8d6f6ea87130e9f76330d9ece1cb3a6",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        25053,
-        25244
+        25070,
+        25261
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1160,8 +1160,8 @@
       "bodySha256": "03746b921ee99c43ee3f790ca6fc4997bc8a4a053e7598993002e2b72c6f8cee",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        25364,
-        25531
+        25381,
+        25548
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1177,8 +1177,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        25655,
-        25963
+        25672,
+        25980
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1194,8 +1194,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        26088,
-        26179
+        26105,
+        26196
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1210,8 +1210,8 @@
       "bodySha256": "fa85e4d0dbcd3c6af76ec4f2086bcbf5a101533877c2f72254ca538d84179717",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        26301,
-        27010
+        26318,
+        27027
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1226,8 +1226,8 @@
       "bodySha256": "fbce9a1460bdf4f44df8413c5f77aa6509bfbc27204c08b98dc32e8bf97c5fc6",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        27129,
-        39098
+        27146,
+        39115
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1243,8 +1243,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        39222,
-        39322
+        39239,
+        39339
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1259,8 +1259,8 @@
       "bodySha256": "2f5647f716a68c7f2c745460b6c80f2d9ab57a5dd6abc638f92a21f19c6ce1ab",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        39443,
-        39680
+        39460,
+        39697
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1275,8 +1275,8 @@
       "bodySha256": "5683106dcfc111eab72833716bdd3eb4d95fa00a6167bca33a638008305bee38",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        39800,
-        40628
+        39817,
+        40645
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1291,8 +1291,8 @@
       "bodySha256": "46ff63328ddc99d7f82f54aa56af94869808b5e1af176f430c843eae4bf94422",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        40748,
-        41092
+        40765,
+        41109
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1307,8 +1307,8 @@
       "bodySha256": "d7b1145dd49fdc606d3b8cf312e03c4eb36ea878b27fe4fc30252d1750ab8b57",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        41212,
-        41483
+        41229,
+        41500
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1324,8 +1324,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        41607,
-        41657
+        41624,
+        41674
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1341,8 +1341,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        41782,
-        41833
+        41799,
+        41850
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1357,8 +1357,8 @@
       "bodySha256": "8d777e48d7bd129ed03a2f7fc9b748b2698b60f6acf9d86621006270848bd45f",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        41954,
-        45437
+        41971,
+        45454
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1373,8 +1373,8 @@
       "bodySha256": "75148355cea7cfe525114a7e07a6a2c34cd1477388af17f1fa38960569511e7b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        45557,
-        45811
+        45574,
+        45828
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1389,8 +1389,8 @@
       "bodySha256": "ec59c2abbba9aa40f44e95d7665f0068314e3f7207777de8b5b4ab2d06236685",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        45931,
-        47288
+        45948,
+        47305
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1405,8 +1405,8 @@
       "bodySha256": "caaa7ad072d36e2da0ff24b47d64db896c670aa4309040dae9397f74e98e0593",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        47408,
-        48881
+        47425,
+        48898
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1422,8 +1422,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        49005,
-        49092
+        49022,
+        49109
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1439,8 +1439,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        49217,
-        49257
+        49234,
+        49274
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1456,8 +1456,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        49382,
-        49424
+        49399,
+        49441
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1472,8 +1472,8 @@
       "bodySha256": "c3769831147df15f1ee0e2466a97c5eebd1f0edfda2bc62b5c5206ef822d1cf4",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        49545,
-        49730
+        49562,
+        49747
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1488,8 +1488,8 @@
       "bodySha256": "d2bfcf5d3dfa857a011c8b2735d9752fee95e1ad298672e6b7d5b5aac313938b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        49850,
-        50211
+        49867,
+        50228
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1504,8 +1504,8 @@
       "bodySha256": "2ec9b9d4b06e335ed5f974f1a16f34c08f62d849f09faac523dfe6dffa92d6fc",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        50331,
-        50927
+        50348,
+        50944
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1520,8 +1520,8 @@
       "bodySha256": "baf25c4aadf66e4e29925d05ff3f33a9adbc1a3b1a16527eea160e6545636779",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        51047,
-        53809
+        51064,
+        53826
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1537,8 +1537,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        53932,
-        53936
+        53949,
+        53953
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1554,8 +1554,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54060,
-        54061
+        54077,
+        54078
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1571,8 +1571,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54185,
-        54188
+        54202,
+        54205
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1588,8 +1588,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54312,
-        54313
+        54329,
+        54330
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1605,8 +1605,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54437,
-        54446
+        54454,
+        54463
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1622,8 +1622,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54570,
-        54574
+        54587,
+        54591
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1638,8 +1638,8 @@
       "bodySha256": "65ebbd3655c51de87abdb1a3dc25693969c051c50e1f52b52206d8213182327e",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54695,
-        54718
+        54712,
+        54735
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1654,8 +1654,8 @@
       "bodySha256": "c7e963308529ab6c53508d37411c0366f029cbb8174e8962bc3c40e43b71fb0b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54838,
-        54861
+        54855,
+        54878
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1671,8 +1671,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        54985,
-        55002
+        55002,
+        55019
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1688,8 +1688,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        55127,
-        55150
+        55144,
+        55167
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1705,8 +1705,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        55275,
-        55369
+        55292,
+        55386
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1721,8 +1721,8 @@
       "bodySha256": "873edd07a56f7fb9b32416f9cd666c0e226d3ac123132df998dc895b49865d3b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        55490,
-        58022
+        55507,
+        58039
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1737,8 +1737,8 @@
       "bodySha256": "638027002fe313131ce923a5110702af27032eec3b722341868451590029d4a7",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        58142,
-        58477
+        58159,
+        58494
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1754,8 +1754,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        58601,
-        58662
+        58618,
+        58679
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1771,8 +1771,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        58787,
-        58848
+        58804,
+        58865
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1788,8 +1788,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        58973,
-        59020
+        58990,
+        59037
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1805,8 +1805,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        59146,
-        59249
+        59163,
+        59266
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1821,8 +1821,8 @@
       "bodySha256": "de30195d2a18f8a0cf5eeb9194341a5f402fd1179bd32c574cf75b4a73780c0b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        59370,
-        64971
+        59387,
+        64988
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1837,8 +1837,8 @@
       "bodySha256": "49d296837cdb1174371ead43461bb39e9917368b2c6d5185ef25bebc63a6c6a8",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        65091,
-        67270
+        65108,
+        67287
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1854,8 +1854,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        67394,
-        67402
+        67411,
+        67419
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1870,8 +1870,8 @@
       "bodySha256": "19fbdb0ab2dbc7763f3515544fe2e680745ca8f0e0dadc36952b9632b2be4245",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        67523,
-        67854
+        67540,
+        67871
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1886,8 +1886,8 @@
       "bodySha256": "e8975cc2949da6c04ebc098c6250359042f6f78d9a085584dcf93e29e2dd3bc5",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        67974,
-        68830
+        67991,
+        68847
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1902,8 +1902,8 @@
       "bodySha256": "b9743510eec47cf8bc9e094ceaa446f39c39fb01473285b1950107f6c92da598",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        68949,
-        71456
+        68966,
+        71473
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1918,8 +1918,8 @@
       "bodySha256": "77637908ad69f4bbc80f7b6dc99f282b31a5973cb57b46e2b0f4825cd70171ed",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        71576,
-        74226
+        71593,
+        74243
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1935,8 +1935,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        74350,
-        74466
+        74367,
+        74483
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1951,8 +1951,8 @@
       "bodySha256": "7215a65ef54df68580cc36056ca4bb5118d717d5ef4b06bc148831b86f4aa345",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        74587,
-        75016
+        74604,
+        75033
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1967,8 +1967,8 @@
       "bodySha256": "1301f46e88c913b0f2c934d1bc5bbbb092c1bcb33bb4491536da32ca26454f10",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        75135,
-        75237
+        75152,
+        75254
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1983,8 +1983,8 @@
       "bodySha256": "6d9720b1639a32f2d62f36a5ad97fcff32e389f29546b09496baee81eec79b19",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        75357,
-        75470
+        75374,
+        75487
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -1999,8 +1999,8 @@
       "bodySha256": "014e121341f63bb6c07158e65c800156a69df1fafdbd9b2115f378fa7bc6994b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        75590,
-        76269
+        75607,
+        76286
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2015,8 +2015,8 @@
       "bodySha256": "52110a65d4e7c628424063ddfa03b9683489d21758f084b15fb2008a44ad9be4",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        76389,
-        77967
+        76406,
+        77984
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2032,8 +2032,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        78092,
-        78681
+        78109,
+        78698
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2048,8 +2048,8 @@
       "bodySha256": "a3e16a9b07f2129860dc33a00ecc4b95faf0096225c97876bd41dd0fb18f6ab9",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        78801,
-        79337
+        78818,
+        79354
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2064,8 +2064,8 @@
       "bodySha256": "1d954111847476a6265002388c4859291b391e36a6308bffc5b5f849991494ca",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        79457,
-        79481
+        79474,
+        79498
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2080,8 +2080,8 @@
       "bodySha256": "f5f797683dd0a065822b74e2ab86ffe0b99d4b6f6d842eade60bbb5acf318106",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        79601,
-        80128
+        79618,
+        80145
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2096,8 +2096,8 @@
       "bodySha256": "b4039b5bed299f25e47b801581b624b9e2347a2dbafe45ccd771bd98f6c159cb",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        80248,
-        80687
+        80265,
+        80704
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2112,8 +2112,8 @@
       "bodySha256": "33bac8cd66345036079849a52e5033e3b918d5c00808bbfadf771ef1e47adbb1",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        80806,
-        83518
+        80823,
+        83535
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2128,8 +2128,8 @@
       "bodySha256": "2a6adb9071bd58b0d9939ecf1eb4ad8592be1e8540829a9ba699c0fbcfb375da",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        83637,
-        83787
+        83654,
+        83804
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2144,8 +2144,8 @@
       "bodySha256": "d2177e36b98d55d5610f62786de3252c42739eabdd2039bf41d3bef67978c9d7",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        83907,
-        84150
+        83924,
+        84167
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2160,8 +2160,8 @@
       "bodySha256": "dfc2321e46c4104793c0ed810653aa41093271451502d10ddfbd8307a120b3bb",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        84270,
-        84306
+        84287,
+        84323
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2176,8 +2176,8 @@
       "bodySha256": "683d312e3999bbdeeda8bb283f219c258615ba19551372abff118ba0f78d934d",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        84426,
-        84570
+        84443,
+        84587
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2192,8 +2192,8 @@
       "bodySha256": "94ff6681378c8b27069dff2219f8dcba693c7edecadaae055ec610dbe7569733",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        84690,
-        84854
+        84707,
+        84871
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2208,8 +2208,8 @@
       "bodySha256": "38b713ae9fd208086387f687a2f756cd92c69718947da03fb90415a0473e7b7d",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        84974,
-        85257
+        84991,
+        85274
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2224,8 +2224,8 @@
       "bodySha256": "5bcf3f87f56b973469bb613a5430fc3f5808476a25a9fd2153db100ab391744b",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        85376,
-        85761
+        85393,
+        85778
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2241,8 +2241,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        85885,
-        86953
+        85902,
+        86970
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2257,8 +2257,8 @@
       "bodySha256": "136a751ad83f8570c8453236e016c545ac4133ca9f798e750280fd0912802851",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        87075,
-        87827
+        87092,
+        87844
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2274,8 +2274,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        87951,
-        88401
+        87968,
+        88418
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2291,8 +2291,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        88527,
-        89004
+        88544,
+        89021
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2307,8 +2307,8 @@
       "bodySha256": "cc264d104b5381f0963326b1ce61ca88c3e829739d6b345a93b27c86d06a1cc9",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        89125,
-        89289
+        89142,
+        89306
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2323,8 +2323,8 @@
       "bodySha256": "29a7173835fd3819f46a09a60527adae7281b2e6a28c0a741db3cc80e3459793",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        89410,
-        89537
+        89427,
+        89554
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2339,8 +2339,8 @@
       "bodySha256": "fb8b5cd9c5a21980de61af7a22347b9634706d5754b6ae839e7b572504865ede",
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        89657,
-        89735
+        89674,
+        89752
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2356,8 +2356,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        89860,
-        89909
+        89877,
+        89926
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2373,8 +2373,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        90034,
-        90072
+        90051,
+        90089
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2390,8 +2390,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        90197,
-        90221
+        90214,
+        90238
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -2407,8 +2407,8 @@
       "declarator": true,
       "output": "shell-analyser-source.ts",
       "outputRange": [
-        90345,
-        90355
+        90362,
+        90372
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     }

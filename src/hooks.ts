@@ -231,6 +231,7 @@ export function flattenHookDefinitions(config: HooksConfig, event: HookEvent): F
 export type ModelHookDefinition = Extract<HookDefinition, { type: "prompt" | "agent" }>;
 export type CallbackHookDefinition = Extract<HookDefinition, { type: "callback" }>;
 export type McpHookDefinition = Extract<HookDefinition, { type: "mcp_tool" }>;
+export type HookCommandHome = { value: string | undefined };
 export type AsyncHookRequest = {
   definition: Extract<HookDefinition, { type?: "command" }>;
   event: HookEvent;
@@ -239,6 +240,7 @@ export type AsyncHookRequest = {
   cwd: string;
   timeoutMs: number;
   signal: AbortSignal;
+  commandHome?: HookCommandHome;
   /** The foreground process handle when the header was detected in a live run. */
   handle?: HookCommandHandle;
 };
@@ -266,6 +268,7 @@ export type HookRunOptions = {
   onCommandResult?: (execution: CommandHookExecution) => void;
   /** Receives the foreground command handle so an async owner can adopt it after a first-line header. */
   onCommandHandle?: (handle: HookCommandHandle) => void;
+  commandHome?: (identity: HookOnceRecord) => HookCommandHome | undefined;
   /**
    * Whether a first-line async header may hand the process to an owner. The
    * registry's configured-async run disables this: it already owns the
@@ -867,6 +870,7 @@ export function startHookCommand(
   input: string,
   signal: AbortSignal,
   adoptable = true,
+  commandHome?: HookCommandHome,
 ): HookCommandHandle {
   let handle!: HookCommandHandle;
   let backgrounded = false;
@@ -915,7 +919,7 @@ export function startHookCommand(
     try {
       child = spawn("/bin/sh", ["-c", command], {
         cwd,
-        env: process.env,
+        env: commandHome === undefined ? process.env : { ...process.env, HOME: commandHome.value },
         detached: true, // own process group so the whole tree can be killed
         stdio: ["pipe", "pipe", "pipe"],
       });
@@ -1669,13 +1673,15 @@ export async function runHooks(
       continue;
     } else if (asyncCommand) {
       try {
-        const id = await options.startAsyncCommand!({ definition, event, payload, input, cwd, timeoutMs, signal });
+        const commandHome = options.commandHome?.(flattened.identity);
+        const id = await options.startAsyncCommand!({ definition, event, payload, input, cwd, timeoutMs, signal, commandHome });
         if (typeof id !== "string" || !id) throw new Error("Missing owned task id");
         (result.backgroundTasks ??= []).push(id);
       } catch { result.additionalContext.push(`[${event} hook: async owner registration failed]`); }
       continue;
     } else {
-      const handle = startHookCommand(definition.command, cwd, timeoutMs, input, signal, options.adoptAsyncHeaders !== false);
+      const commandHome = options.commandHome?.(flattened.identity);
+      const handle = startHookCommand(definition.command, cwd, timeoutMs, input, signal, options.adoptAsyncHeaders !== false, commandHome);
       options.onCommandHandle?.(handle);
       raw = await handle.result;
       if (raw.backgrounded) {

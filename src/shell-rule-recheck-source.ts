@@ -27,3 +27,4 @@ const ki = { name: "Bash" };
 function $cn(e,n,r){if(e.behavior!=="ask"||m0(e))return e;if(Gre(r,ki,"ask").size===0&&Gre(r,ki,"deny").size===0)return e;let s=new Set([n.command,...Kg(n.command),...e.decisionReason?.type==="subcommandResults"?e.decisionReason.reasons.keys():[],...ost(n.command)]),h;for(let y of s){let{matchingDenyRules:b,matchingAskRules:w}=dA({...n,command:y},r,"prefix");if(b[0]!==void 0)return{behavior:"deny",message:`Permission to use ${ki.name} with command ${n.command} has been denied.`,decisionReason:{type:"rule",rule:b[0]}};h??=w[0]}return h===void 0?e:{...e,matchedAskRule:h}}
 return $cn;
 }
+export { Kg, Emr };

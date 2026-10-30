@@ -13,8 +13,8 @@
       "bodySha256": "e08913e4ba564b11551e01e87af4d4ba5f0fde1d9cce2dc2407afcc87d3df2bb",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        466,
-        502
+        470,
+        506
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -30,25 +30,8 @@
       "declarator": true,
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        622,
-        628
-      ],
-      "coordinates": "zero-based half-open UTF16 code units"
-    },
-    {
-      "module": "chunk-zjewzgfh.js",
-      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
-      "symbol": "Yx",
-      "range": [
-        1273,
-        1299
-      ],
-      "bodySha256": "5cbd3cde29ae7f4c8596970b333a5f4be4f3486d4b825c7643c4a2c3bed574f2",
-      "declarator": true,
-      "output": "shell-command-clamp-source.ts",
-      "outputRange": [
-        751,
-        777
+        626,
+        632
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -63,8 +46,8 @@
       "bodySha256": "ea6db9ea71d7575b3c49e8da8c83b06e3fbfead22e74b3148cd8c875ca8a585c",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        896,
-        1227
+        751,
+        1082
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -80,8 +63,8 @@
       "declarator": true,
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        1347,
-        1387
+        1202,
+        1242
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -97,8 +80,8 @@
       "declarator": true,
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        1509,
-        1552
+        1364,
+        1407
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -114,8 +97,8 @@
       "declarator": true,
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        1675,
-        1681
+        1530,
+        1536
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -130,8 +113,8 @@
       "bodySha256": "39cc552a0ee46a2e6520bea0350ef2c728fbe662b9a98adb98c6f6cbc86f977b",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        1801,
-        1898
+        1656,
+        1753
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -146,8 +129,8 @@
       "bodySha256": "f4debd18a3ffdb139d5624ab85cc7c327c1906b7324494c4ae6faad6659d0725",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        2015,
-        2506
+        1870,
+        2361
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -162,8 +145,8 @@
       "bodySha256": "d1c2dc5e9510acdd86027d026dc019a6b71fbc7e0ea5a8e10b295bbc5d6a2e92",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        2623,
-        2780
+        2478,
+        2635
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     },
@@ -178,8 +161,8 @@
       "bodySha256": "0225c17047b751f2a8de8c11eda3a1c86fe72973bd2e4d83fc7364c8ca3ecd17",
       "output": "shell-command-clamp-source.ts",
       "outputRange": [
-        2905,
-        3680
+        2760,
+        3535
       ],
       "coordinates": "zero-based half-open UTF16 code units"
     }

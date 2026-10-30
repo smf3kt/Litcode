@@ -16,6 +16,7 @@ import { createRuntime, parseSettings, pinToolSchemas } from '../src/runtime.js'
 import { reloadConfig } from '../src/reload.js';
 import { forkSession } from '../src/sessions.js';
 import { checkpointConversation, previewRewind, applyRewind } from '../src/rewind.js';
+import { relocateSession } from '../src/workspace-session.js';
 import type { ModelProvider } from '../src/provider.js';
 
 const temporary = () => fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'model-plan-test-')));
@@ -147,6 +148,75 @@ test('plan file capability retains deny and ask priority, stable paths, child au
     } } }), /approved exiting plan mode/);
     assert.equal(host.mode(), 'default');
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('relocated plan file uses the execution workspace and retains rule priority', async () => {
+  const root = temporary(), parent = path.join(root, 'parent'), child = path.join(parent, 'child');
+  fs.mkdirSync(parent); fs.mkdirSync(child);
+  const tools = [...createTools(), ...createInteractionTools({ sourcePlanTools: true })];
+  const config = { ...defaultConfig(parent, tools), model: 'fixture', configSources: { userDir: path.join(child, 'user') },
+    features: { tasks: false, subagents: false, sourcePlanTools: true },
+    permissions: { mode: 'default' as const, allow: [], deny: [], ask: [], ruleWorkspace: parent } };
+  const source = Session.open(parent, { config });
+  let session: Session | undefined;
+  try {
+    session = relocateSession(source, child, () => tools);
+    const host = session.planMode; assert.ok(host); host.enter();
+    assert.equal(session.permissionOwner.state().ruleWorkspace, parent);
+    const relative = path.relative(child, host.filePath);
+    const input = { path: relative, content: '# PLAN FIXTURE\n' };
+    const write = find(tools, 'write_file'), edit = find(tools, 'edit_file'), read = find(tools, 'read_file');
+    const decide = (tool: ToolDefinition, value: unknown) =>
+      permissionDecision(session!.config.permissions, tool, value, session!.permissionOwner.state(), child).decision;
+    assert.equal(decide(write, input), 'allow');
+    assert.equal(decide(write, { ...input, path: host.filePath }), 'allow');
+    assert.equal(permissionDecision(session.config.permissions, write, { ...input, path: host.filePath }, session.permissionOwner.state()).decision, 'allow');
+    assert.equal(permissionDecision(session.config.permissions, write, { ...input, path: path.relative(parent, host.filePath) }, session.permissionOwner.state()).decision, 'allow');
+    assert.equal(permissionDecision(session.config.permissions, write, input, session.permissionOwner.state()).decision, 'deny');
+    const stalePolicy = { ...session.config.permissions!, ruleWorkspace: child };
+    assert.equal(permissionDecision(stalePolicy, write, input, session.permissionOwner.state()).decision, 'deny');
+    assert.equal(permissionDecision(stalePolicy, write, input, session.permissionOwner.state(), child).decision, 'allow');
+    assert.equal(decide(write, { ...input, path: path.join(path.dirname(relative), 'other.md') }), 'deny');
+    const addRule = (toolName: string, ruleContent: string | undefined, behavior: 'deny' | 'ask') => {
+      session!.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName, ...(ruleContent === undefined ? {} : { ruleContent }) }], behavior, destination: 'session' }]);
+    };
+    const removeRule = (toolName: string, ruleContent: string | undefined, behavior: 'deny' | 'ask') => {
+      session!.adoptPermissionUpdates([{ type: 'removeRules', rules: [{ toolName, ...(ruleContent === undefined ? {} : { ruleContent }) }], behavior, destination: 'session' }]);
+    };
+    addRule('write_file', undefined, 'deny'); assert.equal(decide(write, input), 'deny');
+    removeRule('write_file', undefined, 'deny');
+    addRule('write_file', undefined, 'ask'); assert.equal(decide(write, input), 'ask');
+    removeRule('write_file', undefined, 'ask');
+    const oldRootPattern = '/user/plans/**';
+    addRule('Write', oldRootPattern, 'deny');
+    assert.equal(decide(write, input), 'allow');
+    removeRule('Write', oldRootPattern, 'deny');
+    const actualRootPattern = `/${path.relative(parent, host.filePath).split(path.sep).join('/')}`;
+    addRule('Write', actualRootPattern, 'deny');
+    assert.equal(decide(write, input), 'deny');
+    removeRule('Write', actualRootPattern, 'deny');
+    let calls = 0;
+    const provider: ModelProvider = { count: async () => 0, complete: async () => ++calls === 1
+      ? reply([{ type: 'tool_use', id: 'relative-plan', name: 'write_file', input, caller: { type: 'direct' } }], 'tool_use')
+      : reply([{ type: 'text', text: 'planned', citations: null }], 'end_turn') };
+    await new Agent(session, provider, tools).run('Write the current plan');
+    const written = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'relative-plan');
+    assert.ok(written?.kind === 'tool_result'); assert.notEqual(written.result.is_error, true);
+    assert.equal(fs.readFileSync(host.filePath, 'utf8'), input.content);
+    const editInput = { path: relative, old_string: 'PLAN', new_string: 'LOCAL PLAN' };
+    assert.equal(decide(read, { path: relative }), 'allow');
+    assert.match(await read.execute({ path: relative }, context(session)), /PLAN FIXTURE/);
+    assert.equal(decide(edit, editInput), 'allow');
+    await edit.execute(editInput, context(session));
+    assert.equal(fs.readFileSync(host.filePath, 'utf8'), '# LOCAL PLAN FIXTURE\n');
+    fs.unlinkSync(host.filePath); fs.symlinkSync(path.join(root, 'target.md'), host.filePath);
+    assert.equal(decide(read, { path: relative }), 'deny');
+    assert.equal(decide(write, input), 'deny');
+    assert.equal(decide(edit, editInput), 'deny');
+    await assert.rejects(read.execute({ path: relative }, context(session)), /symbolic links/);
+    await assert.rejects(write.execute(input, context(session)), /symbolic links/);
+    await assert.rejects(edit.execute(editInput, context(session)), /symbolic links/);
+  } finally { session?.close(); source.close(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
 test('plan catalogs pin original metadata, reload and managed choices, and keep branch history linked to its plan file', async () => {

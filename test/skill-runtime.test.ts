@@ -412,6 +412,76 @@ test('inline command preflight denies later commands before executing any earlie
       requestPermission: async (_tool, input) => ({ decision: (input as { command: string }).command === 'echo denied' ? 'deny' : 'allow' }),
     }), /permission deny/);
     assert.equal(fs.existsSync(marker), false);
+
+    options.config.permissions = { mode: 'default', allow: [], deny: ['Bash(printf:*)'] };
+    const wrapped = `!\`touch '${marker}'\` !\`env CUSTOM=value printf denied\``;
+    await assert.rejects(executeSkill(skill({ shell: '/bin/sh', body: wrapped }), '', options), /denied/i);
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: '!\`env CUSTOM=value echo allowed\`' }), '', options), 'allowed\n');
+  });
+});
+
+test('inline shell binds the HOME observed during each approval', async () => {
+  await fixture(async options => {
+    const previous = process.env.HOME;
+    try {
+      process.env.HOME = '/allowed-fixture';
+      options.config.allowShell = true;
+      options.config.permissions = { mode: 'bypass', allow: [], deny: ['Bash(printf /denied-fixture)'], ask: ['Bash(true)'] };
+      const definition = skill({ shell: '/bin/sh',
+        body: '!`X=old; X=new export Y; printf "$HOME" > marker.txt` !`true`' });
+      await executeSkill(definition, '', { ...options, requestPermission: async () => {
+        process.env.HOME = '/denied-fixture';
+        return { decision: 'allow' };
+      } });
+      assert.equal(fs.readFileSync(path.join(options.config.workspace, 'marker.txt'), 'utf8'), '/allowed-fixture');
+      const first = '!`true`';
+      const next = '!`X=old; X=new export Y; printf "$HOME" > second.txt`';
+      process.env.HOME = '/allowed-fixture';
+      await assert.rejects(executeSkill(skill({ shell: '/bin/sh', body: `${first} ${next}` }), '', {
+        ...options, requestPermission: async () => {
+          process.env.HOME = '/denied-fixture';
+          return { decision: 'allow' };
+        },
+      }), /denied/i);
+      assert.equal(fs.existsSync(path.join(options.config.workspace, 'second.txt')), false);
+      delete process.env.HOME;
+      const absent = '!`X=old; X=new export Y; printf "%s" "$HOME" > absent.txt` !`true`';
+      await executeSkill(skill({ shell: '/bin/sh', body: absent }), '', { ...options, requestPermission: async () => {
+        process.env.HOME = '/later-fixture';
+        return { decision: 'allow' };
+      } });
+      assert.equal(fs.readFileSync(path.join(options.config.workspace, 'absent.txt'), 'utf8'), '');
+    } finally {
+      if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    }
+  });
+});
+
+test('inline shell uses its configured HOME for both permission and execution', async () => {
+  if (!fs.existsSync('/bin/zsh') || !fs.existsSync('/bin/bash')) return;
+  await fixture(async options => {
+    const previous = process.env.HOME;
+    delete process.env.HOME;
+    try {
+      options.config.allowShell = true;
+      options.config.permissions = { mode: 'bypass', allow: [], deny: [`Bash(printf ${os.homedir()})`] };
+      const body = '!`X=old; X=new export Y; printf "$HOME" > marker.txt`';
+      await assert.rejects(executeSkill(skill({ shell: '/bin/zsh', body }), '', options), /denied/i);
+      assert.equal(fs.existsSync(path.join(options.config.workspace, 'marker.txt')), false);
+      await executeSkill(skill({ shell: '/bin/sh', body }), '', options);
+      assert.equal(fs.readFileSync(path.join(options.config.workspace, 'marker.txt'), 'utf8'), '');
+      fs.unlinkSync(path.join(options.config.workspace, 'marker.txt'));
+      options.config.permissions.deny = ['Bash(printf *)'];
+      await assert.rejects(executeSkill(skill({ shell: '/bin/bash', body }), '', options), /denied/i);
+      assert.equal(fs.existsSync(path.join(options.config.workspace, 'marker.txt')), false);
+      process.env.HOME = '';
+      options.config.permissions.deny = [`Bash(printf ${os.userInfo().homedir})`];
+      await executeSkill(skill({ shell: '/bin/zsh', body }), '', options);
+      assert.equal(fs.readFileSync(path.join(options.config.workspace, 'marker.txt'), 'utf8'), '');
+    } finally {
+      if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    }
   });
 });
 
@@ -484,6 +554,81 @@ test('skill hook overlays are approved, isolated and keep parent hooks in order'
     assert.equal(fs.readFileSync(marker, 'utf8'), 'parentskill');
     assert.deepEqual(options.config.hooks, before);
   });
+});
+
+test('skill hook approvals bind HOME to each definition across foreground and registry execution', async () => {
+  for (const background of [false, true]) for (const hookKind of ['sync', 'configured-async', 'header-async'] as const) {
+    await fixture(async options => {
+      const previous = process.env.HOME;
+      const workspace = options.config.workspace;
+      const shared = `X=old; X=new export Y; printf "$HOME" >> '${path.join(workspace, 'shared')}'`;
+      const target = `X=old; X=new export Y; ${hookKind === 'header-async' ? `printf '{"async":true}\\n'; ` : ''}printf "$HOME" > '${path.join(workspace, 'target')}'${hookKind === 'header-async' ? '; sleep 0.05' : ''}`;
+      const definition = skill({ context: 'fork', background, hooks: { SessionStart: [{ hooks: [
+        { command: shared },
+        { command: 'true' },
+        { command: target, ...(hookKind === 'configured-async' ? { async: true } : {}) },
+        { command: 'true' },
+      ] }] } });
+      options.config.allowShell = true;
+      options.config.permissions = { mode: 'bypass', allow: [], deny: [], ask: ['Bash(true)'] };
+      options.config.hooks = { SessionStart: [{ command: shared }] };
+      const registry = background ? new AgentRegistry({ source: options.config, provider: options.provider, tools: options.tools }) : undefined;
+      let approvals = 0;
+      try {
+        process.env.HOME = '/first-fixture';
+        const result = JSON.parse(await executeSkill(definition, '', { ...options, registry, requestPermission: async () => {
+          process.env.HOME = ++approvals === 1 ? '/second-fixture' : '/after-fixture';
+          return { decision: 'allow' };
+        } }));
+        if (registry) assert.equal((await registry.get(result.id, { waitMs: 3000 })).status, 'completed');
+        assert.equal(approvals, 2);
+        assert.equal(fs.readFileSync(path.join(workspace, 'shared'), 'utf8'), '/after-fixture/first-fixture');
+        assert.equal(fs.readFileSync(path.join(workspace, 'target'), 'utf8'), '/second-fixture');
+        if (registry) {
+          process.env.HOME = '/resume-fixture';
+          await registry.sendMessage(result.id, 'continue');
+          assert.equal((await registry.get(result.id, { waitMs: 3000 })).status, 'completed');
+          assert.equal(fs.readFileSync(path.join(workspace, 'shared'), 'utf8'), '/after-fixture/first-fixture/resume-fixture/first-fixture');
+          assert.equal(fs.readFileSync(path.join(workspace, 'target'), 'utf8'), '/second-fixture');
+        }
+        const journals = fs.readdirSync(path.join(workspace, '.agent'));
+        assert.equal(journals.some(name => name.endsWith('.lock')), false);
+        for (const journal of journals.filter(name => name.endsWith('.jsonl'))) {
+          const text = fs.readFileSync(path.join(workspace, '.agent', journal), 'utf8');
+          assert.equal(text.includes('/first-fixture') || text.includes('/second-fixture'), false);
+        }
+      } finally {
+        await registry?.close();
+        if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+      }
+    });
+  }
+});
+
+test('skill hook approval preserves an absent HOME through async execution', async () => {
+  for (const hookKind of ['sync', 'configured-async', 'header-async'] as const) {
+    await fixture(async options => {
+      const previous = process.env.HOME;
+      const marker = path.join(options.config.workspace, 'absent-hook');
+      const presence = path.join(options.config.workspace, 'home-present');
+      const command = `${hookKind === 'header-async' ? `printf '{"async":true}\\n'; ` : ''}printf '%s' "$HOME" > '${marker}'; env | grep '^HOME=' > '${presence}'; true${hookKind === 'header-async' ? '; sleep 0.05' : ''}`;
+      options.config.allowShell = true;
+      options.config.permissions = { mode: 'bypass', allow: [], deny: [], ask: ['Bash(true)'] };
+      try {
+        delete process.env.HOME;
+        await executeSkill(skill({ context: 'fork', hooks: { SessionStart: [
+          { command, ...(hookKind === 'configured-async' ? { async: true } : {}) }, { command: 'true' },
+        ] } }), '', { ...options, requestPermission: async () => {
+          process.env.HOME = '/after-fixture';
+          return { decision: 'allow' };
+        } });
+        assert.equal(fs.readFileSync(marker, 'utf8'), '');
+        assert.equal(fs.readFileSync(presence, 'utf8'), '');
+      } finally {
+        if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+      }
+    });
+  }
 });
 
 test('synchronous skill async command hooks start in an owned registry and are reaped before session close', async () => {

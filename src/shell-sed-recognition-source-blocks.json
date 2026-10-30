@@ -1,0 +1,318 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "R8t",
+      "range": [
+        758,
+        801
+      ],
+      "bodySha256": "f475c5c1b7cb27a6ca933f3a88786289dfa5b906cc230f92b6985007de158fc1",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        469,
+        512
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "CHn",
+      "range": [
+        801,
+        901
+      ],
+      "bodySha256": "5b3ff00f1fe74e8c03e632793fc6c470c7a7289106d4721817510f7724fd6487",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        629,
+        729
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "Nqe",
+      "range": [
+        901,
+        963
+      ],
+      "bodySha256": "3c5ec1a3bac36086744b6dba89619db14fdbe5c59d95255f15295f16ad6f4d52",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        846,
+        908
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "D0",
+      "range": [
+        1052,
+        1058
+      ],
+      "bodySha256": "7ddf33f32b7490744472a8acab3b5aee746014474fab84c2edb92232d6446c88",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1030,
+        1036
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "x",
+      "range": [
+        4826,
+        4938
+      ],
+      "bodySha256": "412c4951a36bcc16180430fc406370f780f93b9ef689e4a319efdc44cff8042c",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1158,
+        1270
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "S",
+      "range": [
+        4939,
+        5005
+      ],
+      "bodySha256": "d9c7373f4256e4f13c7ecf4052fa7b004308c39db915e064caaf1fea6bb73667",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1388,
+        1454
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "z",
+      "range": [
+        5172,
+        5220
+      ],
+      "bodySha256": "904d22f80e3139c59597528ebbcda3a7026083254a5622051232eafcc2f334a9",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1575,
+        1623
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "N",
+      "range": [
+        5221,
+        5287
+      ],
+      "bodySha256": "56bc21d815608d03fcb29b9376e996d5c5fd3ecdac01da08a68486c2736e2f69",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1741,
+        1807
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "v",
+      "range": [
+        5291,
+        5452
+      ],
+      "bodySha256": "f6437745c6ec5e57172baebbb70dadb666d41245a6432588ccde05b70ec952b8",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        1928,
+        2089
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "A",
+      "range": [
+        5453,
+        5781
+      ],
+      "bodySha256": "8278c7b9ee16d83d7f2a66fbda1c361a014f3bf7d0589536d6b90edf8a20b7d9",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        2207,
+        2535
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "b",
+      "range": [
+        5781,
+        6035
+      ],
+      "bodySha256": "35ada3d21359a138d18f8b2c0bd97c5027a288c51514b9e305aeaac7e0b89563",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        2652,
+        2906
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "K",
+      "range": [
+        7048,
+        7098
+      ],
+      "bodySha256": "93ba30a7c4ecdd408415cb37aaba98dd8782fcd1576e4588a61033a635ad2b5d",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        3027,
+        3077
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "Q",
+      "range": [
+        7099,
+        7130
+      ],
+      "bodySha256": "d1ed8171864b1deb3b1d725d87e8ea95488739e025cbaaf3afa0c2a69abe6c8b",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        3199,
+        3230
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "j",
+      "range": [
+        7131,
+        7158
+      ],
+      "bodySha256": "ca55887830c8e60e9f3d39cb087b510a7b53b2ee260e057f42ae7b1d58e1e3eb",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        3352,
+        3379
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "w",
+      "range": [
+        7159,
+        7544
+      ],
+      "bodySha256": "7e023f4dbfb2aa86975d6b4f15feffff0df00c694d7eb0a407f1a4308123ad88",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        3497,
+        3882
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "L",
+      "range": [
+        7544,
+        8291
+      ],
+      "bodySha256": "2acccb7d50d726f775952c873c18bf2d5d0ca3f74792a4aea0a45ebee822f5a4",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        3999,
+        4746
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-m00pavz3.js",
+      "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+      "symbol": "THn",
+      "range": [
+        8291,
+        8842
+      ],
+      "bodySha256": "d0d13983c2fcbca6be571b4294b84f62214c57fa8f39937d931104b43020a96b",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        4865,
+        5416
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "tzr",
+      "range": [
+        4319170,
+        4319253
+      ],
+      "bodySha256": "68c6e4525a01b216d2657c50f5d5c311efc658a79094bf9c8015d57183259920",
+      "declarator": true,
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        5545,
+        5628
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "KMe",
+      "range": [
+        4319525,
+        4321079
+      ],
+      "bodySha256": "579573fab3b51702646b3bafde55c9a5ec95ea72ebde530194e90b90e6ffcd2e",
+      "output": "shell-sed-recognition-source.ts",
+      "outputRange": [
+        5754,
+        7308
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

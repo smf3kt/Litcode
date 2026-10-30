@@ -514,7 +514,7 @@
           ],
           "bodySha256": "33cf2d49f7c2fed00dd6b049837594d7b8c1ac1e8e98fef42d796aecbf7cc0d6"
         },
-        "export { xX };\n"
+        "export { xX, att, c3e, SE, T_, nde, y };\n"
       ]
     }
   ]

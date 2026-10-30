@@ -1,0 +1,66 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-command-policy-source-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-command-policy-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declaration. See research/ports/W385-declaration-prefix-preflight.md.\nimport { E6, Vs } from \"./shell-analyser-source.js\";\nimport { w6, Yx } from \"./shell-command-clamp-source.js\";\nimport { gyr } from \"./shell-semantics-source.js\";\nimport { isAbsolute as Cv, normalize as l$, sep as nTr, resolve as rA } from \"node:path\";\nexport function createShellCommandPolicy({ $3e, A3e, ATr, CTr, CX, Cwe, Cy, Dcn, Dl, EX, Edo, Fwe, GTr, MO, MTr, Mcn, Mk, N3e, Nwe, O, O3e, PTr, Q$, QHe, RTr, RX, Rcn, Rl, Sun, TVt, Tv, Uwe, VW, X3, X5e, XYt, Xcn, Y5e, YTr, Ye, _Tr, _n, _un, arn, bG, bL, bwe, d, dO, de, e$, ie, jcn, k, ki, oTr, pTr, pwe, qe, se, to, u3e, vX, wR, x3e, xTr, xwe, yo, yw }) {\n",
+        {
+          "module": "chunk-3qabb19b.js",
+          "moduleSha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+          "symbol": "F",
+          "range": [
+            673,
+            732
+          ],
+          "bodySha256": "8dfba6c6fce4cbf7879b76db23ff835a055481d92e7df90b4d119514b1d6a950"
+        },
+        {
+          "module": "chunk-3qabb19b.js",
+          "moduleSha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+          "symbol": "D",
+          "range": [
+            883,
+            919
+          ],
+          "bodySha256": "e08913e4ba564b11551e01e87af4d4ba5f0fde1d9cce2dc2407afcc87d3df2bb"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ITr",
+          "range": [
+            3234061,
+            3234067
+          ],
+          "bodySha256": "9c205f4dfcf14ada9382959540b35d05bcbcdab699b68788a123abe90b721397",
+          "declarator": true
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "OTr",
+          "range": [
+            3234068,
+            3234077
+          ],
+          "bodySha256": "f325d57913753dec0a510581d9b896a87e55b219cf402dc2192e54f86ec8007a",
+          "declarator": true
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "D3e",
+          "range": [
+            3256051,
+            3265763
+          ],
+          "bodySha256": "ac3f93a8bc2c9233bb2feeff255ed38583d16b02152e43bd53c960436154e2ba"
+        },
+        "return D3e;\n}\n"
+      ]
+    }
+  ]
+}

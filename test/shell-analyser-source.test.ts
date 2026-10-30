@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { vS } from '../src/bash-parser-source.js';
 import { E6, Yx, pyr } from '../src/shell-analyser-source.js';
+import { homedir, withShellAnalysisHome } from '../src/shell-analysis-home.js';
 import { DTr } from '../src/shell-reading-merge-source.js';
 
 function parse(command: string) {
@@ -64,6 +65,36 @@ test('prefix choices retain later readings and restore state between calls', () 
   const alternate = E6(unicode, unicodeTree, prefixOptions(true));
   assert.equal(alternate.kind, 'simple');
   assert.equal(alternate.commands.at(-1)?.text, 'echo new');
+});
+
+test('analysis HOME scopes survive nested and overlapping work without changing the process environment', async () => {
+  const previous = process.env.HOME;
+  const command = 'printf "%s" "$HOME"';
+  const tree = parse(command);
+  const read = () => E6(command, tree).commands[0].argv[2];
+  const unscoped = homedir();
+  let release!: () => void;
+  let started!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const entered = new Promise<void>(resolve => { started = resolve; });
+  const first = withShellAnalysisHome('/fixture/first', async () => {
+    assert.equal(read(), '/fixture/first');
+    assert.equal(withShellAnalysisHome('', () => read()), '');
+    started();
+    await held;
+    return read();
+  });
+  try {
+    await entered;
+    assert.equal(await withShellAnalysisHome('/fixture/second', async () => {
+      await Promise.resolve();
+      return read();
+    }), '/fixture/second');
+    assert.equal(homedir(), unscoped);
+  } finally { release(); }
+  assert.equal(await first, '/fixture/first');
+  assert.equal(homedir(), unscoped);
+  assert.equal(process.env.HOME, previous);
 });
 
 test('source reading merge preserves denials, hard asks and incomplete samples', () => {

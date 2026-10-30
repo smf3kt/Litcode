@@ -27,7 +27,7 @@ test('/skills cycles a mode, reports the row and saves the local override', asyn
     write(chunk, _encoding, done) { value += String(chunk); done(); } }), value: () => value }; })();
   let callbacks: TerminalCallbacks | undefined;
   const requests: TerminalPromptRequest[] = [];
-  const commands: readonly { name: string }[][] = [];
+  const commands: string[][] = [];
   let answered!: () => void;
   const settled = new Promise<void>(resolve => { answered = resolve; });
   const terminal: TerminalSurface = {
@@ -35,7 +35,7 @@ test('/skills cycles a mode, reports the row and saves the local override', asyn
     subscribe(value) { callbacks = value; return () => { callbacks = undefined; }; },
     start() { queueMicrotask(() => callbacks!.onSubmit!('/skills')); },
     close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
-    setCommands(next) { commands.push(next as { name: string }[]); },
+    setCommands(next) { commands.push(next.map(command => command.name)); },
     async prompt(request) {
       requests.push(request);
       if (requests.length === 1) return { selected: ['skill:alpha'] };

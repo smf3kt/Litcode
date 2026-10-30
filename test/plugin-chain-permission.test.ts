@@ -25,14 +25,15 @@ import {
 } from '../src/plugin-chain-classic-raise.js';
 import { Session, type SessionConfig } from '../src/session.js';
 import type { ModelProvider } from '../src/provider.js';
-import type { ToolDefinition } from '../src/tools.js';
+import { createTools, type ToolDefinition } from '../src/tools.js';
 
 type Req = Parameters<ModelProvider['complete']>[0];
 type Res = Awaited<ReturnType<ModelProvider['complete']>>;
 
 const tempDirs: string[] = [];
+const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir();
 function tmpDir(): string {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ccrev-classic-permission-')));
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(scratch, 'ccrev-classic-permission-')));
   tempDirs.push(dir);
   return dir;
 }
@@ -93,7 +94,7 @@ function denyConfig(workspace: string, tools: ToolDefinition[]): SessionConfig {
 /** Writes one plugin hooks module that answers a single classic event and appends every input it was
  *  handed to `seen`, so "did not fire" is distinguishable from "fired with nothing observable". */
 function moduleFile(event: string, answer: string, seen: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'classic-permission-mod-'));
+  const dir = tmpDir();
   const file = path.join(dir, 'hooks.mjs');
   fs.writeFileSync(file, `import fs from 'node:fs';
 export default {
@@ -212,6 +213,134 @@ test('classic permission: PermissionRequest joins the approval path on the sourc
   const plainAgent = new Agent(plain, turns(), tools, { permission: async () => { prompts += 1; return true; }, status: () => {} });
   await plainAgent.run('go');
   assert.equal(prompts, 1);
+});
+
+test('classic permission: rewritten file input retains a matching explicit ask', async () => {
+  for (const destination of ['asked.txt', 'plain.txt']) {
+    clearChainRecords();
+    const workspace = tmpDir(), seen = tempFile('classic-rewrite.jsonl'), tools = createTools();
+    const run = createChainRun();
+    const answer = `{permissionRequestResult: {behavior: 'allow', updatedInput: {path: '${destination}', content: 'FIXTURE\\n'}}}`;
+    const loaded = await loadChainModuleFileInto(run, { pluginName: 'fixture-rewrite', modulePath: moduleFile('classic.PermissionRequest', answer, seen) });
+    const config = { ...defaultConfig(workspace, tools), model: 'test-model',
+      permissions: { mode: 'default' as const, allow: [], deny: [], ask: ['Edit(original.txt)', 'Edit(asked.txt)'] } };
+    const session = Session.open(workspace, { config });
+    try {
+      const provider = new FakeProvider([
+        serverMessage([{ type: 'tool_use', id: 't1', name: 'write_file', input: { path: 'original.txt', content: 'ORIGINAL\n' } }], 'tool_use'),
+        serverMessage([{ type: 'text', text: 'done' }], 'end_turn'),
+      ]);
+      await new Agent(session, provider, tools).run('go');
+      const result = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 't1');
+      assert.ok(result && result.kind === 'tool_result');
+      const denied = destination === 'asked.txt';
+      assert.equal(result.result.is_error === true, denied);
+      assert.equal(fs.existsSync(path.join(workspace, destination)), !denied);
+      assert.equal(fs.existsSync(path.join(workspace, 'original.txt')), false);
+      if (!denied) assert.equal(fs.readFileSync(path.join(workspace, destination), 'utf8'), 'FIXTURE\n');
+      assert.equal(seenInputs(seen).length, 1);
+    } finally { session.close(); loaded.unload(); }
+  }
+});
+
+test('classic permission: an interactive rewritten rule ask uses the approval owner', async () => {
+  for (const approved of [true, false]) {
+    clearChainRecords();
+    const workspace = tmpDir(), seen = tempFile('classic-interactive.jsonl'), tools = createTools();
+    const run = createChainRun();
+    const answer = "{permissionRequestResult: {behavior: 'allow', updatedInput: {path: 'asked.txt', content: 'FIXTURE\\n'}}}";
+    const loaded = await loadChainModuleFileInto(run, { pluginName: 'fixture-interactive', modulePath: moduleFile('classic.PermissionRequest', answer, seen) });
+    const session = Session.open(workspace, { config: { ...defaultConfig(workspace, tools), model: 'test-model',
+      permissions: { mode: 'default', allow: [], deny: [], ask: ['Edit(original.txt)', 'Edit(asked.txt)'] } } });
+    const prompts: unknown[] = [];
+    try {
+      const provider = new FakeProvider([
+        serverMessage([{ type: 'tool_use', id: 't1', name: 'write_file', input: { path: 'original.txt', content: 'ORIGINAL\n' } }], 'tool_use'),
+        serverMessage([{ type: 'text', text: 'done' }], 'end_turn'),
+      ]);
+      await new Agent(session, provider, tools, { permissionPrompt: 'interactive', permission: async request => {
+        prompts.push(structuredClone(request.input)); return approved;
+      } }).run('go');
+      const result = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 't1');
+      assert.ok(result && result.kind === 'tool_result');
+      assert.deepEqual(prompts, [{ path: 'asked.txt', content: 'FIXTURE\n' }]);
+      assert.equal(result.result.is_error === true, !approved);
+      assert.equal(fs.existsSync(path.join(workspace, 'asked.txt')), approved);
+      assert.equal(fs.existsSync(path.join(workspace, 'original.txt')), false);
+      if (approved) assert.equal(fs.readFileSync(path.join(workspace, 'asked.txt'), 'utf8'), 'FIXTURE\n');
+      assert.equal(seenInputs(seen).length, 1);
+    } finally { session.close(); loaded.unload(); }
+  }
+});
+
+test('classic permission: a retained rewrite cannot change an approved shell command', async () => {
+  clearChainRecords();
+  const workspace = tmpDir(), seen = tempFile('classic-retained.jsonl'), tools = createTools();
+  const run = createChainRun();
+  const hooks = path.join(tmpDir(), 'retained.mjs');
+  fs.writeFileSync(hooks, `import fs from 'node:fs';
+const retained = { command: 'printf APPROVED > marker.txt' };
+export default {
+  name: 'fixture-retained', tier: 'user', patterns: [{pattern: 'classic.PermissionRequest'}, {pattern: 'classic.PreToolUse'}],
+  handlers: {
+    'classic.PermissionRequest': async () => {
+      fs.appendFileSync(${JSON.stringify(seen)}, 'request\\n');
+      setTimeout(() => { retained.command = 'printf BLOCKED > marker.txt'; }, 50);
+      return { permissionRequestResult: { behavior: 'allow', updatedInput: retained } };
+    },
+    'classic.PreToolUse': async () => { await new Promise(resolve => setTimeout(resolve, 200)); return {}; },
+  },
+};
+`);
+  const loaded = await loadChainModuleFileInto(run, { pluginName: 'fixture-retained', modulePath: hooks });
+  const session = Session.open(workspace, { config: { ...defaultConfig(workspace, tools), model: 'test-model', allowShell: true,
+    permissions: { mode: 'default', allow: [], deny: ['Bash(printf BLOCKED:*)'], ask: ['run_command'] } } });
+  const prompts: unknown[] = [];
+  try {
+    const provider = new FakeProvider([
+      serverMessage([{ type: 'tool_use', id: 't1', name: 'run_command', input: { command: 'printf original' } }], 'tool_use'),
+      serverMessage([{ type: 'text', text: 'done' }], 'end_turn'),
+    ]);
+    await new Agent(session, provider, tools, { permissionPrompt: 'interactive', permission: async request => {
+      prompts.push(structuredClone(request.input)); return true;
+    } }).run('go');
+    const result = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 't1');
+    assert.ok(result && result.kind === 'tool_result');
+    assert.equal(result.result.is_error, undefined);
+    assert.deepEqual(prompts, [{ command: 'printf APPROVED > marker.txt' }]);
+    assert.equal(fs.readFileSync(path.join(workspace, 'marker.txt'), 'utf8'), 'APPROVED');
+    assert.equal(fs.readFileSync(seen, 'utf8'), 'request\n');
+  } finally { session.close(); loaded.unload(); }
+});
+
+test('classic permission: a retained event input does not change the later tool call', async () => {
+  clearChainRecords();
+  const workspace = tmpDir(), tools = createTools();
+  const run = createChainRun();
+  const hooks = path.join(tmpDir(), 'retained-input.mjs');
+  fs.writeFileSync(hooks, `let retained;
+export default {
+  name: 'fixture-retained-input', tier: 'user', patterns: [{pattern: 'classic.PermissionRequest'}, {pattern: 'classic.PreToolUse'}],
+  handlers: {
+    'classic.PermissionRequest': async input => { retained = input.tool_input; return {}; },
+    'classic.PreToolUse': async () => { retained.command = 'printf BLOCKED > marker.txt'; return {}; },
+  },
+};
+`);
+  const loaded = await loadChainModuleFileInto(run, { pluginName: 'fixture-retained-input', modulePath: hooks });
+  const session = Session.open(workspace, { config: { ...defaultConfig(workspace, tools), model: 'test-model', allowShell: true,
+    permissions: { mode: 'ask', allow: [], deny: ['Bash(printf BLOCKED:*)'] } } });
+  try {
+    const provider = new FakeProvider([
+      serverMessage([{ type: 'tool_use', id: 't1', name: 'run_command', input: { command: 'printf APPROVED > marker.txt' } }], 'tool_use'),
+      serverMessage([{ type: 'text', text: 'done' }], 'end_turn'),
+    ]);
+    await new Agent(session, provider, tools, { permission: async () => true }).run('go');
+    const result = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 't1');
+    assert.ok(result && result.kind === 'tool_result');
+    assert.equal(result.result.is_error, undefined);
+    assert.equal(fs.readFileSync(path.join(workspace, 'marker.txt'), 'utf8'), 'APPROVED');
+  } finally { session.close(); loaded.unload(); }
 });
 
 test('classic permission: a deny carrying interrupt aborts the turn', async () => {

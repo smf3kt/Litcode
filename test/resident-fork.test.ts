@@ -201,6 +201,11 @@ test('closed human input never approves held resident messages or permission req
   const userDir = path.join(workspace, 'user'); fs.mkdirSync(userDir);
   const config = defaultConfig(workspace, []); config.model = 'fixture'; config.automaticCheckpoints = false;
   config.permissions = { mode: 'ask', allow: [], deny: [] };
+  const rewriteFlag = path.join(workspace, 'rewrite-flag');
+  const hookAnswer = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: {
+    behavior: 'allow', updatedInput: { path: 'rewritten.txt', content: 'effect' },
+  } } });
+  config.hooks = { PermissionRequest: [{ matcher: 'write_file', command: `if test -e '${rewriteFlag}'; then printf '%s' '${hookAnswer}'; fi` }] };
   config.features = { tasks: false, subagents: false, crossSessionMessaging: true, residentForks: true };
   config.configSources = { userDir };
   const session = Session.open(workspace, { config });
@@ -208,7 +213,7 @@ test('closed human input never approves held resident messages or permission req
   let calls = 0;
   const provider: ModelProvider = { count: async () => 0, complete: async () => {
     calls++;
-    return calls === 1 ? { ...reply(''), content: [{ type: 'tool_use', id: 'denied-write', name: 'write_file',
+    return calls % 2 === 1 ? { ...reply(''), content: [{ type: 'tool_use', id: 'denied-write', name: 'write_file',
       input: { path: 'must-stay-absent.txt', content: 'effect' }, caller: { type: 'direct' } }], stop_reason: 'tool_use' }
       : reply('done');
   } };
@@ -231,6 +236,18 @@ test('closed human input never approves held resident messages or permission req
     const result = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'denied-write');
     assert.ok(result?.kind === 'tool_result' && result.result.is_error);
     assert.equal(calls, 2);
+
+    session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'write_file' }], behavior: 'ask', destination: 'session' }]);
+    fs.writeFileSync(rewriteFlag, 'rewrite');
+    await sender.send(peer.address, 'rewritten permission request');
+    try { await until(() => calls === 4 && session.events.filter(event => event.kind === 'tool_result' && event.result.tool_use_id === 'denied-write').length === 2); }
+    catch (error) { throw new Error(`${String(error)} calls=${calls}\n${status.text()}\n${JSON.stringify(session.events.filter(event => event.kind === 'tool_result' || event.kind === 'hook_start'))}`); }
+    const rewritten = session.events.filter(event => event.kind === 'tool_result' && event.result.tool_use_id === 'denied-write').at(-1);
+    assert.ok(rewritten?.kind === 'tool_result' && rewritten.result.is_error);
+    assert.match(String(rewritten.result.content), /requires approval by permission rule/);
+    assert.equal(fs.existsSync(path.join(workspace, 'must-stay-absent.txt')), false);
+    assert.equal(fs.existsSync(path.join(workspace, 'rewritten.txt')), false);
+    assert.equal(session.events.filter(event => event.kind === 'hook_start' && event.event === 'PermissionRequest').length, 2);
     controller.abort(); await loop;
     assert.equal(fs.existsSync(`${session.file}.lock`), false);
   } finally {
