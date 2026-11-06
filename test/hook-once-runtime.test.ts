@@ -9,6 +9,7 @@ import type { ModelProvider } from '../src/provider.js';
 import { forkSession } from '../src/sessions.js';
 import { parseSettings } from '../src/runtime.js';
 import { executeSkill } from '../src/skill-runtime.js';
+import { issueHumanSkillAuthorization } from '../src/notification-authorization.js';
 
 function command(script: string): string {
   return `${JSON.stringify(process.execPath)} -e '${script.replaceAll("'", "'\\''")}'`;
@@ -77,12 +78,18 @@ test('grouped skill commands are approved before child journals or hook effects'
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
   const output = path.join(workspace, 'effects.txt');
   const config = { ...defaultConfig(workspace, []), model: 'fixture', allowShell: true };
-  await assert.rejects(executeSkill({ name: 'grouped', path: '/fixture/SKILL.md', description: 'Fixture',
-    body: 'Run the fixture', userInvocable: true, disableModelInvocation: false,
-    hooks: { SessionStart: [{ hooks: [{ command: command(`require("node:fs").writeFileSync(${JSON.stringify(output)},"effect");`) }] }] },
-  }, '', { config, provider, tools: [], signal: new AbortController().signal, source: 'user' }), /approval/);
-  assert.equal(fs.existsSync(output), false);
-  assert.equal(fs.existsSync(path.join(workspace, '.agent')), false);
+  const session = Session.open(workspace, { config }), signal = new AbortController().signal;
+  const journals = fs.readdirSync(path.join(workspace, '.agent')).sort(), before = fs.readFileSync(session.file, 'utf8');
+  try {
+    await assert.rejects(executeSkill({ name: 'grouped', path: '/fixture/SKILL.md', description: 'Fixture',
+      body: 'Run the fixture', userInvocable: true, disableModelInvocation: false,
+      hooks: { SessionStart: [{ hooks: [{ command: command(`require("node:fs").writeFileSync(${JSON.stringify(output)},"effect");`) }] }] },
+    }, '', { config, provider, tools: [], signal, source: 'user', session: () => session,
+      humanAuthorization: issueHumanSkillAuthorization(session, 'grouped', '', signal, () => session.isOpen) }), /approval/);
+    assert.equal(fs.existsSync(output), false);
+    assert.deepEqual(fs.readdirSync(path.join(workspace, '.agent')).sort(), journals);
+    assert.equal(fs.readFileSync(session.file, 'utf8'), before);
+  } finally { await session.close(); }
 });
 
 test('merged hook count overflow is rejected before skill shell expansion performs effects', async t => {
@@ -94,10 +101,16 @@ test('merged hook count overflow is rejected before skill shell expansion perfor
     hooks: { SessionStart: Array.from({ length: 1024 }, () => ({ command: 'true' })) },
   };
   const expansion = command(`require("node:fs").writeFileSync(${JSON.stringify(output)},"effect");`);
-  await assert.rejects(executeSkill({ name: 'overflow', path: '/fixture/SKILL.md', description: 'Fixture',
-    body: "Task !`" + expansion + "`", shell: '/bin/sh', userInvocable: true, disableModelInvocation: false,
-    hooks: { SessionStart: [{ command: 'true' }] },
-  }, '', { config, provider, tools: [], signal: new AbortController().signal, source: 'user' }), /1024/);
-  assert.equal(fs.existsSync(output), false);
-  assert.equal(fs.existsSync(path.join(workspace, '.agent')), false);
+  const session = Session.open(workspace, { config }), signal = new AbortController().signal;
+  const journals = fs.readdirSync(path.join(workspace, '.agent')).sort(), before = fs.readFileSync(session.file, 'utf8');
+  try {
+    await assert.rejects(executeSkill({ name: 'overflow', path: '/fixture/SKILL.md', description: 'Fixture',
+      body: "Task !`" + expansion + "`", shell: '/bin/sh', userInvocable: true, disableModelInvocation: false,
+      hooks: { SessionStart: [{ command: 'true' }] },
+    }, '', { config, provider, tools: [], signal, source: 'user', session: () => session,
+      humanAuthorization: issueHumanSkillAuthorization(session, 'overflow', '', signal, () => session.isOpen) }), /1024/);
+    assert.equal(fs.existsSync(output), false);
+    assert.deepEqual(fs.readdirSync(path.join(workspace, '.agent')).sort(), journals);
+    assert.equal(fs.readFileSync(session.file, 'utf8'), before);
+  } finally { await session.close(); }
 });

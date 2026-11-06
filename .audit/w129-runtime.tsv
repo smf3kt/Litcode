@@ -1,0 +1,3 @@
+2026-10-17T23:20:00Z	package	W129-01 启动头部	Hee chunk-9c78dh5n.js [960,15899)；A=58、z=30；light/dark分支与16行艺术	紧凑条件、主题分支、内联Text与颜色、版本来源	tsc 0；build 0；聚焦75/75；120x40与80x24 PTY；首条消息清除
+2026-10-17T23:25:00Z	decision	W129-01 适配	产品名中性化；V未移植；屏幕阅读器恒false；仅transcript为空显示	版本由cliVersion传入；渲染缓存按列数/紧凑/版本/主题	无依赖变化
+2026-10-17T23:30:00Z	verification	W129-01 验收：聚焦75/75、notices 0、索引不变	identity b86d2a9d…；构建后dist含welcome	.audit/w129-01-focused.txt、.audit/w129-01-build.txt、.audit/w129-01-identity.txt

@@ -1,0 +1,11 @@
+{
+  "blocks": [
+    {"file":"chunk-fa626f29.js","range":[896,2048],"note":"IT progress bar and glyph geometry"}
+  ],
+  "imports": [
+    "import { w, Xe as e, Xe as r, n, earlyReturn as bn } from './plugin-chain-react-hooks.js';",
+    "import { vi } from './tui-render-host.js';",
+    "var Nx={hasGeometricShapesInkBleedBug:()=>false};"
+  ],
+  "exports": ["IT"]
+}

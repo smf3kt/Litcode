@@ -15,6 +15,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     ...(current.policyHelperText === undefined ? {} : { policyHelperText: current.policyHelperText }) });
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
+  if (settings.plansDirectory !== undefined) next.plansDirectory = settings.plansDirectory;
+  else delete next.plansDirectory;
   next.settingSources = loaded.settingSources;
   // The external-include switch and the last skipped set follow the reload: a
   // new user setting admits the imports, and a removed one drops them again.

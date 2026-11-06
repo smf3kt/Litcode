@@ -1,0 +1,51 @@
+{
+  "package": "W183 bounded content residuals",
+  "status": "bounded_independent_recheck_passed",
+  "independentRecheck": {"result": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-content-independent-result.json", "pass": true, "scope": "Fresh public Session/adopt/permissionDecision inputs for retained deny/ask twins, no allow expansion, absent user root and unsupported startup restrictions; writer actual-effect chain recorded separately", "distOnlyPeerHash": "fa040881d10e32b6067836014b8499e6d7049058e727e0577abff6c1ac650d3f"},
+  "identity": "729b512dd553730c4d8c3173265bafa0fad616aa958df8099462b91f63557674",
+  "directory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-residuals.ZMk1cN5C",
+  "changedFiles": ["src/permission-content-source.ts", "src/permission-content-source-blocks.json", "src/permission-content.ts", "src/permissions.ts", "src/session.ts", "test/agent-lifecycle.test.ts", ".audit/w183-content-residual-evidence.json"],
+  "source": {
+    "coordinates": "zero-based UTF-16 half-open",
+    "chunk-2bcyxj9q.js": {"sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0", "ranges": {"gRt": [217195,217458], "xf_Cf_copied": [221216,221752], "Nn_adapted": [221752,223408], "Ui": [225036,225815], "ZYt": [226996,227149]}},
+    "chunk-gyf58rwf.js": {"sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad", "ranges": {"FN": [71702,73374]}},
+    "chunk-x0dc37w9.js": {"sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92", "ranges": {"Txe": [88192,88226]}},
+    "chunk-3cynezh1.js": {"sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3", "ranges": {"Ynn": [398204,398553], "Fko": [400577,400665], "GW": [400882,401146]}},
+    "familyAndOwnerClosure": {
+      "chunk-nkb63p1y.js": {"sha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c", "B_eStart": 14359},
+      "chunk-r2vtj1kh.js": {"sha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515", "EditDeclarationStart": 165134},
+      "chunk-1d8w1b0d.js": {"sha256": "5d13c6864bfc2d14f352cc0c96a15ebd168e1256ac4feec25006b0c7816b5b20", "ReadDeclarationStart": 635},
+      "chunk-hwpb27as.js": {"sha256": "c5f6d5b8fb187a14de3db7aebcb5615a3632aa34a0e174c54d38607e7c5ead8e", "physicalTwinsByPatternStart": 39780, "e$Start": 40541}
+    }
+  },
+  "port": {
+    "Cf": "copy, including xf declaration; generator emits 12 exact blocks, 3816 UTF-16 units; generated per-block digest ledger remains src/permission-content-source-blocks.json",
+    "generator": "node scripts/copy-module-regions.mjs JOBDIR/content-plan.json extracted-v2/modules/ src/permission-content-source.ts",
+    "FNHostAdaptation": "Cf calls existing resolveChain for local absolute paths, preserving missing-leaf resolution and bounded symlink ancestry. FN can return undefined or a partially followed path after failure; resolveChain throws on loops, unreadable/noncanonical ancestry and network landing. Cf catches and skips that physical twin. No recovered entrypoint executes.",
+    "Nn": "adapt root-NUL-pattern sets to Session contentRuleOwner token retained by KI spread and every effective policy projection. Original host-owned e$ cache becomes one weakly retained owner map. No allow twins. Restrictive patterns retain their source group and system-root twin.",
+    "roots": "Session supplies resolved user directory before any file/layer exists; project/local remain workspace rooted. No settings persistence result determines the root.",
+    "startupUnsupported": "Explicit local host adaptation. Unknown restrictive content consumer matching current tool yields deny with Unsupported restrictive permission content consumer before effects; unrelated tools and unknown allow patterns retain existing behavior. Dynamic strict update narrowing remains intact.",
+    "mappedConsumers": "Read/Edit source families are retained with existing local mapping. Actual path inputs reviewed in tools.ts, media.ts, notebooks.ts and lsp.ts. Affected consumer suites passed. Independent coordinator LSP actual external-root probe belongs to its separate identity. LSP remains outside content family mapping and restrictive LSP content has the explicit unsupported outcome."
+  },
+  "validation": {
+    "baseline": "before-final.log reproduces all three residuals FAIL against previous frozen dist a7a5beba scope",
+    "focused": "focused.log passes existing third group; no fourth regression group added",
+    "check": {"exit": 0, "log": "check.log"},
+    "build": {"exit": 0, "log": "build.log"},
+    "affected": {"exit": 0, "passed": 215, "failed": 0, "log": "affected.log", "files": ["test/agent-lifecycle.test.ts", "test/permissions.test.ts", "test/path-identity.test.ts", "test/shell-permissions.test.ts", "test/config.test.ts", "test/reload.test.ts", "test/notebooks.test.ts", "test/media.test.ts", "test/lsp.test.ts"]},
+    "compiled": {"exit": 0, "log": "compiled-verified.log", "driver": "probe.mjs", "outcomes": ["deny and ask retain physical twins after alias retarget with missing leaf", "another owner with the same raw pattern does not inherit old twins", "allow does not gain physical twins", "removal releases old landing", "absent first userSettings file uses user config root with actual project write", "unsupported startup deny/ask block actual custom tool effects"]},
+    "identityFile": "identity-final.json",
+    "diffCheckExit": 0,
+    "cleanup": "Each compiled scenario closes all Sessions and removes its owned fixture directory in finally. No recovered application, external network, paid upstream, staging or git writes ran."
+  },
+  "failuresAndCorrections": [
+    "Initial source extraction node -e had mismatched brackets and exited before reading/writing source; corrected entries object and saved exact bodies with module hashes.",
+    "An rg glob matched no script and zsh rejected that lookup; corrected bounded explicit searches.",
+    "Baseline custom fixture first failed Session schema identity, then empty model from defaultConfig override. Corrected driver toolSchemas and model; before-final.log then demonstrated actual unsupported startup effects passing before fix.",
+    "Compiled removal assertion failed because second owner created the file and write_file requires overwrite:true. Diagnostic logged exact tool result. Added overwrite:true; product code unchanged; compiled-verified.log passes all scenarios. Earlier attempt added a read without addressing overwrite, retained in compiled-final.log."
+  ],
+  "standards": "S-1 reproduce and inspect actual errors; S-2 no permission broadening; S-3 no rendering changes; S-4 owner observation isolation; S-5 literal filesystem assertions; S-6 projection/session wiring and compiled driver; S-7 exact recovered bodies hashed before edits. apply_patch absent from callable tools and PATH; documented Edit/Write fallback used.",
+  "principles": {"Fix Root Causes": "Read Cf/Nn and destination owners before fixes", "Model the Domain": "Owner-scoped root-NUL-pattern observation map", "Type System Discipline": "Keep source behavior union and inferred policy shape", "Prove It Works": "Original compiled failures and final actual tool/file effects"},
+  "remaining": ["independent recheck after this freeze", "full W183 auto/recovery/child/skill inheritance and whole-package CLI acceptance remain coordinator scope", "local legacy revocation belongs to next writer", "FN Windows/network-specific branches remain outside local resolveChain adaptation"],
+  "preserved": ["all cumulative W183 directory observations and repairs", "research/CURRENT.md and research/FEATURES.md untouched by this writer", ".audit/w45-77-evidence.mjs untouched", "all unrelated and unknown files untouched"]
+}

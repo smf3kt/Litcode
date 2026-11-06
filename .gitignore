@@ -1,6 +1,11 @@
 node_modules/
 dist/
 native/peer-identity/*.node
+native/file-lock/*.node
+native/directory-read/read
+native/directory-write/write
+native/shell-supervisor/supervisor
+.DS_Store
 extracted*/
 .agent/
 .env

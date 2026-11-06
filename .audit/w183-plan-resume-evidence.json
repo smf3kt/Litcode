@@ -1,0 +1,15 @@
+{
+  "package":"W183 local conditional PLAN resume",
+  "status":"bounded_independent_history_review_passed",
+  "independentReview":{"result":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-plan-independent-result.json","pass":true,"scope":"Fresh publicAPI+actualSessionhistory stored none/exited/open, firstvisit/live deny, falseexit text/submit_plan and fork/rewind prefix reopen; CLI dispatch belongs to separately reviewed writer36request evidence","distPeerHash":"0b9cdb93c94964e534b94255edbc9083a1e3c78f95fa5de211b905e2193469a1","open":"Ordinary fork live permission inheritance source contract remains unresolved; current CLI metadata-ask fork assertion is not proof of source fidelity"},
+  "coordinatorLedgerVerification":{"blocks":50,"utf16Units":9791,"allModuleAndBodyHashesMatch":true},
+  "identity":"c769411def8059923ea3c7a4cd6fcc7c30cd6571f99e7ebba000b2c5e72f66fa",
+  "sourceEvidence":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-plan-closure.json",
+  "writerEvidence":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-plan-final-evidence.json",
+  "identityFile":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-plan-final-identity.json",
+  "sourceCopies":{"resume":{"blocks":11,"utf16Units":2739},"transition":{"blocks":10,"utf16Units":2768},"deny":{"blocks":15,"utf16Units":2221},"glob":{"blocks":6,"utf16Units":1066},"toolName":{"blocks":3,"utf16Units":497},"history":{"blocks":5,"utf16Units":500}},
+  "validation":{"check":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-ignore-writer-ttNuAv/check.txt","build":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-ignore-writer-ttNuAv/build.txt","affected":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-ignore-writer-ttNuAv/affected.txt","pass":201,"fail":0,"compiledCli":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-plan-cli-GL2OQI/result.json","requests":36,"scope":"Actual A/B/C firstvisit/live rules/explicitexit/submit_plan approved still plan/compaction/fork/rewind prefix; owned stale and missing metadata mutations explicitly labelled"},
+  "hostDifferences":["Typed trusted local command enter/exit/select facts project to recovered H9n; submit_plan has no mode authority","Explicit local plan-to-nonplan command is an exit attachment; generic newer nonplan annotation remains none","Source offline default pinned per interactive owner","Auto-during-plan inactive until owned classifier integration, prePlanMode retained","Virtual ExitPlanMode descriptor and neutral telemetry adapters"],
+  "remaining":["Independent fresh-input review","Shared child PermissionRequest adoption repair","Auto classifier and full auto parity","Final W183 integrated CLI/full suite/review and broader C area"],
+  "coordinator":"Read actual final check/build/test and CLI result, confirmed final201pass/36requests identity; no package completion claim"
+}

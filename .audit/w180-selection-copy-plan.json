@@ -1,0 +1,13 @@
+{
+  "blocks": [
+    {"file":"chunk-06azbynj.js","range":[214541,224374],"note":"native selection state, scoped drag, text extraction, scroll carry and paint"},
+    {"file":"chunk-06azbynj.js","range":[250176,250654],"note":"Vd selection scope hit test"}
+  ],
+  "imports": [
+    "import { Zt, Nee, po } from './tui-render-engine.js';",
+    "import { cq } from './tui-native-input-source.js';",
+    "import { ad } from './diff-dialog-list-source.js';",
+    "var Cn=3,Ur=32768;function ho(n){return n&32767}"
+  ],
+  "exports": ["Eg","Pd","xg","Kr","Kl","Rg","Ag","Ng","wg","kn","Hg","Lg","_g","Bd","Vd","Dg"]
+}

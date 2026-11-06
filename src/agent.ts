@@ -4,15 +4,20 @@ import { autoModeDenialDisplay, autoModeDenialInputKey } from './permission-deni
 import { cloneClassifierMessages, type MessageOrigin } from './message-origin.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Session, type SessionConfig, type ToolResult } from './session.js';
+import { bindNotificationMessage, type NotificationAuthorization } from './notification-authorization.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
-import type { ToolDefinition, ToolContext } from './tools.js';
+import { executeAgentTool, consumeBuiltinWriteExecution, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
+import { ToolCancellation } from './tool-cancellation.js';
+import { PathApprovalCallOwner, type PathApprovalCall } from './path-approval-call-owner.js';
 import { randomUUID } from 'node:crypto';
+import { types as utilTypes } from 'node:util';
 import { planModeReminder } from './plan-mode.js';
 import { existsSync } from 'node:fs';
 import { PROMPT_PREDICTION_INSTRUCTION, normalizePromptSuggestion, promptPredictionEligible,
   promptSuggestionRejection, type PromptPrediction } from './prompt-suggestions.js';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
-import { DEFAULT_ALLOW_SHELL, parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
+import { DEFAULT_ALLOW_SHELL, parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema, sourceReadAutomaticallyAllowed } from './permissions.js';
+import { sourceLocalPreReadGuard } from './controlled-read-projection-source.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
 import { fTr } from './shell-command-clamp-source.js';
 import { withShellAnalysisHome } from './shell-analysis-home.js';
@@ -24,7 +29,7 @@ import { ToolFeedbackError, type ToolFeedbackBlock } from './tool-feedback.js';
 import { projectToolUseResult, type StoredToolUseResult } from './tool-use-result.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
-import { automaticCheckpoint } from './rewind.js';
+import { automaticCheckpointWithDirectoryWitness } from './rewind.js';
 import { readTaskRecord, removeTask } from './tasks.js';
 import { WORKTREE_DIRECTORY } from './worktrees.js';
 import type { AgentProgressEvent } from './tui-progress.js';
@@ -41,6 +46,126 @@ import { classifySideQuestion, sideQuestionHistoryText, sideQuestionUserContent,
 import type { ContextCounts } from './context-panel.js';
 import { contextDetails } from './context-details.js';
 import { HOST_IDENTITY, hostContext } from './host-context.js';
+import { SkillEffectRecoveryError } from './skill-effects.js';
+import { describeDirectoryWriteInput, directoryWriteFingerprint, issueDirectoryPublicationAuthorization } from './directory-publication-authorization.js';
+import { runtimeWriteOwner } from './runtime-write-start.js';
+
+export type RuntimeWriteAuthorization = object;
+type RuntimeWriteStart = { kind: 'tool_start'; id: string; name: 'write_file'; parentMessageId: string; writeInputDigest: string;
+  runtimeWriteOwner: { owner: string; incarnation: string } };
+type RuntimeWriteExecution = Extract<import('./session.js').SessionEvent, { kind: 'runtime_write_execution' }>;
+type RuntimeWriteGrant = { session: Session; tool: ToolDefinition; call: PathApprovalCall; signal: AbortSignal;
+  authorizationSignal: AbortSignal; input: unknown; event: RuntimeWriteStart; state: 'issued' | 'started' | 'entered' | 'completed' };
+type RuntimeWriteJournalGrant = { kind: 'start'; grant: RuntimeWriteGrant } |
+  { kind: 'execution'; grant: RuntimeWriteGrant; event: RuntimeWriteExecution };
+const runtimeWriteGrants = new WeakMap<RuntimeWriteAuthorization, RuntimeWriteJournalGrant>();
+type HookCall = { toolUseId: string; parentMessageId: string };
+
+function startData(value: unknown, key: PropertyKey): unknown {
+  if (typeof value !== 'object' || value === null || utilTypes.isProxy(value)) return;
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+}
+
+function sameRuntimeWriteEvent(value: unknown, expected: RuntimeWriteStart | RuntimeWriteExecution): boolean {
+  if (typeof value !== 'object' || value === null || utilTypes.isProxy(value)) return false;
+  if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) return false;
+  const keys = Reflect.ownKeys(value), expectedKeys = Reflect.ownKeys(expected);
+  if (keys.length !== expectedKeys.length || expectedKeys.some(key => !keys.includes(key))) return false;
+  for (const key of expectedKeys)
+    if (key !== 'runtimeWriteOwner' && startData(value, key) !== startData(expected, key)) return false;
+  const owner = startData(value, 'runtimeWriteOwner');
+  if (typeof owner !== 'object' || owner === null || utilTypes.isProxy(owner)) return false;
+  if (Object.getPrototypeOf(owner) !== Object.prototype && Object.getPrototypeOf(owner) !== null) return false;
+  const ownerKeys = Reflect.ownKeys(owner);
+  return ownerKeys.length === 2 && ownerKeys.includes('owner') && ownerKeys.includes('incarnation') &&
+    startData(owner, 'owner') === expected.runtimeWriteOwner.owner && startData(owner, 'incarnation') === expected.runtimeWriteOwner.incarnation;
+}
+
+function validRuntimeWriteStart(grant: RuntimeWriteGrant): boolean {
+  try {
+    const { session, tool, call, signal, authorizationSignal, input, event } = grant;
+    const owner = runtimeWriteOwner(tool, session);
+    if (!owner || owner.owner !== event.runtimeWriteOwner.owner || owner.incarnation !== event.runtimeWriteOwner.incarnation ||
+        utilTypes.isProxy(call) || signal.aborted || authorizationSignal.aborted || !call.isActive || call.providerId !== event.id) return false;
+    const witness = describeDirectoryWriteInput(session, input);
+    if (!witness || directoryWriteFingerprint(witness) !== event.writeInputDigest) return false;
+    const events = startData(session, 'events');
+    if (!Array.isArray(events) || utilTypes.isProxy(events)) return false;
+    let parent: unknown, parents = 0;
+    for (let i = 0; i < events.length; i++) {
+      const row = startData(events, String(i));
+      if (startData(row, 'kind') === 'message' && startData(row, 'messageId') === event.parentMessageId) { parent = row; parents++; }
+    }
+    const message = startData(parent, 'message'), content = startData(message, 'content');
+    if (parents !== 1 || startData(message, 'role') !== 'assistant' || !Array.isArray(content) || utilTypes.isProxy(content)) return false;
+    let calls = 0;
+    for (let i = 0; i < content.length; i++) {
+      const block = startData(content, String(i));
+      if (startData(block, 'type') === 'tool_use' && startData(block, 'id') === event.id && startData(block, 'name') === 'write_file') calls++;
+    }
+    return calls === 1;
+  } catch { return false; }
+}
+
+// Host call capability for Kt/KWo, hwpb27as [121053,123737), sfn1dbxq [2275902,2308030), UTF-16.
+function issueRuntimeWriteStart(input: { session: Session; tool: ToolDefinition; call: PathApprovalCall; signal: AbortSignal;
+  authorizationSignal: AbortSignal; value: unknown; id: string; parentMessageId: string; writeInputDigest: string }):
+  { event: RuntimeWriteStart; authorization: RuntimeWriteAuthorization;
+    observe(authorization: BuiltinWriteExecutionAuthorization, context: ToolContext): void } | undefined {
+  const owner = runtimeWriteOwner(input.tool, input.session);
+  if (!owner) return;
+  const event: RuntimeWriteStart = { kind: 'tool_start', id: input.id, name: 'write_file', parentMessageId: input.parentMessageId,
+    writeInputDigest: input.writeInputDigest, runtimeWriteOwner: owner };
+  const grant: RuntimeWriteGrant = { session: input.session, tool: input.tool, call: input.call, signal: input.signal,
+    authorizationSignal: input.authorizationSignal, input: input.value, event: structuredClone(event), state: 'issued' };
+  if (!validRuntimeWriteStart(grant)) return;
+  const authorization = {};
+  runtimeWriteGrants.set(authorization, { kind: 'start', grant });
+  return { event, authorization, observe(authorization, context) {
+    const observed = consumeBuiltinWriteExecution(authorization, grant.tool, grant.input, context);
+    const selected = grant.event;
+    if (!observed || context.session !== grant.session || context.toolUseId !== selected.id ||
+        context.signal !== grant.signal || context.pathApprovalCall !== grant.call ||
+        context.authorizationIdentity?.signal !== grant.authorizationSignal ||
+        context.workspace !== grant.session.config.workspace || !validRuntimeWriteStart(grant)) return;
+    const actual = describeDirectoryWriteInput(grant.session, observed.input);
+    if (!actual || directoryWriteFingerprint(actual) !== selected.writeInputDigest) return;
+    const { input: _parsedInput, ...boundary } = observed;
+    const execution: RuntimeWriteExecution = { kind: 'runtime_write_execution', id: selected.id,
+      parentMessageId: selected.parentMessageId, writeInputDigest: selected.writeInputDigest,
+      runtimeWriteOwner: { ...selected.runtimeWriteOwner }, ...boundary };
+    const token = {};
+    runtimeWriteGrants.set(token, { kind: 'execution', grant, event: structuredClone(execution) });
+    try { grant.session.append(execution, undefined, undefined, token); }
+    finally { runtimeWriteGrants.delete(token); }
+  } };
+}
+
+export function consumeRuntimeWriteAuthorization(authorization: RuntimeWriteAuthorization, session: Session, event: unknown): unknown {
+  const saved = runtimeWriteGrants.get(authorization);
+  if (authorization) runtimeWriteGrants.delete(authorization);
+  const error = saved?.kind === 'execution' || startData(event, 'kind') === 'runtime_write_execution'
+    ? 'Runtime Write execution authorization invalid' : 'Runtime Write start authorization invalid';
+  if (!saved || saved.grant.session !== session || !validRuntimeWriteStart(saved.grant)) throw new Error(error);
+  const { grant } = saved;
+  if (saved.kind === 'start') {
+    if (grant.state !== 'issued' || !sameRuntimeWriteEvent(event, grant.event)) throw new Error(error);
+    grant.state = 'started';
+    return structuredClone(grant.event);
+  }
+  if (!sameRuntimeWriteEvent(event, saved.event)) throw new Error(error);
+  const start = session.events.findLastIndex(row => sameRuntimeWriteEvent(row, grant.event));
+  if (start < 0) throw new Error(error);
+  const later = session.events.slice(start + 1);
+  const executions = later.filter((row): row is RuntimeWriteExecution => row.kind === 'runtime_write_execution' && row.id === grant.event.id &&
+    row.parentMessageId === grant.event.parentMessageId);
+  if (later.some(row => (row.kind === 'tool_effect' || row.kind === 'tool_result') && row.result.tool_use_id === grant.event.id) ||
+      (saved.event.phase === 'entered' ? grant.state !== 'started' || executions.length !== 0 :
+        grant.state !== 'entered' || executions.length !== 1 || executions[0]?.phase !== 'entered')) throw new Error(error);
+  grant.state = saved.event.phase;
+  return structuredClone(saved.event);
+}
 
 // Nl, chunk-14rnebpd.js [275300,275362), UTF-16; adapt the primary product identity to LiTcode.
 export const DEFAULT_SYSTEM = `${HOST_IDENTITY} Complete the user's task using the workspace tools.
@@ -112,11 +237,14 @@ export type StopSessionCron = { id: string; schedule: string; recurring: boolean
 export type StopRuntimeState = { background_tasks: StopBackgroundTask[]; session_crons: StopSessionCron[] };
 
 export type AgentEvents = { text?: (text: string) => void; status?: (status: string) => void;
+  toolUse?: (message: Anthropic.ToolUseBlockParam) => void;
+  agentProgress?: (event: { agentId: string; toolUseId: string; message: Anthropic.ToolUseBlockParam }) => void;
+  clearAgentProgress?: (toolUseId: string) => void;
   textStart?: () => void; textEnd?: () => void;
   progress?: (event: AgentProgressEvent) => void;
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
-  permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
+  permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal; authorizationIdentity: { readonly signal: AbortSignal } }) => Promise<boolean>;
   permissionPrompt?: 'interactive' | 'unavailable';
   /** One finished tool call after its post hook, for the live result rows. */
   toolResult?: (result: import('./tui-tool-result.js').ToolDisplayResult) => void;
@@ -188,7 +316,17 @@ export class Agent {
   private endedByTool = false;
   private ended = false;
   private turnTiming: {uuid:string; startedAt:number} | undefined;
-  private autoPriorOutcomes: Record<string, string> = {};
+  // Be, chunk-4bw62nzm.js [51037,52888), UTF-16; host calls use isolated keys.
+  private readonly pathApprovalOwner = new PathApprovalCallOwner();
+  private turnLayers: import('./tools.js').ToolResultContextLayer[] = [];
+  // de/d, chunk-p46ep603 [967,1538), [3900,5234), UTF-16: project onto the latest owner state.
+  private permissionState(): import('./permissions.js').SessionPermissionUpdates {
+    const state = this.session.permissionOwner.state();
+    const rules = this.turnLayers.flatMap(layer => layer.allowedTools);
+    if (!rules.length) return state;
+    const alwaysAllowRules = { ...state.alwaysAllowRules, command: [...new Set([...(state.alwaysAllowRules.command ?? []), ...rules])] };
+    return { ...state, alwaysAllowRules, allow: Object.values(alwaysAllowRules).flat() };
+  }
   private tools: Map<string, ToolDefinition>;
   constructor(readonly session: Session, private provider: ModelProvider, tools: ToolDefinition[], private events: AgentEvents = {}) {
     this.tools = new Map(tools.map((tool) => [tool.schema.name, tool]));
@@ -224,19 +362,22 @@ export class Agent {
       content: boundToolContent(content, this.session.config.maxOutputBytes), ...(error ? { is_error: true } : {}) };
   }
 
-  private finish(reason: string, text: string, modelCalls: number): RunResult {
+  private async finish(reason: string, text: string, modelCalls: number, signal: AbortSignal): Promise<RunResult> {
     const duration = this.turnTiming ? {uuid:this.turnTiming.uuid,
       durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()} : undefined;
     this.session.append({ kind: 'turn_end', reason, ...(duration ? {duration} : {}) });
     if (duration) this.events.progress?.({kind:'finish', reason, duration});
     this.turnTiming = undefined;
-    if (reason !== 'aborted') this.snapshotBoundary();
+    if (reason !== 'aborted') await this.snapshotBoundary(signal);
     return { reason, text, modelCalls };
   }
 
-  private snapshotBoundary(signal = new AbortController().signal): void {
-    try { automaticCheckpoint(this.session, signal); }
-    catch (error) { this.events.status?.(`Automatic checkpoint skipped: ${error instanceof Error ? error.message : String(error)}`); }
+  private async snapshotBoundary(signal = new AbortController().signal): Promise<void> {
+    try { await automaticCheckpointWithDirectoryWitness(this.session, signal); }
+    catch (error) {
+      if (signal.aborted || !this.session.isOpen || this.session.isJournalFenced) throw error;
+      this.events.status?.(`Automatic checkpoint skipped: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private recoverPending(): void {
@@ -254,10 +395,19 @@ export class Agent {
       tail.unshift(event);
     }
     const completed = new Map<string, ToolResult>();
+    const effects = new Map<string, ToolResult>();
+    const witnesses = new Map<string, { owner: string; incarnation: string; callId: string }>();
     const feedback = new Map<string, ToolFeedbackBlock[]>();
     const started = new Set<string>();
     for (const event of tail) {
+      if ((event.kind === 'tool_effect' || event.kind === 'tool_result') && event.readGrantWitness)
+        witnesses.set(event.result.tool_use_id, event.readGrantWitness);
       if (event.kind === 'tool_start') started.add(event.id);
+      if (event.kind === 'tool_effect') {
+        if (effects.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool effect');
+        effects.set(event.result.tool_use_id, event.result);
+        if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
+      }
       if (event.kind === 'tool_result') {
         if (completed.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool result');
         completed.set(event.result.tool_use_id, event.result);
@@ -270,9 +420,11 @@ export class Agent {
     }
     const results = calls.map((call) => {
       const saved = completed.get(call.id);
-      if (saved) return saved;
+      if (saved) return this.session.projectToolResult(saved, witnesses.get(call.id));
+      const effect = effects.get(call.id);
       const message = started.has(call.id)
-        ? 'Execution was interrupted after it started. Its effect is unknown. Inspect workspace state before deciding whether to repeat it.'
+        ? effect ? 'The tool finished, but its post-hook result was interrupted before commit. The final output is unknown. Inspect workspace state before deciding whether to repeat it.'
+          : 'Execution was interrupted after it started. Its effect is unknown. Inspect workspace state before deciding whether to repeat it.'
         : 'This queued call was skipped during recovery. Re-evaluate it against current workspace state.';
       const result = this.result(call.id, message, true);
       this.session.append({ kind: 'tool_result', result });
@@ -284,12 +436,16 @@ export class Agent {
     assertPaired(this.session.messages);
   }
 
-  private async hook(event: HookEvent, payload: HookPayload, signal: AbortSignal): Promise<HookResult> {
+  // dze/Okn/P9r, sfn1dbxq [3063858,3064190)/[3062119,3062957), UTF-16:
+  // call identity travels separately from hook stdin. The journal/task-ID fields are host adapters.
+  private async hook(event: HookEvent, payload: HookPayload, signal: AbortSignal, call?: HookCall): Promise<HookResult> {
     const definitions = this.session.config.hooks?.[event];
     if (!definitions?.length) return { blocked: false, additionalContext: [] };
     signal.throwIfAborted();
     const id = randomUUID();
-    this.session.append({ kind: 'hook_start', id, event, ...(payload.tool_use_id ? { toolUseId: payload.tool_use_id } : {}) });
+    const associated = call?.toolUseId ?? payload.tool_use_id;
+    this.session.append({ kind: 'hook_start', id, event, ...(associated ? { toolUseId: associated } : {}),
+      ...(call === undefined ? {} : { parentMessageId: call.parentMessageId }) });
     const result = await runHooks(this.session.config.hooks!, event, {
       session_id: this.session.id, transcript_path: this.session.file, cwd: this.session.config.workspace,
       permission_mode: this.session.config.permissions?.mode ?? 'default', ...payload,
@@ -319,16 +475,25 @@ export class Agent {
             for (const call of calls) {
               hookSignal.throwIfAborted();
               const tool = tools.find(candidate => candidate.schema.name === call.name);
+              const pathApprovalCall = this.pathApprovalOwner.begin(call.id);
+              const retireOnAbort = () => { pathApprovalCall.finish('cancelled'); hookSignal.removeEventListener('abort', retireOnAbort); };
+              hookSignal.addEventListener('abort', retireOnAbort, { once: true });
+              if (hookSignal.aborted) retireOnAbort();
+              let failed = false;
               try {
                 if (!tool) throw new Error('Hook tool is unavailable');
-                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionOwner.state(), this.session.config.workspace);
+                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.permissionState(), this.session.config.workspace);
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
                 const context: ToolContext = { workspace: this.session.config.workspace, signal: hookSignal,
-                  allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384),
+                  allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384), pathApprovalCall,
                   workingDirectories: readOnly => this.session.workingDirectories(readOnly) };
                 results.push(this.result(call.id, tool.executeBlocks
                   ? await tool.executeBlocks(call.input, context) : await tool.execute(call.input, context)));
-              } catch (error) { results.push(this.result(call.id, error instanceof Error ? error.message : String(error), true)); }
+              } catch (error) { failed = true; results.push(this.result(call.id, error instanceof Error ? error.message : String(error), true)); }
+              finally {
+                hookSignal.removeEventListener('abort', retireOnAbort);
+                pathApprovalCall.finish(hookSignal.aborted ? 'cancelled' : failed ? 'error' : 'success');
+              }
             }
             messages.push({ role: 'user', content: results });
             continue;
@@ -344,12 +509,23 @@ export class Agent {
         const tool = this.tools.get(definition.tool);
         if (!tool || !tool.readOnly || !tool.schema.name.startsWith("mcp__")) throw new Error("MCP hooks require an available read-only namespaced tool");
         const input = definition.arguments ?? {};
-        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
-        hookSignal.throwIfAborted();
-        const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
-          allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes });
-        const parsed = JSON.parse(content);
-        return parsed && typeof parsed === "object" && Object.hasOwn(parsed, "structuredContent") ? parsed.structuredContent : parsed;
+        const pathApprovalCall = this.pathApprovalOwner.begin(randomUUID());
+        const retireOnAbort = () => { pathApprovalCall.finish('cancelled'); hookSignal.removeEventListener('abort', retireOnAbort); };
+        hookSignal.addEventListener('abort', retireOnAbort, { once: true });
+        if (hookSignal.aborted) retireOnAbort();
+        let failed = true;
+        try {
+          if (permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
+          hookSignal.throwIfAborted();
+          const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
+            allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes, pathApprovalCall });
+          const parsed = JSON.parse(content);
+          failed = false;
+          return parsed && typeof parsed === "object" && Object.hasOwn(parsed, "structuredContent") ? parsed.structuredContent : parsed;
+        } finally {
+          hookSignal.removeEventListener('abort', retireOnAbort);
+          pathApprovalCall.finish(hookSignal.aborted ? 'cancelled' : failed ? 'error' : 'success');
+        }
       },
       ...this.events.hookOptions,
       lifecycle: hookLifecycle(this.session),
@@ -359,6 +535,7 @@ export class Agent {
       ...(result.suppressOutput === undefined ? {} : { suppressOutput: result.suppressOutput }),
       ...(result.systemMessages?.length ? { systemMessages: result.systemMessages } : {}),
       ...(result.userDisplayMessage === undefined ? {} : { userDisplayMessage: result.userDisplayMessage }),
+      ...(result.backgroundTasks === undefined ? {} : { backgroundTasks: [...result.backgroundTasks] }),
       ...(result.terminalSequences?.length ? { terminalSequences: result.terminalSequences } : {}) });
     for (const sequence of result.terminalSequences ?? []) this.events.terminalSequence?.(sequence);
     let budget = this.session.config.maxOutputBytes;
@@ -593,7 +770,7 @@ export class Agent {
 
   // _Wo/Cge, sfn1dbxq [2237279,2240346); host live-owner adaptation, W385.
   private async confirmPermission(tool: ToolDefinition, input: unknown, reason: string, signal: AbortSignal,
-    shellHome: { value: string | undefined }, skipIfNotRule = false): Promise<string | undefined> {
+    shellHome: { value: string | undefined }, identity: AbortController, skipIfNotRule = false): Promise<string | undefined> {
     const prompt = this.events.permission;
     if (!prompt) return reason + '; use an interactive session or an explicit allow rule';
     const snapshot = JSON.stringify(input);
@@ -602,11 +779,12 @@ export class Agent {
       if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
       const policy = this.session.config.permissions;
       const workspace = this.session.config.workspace;
-      const owner = this.session.permissionOwner.state();
+      const owner = this.permissionState();
+      const askRules = JSON.stringify(owner.alwaysAskRules);
       const current = withShellAnalysisHome(shellHome.value ?? '', () => permissionDecision(policy, tool, input, owner, workspace));
       if (current.decision === 'deny') return current.reason ?? 'Permission denied';
       if (skipIfNotRule && (current.decision !== 'ask' || current.floor !== 'rule')) return;
-      if (!await prompt({ tool: tool.schema.name, input: structuredClone(input), reason, signal })) return 'Permission declined';
+      if (!await prompt({ tool: tool.schema.name, input: structuredClone(input), reason, signal, authorizationIdentity: identity })) return 'Permission declined';
       signal.throwIfAborted();
       if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
       const clamp = await this.checkCommandClamp(tool, input, signal, shellHome.value);
@@ -614,11 +792,11 @@ export class Agent {
       signal.throwIfAborted();
       if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
       const next = withShellAnalysisHome(shellHome.value ?? '', () => permissionDecision(
-        this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace));
+        this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace));
       if (next.decision === 'deny') return next.reason ?? 'Permission denied';
       if (next.decision === 'ask' && next.floor === 'rule' &&
           (policy !== this.session.config.permissions || workspace !== this.session.config.workspace ||
-           owner.alwaysAskRules !== this.session.permissionOwner.state().alwaysAskRules)) {
+           askRules !== JSON.stringify(this.permissionState().alwaysAskRules))) {
         reason = next.reason ?? 'Approval required';
         continue;
       }
@@ -626,39 +804,39 @@ export class Agent {
     }
   }
 
-  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; shellHome?: { value: string | undefined }; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
+  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, identity: { current: AbortController; hookCall: HookCall }, callId = '', heldFloor = false, deferAuto = false, classifierMessages: readonly Anthropic.MessageParam[] = this.session.messages): Promise<{ input: unknown; shellHome?: { value: string | undefined }; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
     const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
     if (clampDenial !== undefined) return { input, denied: clampDenial };
     this.session.prepareAutoMode();
     // checkPermissions/call, sfn1dbxq [4337644,4347621); Z, zjewzgfh [68158,68694), UTF-16.
     let shellHome = { value: process.env.HOME };
-    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
+    const decision = permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace);
     // I9r caller, sfn [2288685,2289127), UTF-16. Denied events belong only to auto classification.
     if (decision.decision === 'allow') return { input, shellHome };
     if (decision.decision === 'deny') {
       return { input, denied: decision.reason ?? 'Permission denied' };
     }
-    const mode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
-    if ((mode === 'auto' || mode === 'plan' && this.session.permissionOwner.state().autoDuringPlan) && decision.floor === undefined && !heldFloor && tool.requiresUserInteraction !== true) {
+    const mode = this.permissionState().mode ?? this.session.config.permissions?.mode;
+    if ((mode === 'auto' || mode === 'plan' && this.permissionState().autoDuringPlan) && decision.floor === undefined && !heldFloor && tool.requiresUserInteraction !== true) {
       if (deferAuto) return { input, shellHome };
       if (serializeAutoTool(tool, input, callId) === '') {
         if (!tool.classifierOnly) return { input, shellHome };
         return { input, denied: `${tool.schema.name} was not reviewed: its classifier action is empty`, outcome: 'automode-parsing-error' };
       }
-      const autoActive = this.session.permissionOwner.state().autoDuringPlan;
+      const autoActive = this.permissionState().autoDuringPlan;
       const snapshot = JSON.stringify(input);
       const verdict = await classifyAutoAction({ provider: this.provider, model: this.session.config.model,
-        system: classifierSystem(Object.entries(this.session.permissionOwner.state().alwaysDenyRules)
+        system: classifierSystem(Object.entries(this.permissionState().alwaysDenyRules)
           .flatMap(([source, rules]) => source === 'toolsNarrowing' || source === 'command' ? [] : rules ?? [])
           .filter(rule => !parsePermissionRule(rule).ruleContent?.startsWith('prompt:')),
-          this.session.permissionOwner.state().autoMode),
-        transcript: classifierTranscript(this.session.messages, this.tools, { name: tool.schema.name, input, id: callId }, this.autoPriorOutcomes), signal });
+          this.permissionState().autoMode),
+        transcript: classifierTranscript(classifierMessages, this.tools, { name: tool.schema.name, input, id: callId }), signal });
       signal.throwIfAborted();
       const currentHome = { value: process.env.HOME };
-      const current = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
-      const currentMode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
-      if (currentMode !== mode || this.session.permissionOwner.state().autoDuringPlan !== autoActive || JSON.stringify(input) !== snapshot || current.floor !== undefined || current.decision !== 'ask' || currentHome.value !== shellHome.value) {
-        return this.authorize(tool, input, signal, callId, true);
+      const current = permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace);
+      const currentMode = this.permissionState().mode ?? this.session.config.permissions?.mode;
+      if (currentMode !== mode || this.permissionState().autoDuringPlan !== autoActive || JSON.stringify(input) !== snapshot || current.floor !== undefined || current.decision !== 'ask' || currentHome.value !== shellHome.value) {
+        return this.authorize(tool, input, signal, identity, callId, true, false, classifierMessages);
       }
       if (verdict.kind === 'allow') return { input, shellHome };
       const noVerdict = verdict.kind === 'no-verdict' || verdict.kind === 'cancelled';
@@ -675,7 +853,7 @@ export class Agent {
           reason: denied });
       }
       const native = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input,
-        tool_use_id: callId, reason: denied }, signal);
+        tool_use_id: callId, reason: denied }, signal, identity.hookCall);
       let retry = native.retry === true;
       if (classicEventRaised('PermissionDenied')) {
         const raised = await raiseClassicEvent({ event: 'PermissionDenied', signal,
@@ -686,7 +864,7 @@ export class Agent {
       return { input, denied, retry: retry && !noVerdict, outcome };
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
-    const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);
+    const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal, identity.hookCall);
     // `interrupt` belongs to the adopted deny only; `runHooks` keeps the first
     // non-allow decision, matching the source's first-result loop (`n2e`,
     // chunk-fyhzvvp0.js offset 15633).
@@ -744,19 +922,32 @@ export class Agent {
       return { input, denied };
     }
     if (requested.updatedInput !== undefined) {
+      identity.current.abort();
+      identity.current = new AbortController();
       input = structuredClone(requested.updatedInput);
       const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
       if (clampDenial !== undefined) return { input, denied: clampDenial };
       shellHome = { value: process.env.HOME };
-      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace);
+      const updated = permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace);
       // g1t.runHooks, 9c5se12s [7100,8340); sxr, sfn1dbxq [3317869,3319984), UTF-16.
       if (updated.decision === 'deny') return { input, denied: updated.reason ?? 'Permission denied' };
       if (requested.permissionDecision === 'allow' && updated.decision === 'ask' && updated.floor === 'rule') {
         if (this.events.permissionPrompt !== 'interactive' || !this.events.permission) return { input, denied: updated.reason ?? 'Permission denied' };
-        const denied = await this.confirmPermission(tool, input, updated.reason ?? 'Approval required', signal, shellHome, true);
+        const denied = await this.confirmPermission(tool, input, updated.reason ?? 'Approval required', signal, shellHome, identity.current, true);
         return denied === undefined ? { input, shellHome } : { input, denied };
       }
     }
+    // sxr/yk/GAn, chunk-sfn1dbxq.js [3317678,3319984),
+    // [3357795,3359265), [3355478,3355651), UTF-16.
+    if (requested.permissionDecision === 'allow' && requested.updatedInput === undefined &&
+        tool.requiresUserInteraction === true && (this.events.permissionPrompt === 'unavailable' || !this.events.permission)) {
+      const current = permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace);
+      return { input, denied: current.reason ?? `Approval required for ${tool.schema.name}` };
+    }
+    // g1t.runHooks, chunk-9c5se12s.js [5863,10103), UTF-16:
+    // let the interaction owner continue without adopting hook updates.
+    if (requested.permissionDecision === 'allow' && requested.updatedInput === undefined && tool.requiresUserInteraction === true &&
+        this.events.permissionPrompt !== 'unavailable' && this.events.permission) return { input, shellHome };
     if (requested.permissionDecision === 'allow') {
       if (requested.updatedPermissions?.length) {
         const outcome = this.session.adoptPermissionUpdates(requested.updatedPermissions);
@@ -764,11 +955,11 @@ export class Agent {
       }
       return { input, shellHome };
     }
-    const denied = await this.confirmPermission(tool, input, reason, signal, shellHome);
+    const denied = await this.confirmPermission(tool, input, reason, signal, shellHome, identity.current);
     return denied === undefined ? { input, shellHome } : { input, denied };
   }
 
-  private async ruleContext(toolName: string, input: unknown, signal: AbortSignal): Promise<string[]> {
+  private async ruleContext(toolName: string, input: unknown, signal: AbortSignal, call: HookCall): Promise<string[]> {
     if (!['read_file', 'write_file', 'edit_file', 'read_media', 'notebook_read', 'notebook_edit', 'lsp', 'search', 'list_files'].includes(toolName) ||
         typeof input !== 'object' || input === null) return [];
     const target = (input as { path?: unknown }).path;
@@ -799,7 +990,7 @@ export class Agent {
           load_reason: file.parent === undefined ? 'nested_traversal' : 'include',
           trigger_file_path: triggerPath,
           ...(file.parent === undefined ? {} : { parent_file_path: file.parent }),
-        }, signal);
+        }, signal, call);
         contexts.push(`Path-scoped instructions from ${file.path} for ${relative}:\n${file.content}`);
       }
     }
@@ -815,7 +1006,7 @@ export class Agent {
           trigger_file_path: triggerPath,
           ...(isRule ? { globs: rule.patterns } : {}),
           ...(file.parent === undefined ? {} : { parent_file_path: file.parent }),
-        }, signal);
+        }, signal, call);
         contexts.push(`Path-scoped instructions from ${file.path} for ${relative}:\n${file.content}`);
       }
     }
@@ -877,36 +1068,52 @@ export class Agent {
     ] } });
   }
 
-  private async execute(calls: Anthropic.ToolUseBlockParam[], signal: AbortSignal, blocked?: string): Promise<boolean> {
+  private async execute(calls: Anthropic.ToolUseBlockParam[], cancellation: ToolCancellation, parentMessageId: string, blocked?: string): Promise<boolean> {
+    const signal = cancellation.signal;
     this.endedByTool = false;
     const c = this.session.config;
     const conversation = this.session.messages;
     if (conversation.at(-1)?.role === 'assistant' && toolCalls(conversation.at(-1)!).length) conversation.pop();
     assertPaired(conversation);
-    const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
+    const context: ToolContext = { session: this.session, workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
       conversation: cloneClassifierMessages(conversation), interaction: this.events.interaction,
       planMode: this.session.planMode,
       workingDirectories: readOnly => this.session.workingDirectories(readOnly),
       fileHistory: file => this.session.touchFile(file),
-      // A file effect reports its structured result here; the storage projection is taken now, so
-      // the journal holds the row the transcript keeps rather than the live capture.
-      hostResult: value => { hostResult = projectToolUseResult(value); } };
+      readFileCache: this.session.fileReadCache,
+      fileMutationGate: { preReadGuard: sourceLocalPreReadGuard(c.model), readAllowed: (file, tool) =>
+        sourceReadAutomaticallyAllowed(c.permissions, this.permissionState(), c.workspace, file, [...this.tools.keys()], tool) },
+    };
     const results: ToolResult[] = [];
+    const recovery = new Map<string, SkillEffectRecoveryError>();
+    const pendingReads: Array<{ file: string; entry: unknown; id: string; content: string }> = [];
     const feedback = new Map<string, ToolFeedbackBlock[]>();
     const extra: string[] = [];
-    // One slot for the batch: calls execute in order, and a slot is cleared before each call, so a
-    // row can only belong to the call that produced it.
-    let hostResult: StoredToolUseResult | undefined;
     let stopReason = blocked;
     let retryMeta = false;
     const outcomes: Record<string, 'ok' | 'error' | 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error'> = {};
-    this.autoPriorOutcomes = outcomes;
-    // Keep hook feedback after the entire paired batch, including on cancellation.
-    for (const call of calls) {
+    // Wa/l2 and xe: chunk-40cepjpq [28764,29450), chunk-sfn1dbxq
+    // [4380701,4382470), UTF-16. The host keeps authorization and hooks serial.
+    const executeCall = async (call: Anthropic.ToolUseBlockParam, abortController: AbortController) => {
+      const signal = abortController.signal;
+      const hookCall: HookCall = { toolUseId: call.id, parentMessageId };
+      // ms.buildSameTurnToolUses, 5b2hxy2e [47900,49700), UTF-16: capture before asynchronous hooks.
+      const classifierMessages = cloneClassifierMessages(this.session.messages);
+      this.events.toolUse?.(structuredClone(call));
       let result: ToolResult;
       let feedbackBlocks: ToolFeedbackBlock[] | undefined;
       let executed = false;
-      hostResult = undefined;
+      // Zo/xe, 40cepjpq [28214,28764), sfn1dbxq [4380701,4382470), UTF-16:
+      // collect this invocation's context and outcome before ordered host delivery.
+      const callContext: string[] = [];
+      const contextLayers: import('./tools.js').ToolResultContextLayer[] = [];
+      let callOutcome: typeof outcomes[string] | undefined;
+      let callRetryMeta = false;
+      let callRecovery: SkillEffectRecoveryError | undefined;
+      // xe, chunk-sfn1dbxq.js [4380701,4382470), UTF-16: each result message owns its toolUseResult.
+      let hostResult: StoredToolUseResult | undefined;
+      let readGrantSignal: AbortSignal | undefined;
+      let readGrantWitness: { owner: string; incarnation: string; callId: string } | undefined;
       let input = call.input;
       // Source `duration_ms`: "Tool execution time in milliseconds. Excludes permission-prompt and hook
       // time." (chunk-r2vtj1kh.js [193030,193147)), so it wraps the tool's own call and nothing else —
@@ -915,24 +1122,33 @@ export class Agent {
       let durationMs: number | undefined;
       if (stopReason || signal.aborted) result = this.result(call.id, stopReason ?? 'Cancelled before execution', true);
       else {
+        const pathApprovalCall = this.pathApprovalOwner.begin(call.id);
+        // _Wo, chunk-sfn1dbxq [2237279,2239655), UTF-16; each rewritten input gets a distinct host authorization lifetime.
+        const identity = { current: new AbortController(), hookCall };
+        const retireOnAbort = () => { identity.current.abort(); pathApprovalCall.finish('cancelled'); signal.removeEventListener('abort', retireOnAbort); };
+        signal.addEventListener('abort', retireOnAbort, { once: true });
+        if (signal.aborted) retireOnAbort();
+        let failed = true;
         try {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
-          const authorization = await this.authorize(tool, input, signal, call.id, false, true);
-          if (authorization.outcome) outcomes[call.id] = authorization.outcome;
+          const authorization = await this.authorize(tool, input, signal, identity, call.id, false, true, classifierMessages);
+          if (authorization.outcome) callOutcome = authorization.outcome;
           let shellHome = authorization.shellHome;
           input = authorization.input;
-          if (authorization.retry === true) retryMeta = true;
+          if (authorization.retry === true) callRetryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
-          const pre = await this.hook('PreToolUse', { tool_name: call.name, tool_input: input, tool_use_id: call.id }, signal);
-          extra.push(...pre.additionalContext);
+          // Source m_t/_Wo (sfn1dbxq [504681,505531), [2237279,2239655), UTF-16):
+          // adopt hook input changes through updatedInput and its permission recheck.
+          const pre = await this.hook('PreToolUse', { tool_name: call.name, tool_input: structuredClone(input), tool_use_id: call.id }, signal, hookCall);
+          callContext.push(...pre.additionalContext);
           // The chain's classic PreToolUse event, for the plugin modules that hook it. The source's own
           // tool path raises it over the module handlers and maps the answer with `mDe`
           // (chunk-sfn1dbxq.js `m_t` [504681,505531), `$go` chunk-nyce03br.js [121822,121896)); the
           // answer joins the same permission path below, so a deny or a rewrite is handled once.
           if (classicPreToolUseHooked()) {
             const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input: structuredClone(input), signal });
-            extra.push(...(permission.additionalContexts ?? []));
+            callContext.push(...(permission.additionalContexts ?? []));
             if (permission.permissionBehavior === 'deny') {
               pre.blocked = true;
               pre.reason ??= permission.hookPermissionDecisionReason ?? 'Denied by a classic.PreToolUse hook';
@@ -947,30 +1163,32 @@ export class Agent {
             const asks = pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer';
             if (!asks || pre.stopRequested || !this.events.permission) throw new Error(pre.reason ?? 'Blocked by PreToolUse hook');
             const denied = await this.confirmPermission(tool, input, pre.reason ?? 'PreToolUse hook requested approval', signal,
-              shellHome ?? { value: undefined });
+              shellHome ?? { value: undefined }, identity.current);
             if (denied !== undefined) throw new Error(denied === 'Permission declined' ? pre.reason ?? 'Blocked by PreToolUse hook' : denied);
           }
           if (pre.updatedInput !== undefined) {
-            const updated = await this.authorize(tool, structuredClone(pre.updatedInput), signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
-            if (updated.outcome) outcomes[call.id] = updated.outcome;
+            identity.current.abort();
+            identity.current = new AbortController();
+            const updated = await this.authorize(tool, structuredClone(pre.updatedInput), signal, identity, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer', false, classifierMessages);
+            if (updated.outcome) callOutcome = updated.outcome;
             shellHome = updated.shellHome;
             input = updated.input;
-            if (updated.retry === true) retryMeta = true;
+            if (updated.retry === true) callRetryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
           }
-          if (pre.updatedInput === undefined && permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state(), this.session.config.workspace).floor === undefined &&
-            (this.session.permissionOwner.state().mode === 'auto' || this.session.permissionOwner.state().autoDuringPlan)) {
-            const finalAuthorization = await this.authorize(tool, input, signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
+          if (pre.updatedInput === undefined && permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace).floor === undefined &&
+            (this.permissionState().mode === 'auto' || this.permissionState().autoDuringPlan)) {
+            const finalAuthorization = await this.authorize(tool, input, signal, identity, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer', false, classifierMessages);
             input = finalAuthorization.input;
             shellHome = finalAuthorization.shellHome;
-            if (finalAuthorization.outcome) outcomes[call.id] = finalAuthorization.outcome;
-            if (finalAuthorization.retry) retryMeta = true;
+            if (finalAuthorization.outcome) callOutcome = finalAuthorization.outcome;
+            if (finalAuthorization.retry) callRetryMeta = true;
             if (finalAuthorization.denied) throw new Error(finalAuthorization.denied);
           }
-          const rules = (await this.ruleContext(call.name, input, signal)).filter(text => !this.session.messages.some(message =>
+          const rules = (await this.ruleContext(call.name, input, signal, hookCall)).filter(text => !this.session.messages.some(message =>
             message.role === 'user' && Array.isArray(message.content) && message.content.some(block =>
               block.type === 'text' && block.text === `Hook context:\n${text}`)));
-          extra.push(...rules.filter(text => !extra.includes(text)));
+          callContext.push(...rules.filter(text => !extra.includes(text) && !callContext.includes(text)));
           if (rules.length && !tool.readOnly) throw new Error('Path-scoped instructions loaded. Re-evaluate this tool input with those instructions before retrying.');
           const gate = call.name === 'task_update' && typeof input === 'object' && input !== null &&
             (input as { status?: string }).status === 'completed' ? 'TaskCompleted' :
@@ -987,40 +1205,133 @@ export class Agent {
               : task === undefined
                 ? { tool_name: call.name, tool_input: input, tool_use_id: call.id }
                 : { task_id: task.id, task_subject: task.subject, task_description: task.description,
-                    ...(task.owner === undefined ? {} : { teammate_name: task.owner }) }, signal);
-            extra.push(...lifecycle.additionalContext);
+                    ...(task.owner === undefined ? {} : { teammate_name: task.owner }) }, signal, hookCall);
+            callContext.push(...lifecycle.additionalContext);
             if (lifecycle.blocked) throw new Error(lifecycle.reason ?? `Blocked by ${gate} hook`);
           }
-          let executionContext = context;
+          let executionContext: ToolContext = { ...context, signal, abortController, pathApprovalCall, authorizationIdentity: identity.current, toolUseId: call.id,
+            agentProgress: (agentId, message) => this.events.agentProgress?.({ agentId, toolUseId: call.id, message }),
+            hostResult: value => { hostResult = projectToolUseResult(value); },
+            readGrantSignal: value => { readGrantSignal = value; },
+            readGrantWitness: value => { readGrantWitness = { ...value, callId: call.id }; },
+            contextLayer: layer => { contextLayers.push(structuredClone(layer)); } };
           const clamp = this.session.config.bashCommandClamp;
           if (clamp !== undefined && clamp.length > 0 && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
             const denied = await this.checkCommandClamp(tool, input, signal, shellHome?.value);
             if (denied !== undefined) throw new Error(denied);
           }
           if (shellHome !== undefined && (CLAMPED_SHELL_TOOLS.has(tool.schema.name) || tool.schema.name === 'monitor')) {
-            executionContext = { ...context, shellHome };
+            executionContext = { ...executionContext, shellHome };
           }
           signal.throwIfAborted();
-          this.session.append({ kind: 'tool_start', id: call.id, name: call.name });
+          const writeWitness = call.name === 'write_file' ? describeDirectoryWriteInput(this.session, input) : undefined;
+          const writeRelative = writeWitness ? path.relative(c.workspace, writeWitness.lexicalPath) : undefined;
+          const outsideWorkspace = writeRelative !== undefined &&
+            (writeRelative === '..' || writeRelative.startsWith(`..${path.sep}`) || path.isAbsolute(writeRelative));
+          const granted = outsideWorkspace && writeWitness && this.session.workingDirectories(false).some(directory => {
+            const relative = path.relative(directory, writeWitness.lexicalPath);
+            return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+          });
+          const externalWrite = granted ? writeWitness : undefined;
+          const writeInputDigest = externalWrite ? directoryWriteFingerprint(externalWrite) : undefined;
+          const runtimeStart = writeInputDigest ? issueRuntimeWriteStart({ session: this.session, tool, call: pathApprovalCall,
+            signal, authorizationSignal: identity.current.signal, value: input, id: call.id, parentMessageId, writeInputDigest }) : undefined;
+          this.session.append(runtimeStart?.event ?? { kind: 'tool_start', id: call.id, name: call.name, parentMessageId,
+            ...(writeInputDigest ? { writeInputDigest } : {}) }, undefined, undefined, runtimeStart?.authorization);
+          if (externalWrite) {
+            const authorization = issueDirectoryPublicationAuthorization({ session: this.session, toolUseId: call.id, value: input,
+              signal, authorizationSignal: identity.current.signal, approvalCall: pathApprovalCall });
+            if (authorization) executionContext = { ...executionContext, directoryPublicationAuthorization: authorization };
+          }
           executed = true;
           this.events.status?.(`tool: ${call.name}`);
           this.events.progress?.({kind:'phase', mode:'tool-use'});
           const startedAt = Date.now();
           try {
-            result = this.result(call.id, tool.executeBlocks
-              ? await tool.executeBlocks(input, executionContext) : await tool.execute(input, executionContext));
-          } finally { durationMs = Date.now() - startedAt; }
+            result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
+              runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext))));
+            signal.throwIfAborted();
+            failed = false;
+          } finally {
+            durationMs = Date.now() - startedAt;
+            // Foreground emitter finally, wj6fycw8 [44500,45150), UTF-16.
+            this.events.clearAgentProgress?.(call.id);
+          }
         } catch (error) {
+          if (error instanceof SkillEffectRecoveryError) callRecovery = error;
           result = this.result(call.id, error instanceof Error ? error.message : String(error), true);
           if (!signal.aborted && error instanceof ToolFeedbackError && error.blocks.length) feedbackBlocks = error.blocks;
+        } finally {
+          identity.current.abort();
+          signal.removeEventListener('abort', retireOnAbort);
+          pathApprovalCall.finish(signal.aborted ? 'cancelled' : failed ? (executed ? 'error' : 'denied') : 'success');
         }
       }
-      // Persist the effect before running a post hook, which may itself be interrupted. A file
-      // effect's structured row is written with the call it belongs to, so replay keeps the same
-      // chronological order the source's per-result message has.
+      const readKey = hostResult && 'kind' in hostResult && hostResult.kind === 'file_read'
+        ? hostResult.cacheKey ?? hostResult.filePath : undefined;
+      const readEntry = readKey === undefined ? undefined : context.readFileCache?.get(readKey);
+      return { result, feedbackBlocks, executed, getHostResult: () => hostResult, readGrantSignal, readGrantWitness, input, durationMs, readKey, readEntry,
+        callContext, callOutcome, callRetryMeta, callRecovery, contextLayers: result.is_error ? [] : contextLayers };
+    };
+    // Zo/$a/Ka, chunk-40cepjpq.js [28214,29715), UTF-16: consecutive
+    // concurrency-safe calls share a group; every other call is a barrier.
+    // Host adaptation keeps approvals and hooks serial until their shared owners
+    // have a concurrent contract. Agent and TaskStop supply their own input parsers.
+    const pending = new Map<string, Promise<Awaited<ReturnType<typeof executeCall>>>>();
+    const concurrentCall = (call: Anthropic.ToolUseBlockParam): boolean => {
+      const tool = this.tools.get(call.name);
+      if (!tool || c.hooks && Object.values(c.hooks).some(entries => entries?.length) ||
+          classicPreToolUseHooked() || classicEventRaised(CLASSIC_POST_TOOL_USE) || classicEventRaised(CLASSIC_POST_TOOL_USE_FAILURE)) return false;
+      const permissionState = this.permissionState();
+      if (permissionState.mode === 'auto' || permissionState.autoDuringPlan) return false;
+      if (call.name === 'read_file') {
+        if (!tool.readOnly || typeof call.input !== 'object' || call.input === null || typeof (call.input as { path?: unknown }).path !== 'string') return false;
+      } else if ((call.name !== 'agent' && call.name !== 'task_stop') || !tool.concurrencySafe?.(call.input)) return false;
+      return permissionDecision(c.permissions, tool, call.input, permissionState, c.workspace).decision === 'allow';
+    };
+    // Keep hook feedback after the entire paired batch, including on cancellation.
+    for (let index = 0; index < calls.length; index++) {
+      const call = calls[index]!;
+      if (!pending.has(call.id) && !stopReason && concurrentCall(call)) {
+        for (let next = index; next < calls.length && concurrentCall(calls[next]!); next++) {
+          const candidate = calls[next]!;
+          const owned = cancellation.call();
+          pending.set(candidate.id, executeCall(candidate, owned.controller).finally(() => owned.dispose()));
+        }
+      }
+      // gg, njj04bkb [1085,1772); streaming scheduler, 5b2hxy2e [43800,52600), UTF-16.
+      // Each invocation has its own cancellation signal; the host removes the parent listener on settlement.
+      let invocation: Awaited<ReturnType<typeof executeCall>>;
+      const scheduled = pending.get(call.id);
+      if (scheduled) invocation = await scheduled;
+      else {
+        const invocationCancellation = cancellation.call();
+        try { invocation = await executeCall(call, invocationCancellation.controller); }
+        finally { invocationCancellation.dispose(); }
+      }
+      extra.push(...invocation.callContext.filter(text => !extra.includes(text)));
+      if (invocation.callOutcome !== undefined) outcomes[call.id] = invocation.callOutcome;
+      if (invocation.callRetryMeta) retryMeta = true;
+      if (invocation.callRecovery !== undefined) recovery.set(call.id, invocation.callRecovery);
+      // Zo/Wa, chunk-40cepjpq [28214,29715), UTF-16: merge in tool-call order.
+      if (!signal.aborted && this.session.isOpen) this.turnLayers.push(...invocation.contextLayers);
+      let { result } = invocation;
+      const { feedbackBlocks, executed, input, durationMs } = invocation;
+      const hookCall: HookCall = { toolUseId: call.id, parentMessageId };
+      const hostResult = invocation.getHostResult();
+      // KWo, sfn1dbxq [2298500,2308030), UTF-16: post hooks precede
+      // final result construction. The host separately journals the effect first for recovery.
       outcomes[call.id] ??= result.is_error ? 'error' : 'ok';
-      this.session.append({ kind: 'tool_result', result, ...(hostResult === undefined ? {} : { host: hostResult }),
+      // xe, sfn1dbxq [4380701,4382470), UTF-16: result messages receive their own timestamp.
+      this.session.append({ kind: 'tool_effect', result, timestamp: new Date().toISOString(), ...(hostResult === undefined ? {} : { host: hostResult }),
+        ...(invocation.readGrantWitness === undefined ? {} : { readGrantWitness: invocation.readGrantWitness }),
         ...(feedbackBlocks === undefined ? {} : { feedbackBlocks }) });
+      // Host lease rewrite: recovered KWo [2298500,2308030) UTF-16 has no FD authority.
+      const revokedRead = () => invocation.readGrantSignal?.aborted === true;
+      const redactRevokedRead = () => {
+        if (revokedRead()) result = this.result(call.id, 'Directory read grant was revoked before delivery.', true);
+      };
+      redactRevokedRead();
       if (feedbackBlocks !== undefined) feedback.set(call.id, feedbackBlocks);
       results.push(result);
       if (executed && !result.is_error && this.tools.get(call.name)?.endsTurn === true) this.endedByTool = true;
@@ -1029,7 +1340,8 @@ export class Agent {
           const post = await this.hook(result.is_error ? 'PostToolUseFailure' : 'PostToolUse', {
             tool_name: call.name, tool_input: input, tool_use_id: call.id,
             ...(result.is_error ? { error: String(result.content), is_interrupt: false } : { tool_response: result.content }),
-          }, signal);
+          }, signal, hookCall);
+          redactRevokedRead();
           // The chain's classic PostToolUse / PostToolUseFailure event, for the plugin modules that hook
           // it. The source's own tool path builds the hook input on these same fields (`Okn`
           // chunk-sfn1dbxq.js [3062119,3062552) and `P9r` [3062552,3062957)) and raises it through `Ikt`
@@ -1064,25 +1376,24 @@ export class Agent {
               const createdHook = await this.hook('TaskCreated', {
                 ...(created.id === undefined ? {} : { task_id: created.id }),
                 task_subject: created.subject, task_description: created.description,
-              }, signal);
+              }, signal, hookCall);
               extra.push(...createdHook.additionalContext);
               if (createdHook.blocked) {
                 if (created.id !== undefined) removeTask(c.workspace, created.id);
                 result = this.result(call.id, `TaskCreated hook feedback:\n${createdHook.reason ?? 'blocked'}`, true);
-                this.session.append({ kind: 'tool_output', result });
                 results[results.length - 1] = result;
               }
             }
           }
           if (!result.is_error && (call.name === 'write_file' || call.name === 'edit_file' || call.name === 'notebook_edit' || call.name === 'memory_write')) {
             const filePath = changedFilePath(call.name, input, c.workspace);
-            if (filePath !== undefined) await this.hook('FileChanged', { file_path: filePath, event: 'change' }, signal);
+            if (filePath !== undefined) await this.hook('FileChanged', { file_path: filePath, event: 'change' }, signal, hookCall);
           }
           if (!result.is_error && call.name === 'worktree_remove') {
             // `Xir` (chunk-sfn1dbxq.js offset 2954347) raises the removed path only.
             await this.hook('WorktreeRemove', {
               worktree_path: path.join(c.workspace, WORKTREE_DIRECTORY, String((input as { name?: unknown }).name ?? '')),
-            }, signal);
+            }, signal, hookCall);
           }
           // `updatedMCPToolOutput` applies only to MCP tools (`Sh`,
           // chunk-sfn1dbxq.js offset 2233390; this product's MCP tools are the
@@ -1091,7 +1402,6 @@ export class Agent {
             ? post.updatedMCPToolOutput : post.updatedToolOutput;
           if (replacement !== undefined) {
             result = this.result(call.id, typeof replacement === 'string' ? replacement : JSON.stringify(replacement), result.is_error === true);
-            this.session.append({ kind: 'tool_output', result });
             results[results.length - 1] = result;
           }
           extra.push(...post.additionalContext);
@@ -1101,16 +1411,43 @@ export class Agent {
           if (!signal.aborted) extra.push(`PostToolUse hook error: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+      redactRevokedRead();
+      this.session.append({ kind: 'tool_result', result, timestamp: new Date().toISOString(), ...(hostResult === undefined || result !== invocation.result ? {} : { host: hostResult }),
+        ...(invocation.readGrantWitness === undefined ? {} : { readGrantWitness: invocation.readGrantWitness }),
+        ...(feedbackBlocks === undefined ? {} : { feedbackBlocks }) });
+      redactRevokedRead();
+      results[results.length - 1] = result;
+      if (result !== invocation.result) this.session.append({ kind: 'tool_output', result });
       // After the post hook and any replacement, so the rows show what the model received.
       // xe/Eo, sfn1dbxq [4380701,4382470), tar639dc [61633,62418), UTF-16.
+      const displayedHostResult = result === invocation.result ? invocation.getHostResult() : undefined;
       this.events.toolResult?.({ id: call.id, name: call.name, input,
         content: String(result.content), isError: result.is_error === true,
-        ...(hostResult === undefined ? {} : { host: hostResult }) });
+        ...(displayedHostResult === undefined ? {} : { host: displayedHostResult }) });
+      const observed = displayedHostResult as StoredToolUseResult | undefined;
+      if (observed && 'kind' in observed && observed.kind === 'file_read') {
+        const key = observed.cacheKey ?? observed.filePath;
+        pendingReads.push({ file: key, entry: key === invocation.readKey ? invocation.readEntry : undefined,
+          id: call.id, content: observed.content });
+      }
     }
     this.session.append({ kind: 'message', classifier: { origin: { kind: 'generated', source: 'tool-results' }, outcomes }, message: { role: 'user', content: [
       ...results, ...calls.flatMap(call => feedback.get(call.id) ?? []),
       ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),
     ] } });
+    // Host rewrite: source iye, chunk-sfn1dbxq [3368429,3370821), UTF-16,
+    // has no durable recovery notice. Commit only the final fsynced model result.
+    for (const result of results) {
+      const notice = recovery.get(result.tool_use_id);
+      if (notice && typeof result.content === 'string' && result.content.includes(notice.message)) notice.journal.acknowledge(notice.pending);
+    }
+    // QIr updates before returning; this host publishes a whole batch after its post hooks.
+    for (const read of pendingReads) {
+      const entry = context.readFileCache?.get(read.file);
+      const result = results.find(item => item.tool_use_id === read.id);
+      if (entry && entry === read.entry && !result?.is_error && result?.content === read.content)
+        context.readFileCache?.set(read.file, { ...entry, contentNotInModelContext: false });
+    }
     // `Hen` is a separate meta user message after the denied tool result, so it
     // is not shown yet reaches the next request. The source appends one per
     // denied call; this batch model appends one after the whole result batch.
@@ -1320,7 +1657,7 @@ export class Agent {
         await this.hook('StopFailure', { error: reason,
           ...(lastMessage === undefined ? {} : { last_assistant_message: lastMessage }) }, signal);
       }
-      return this.finish(reason, text, modelCalls);
+      return this.finish(reason, text, modelCalls, signal);
     }
     // Ga/PFo, 5b2hxy2e [66757,66799), UTF-16: the main stop path admits the detached runner.
     if (!this.session.config.childMode) await this.events.memoryConsolidation?.();
@@ -1335,7 +1672,7 @@ export class Agent {
     const saved = tail.find(event => event.kind === 'hook_result' && event.event === stopEvent);
     let stop: HookResult;
     if (saved?.kind === 'hook_result') stop = saved;
-    else if (tail.some(event => event.kind === 'hook_start' && event.event === stopEvent)) return this.finish(reason, text, modelCalls);
+    else if (tail.some(event => event.kind === 'hook_start' && event.event === stopEvent)) return this.finish(reason, text, modelCalls, signal);
     else {
       let active = false;
       for (let i = this.session.events.length - 1; i >= 0; i--) {
@@ -1355,7 +1692,7 @@ export class Agent {
           agent_transcript_path: this.session.file, agent_type: this.session.config.childMode } : {}),
       }, signal);
     }
-    if (stop.stopRequested) return this.finish('hook_blocked', text, modelCalls);
+    if (stop.stopRequested) return this.finish('hook_blocked', text, modelCalls, signal);
     if (stop.blocked && reason !== 'turn_limit') {
       const cap = this.session.config.stopHookBlockCap;
       if (cap !== undefined && cap > 0) {
@@ -1366,7 +1703,7 @@ export class Agent {
         const count = counter?.kind === 'stop_hook_count' ? counter.count : 0;
         if (!alreadyCounted && count >= cap) {
           this.events.status?.(`${stopEvent} continuation cap reached (${cap}); ending this task.`);
-          return this.finish('stop_hook_limit', text, modelCalls);
+          return this.finish('stop_hook_limit', text, modelCalls, signal);
         }
         if (!alreadyCounted) this.session.append({ kind: 'stop_hook_count', count: count + 1,
           ...(decision?.kind === 'hook_result' ? { hookId: decision.id } : {}) });
@@ -1378,7 +1715,7 @@ export class Agent {
       return undefined;
     }
     for (const context of stop.additionalContext) this.events.status?.(`hook: ${context}`);
-    return this.finish(reason, text, modelCalls);
+    return this.finish(reason, text, modelCalls, signal);
   }
 
   /** `vm` resolves the current title recorded as a `title` event; absent means none was set. */
@@ -1393,15 +1730,30 @@ export class Agent {
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
     expansion?: PromptExpansion | { kind: 'raised'; payload: PromptExpansion },
     hookContext: readonly string[] = [], selection?: DiffSelection,
-    origin: MessageOrigin = { kind: 'human' }, promptContent?: readonly Anthropic.ContentBlockParam[]): Promise<RunResult> {
+    origin: MessageOrigin = { kind: 'human' }, promptContent?: readonly Anthropic.ContentBlockParam[],
+    onPromptCommitted?: () => void, beforePromptCommit?: () => void,
+    notificationDelivery?: { owner: string; deliveryId: string }, notificationAuthorization?: NotificationAuthorization): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
+    const cancellation = new ToolCancellation(signal);
+    signal = cancellation.signal;
     this.busy = true;
     let modelCalls = 0;
     let text = '';
+    let beganTurn = false;
     try {
       signal.throwIfAborted();
+      // Host precondition; source We, htgmc2p1 [40137,44501), UTF-16,
+      // has no durable notification receipt or caller-context authentication.
+      if (notificationDelivery && hookContext.length !== 0)
+        throw new Error('Notification delivery rejects caller-supplied hook context');
+      // Host notification contract; source We, htgmc2p1 [40137,44501), UTF-16,
+      // handles independent prompt expansion but has no host delivery receipt.
+      if (notificationDelivery && (attachment !== undefined || expansion !== undefined ||
+        selection !== undefined || promptContent !== undefined))
+        throw new Error('Notification delivery rejects independent prompt inputs');
       refreshPluginComponents(this.session.config);
       this.turnTiming = {uuid:randomUUID(), startedAt:Date.now()};
+      beganTurn = true;
       this.events.progress?.({kind:'start', ...this.turnTiming});
       if (attachment !== undefined) {
         attachment = mediaInputSchema.parse(attachment);
@@ -1410,10 +1762,11 @@ export class Agent {
       }
       const startContext = this.pendingHookContext();
       this.recoverPending();
+      this.session.recoverInterruptedDirectoryFileHistory(signal);
       if (prompt !== undefined) {
         if (!prompt.trim()) throw new Error('Prompt is empty');
         if (this.session.awaitingResponse) throw new Error('Session has an unfinished turn; continue it first');
-        this.snapshotBoundary(signal);
+        await this.snapshotBoundary(signal);
         // `Yir`/`qtt` (chunk-sfn1dbxq.js [2952083,2952751)) carry the prompt and the
         // current session title; this build emits no `source` (the schema keeps it
         // optional while the field rolls out).
@@ -1430,7 +1783,7 @@ export class Agent {
           // (chunk-htgmc2p1.js offset 34121); the text is the turn's resultText.
           const text = promptBlockMessage('UserPromptSubmit', submitted.reason ?? 'blocked', submitPrompt,
             submitted.suppressOriginalPrompt === true);
-          return this.finish('hook_blocked', text, 0);
+          return await this.finish('hook_blocked', text, 0, signal);
         }
         // The UserPromptSubmit consumer takes the last hook-provided title and
         // commits it before the turn (`u = m.sessionTitle ?? u`).
@@ -1449,14 +1802,14 @@ export class Agent {
           if (expanded.blocked) {
             const text = promptBlockMessage('UserPromptExpansion', expanded.reason ?? 'blocked', expansion.prompt,
               expanded.suppressOriginalPrompt === true);
-            return this.finish('hook_blocked', text, 0);
+            return await this.finish('hook_blocked', text, 0, signal);
           }
           expansionContext = expanded.additionalContext;
         }
         const context = [...startContext, ...hookContext, ...submitted.additionalContext, ...expansionContext];
         if (this.session.config.autoMemory && this.session.config.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read")) {
           const memory = await loadAutoMemoryContext(this.session.config.workspace, signal,
-            { permissions: effectivePermissionPolicy(this.session.config.permissions, this.session.permissionOwner.state()), maxOutputBytes: this.session.config.maxOutputBytes });
+            { permissions: effectivePermissionPolicy(this.session.config.permissions, this.permissionState()), maxOutputBytes: this.session.config.maxOutputBytes });
           const marker = `Workspace memory data (sha256 ${memory.sha256}; latest snapshot supersedes earlier memory data):\n${memory.text}`;
           const latest = this.session.messages.flatMap(message => Array.isArray(message.content)
             ? message.content.filter(block => block.type === 'text' && block.text.startsWith("Hook context:\nWorkspace memory data (sha256 ")) : []).at(-1);
@@ -1477,7 +1830,7 @@ export class Agent {
             throw new Error('Attachment input exceeds the context threshold; use a smaller file, fewer PDF pages or API token counting');
           }
           if (automatic && await this.provider.count(this.request([...this.session.messages, message]), signal) >= inputLimit) {
-            if (await this.compact(signal) === 'blocking_limit') return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
+            if (await this.compact(signal) === 'blocking_limit') return await this.finish('blocking_limit', 'Prompt is too long', modelCalls, signal);
             this.session.append({ kind: 'turn_end', reason: 'attachment_precompact' });
             if (await this.provider.count(this.request([...this.session.messages, message]), signal) >= inputLimit) {
               throw new Error('Attachment with the session summary exceeds the context threshold; start a fresh session or use a smaller file');
@@ -1485,9 +1838,16 @@ export class Agent {
           }
           signal.throwIfAborted();
         }
-        this.session.append({ kind: 'message', message, classifier: { origin,
+        beforePromptCommit?.();
+        if (notificationDelivery && notificationAuthorization) bindNotificationMessage(notificationAuthorization, this.session, message);
+        // Host journal rewrite: ns/Si, sfn1dbxq [226694,227794)/[233465,234179), UTF-16.
+        const messageId = randomUUID();
+        this.session.append({ kind: 'message', message, messageId, ...(this.session.config.features?.checkpoints === false ? { directoryHistoryDisabled: true } : {}),
+          ...(notificationDelivery ? { notificationDelivery } : {}), classifier: { origin,
           ...(origin.kind === 'human' ? { humanText: expansion === undefined ? prompt :
-            'kind' in expansion ? expansion.payload.prompt : expansion.prompt } : {}) } });
+            'kind' in expansion ? expansion.payload.prompt : expansion.prompt } : {}) } }, notificationAuthorization);
+        onPromptCommitted?.();
+        await this.session.captureDirectoryFileHistory(messageId, signal);
         // We/xe, htgmc2p1 [40137,44501), sfn1dbxq [4380701,4382470), UTF-16.
         if (promptContent !== undefined) this.session.append({ kind: 'message', isMeta: true,
           message: { role: 'user', content: [...promptContent] } });
@@ -1515,12 +1875,12 @@ export class Agent {
         const capacity = contextBlockingLimit(this.session.config);
         if (tokens >= capacity && (!automatic || this.session.messages.length < 3)) {
           // yd/QH, 5b2hxy2e [147582,148075)/[125441,126326), UTF-16: a blocked request completes its turn.
-          return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
+          return await this.finish('blocking_limit', 'Prompt is too long', modelCalls, signal);
         }
         if (automatic && tokens >= Math.min(this.session.config.compactAt, capacity)) {
           if (turn - lastCompact < 2) throw new Error('Context refilled too quickly after compaction; circuit breaker stopped the loop');
           if (this.session.messages.length < 3) throw new Error('Initial input exceeds the configured context threshold');
-          if (await this.compact(signal) === 'blocking_limit') return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
+          if (await this.compact(signal) === 'blocking_limit') return await this.finish('blocking_limit', 'Prompt is too long', modelCalls, signal);
           lastCompact = turn;
         }
         const request = this.request();
@@ -1546,7 +1906,8 @@ export class Agent {
         const message: Anthropic.MessageParam = { role: 'assistant', content: response.content };
         const calls = toolCalls(message);
         if (new Set(calls.map((call) => call.id)).size !== calls.length) throw new Error('Model returned duplicate tool call IDs');
-        this.session.append({ kind: 'message', message, response });
+        const parentMessageId = randomUUID();
+        this.session.append({ kind: 'message', message, messageId: parentMessageId, response });
         // Recovered MessageDisplay payload (`zir`, chunk-sfn1dbxq.js [2936136,2936500)) is
         // `{turn_id, message_id, index, final, delta}`; the completed-message path raises one
         // final delta (`WHo`, chunk-6ejn7q9s.js offset 100801) and `hookSpecificOutput.displayContent`
@@ -1564,13 +1925,13 @@ export class Agent {
             this.session.append({ kind: 'stop_hook_count', count: 0 });
           }
           const blocked = response.stop_reason !== 'tool_use' ? `Tools skipped because model stopped with ${response.stop_reason}` : undefined;
-          const proceed = await this.execute(calls, signal, blocked);
-          if (signal.aborted) return this.finish('aborted', text, modelCalls);
+          const proceed = await this.execute(calls, cancellation, parentMessageId, blocked);
+          if (signal.aborted) return await this.finish('aborted', text, modelCalls, signal);
           if (blocked) {
             const finished = await this.finishWithHooks(response.stop_reason ?? 'invalid_stop', text, modelCalls, signal);
             if (finished) return finished;
           }
-          if (!proceed) return this.finish('hook_blocked', text, modelCalls);
+          if (!proceed) return await this.finish('hook_blocked', text, modelCalls, signal);
           if (this.endedByTool) return (await this.finishWithHooks('end_turn', text, modelCalls, signal))!;
           this.enforceRequiredTool();
           continue;
@@ -1582,9 +1943,11 @@ export class Agent {
       return (await this.finishWithHooks('turn_limit', text, modelCalls, signal))!;
     } catch (error) {
       // A journal failure may leave an incomplete batch; recovery never replays its effects.
-      if (signal.aborted) return this.finish('aborted', text, modelCalls);
+      if (signal.aborted && (!beganTurn || this.turnTiming)) return await this.finish('aborted', text, modelCalls, signal);
       throw error;
     } finally {
+      cancellation.dispose();
+      this.turnLayers = [];
       if (this.turnTiming) this.events.progress?.({kind:'finish', reason:'error', duration:{uuid:this.turnTiming.uuid,
         durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()}});
       this.turnTiming = undefined; this.busy = false;

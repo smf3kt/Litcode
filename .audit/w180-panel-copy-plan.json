@@ -1,0 +1,34 @@
+{
+  "blocks": [
+    {"file":"chunk-24k7d6mw.js","range":[462495,462544],"note":"_0 sidebar width"},
+    {"file":"chunk-24k7d6mw.js","range":[1663022,1663689],"note":"sidebar state selectors, callbacks and constants"},
+    {"file":"chunk-24k7d6mw.js","range":[1666412,1678857],"note":"rxe sidebar with dft, zW, close, noise toggle and file rows"},
+    {"file":"chunk-n3ykh62m.js","range":[572710,573994],"note":"generated-file classification"},
+    {"file":"chunk-n3ykh62m.js","range":[574991,575387],"note":"test-file classification"},
+    {"file":"chunk-yn0pfn70.js","range":[8612,8856],"note":"OO suffix-preserving path truncation"},
+    {"file":"chunk-3gz7s57c.js","range":[11348,11607],"note":"uIe subscribed scroll handle"},
+    {"file":"chunk-1r9zp6s1.js","range":[28099,28445],"note":"Gr delayed loading indicator"},
+    {"file":"chunk-24k7d6mw.js","range":[122322,124024],"note":"sF drag-scroll subscription, timers and scope guards"},
+    {"file":"chunk-24k7d6mw.js","range":[1656579,1657226],"note":"S_e selected diff attachment"},
+    {"file":"chunk-24k7d6mw.js","range":[1662474,1662799],"note":"x_e pointer row to file path"}
+  ],
+  "imports": [
+    "import { Xe as e, Xe as r, s, n, fragment as X, w, b, y, R, P, Ae, Rt, Z, To } from './plugin-chain-react-hooks.js';",
+    "import { basename as IR, extname as J2, posix as xu, sep as MR, resolve as kpt } from 'node:path';",
+    "import { eE } from './plugin-chain-markdown-host.js';",
+    "import { Oe } from './plugin-chain-registry-stores-source.js';",
+    "import { ae, ra } from './plugin-chain-text-clamp-source.js';",
+    "import { OT } from './diff-dialog-tabs-source.js';",
+    "import { pBe, Uwe, Ol } from './diff-dialog-detail-source.js';",
+    "import { I, Ib } from './diff-dialog-primitives-source.js';",
+    "import { Mr } from './diff-dialog-spinner-source.js';",
+    "import { fo } from './diff-dialog-chrome-source.js';",
+    "import { Ze, nn } from './plugin-chain-above-prompt-keybinding-source.js';",
+    "import { on, wC } from './plugin-chain-markdown-source.js';",
+    "import { vu } from './tui-render-engine.js';",
+    "import { CN, IP, ad, Ann } from './diff-dialog-list-source.js';",
+    "import { $r, So } from './plugin-chain-session-context-source.js';",
+    "import { V, Mn, is, Pe, WKn, iFt, DMr, MMr, mz, vo, F, L4, nKn, U3t, ur, Ui, Xe, us, IT, nI, Cje, Lt, g, vie } from './diff-panel-host.js';"
+  ],
+  "exports": ["_0","rxe","dft","zW","sxe","ixe","axe","Wdr","mto","uIe","Gr","CAo","TAo","RAo","PAo"]
+}

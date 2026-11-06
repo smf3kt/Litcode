@@ -28,6 +28,17 @@ function sse(res, text) {
   res.end();
 }
 
+function sseWrite(res) {
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  send('message_start', { type: 'message_start', message: { id: 'msg_write', type: 'message', role: 'assistant',
+    model: 'fixture-model', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } } });
+  send('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'fork-write', name: 'write_file', input: {} } });
+  send('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ path: 'fork-write.txt', content: 'CLI_WRITE' }) } });
+  send('content_block_stop', { type: 'content_block_stop', index: 0 });
+  send('message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 1 } });
+  send('message_stop', { type: 'message_stop' }); res.end();
+}
+
 const requests = [];
 const server = http.createServer((request, response) => {
   let body = '';
@@ -38,7 +49,9 @@ const server = http.createServer((request, response) => {
     requests.push(parsed);
     response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
     const last = Array.isArray(parsed.messages) ? parsed.messages.at(-1) : undefined;
-    sse(response, JSON.stringify(last?.content ?? '').includes('FORK_TASK') ? 'COPY_REPLY' : 'PARENT_REPLY');
+    const text = JSON.stringify(last?.content ?? '');
+    if (text.includes('ORIGINAL_TASK')) sseWrite(response);
+    else sse(response, text.includes('FORK_TASK') ? 'COPY_REPLY' : 'PARENT_REPLY');
   });
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -76,7 +89,7 @@ async function startSession(tag, extraEnv = {}) {
   const workspace = path.join(temporary, `${tag}-workspace`), user = path.join(temporary, `${tag}-user`);
   fs.mkdirSync(workspace); fs.mkdirSync(user);
   fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ model: 'fixture-model', thinking: false,
-    promptSuggestionEnabled: false }));
+    promptSuggestionEnabled: false, ...(tag === 'waiting' ? { features: { sourcePlanTools: false } } : {}) }));
   const child = spawn('/usr/bin/expect', [path.join(root, '.audit/w205-footer.exp'), process.execPath,
     path.join(root, 'bin/litcode.mjs'), '--workspace', workspace, '--user-dir', user,
     '--interactive', '--no-inherit-gateway', '--permission-mode', 'bypass'],
@@ -85,7 +98,7 @@ async function startSession(tag, extraEnv = {}) {
   child.stdout.on('data', chunk => active.chunks.push(chunk));
   child.stderr.on('data', chunk => active.chunks.push(chunk));
   await until(ready, `${tag} startup ready`, 30000);
-  return { workspace };
+  return { workspace, user };
 }
 const journals = workspace => fs.readdirSync(path.join(workspace, '.agent')).filter(name => name.endsWith('.jsonl'));
 const records = file => {
@@ -160,6 +173,10 @@ try {
   const parentFile = path.join(waiting.workspace, '.agent', journals(waiting.workspace)[0]);
   await until(() => records(parentFile).some(event => event.kind === 'turn_end'), 'parent turn committed');
   const parentBytes = fs.readFileSync(parentFile, 'utf8');
+  const parentId = records(parentFile)[0].id;
+  const plans = path.join(waiting.user, 'plans');
+  fs.mkdirSync(plans, { recursive: true });
+  fs.writeFileSync(path.join(plans, `${parentId}.workshop.md`), 'workshop CLI fixture\n');
   const beforeFork = requests.length;
   send('/fork\r');
   await until(() => flat().includes('sessionwaitingforaprompt·') && journals(waiting.workspace).length === 2,
@@ -169,6 +186,17 @@ try {
   const copyEvents = records(copyFile);
   const copyId = copyEvents[0].id;
   const copyLock = copyFile + '.lock';
+  const workshopCopy = path.join(plans, `${copyId}.workshop.md`);
+  const observation = copyEvents.find(event => event.kind === 'write_observation');
+  const written = path.join(waiting.workspace, 'fork-write.txt');
+  const writtenStat = fs.statSync(written);
+  pass('fork retains write observation without historical effect', observation?.landed?.cacheKey === written
+    && observation.landed.filePath === written && observation.landed.content === 'CLI_WRITE'
+    && observation.landed.mtimeMs === writtenStat.mtimeMs
+    && observation.landed.identity.dev === String(writtenStat.dev) && observation.landed.identity.ino === String(writtenStat.ino)
+    && !copyEvents.some(event => event.kind === 'tool_result'));
+  pass('fork copies workshop with no main plan', fs.readFileSync(workshopCopy, 'utf8') === 'workshop CLI fixture\n'
+    && !fs.existsSync(path.join(plans, `${copyId}.md`)));
   pass('a bare fork saves a completed copy', copyEvents.some(event => event.kind === 'branch')
     && copyEvents.some(event => event.kind === 'turn_end'));
   pass('the waiting copy releases its lock without starting a task', !fs.existsSync(copyLock));
@@ -179,6 +207,7 @@ try {
   pass('the waiting copy keeps the fork-point history', JSON.stringify(records(copyFile)) === JSON.stringify(copyEvents));
 
   await resumeSession(waiting.workspace, copyId);
+  pass('workshop copy survives CLI restart', fs.readFileSync(workshopCopy, 'utf8') === 'workshop CLI fixture\n');
   pass('the saved copy resumes in an interactive terminal');
   send('NEW_COPY_TASK\r');
   await until(() => requests.some(request => lastText(request).includes('NEW_COPY_TASK'))

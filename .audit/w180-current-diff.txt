@@ -1,0 +1,597 @@
+diff --git a/src/agent.ts b/src/agent.ts
+index 766c2be..f78a591 100644
+--- a/src/agent.ts
++++ b/src/agent.ts
+@@ -21,6 +21,7 @@ import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_
+ import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
+ import { activateTouchedSkills, discoverTouchedSkills, reloadSkills } from './skill-catalog.js';
+ import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
++import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
+ 
+ export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
+ Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
+@@ -758,7 +759,8 @@ export class Agent {
+     if (conversation.at(-1)?.role === 'assistant' && toolCalls(conversation.at(-1)!).length) conversation.pop();
+     assertPaired(conversation);
+     const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
+-      conversation: structuredClone(conversation), interaction: this.events.interaction };
++      conversation: structuredClone(conversation), interaction: this.events.interaction,
++      fileHistory: file => this.session.touchFile(file) };
+     const results: ToolResult[] = [];
+     const extra: string[] = [];
+     let stopReason = blocked;
+@@ -1139,7 +1141,7 @@ export class Agent {
+   }
+ 
+   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
+-    expansion?: PromptExpansion, hookContext: readonly string[] = []): Promise<RunResult> {
++    expansion?: PromptExpansion, hookContext: readonly string[] = [], selection?: DiffSelection): Promise<RunResult> {
+     if (this.busy) throw new Error('Agent is already running');
+     this.busy = true;
+     let modelCalls = 0;
+@@ -1224,6 +1226,8 @@ export class Agent {
+           signal.throwIfAborted();
+         }
+         this.session.append({ kind: 'message', message });
++        if (selection?.text) this.session.append({ kind: 'message', isMeta: true,
++          message: { role: 'user', content: selectedDiffMessage(selection) } });
+       } else if (!this.session.awaitingResponse) throw new Error('Session has no unfinished turn');
+       const prior = this.session.lastResponse;
+       if (prior && !toolCalls(this.session.messages.at(-1)!).length && prior.stop_reason !== 'pause_turn') {
+diff --git a/src/interactive.ts b/src/interactive.ts
+index 661686a..6439c21 100644
+--- a/src/interactive.ts
++++ b/src/interactive.ts
+@@ -163,7 +163,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
+   };
+   options.signal.addEventListener('abort', abort, { once: true });
+-  const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null } }[] = [];
++  const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
++    attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
+   // The recovered prologue prepends the SessionStart message to the user input
+   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
+   // before anything typed or piped at startup.
+@@ -221,6 +222,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+     terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
+     terminal?.setTheme?.(session.config.theme);
+     terminal?.bindStatusLine?.(session);
++    terminal?.bindDiffPanel?.(session);
+     taskUnsubscribe?.(); taskUnsubscribe = undefined;
+     refreshTasks();
+     if (terminal?.setTasks) taskUnsubscribe = activeRuntime.subscribeTasks?.(session.config, refreshTasks);
+@@ -272,9 +274,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+       } catch (error) { options.status.write(`Config watch error: ${String(error)}\n`); }
+     }
+   };
+-  const onLine = (line: string) => {
++  const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
+     if (approval) { approval(line); return; }
+-    queue.push({ prompt: line, source: 'user' }); awaken();
++    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) }); awaken();
+   };
+   const onClose = () => {
+     inputClosed = true;
+@@ -552,7 +554,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
+         }
+         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
+-        if (event.kind === 'title' || event.kind === 'instruction_watch') next.append(event);
++        if (event.kind === 'title' || event.kind === 'instruction_watch' || event.kind === 'file_history') next.append(event);
+       }
+       next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
+     } catch (error) { next.close(); throw error; }
+@@ -582,6 +584,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+   };
+   try {
+     await terminal?.bindInputHistory?.(session);
++    terminal?.bindDiffPanel?.(session);
+     terminal?.start();
+     unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+     const bound = await bindNext(activeRuntime, session);
+@@ -728,6 +731,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+           if (Buffer.byteLength(text) > session.config.maxOutputBytes) throw new Error('MCP catalog exceeds display budget');
+           output.write(text + '\n'); continue;
+         }
++        if (prompt === '/diff' && terminal?.toggleDiffPanel) {
++          options.status.write(await terminal.toggleDiffPanel() + '\n');
++          continue;
++        }
+         if (prompt === '/tasks' || prompt === '/cron' || /^\/diff(?:\s|$)/.test(prompt)) {
+           const match = /^\/diff ([A-Za-z0-9][A-Za-z0-9_-]{0,63})(?: (0|[1-9]\d*))?$/.exec(prompt);
+           if (prompt !== '/tasks' && prompt !== '/cron' && !match) throw new Error('Use /diff NAME [OFFSET]');
+@@ -787,7 +794,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
+               }
+               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
+-              if (event.kind === 'title' || event.kind === "instruction_watch") next.append(event);
++              if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history') next.append(event);
+             }
+             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
+             nextRuntime = await bindNext(nextRuntime, next);
+@@ -1175,7 +1182,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
+           options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+           continue;
+         }
+-        const result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal));
++        const before = session.events.length;
++        let result;
++        try {
++          result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
++            undefined, undefined, [], item.attachment?.selection));
++        } finally {
++          if (item.attachment && !session.events.slice(before).some(event => event.kind === 'message'
++            && event.message.role === 'user' && event.isMeta)) terminal?.restoreDiffSelection?.(item.attachment);
++        }
+         if (result.modelCalls === 0 && result.text) output.write(result.text);
+         output.write('\n');
+         options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+diff --git a/src/notebooks.ts b/src/notebooks.ts
+index 2f9403a..b04bca9 100644
+--- a/src/notebooks.ts
++++ b/src/notebooks.ts
+@@ -463,6 +463,7 @@ function notebookEditTool(): ToolDefinition {
+             `(${NOTEBOOK_MAX_BYTES} bytes). The file was left unchanged.`,
+         );
+       }
++      context.fileHistory?.(real);
+       atomicWrite(real, serialized, stat.mode & 0o7777);
+ 
+       if (mode === "delete") return `Deleted cell ${resultId ?? index} from ${rel}`;
+diff --git a/src/session.ts b/src/session.ts
+index 9a08075..c64fbf6 100644
+--- a/src/session.ts
++++ b/src/session.ts
+@@ -105,8 +105,9 @@ export type SessionConfig = {
+ };
+ export type ToolResult = Anthropic.ToolResultBlockParam;
+ export type SessionEvent =
+-  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string }
+-  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message }
++  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
++  | { kind: 'file_history'; path?: string; tracked: boolean }
++  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean }
+   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
+   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
+   | { kind: 'tool_start'; id: string; name: string }
+@@ -230,8 +231,10 @@ const messageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z
+ const responseSchema = z.object({ role: z.literal('assistant'), content: z.array(z.object({ type: z.string() }).passthrough()), stop_reason: z.string().nullable() }).passthrough();
+ const resultSchema = z.object({ type: z.literal('tool_result'), tool_use_id: z.string().min(1), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]), is_error: z.boolean().optional() }).strict();
+ const eventSchema = z.discriminatedUnion('kind', [
+-  z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema, fingerprint: z.string() }).strict(),
+-  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional() }).strict(),
++  z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
++    fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
++  z.object({ kind: z.literal('file_history'), path: z.string().min(1).optional(), tracked: z.boolean() }).strict(),
++  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional() }).strict(),
+   z.object({ kind: z.literal('mcp_subscription'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
+     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
+   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
+@@ -276,6 +279,9 @@ export class Session {
+   readonly config: SessionConfig;
+   readonly file: string;
+   readonly events: SessionEvent[];
++  readonly startedAt: number;
++  private fileHistoryValue = { trackSequence: 0, trackedFiles: new Set<string>() };
++  private readonly fileHistoryListeners = new Set<() => void>();
+   /**
+    * Session-scoped permission rules and mode adopted from PermissionRequest
+    * allow answers. The source keeps these in its session permission context
+@@ -299,6 +305,8 @@ export class Session {
+     this.fd = fd;
+     this.lock = lock;
+     this.lockToken = lockToken;
++    this.startedAt = meta.startedAt ?? Math.min(Date.now(), fs.fstatSync(fd).birthtimeMs || Date.now());
++    for (const event of events) if (event.kind === 'file_history') this.updateFileHistory(event);
+   }
+ 
+   static open(workspace: string, options: { config?: SessionConfig; id?: string; recoverLock?: boolean; storageRoot?: string }): Session {
+@@ -374,7 +382,8 @@ export class Session {
+         configSchema.parse(options.config);
+         if (options.config.workspace !== root) throw new Error('Config workspace must use its canonical path');
+         fd = fs.openSync(file, 'ax', 0o600);
+-        const meta: SessionEvent = { kind: 'metadata', version: 1, id, config: options.config, fingerprint: fingerprint(options.config) };
++        const meta: SessionEvent = { kind: 'metadata', version: 1, id, config: options.config,
++          fingerprint: fingerprint(options.config), startedAt: Date.now() };
+         const record = Buffer.from(JSON.stringify(meta) + '\n');
+         Session.writeAll(fd, record);
+         fs.fsyncSync(fd);
+@@ -404,6 +413,29 @@ export class Session {
+     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));
+     fs.fsyncSync(this.fd);
+     this.events.push(structuredClone(event));
++    if (event.kind === 'file_history') {
++      this.updateFileHistory(event);
++      for (const listener of this.fileHistoryListeners) listener();
++    }
++  }
++
++  get fileHistory(): { trackSequence: number; trackedFiles: ReadonlySet<string> } { return this.fileHistoryValue; }
++  subscribeFileHistory(listener: () => void): () => void {
++    this.fileHistoryListeners.add(listener);
++    return () => { this.fileHistoryListeners.delete(listener); };
++  }
++
++  /** Fet/rhe, chunk-sfn1dbxq.js [4731316,4732048)/[4728518,4730433) UTF-16. */
++  touchFile(file?: string): void {
++    this.append({ kind: 'file_history', ...(file ? { path: path.relative(this.config.workspace, file) } : {}),
++      tracked: file !== undefined && this.config.automaticCheckpoints === true && this.config.features?.checkpoints !== false
++        && this.events.some(event => event.kind === 'checkpoint') });
++  }
++
++  private updateFileHistory(event: Extract<SessionEvent, { kind: 'file_history' }>): void {
++    const trackedFiles = new Set(this.fileHistoryValue.trackedFiles);
++    if (event.tracked && event.path) trackedFiles.add(event.path);
++    this.fileHistoryValue = { trackSequence: this.fileHistoryValue.trackSequence + 1, trackedFiles };
+   }
+ 
+   get messages(): Anthropic.MessageParam[] {
+@@ -436,6 +468,7 @@ export class Session {
+   close(): void {
+     if (this.closed) return;
+     this.closed = true;
++    this.fileHistoryListeners.clear();
+     fs.closeSync(this.fd);
+     const owner = JSON.parse(fs.readFileSync(this.lock, 'utf8')) as { token: string };
+     if (owner.token === this.lockToken) fs.unlinkSync(this.lock);
+diff --git a/src/tools.ts b/src/tools.ts
+index 861cbc8..5e77219 100644
+--- a/src/tools.ts
++++ b/src/tools.ts
+@@ -27,6 +27,7 @@ export type ToolContext = {
+   maxOutputBytes: number;
+   conversation?: readonly Anthropic.MessageParam[];
+   interaction?: InteractionCallbacks;
++  fileHistory?: (file?: string) => void;
+ };
+ 
+ export type ToolDefinition = {
+@@ -994,8 +995,10 @@ function writeFileTool(): ToolDefinition {
+           throw new Error(`write_file: file already exists (pass overwrite: true): ${userPath}`);
+         }
+         verifyUnchanged(resolved, "write_file", userPath);
++        context.fileHistory?.(real);
+         atomicWrite(real, content, stat.mode & 0o7777);
+       } else {
++        context.fileHistory?.(real);
+         atomicWrite(real, content);
+       }
+       const rel = path.relative(root, real) || userPath;
+@@ -1058,6 +1061,7 @@ function editFileTool(): ToolDefinition {
+         ? original.split(old_string).join(new_string)
+         : original.replace(old_string, () => new_string);
+       verifyUnchanged(resolved, "edit_file", userPath);
++      context.fileHistory?.(real);
+       atomicWrite(real, updated, stat.mode & 0o7777);
+       const count = replace_all ? occurrences : 1;
+       const rel = path.relative(root, real) || userPath;
+@@ -1106,7 +1110,8 @@ function runCommandTool(): ToolDefinition {
+       }
+       const { command, timeout_ms = COMMAND_DEFAULT_TIMEOUT_MS } = runCommandSchema.parse(input);
+       const root = workspaceReal(context.workspace);
+-      return runShell(command, root, timeout_ms, maxBytesFor(context), context.signal);
++      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal); }
++      finally { context.fileHistory?.(); }
+     },
+   };
+ }
+diff --git a/src/tui.ts b/src/tui.ts
+index 669214c..debc98d 100644
+--- a/src/tui.ts
++++ b/src/tui.ts
+@@ -43,6 +43,9 @@ import { osc52Payload } from './clipboard-osc52.js';
+ import { layoutEngine } from './tui-layout.js';
+ import { renderPreviewMarkdown } from './tui-markdown.js';
+ import { TuiRenderer, type PromptLine } from './tui-renderer.js';
++import { DiffPanel } from './diff-panel.js';
++import { DiffSelectionOwner } from './diff-selection.js';
++import { randomUUID } from 'node:crypto';
+ import { TuiDocumentRenderer } from './tui-document-renderer.js';
+ import { Welcome, WELCOME_MIN_ROWS } from './tui-welcome.js';
+ import { clt, tLo } from './tui-stream-preview.js';
+@@ -113,7 +116,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
+ }
+ 
+ type TuiEvents = {
+-  submit: [text: string]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
++  submit: [text: string, attachment?: import('./terminal.js').PromptDiffSelection]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
+   action: [action: string];
+ };
+ 
+@@ -179,6 +182,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+ 
+   private readonly modes: TerminalModeController;
+   private renderer: TuiRenderer | undefined;
++  private diffPanel: DiffPanel | undefined;
++  private diffPointer: { column: number; row: number; moved: boolean } | undefined;
++  private readonly diffSelection = new DiffSelectionOwner(() => this.render());
++  private diffAttachmentFocused = false;
+   private documentRenderer: TuiDocumentRenderer | undefined;
+   private welcomeRenderer: TuiDocumentRenderer | undefined;
+   private welcomeRows: string[] = [];
+@@ -330,6 +337,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     this.focus.subscribe(() => {
+       this.progress.setFocused(this.focus.focused);
+       if (!this.focus.focused && this.selection.dragging) this.selection = reduceSelection(this.selection, { type: 'end' });
++      if (!this.focus.focused && this.diffPointer) {
++        this.renderer?.endNativeSelection(); this.diffPointer = undefined;
++      }
+       this.render();
+     });
+     this.maxProseWidth = options.maxProseWidth;
+@@ -417,6 +427,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     this.render();
+   }
+   async flushInputHistory(): Promise<void> { await this.inputHistory.finish(); }
++  bindDiffPanel(session: import('./session.js').Session): void {
++    if (this.diffPanel?.sessionId === session.id) return;
++    this.diffPanel?.close();
++    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
++    this.renderer?.clearNativeSelection();
++    this.diffPanel = new DiffPanel(session, () => {
++      if (!this.closed) {
++        try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
++      }
++    }, selection => this.diffSelection.set(selection));
++  }
++  async toggleDiffPanel(): Promise<string> {
++    if (!this.diffPanel) throw new Error('Diff panel has no bound session');
++    return this.diffPanel.toggle(this.options.output.columns ?? 80);
++  }
++  restoreDiffSelection(attachment: import('./terminal.js').PromptDiffSelection): void {
++    this.diffSelection.restore(attachment.promptUuid, attachment.selection);
++  }
+   bindStatusLine(session: import('./session.js').Session): void {
+     this.statusLineSetting = session.config.statusLine;
+     this.statusLineText = undefined; this.statusLineKey = '';
+@@ -482,10 +510,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     if(this.vimEnabled!==(mode==='vim')){this.gestures.reset();this.vim.reset();}this.vimEnabled=mode==='vim';this.vim.setRemaps(remaps);this.render();
+   }
+ 
++  /** mr/Qs, chunk-qh0w98pn.js [34940,46581)/[7830,8512) UTF-16, share the painted input width. */
+   private handleVim(action: EditorAction): boolean {
+     const key=vimKey(action);if(!key)return false;this.vimHandling=true;const owner=this;
+     const bridge:VimBridge={get text(){return owner.editor.text;},get cursor(){return owner.editor.cursor;},
+-      columns:Math.max(20,this.options.output.columns??80)-2,
++      columns:this.conversationColumns()-2,
+       change:(text,previous)=>{
+         const raw=text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
+         if(raw===this.editor.text)return;
+@@ -514,7 +543,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+ 
+   setRunning(running: boolean): void {
+     this.running = running;
+-    if (!running) this.progress.stop();
++    if (!running) { this.progress.stop(); this.diffPanel?.refresh(); }
+     this.dispatch({ type: 'running', value: running });
+   }
+ 
+@@ -810,6 +839,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     this.undo.clear();
+     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
+     this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
++    this.diffPanel?.close(); this.diffPanel = undefined;
++    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
+     this.progress.close(); this.progressRenderer?.close();
+     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
+     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
+@@ -916,7 +947,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     if(this.vimEnabled&&!this.vimHandling&&!this.dialog&&action.type!=='running'
+       &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
+     const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
+-      navigationColumns: Math.max(20, this.options.output.columns ?? 80) - 2,
++      navigationColumns: this.conversationColumns() - 2,
+       pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
+     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
+     const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
+@@ -932,7 +963,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     this.render();
+     for (const effect of transition.effects) {
+       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
+-      else if (effect.type === 'submit') this.emit('submit', effect.text);
++      else if (effect.type === 'submit') {
++        const promptUuid = randomUUID(), selection = this.diffSelection.take(effect.text, promptUuid);
++        this.diffAttachmentFocused = false;
++        this.emit('submit', effect.text, selection ? { promptUuid, selection } : undefined);
++      }
+       else if (effect.type === 'interrupt') this.emit('interrupt');
+       else this.emit('pasteRejected', effect.bytes);
+     }
+@@ -968,8 +1003,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     return { key: '', name: action.type };
+   }
+ 
+-  private viewportSize(): { columns: number; rows: number } {
++  private conversationColumns(): number {
+     const columns = Math.max(20, this.options.output.columns ?? 80);
++    return columns - (this.screen === 'chat' && !this.dialog ? this.diffPanel?.width(columns) ?? 0 : 0);
++  }
++
++  private viewportSize(): { columns: number; rows: number } {
++    const columns = this.conversationColumns();
+     const rows = Math.max(4, this.options.output.rows ?? 24);
+     const promptRows = this.inputLayout(columns, rows).lines.length;
+     return { columns, rows: Math.max(0, rows - promptRows - 3 - this.progressHeight - this.statusLineRows.length) };
+@@ -997,7 +1037,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+   private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns, this.renderEntryRows).length; }
+ 
+   private contexts(): TuiContext[] {
+-    return this.screen === 'chat' ? ['Chat', 'Scroll', 'Global'] : contextStack({ screen: this.screen });
++    if (this.screen !== 'chat') return contextStack({ screen: this.screen });
++    const native = this.diffPanel?.width(this.options.output.columns ?? 80)
++      ? this.diffPanel.keys.activeContexts as TuiContext[] : [];
++    return [...new Set([...(this.diffAttachmentFocused ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
+   }
+ 
+   private readonly onData = (chunk: string | Buffer) => {
+@@ -1022,7 +1065,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+       }
+       if (action.type === 'mouse') { this.handleMouse(action); continue; }
+       if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
+-      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord)) {
++      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord || this.diffAttachmentFocused)) {
+         for (const character of action.text) {
+           if (this.closed || this.editorController) return;
+           this.routeKey(character);
+@@ -1228,6 +1271,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+ 
+   private handleKey(sequence: string, command?: EditorCommand): boolean {
+     if (command === 'newline') { this.dispatch({ type: command }, sequence); return true; }
++    if (sequence === '\x1b[B' && this.diffSelection.pending && !this.editor.text) {
++      this.diffAttachmentFocused = true; this.render(); return true;
++    }
+     const outcome = this.keys.push(sequence, this.contexts());
+     if (outcome.kind === 'pending') return true;
+     if (outcome.kind === 'none') {
+@@ -1239,12 +1285,40 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+       return false;
+     }
+     if (outcome.match.action === 'history:previous' || outcome.match.action === 'history:next') return false;
++    // Source Yt resolves against all mounted contexts before invoking the registered handler.
++    if (this.screen === 'chat' && this.diffPanel?.width(this.options.output.columns ?? 80)
++      && this.diffPanel.keys.dispatchAction(outcome.match.action)) { this.render(); return true; }
+     return this.applyAction(outcome.match.action);
+   }
+ 
+   private handleMouse(event: TerminalMouseEvent): void {
+     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
+     const view = this.viewportSize();
++    if (this.diffPanel?.width(this.options.output.columns ?? 80) && (event.col > view.columns || this.diffPointer)) {
++      const column = event.col - 1, row = event.row - 1;
++      if (event.action === 'wheelup' || event.action === 'wheeldown') {
++        this.renderer?.wheel(column, row, event.action === 'wheelup' ? -1 : 1,
++          { ctrl: event.ctrl, shift: event.shift, meta: event.meta });
++      } else if ((this.options.mouseTracking ?? 'full') === 'full') {
++        if (event.action === 'press' && (event.button & 3) === 0) {
++          this.selection = createSelection();
++          this.diffPointer = { column, row, moved: false };
++          this.renderer?.selectNative('start', column, row, this.clickCount({ column, line: row }));
++        } else if (this.diffPointer && (event.action === 'move' || event.action === 'release')) {
++          const pointer = this.diffPointer;
++          pointer.moved ||= column !== pointer.column || row !== pointer.row;
++          this.renderer?.selectNative(event.action === 'release' ? 'end' : 'drag', column, row);
++          if (event.action === 'release') {
++            this.diffPointer = undefined;
++            if (!pointer.moved && !this.renderer?.selectionInstance.hasTextSelection()) {
++              this.renderer?.click(column, row, { ctrl: event.ctrl, shift: event.shift, alt: event.meta });
++            }
++          }
++        }
++      }
++      this.render(); return;
++    }
++    if (event.action === 'press') this.renderer?.clearNativeSelection();
+     const inside = event.col >= 1 && event.col <= view.columns
+       && event.row >= 1 && event.row <= view.rows;
+     if (event.action === 'wheelup' || event.action === 'wheeldown') {
+@@ -1334,6 +1408,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     }
+     if (action !== 'chat:defaultToNewerModel') this.resetKillMode();
+     switch (action) {
++      case 'footer:close':
++        if (!this.diffAttachmentFocused) return false;
++        this.diffAttachmentFocused = false; this.diffSelection.dismiss(); this.render(); return true;
++      case 'footer:up': case 'footer:clearSelection':
++        this.diffAttachmentFocused = false; this.render(); return true;
+       case 'selection:copy': this.copySelection(); return true;
+       case 'selection:extendLeft': this.extendSelection(-1, 0); return true;
+       case 'selection:extendRight': this.extendSelection(1, 0); return true;
+@@ -1396,6 +1475,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+ 
+   /** Move the selection focus by a line/cell delta, clamping to the transcript. */
+   private extendSelection(dx: number, dy: number): void {
++    if (this.renderer?.selectionInstance.hasTextSelection()) {
++      const direction = !Number.isFinite(dx) ? dx < 0 ? 'lineStart' : 'lineEnd'
++        : dy ? dy < 0 ? 'up' : 'down' : dx < 0 ? 'left' : 'right';
++      this.renderer.selectionInstance.moveSelectionFocus(direction); this.render(); return;
++    }
+     const view = this.viewportSize();
+     const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows);
+     if (!lines.length) return;
+@@ -1416,12 +1500,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+   private copySelection(): void {
+     const view = this.viewportSize();
+     const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows);
+-    const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
++    const native = this.renderer?.selectionInstance;
++    const text = native?.hasTextSelection() ? native.copySelectionNoClear()
++      : selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
+     if (!text) return;
+     let payload: string;
+     try { payload = osc52Payload(text); }
+     catch (error) { this.setStatus((error as Error).message); return; }
+     this.options.output.write(payload);
++    native?.clearTextSelection();
+     this.selection = reduceSelection(this.selection, { type: 'clear' });
+     this.setStatus('copy request sent');
+   }
+@@ -1583,7 +1670,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     this.close();
+     try { this.emit('inputError', error); } finally { this.emit('exit'); }
+   };
+-  private readonly onResize = () => { this.selection = createSelection(); this.render(); };
++  private readonly onResize = () => {
++    this.selection = createSelection(); this.diffPointer = undefined; this.renderer?.clearNativeSelection(); this.render();
++  };
+ 
+   /**
+    * Records the answer for the current step. A grouped request advances to the
+@@ -2017,6 +2106,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
+     const columns = Math.max(20, this.options.output.columns ?? 80);
+     const rows = Math.max(4, this.options.output.rows ?? 24);
++    this.diffPanel?.setColumns(columns);
+     this.statusLine.setVimMode(this.vim.mode); this.statusLine.refresh();
+     this.statusLine.setActive(this.dialog === undefined && this.screen === 'chat' && !this.gestures.hint);
+     this.progress.setVisible(this.dialog === undefined);
+@@ -2069,24 +2159,32 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+         this.running,undefined,this.theme.current,this.theme.overrides,[],queryRows.slice(0,-1));
+       this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=this.queryEditor.cursor;return;
+     }
+-    const prompt = this.inputLayout(columns, rows);
+-    const statusRows = this.renderStatusLine(columns, rows, Math.max(0, rows - prompt.lines.length - 4));
+-    const progressRows = this.renderProgress(columns, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
++    const sidebarWidth = this.screen === 'chat' ? this.diffPanel?.width(columns) ?? 0 : 0;
++    const conversationWidth = columns - sidebarWidth;
++    const prompt = this.inputLayout(conversationWidth, rows);
++    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4));
++    const progressRows = this.renderProgress(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
+     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
+-    const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows);
+-    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(columns, rows) : [];
++    const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows);
++    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(conversationWidth, rows) : [];
+ 
+     const frame: string[] = [];
+     for (let row = 0; row < transcriptRows; row++) {
+       const rendered = viewport.rows[row];
+-      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', columns));
++      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
+     }
+     const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
+-    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
++    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
++      if (!this.closed) {
++        try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
++      }
++    });
+     this.renderer.renderChat(frame, prompt.lines,
+-      [this.statusRow(columns)],
++      [this.statusRow(conversationWidth)],
+       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
+-      { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows);
++      { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
++      sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
++        this.renderer.appContext, this.renderer.selectionInstance) } : undefined);
+     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
+   }
+ 
+@@ -2149,6 +2247,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
+ 
+   private statusRow(columns: number): string {
+     if(this.gestures.hint)return this.gestures.hint.slice(0,columns);
++    const attachment = this.diffSelection.pending;
++    if (attachment) return pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns);
+     const hints = this.statusLineSetting && this.screen === 'chat' ? '' : this.statusHints();
+     // The hints are the part a person needs when they are lost, so they keep as
+     // much room as they need up to half the row, and status text is clipped

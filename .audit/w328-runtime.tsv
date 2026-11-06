@@ -1,0 +1,15 @@
+ts	phase	decision	why	evidence	result
+2026-10-24	selection	Choose local btw waiting/retry/error chain	FEATURES records missing in-flight panel after W326	research/ports/W328-btw-progress.md	one active package
+2026-10-24	source	Acquire source we/$e/We/He/kmt and dependencies before behavior edits	Source-first contract	w328-source-panel.txt;w328-source-wait.txt;w328-source-call.txt	manifest hashes and exact UTF16 ranges
+2026-10-24	baseline	Observe absent pending modal on held request	Actual compiled red before product edits	w328-cli-red.txt	exit0;answer only after release;locks released
+2026-10-24	ownership	Use one outer turn and request-owned controller	Nested withTurn overwrites turnController	bounded host reader a5440f5a9374c0998	ActiveDialog clock/subscription owner
+2026-10-24	types	Derive SDK Middleware from stream parameter	Dual CJS/ESM import type mismatch	w328-check-first.txt	fixed without cast
+2026-10-24	integration	Forward all callback arguments through provider wrappers	Direct gateway sees retry but actual CLI loses observer	w328-cli-progress-diagnostic.txt;provider probe;login.ts;structured-output.ts	fixed;actual5request chain pass
+2026-10-24	fixture	Decode ANSI before asserting live text	Incremental paint is not a contiguous text byte stream	w328-new-focused.txt;w328-focused-decoded.txt	23/23
+2026-10-24	validation	Verify consumer/CLI surfaces	Source state and actual request effects	w328-affected.txt;w328-cli-regressions.txt;w328-cli-review.txt;w328-fork-cli.txt;w328-fork-legacy-cli.txt	202/202;46/46;5requests;f7each;check/build0
+2026-10-24	source	Read thirteen exact source/target comparisons	Distinguish host adapters from source copy	w328-source-comparison.json	4module identities;13diffs read
+2026-10-24	review	Freeze product/tests/build for independent reviews	Bind verdict to actual candidate	w328-review-identity.json;a6eb9f6afbc446c56;aa211804abbb8e8cd	c8d83715d1a2e79258819d258d74bf8efafa975771c26da4f229d8bd19e3e099
+2026-10-24	review	Close independent correctness gate	SDK invariance,cancel,concurrent ownership and actual CLI effects	w328-independent-*.txt	0confirmed defects;9/9;31/31;compiled5+7;1816records deepEqual;protected hashes unchanged
+2026-10-24	comments	Correct stale x coordinate only after final review identity	Manifest/Acorn x[4364,4895),UTF16	w328-source-context-placeholder.txt;w328-coordinate-equivalence.json	0deleted/restored/suppressions;617source+617compiled syntax equal
+2026-10-24	identity	Bind final rebuild and regenerated source report	Only src/agent.ts and dist/agent.js comment numeral changes	w328-final-build.txt;w328-final-identity.json;w328-source-comparison.json	b5e673cdf8aefb78f92007f844e15ff8182efdd33e71cde8ce25f82ab26154b6
+2026-10-24	commit	Commit exactly eighteen package paths	Existing user authorization,local only,no coauthor/no push	git cached paths and commit log	ef3f0391edd7c66aa1945636c69d1e8dbd965573;two protected files remain unstaged;cron a7e317bd active

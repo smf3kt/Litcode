@@ -410,6 +410,9 @@ function notebookEditTool(): ToolDefinition {
       const root = workspaceReal(context.workspace);
       const real = context.workingDirectories?.(false).length
         ? confineResolved(root, userPath, true, context.workingDirectories(false)).path : confine(root, userPath, true);
+      // Host restriction: NotebookEdit.call, sfn1dbxq [4179123,4181923), UTF-16,
+      // pins US before reading and publishing; the external grant-FD chain is unconnected.
+      if (!isWithin(root, real)) throw new Error('notebook_edit: edits through additional directory grants are not implemented');
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error("File must be a Jupyter notebook (.ipynb file).");
       }

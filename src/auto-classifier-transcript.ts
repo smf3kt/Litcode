@@ -18,7 +18,7 @@ export function serializeAutoTool(tool: ToolDefinition, input: unknown, id: stri
 
 /** zLt, sfn [1068726,1078920), UTF-16. Local typed origins replace source queued/project/remote record variants. */
 export function classifierTranscript(messages: readonly Anthropic.MessageParam[], tools: ReadonlyMap<string, ToolDefinition>,
-  pending: { name: string; input: unknown; id: string }, priorOutcomes: Readonly<Record<string, string>> = {}): string {
+  pending: { name: string; input: unknown; id: string }): string {
   let output = '';
   let narration: string | undefined;
   const questions = new Set<string>();
@@ -37,7 +37,6 @@ export function classifierTranscript(messages: readonly Anthropic.MessageParam[]
         const tool = tools.get(block.name);
         if (tool) {
           output += serializeAutoTool(tool, block.input, block.id);
-          if (priorOutcomes[block.id]) output += line({ outcome: priorOutcomes[block.id], id: Cue(block.id) });
         }
       }
       continue;

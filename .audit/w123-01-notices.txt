@@ -1,0 +1,1 @@
+{"installed":37,"missingText":["@esbuild/darwin-arm64","@xterm/headless","emoji-regex","ignore","standardwebhooks"],"sha256":"07d662ec08bbd312dd575a295d1c1c5ea3b5f128db15f26ac5cb0237db084537"}

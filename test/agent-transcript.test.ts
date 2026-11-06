@@ -72,7 +72,10 @@ test('child transcript preserves human echoes, origin, completion and bounded re
     assert.ok(registry.drainNotifications().events.length > 0); assert.deepEqual(registry.drainNotifications().events, []);
     await registry.sendMessage(child.id, 'PEER_FOLLOWUP'); await registry.get(child.id, { waitMs: 5000 });
     assert.equal(agentTranscriptEntries(registry.transcript(child.id)!).filter(row => row.text === 'PEER_FOLLOWUP').length, 1);
-    await registry.stop(child.id);
+    holdNext = true; release = undefined;
+    await registry.sendMessage(child.id, 'STOP_IN_FLIGHT');
+    await until(() => release !== undefined);
+    assert.equal((await registry.stop(child.id)).status, 'cancelled');
     await assert.rejects(registry.sendMessage(child.id, 'PEER_AFTER_STOP'), /cancelled/);
     for (const [message, error] of [['', /empty/], ['x'.repeat(32 * 1024 + 1), /byte limit/]] as const) {
       await assert.rejects(registry.sendMessage(child.id, message, undefined, { human: true }), error);

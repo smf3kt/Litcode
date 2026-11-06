@@ -1,0 +1,62 @@
+(node:55156) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ settings parse plugins, agent catalogs and optional feature gates; legacy schemas stay stable (46.407667ms)
+✔ owned checkout rebuilds task, memory, checkpoint and worktree tools; resume keeps the lease (390.710166ms)
+✔ clean child checkout closes on stop while its parent-owned journal stays available (256.365625ms)
+✔ child writes remain in owned checkout and dirty checkout path is retained after close (221.703ms)
+✔ isolated child retains parent deny policy even with a narrower named tool catalog (283.606583ms)
+✔ runtime abort releases a running clean checkout after provider cancellation (257.187334ms)
+✔ standalone agent factory enables isolated checkouts without registry messaging (263.118833ms)
+✔ standalone dirty checkout returns its successful child result with cleanup diagnostics (231.384333ms)
+✔ unmerged child commits survive stop and expose the preserved checkout (236.412334ms)
+✔ concurrent child checkouts serialize owned metadata updates and runtime close cleans both (485.392875ms)
+✔ WorktreeCreate hooks supply and remove the isolated child checkout outside git (28.765666ms)
+✔ a non-git workspace without WorktreeCreate hooks takes the source advisory (4.887791ms)
+✔ WorktreeCreate hook paths with dot segments or symlink ancestors are refused (8.085708ms)
+(node:55157) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI live loopback run wires tools, settings, hooks and instructions with paired results (542.436042ms)
+✔ CLI api-key loopback run isolates the explicit credential from SDK environment headers (446.045792ms)
+ℹ CLI source: api-key; explicit auth only; environment route absent
+✔ CLI executes WebSocket monitoring without shell access and closes it on exit (455.549333ms)
+✔ CLI api-key mode ignores inherited SDK credentials and routing headers (445.393083ms)
+✔ CLI resume reuses the pinned snapshot over the loopback gateway without persisting the credential (922.22675ms)
+(node:58030) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ reopen reuses completed DAG tasks, reruns failures/skips and rejects changed definitions/settings/owner (299.991584ms)
+✔ dead PID locks recover, live owners exclude writers, interrupted effects require explicit retry, corrupt and escaped snapshots fail (376.590625ms)
+✔ persistence errors cancel current owned children, surface actionable failure and ephemeral schemas remain compatible (146.378083ms)
+(node:58033) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ meta parser requires a first pure-literal export and slices the body (2.713625ms)
+✔ transform wraps awaits, async returns and async iteration (3.019208ms)
+✔ sandbox removes host access, time, randomness and dynamic code (8.574709ms)
+✔ agent, parallel and pipeline mirror the recovered semantics (2.860333ms)
+✔ script-visible helpers keep values and logs JSON-safe (0.891583ms)
+✔ function results are rejected and args are copied into the sandbox (0.719208ms)
+✔ agent option failures surface as script errors without spawning (1.209292ms)
+✔ abort cancels a running script and timers (0.738458ms)
+✔ scriptPath accepts a regular file and refuses links, directories and oversized files (11.895875ms)
+✔ workflow_run executes scripts through the child agent registry (112.268708ms)
+(node:58034) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ pipeline executes topologically with untrusted dependency context and child session evidence (116.898875ms)
+✔ ready tasks run in parallel up to max_parallel before downstream tasks begin (148.488334ms)
+✔ DAG validation rejects duplicate IDs/dependencies, unknown edges, cycles, excessive nodes and script inputs (8.837084ms)
+✔ failed dependencies skip downstream transitively while independent tasks finish (41.007125ms)
+✔ reverse-declared downstream failures are skipped transitively (17.692917ms)
+✔ explicit workflow stop cancels only its children and leaves parent sibling alive (33.354583ms)
+✔ cancellation while launch returns still stops the newly owned child (18.4135ms)
+✔ lifetime abort and deadlines await owned children cleanup (42.132542ms)
+✔ caller abort only cancels waits and background workflows keep owned lifetimes (26.258ms)
+✔ explore tasks have read-only tools and workflow controls are omitted from all children (42.089208ms)
+✔ prompt/output/history/event/concurrent workflow bounds are explicit and UTF-8 safe (58.763625ms)
+✔ owner workflow lookups and concurrency bounds isolate state (40.140416ms)
+ℹ tests 43
+ℹ suites 0
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4573.011958

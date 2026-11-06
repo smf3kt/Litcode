@@ -1,0 +1,21 @@
+file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:3731
+  var err = new SyntaxError(message);
+            ^
+
+SyntaxError: Identifier 'd' has already been declared (209:15)
+    at pp$4.raise (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:3731:13)
+    at pp$3.declareName (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:3805:26)
+    at pp$7.checkLValSimple (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:2325:48)
+    at pp$7.checkLValPattern (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:2367:10)
+    at pp$8.parseVarId (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:1421:8)
+    at pp$8.parseVar (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:1398:10)
+    at pp$8.parseVarStatement (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:1264:8)
+    at pp$8.parseStatement (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:968:17)
+    at pp$8.parseTopLevel (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:827:21)
+    at Parser.parse (file:///Users/mant1ssa/Projects/cc_reverse/node_modules/acorn/dist/acorn.mjs:596:15) {
+  pos: 28510,
+  loc: Position { line: 209, column: 15 },
+  raisedAt: 28512
+}
+
+Node.js v26.10.0

@@ -1,0 +1,15 @@
+[work/w43-choice-preview 7072d9b] Port the recovered PreCompact custom instructions
+ 21 files changed, 4335 insertions(+), 11 deletions(-)
+ create mode 100644 .audit/w87-01-records.mjs
+ create mode 100644 .audit/w87-build.txt
+ create mode 100644 .audit/w87-chain.txt
+ create mode 100644 .audit/w87-full.txt
+ create mode 100644 .audit/w87-identity.txt
+ create mode 100644 .audit/w87-index.txt
+ create mode 100644 .audit/w87-lifecycle.txt
+ create mode 100644 .audit/w87-notices.txt
+ create mode 100644 .audit/w87-runtime.todo.md
+ create mode 100644 .audit/w87-runtime.tsv
+ create mode 100644 .audit/w87-tsc.txt
+ create mode 100644 research/ports/W87-precompact-instructions-evidence.json
+ create mode 100644 research/ports/W87-precompact-instructions.md

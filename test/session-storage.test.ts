@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import { test, type TestContext } from "node:test";
 import type Anthropic from "@anthropic-ai/sdk";
 
@@ -93,6 +95,99 @@ function assertMetadata(session: ParentSession, config: SessionConfig): void {
 function assertNoCheckoutJournal(workspace: string): void {
   assert.equal(fs.existsSync(path.join(workspace, ".agent")), false);
 }
+
+test("new root identity survives a separate process and legacy identity stays unknown", t => {
+  const f = fixture(t), root = f.open();
+  const id = root.id;
+  assert.deepEqual(root.rootIdentity, { rootSessionId: id, originalCwd: f.workspace });
+  root.close();
+  const code = `import { Session } from './src/session.ts';
+    const s = Session.open(process.argv[1], {id: process.argv[2], storageRoot: process.argv[3]});
+    process.stdout.write(JSON.stringify(s.rootIdentity ?? null)); s.close();`;
+  const cold = () => spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", code,
+    f.workspace, id, f.storageRoot], { cwd: process.cwd(), encoding: "utf8" });
+  const reopened = cold();
+  assert.equal(reopened.status, 0, reopened.stderr);
+  assert.deepEqual(JSON.parse(reopened.stdout), { rootSessionId: id, originalCwd: f.workspace });
+  const lines = fs.readFileSync(root.file, "utf8").trimEnd().split("\n");
+  const metadata = JSON.parse(lines[0]!);
+  delete metadata.rootIdentity;
+  lines[0] = JSON.stringify(metadata);
+  fs.writeFileSync(root.file, lines.join("\n") + "\n");
+  const legacy = cold();
+  assert.equal(legacy.status, 0, legacy.stderr);
+  assert.equal(JSON.parse(legacy.stdout), null);
+  const child = f.open(f.workspace, { config: { ...f.config, childMode: "general" }, storageRoot: f.storageRoot });
+  assert.equal(child.rootIdentity, undefined);
+  child.close();
+  metadata.rootIdentity = { rootSessionId: id, originalCwd: f.outside };
+  lines[0] = JSON.stringify(metadata);
+  fs.writeFileSync(root.file, lines.join("\n") + "\n");
+  const tampered = cold();
+  assert.notEqual(tampered.status, 0);
+  assert.match(tampered.stderr, /Session root identity mismatch/);
+});
+
+test("legacy damaged locks stay intact and competing recovery processes have one owner", { timeout: 30000 }, async t => {
+  const f = fixture(t), session = f.open();
+  await session.close();
+  const lock = `${session.file}.lock`;
+  for (const bytes of ["", '{"pid":']) {
+    fs.writeFileSync(lock, bytes);
+    assert.throws(() => f.open(f.workspace, { id: session.id, storageRoot: f.storageRoot, recoverLock: true }));
+    assert.equal(fs.readFileSync(lock, "utf8"), bytes);
+  }
+  fs.writeFileSync(lock, JSON.stringify({ pid: 2147483647, token: "legacy" }));
+  const code = `import { Session } from './src/session.ts';
+    process.stdout.write('ready\\n'); process.stdin.once('data', () => {
+      try { const s = Session.open(process.argv[1], {id: process.argv[2], storageRoot: process.argv[3], recoverLock: true});
+        process.stdout.write('won\\n'); process.stdin.once('data', () => { s.close(); process.exit(0); }); }
+      catch { process.stdout.write('lost\\n'); process.exit(0); }
+    });`;
+  const children = Array.from({ length: 2 }, () => spawn(process.execPath,
+    ["--import", "tsx", "--input-type=module", "-e", code, f.workspace, session.id, f.storageRoot],
+    { cwd: process.cwd(), stdio: ["pipe", "pipe", "pipe"] }));
+  const results = children.map(child => new Promise<string>((resolve, reject) => {
+    let output = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", chunk => {
+      output += chunk;
+      if (output.includes("ready\n") && !output.includes("go-sent")) { output += "go-sent"; child.stdin.write("go\n"); }
+      if (output.includes("won\n")) resolve("won");
+      if (output.includes("lost\n")) resolve("lost");
+    });
+    child.once("error", reject);
+    child.once("exit", code => { if (!output.includes("won\n") && !output.includes("lost\n")) reject(new Error(`worker exited ${code}`)); });
+  }));
+  try {
+    assert.deepEqual((await Promise.all(results)).sort(), ["lost", "won"]);
+    assert.throws(() => f.open(f.workspace, { id: session.id, storageRoot: f.storageRoot, recoverLock: true }), /active|busy/);
+  } finally {
+    for (const child of children) {
+      if (child.exitCode === null) { const exited = once(child, "exit"); child.stdin.end("close\n"); await exited; }
+    }
+  }
+  assert.equal(fs.existsSync(lock), false);
+});
+
+test("failed Session gate publication retains a replaced lock", t => {
+  const f = fixture(t), link = fs.linkSync; let lockPath: string | undefined;
+  try {
+    fs.linkSync = ((from: fs.PathLike, to: fs.PathLike) => {
+      link(from, to);
+      if (!String(to).endsWith(".jsonl.lock")) return;
+      lockPath = String(to);
+      const actor = `const fs=require('node:fs'),lock=process.argv[1],gate=lock+'.gate';
+        fs.renameSync(lock,lock+'-original');fs.writeFileSync(lock,'OTHER',{mode:0o600});
+        fs.renameSync(gate,gate+'-original');fs.writeFileSync(gate,'',{mode:0o600});`;
+      const changed = spawnSync(process.execPath, ["-e", actor, lockPath], { encoding: "utf8", timeout: 5000 });
+      assert.equal(changed.status, 0, changed.stderr);
+    }) as typeof fs.linkSync;
+    assert.throws(() => f.open(), /Session lock gate changed/);
+    assert.ok(lockPath); assert.equal(fs.readFileSync(lockPath, "utf8"), "OTHER");
+    assert.ok(fs.existsSync(`${lockPath}-original`));
+  } finally { fs.linkSync = link; }
+});
 function toolResultText(request: ModelRequest): string {
   return JSON.stringify(request.messages.at(-1)?.content);
 }
@@ -129,7 +224,7 @@ test("external journal preserves actual workspace config and real read/write too
   assertPaired(session.messages);
   assertNoCheckoutJournal(f.workspace);
   session.close();
-  assert.deepEqual(fs.readdirSync(path.join(f.storageRoot, ".agent")), [`${session.id}.jsonl`]);
+  assert.deepEqual(fs.readdirSync(path.join(f.storageRoot, ".agent")).sort(), [`${session.id}.jsonl`, `${session.id}.jsonl.lock.gate`]);
 });
 
 test("same id and storageRoot resume pinned actual workspace history and subsequent file tools", async t => {
@@ -275,7 +370,7 @@ test("missing or file storage roots fail before new-session or resume journal ef
     assert.equal(fs.existsSync(session.file + ".lock"), false);
     assert.equal(fs.existsSync(missing), false);
     assert.equal(fs.readFileSync(file, "utf8"), "storage file sentinel\n");
-    assert.deepEqual(fs.readdirSync(path.join(f.storageRoot, ".agent")), [`${session.id}.jsonl`]);
+    assert.deepEqual(fs.readdirSync(path.join(f.storageRoot, ".agent")).sort(), [`${session.id}.jsonl`, `${session.id}.jsonl.lock.gate`]);
     assertNoCheckoutJournal(f.workspace);
   }
 });
@@ -286,7 +381,7 @@ test("external storage still requires canonical actual workspace config", t => {
   fs.symlinkSync(f.workspace, alias, "dir");
   for (const workspace of [f.storageRoot, alias]) {
     assert.throws(() => f.open(f.workspace, { config: { ...f.config, workspace }, storageRoot: f.storageRoot }), /Config workspace must use its canonical path/);
-    assert.deepEqual(fs.readdirSync(path.join(f.storageRoot, ".agent")), []);
+    assert.ok(fs.readdirSync(path.join(f.storageRoot, ".agent")).every(name => name.endsWith(".jsonl.lock.gate")));
     assertNoCheckoutJournal(f.workspace);
   }
   const session = f.open(alias, { config: f.config, storageRoot: f.storageRoot });

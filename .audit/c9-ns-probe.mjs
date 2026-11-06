@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { tsImport } from 'tsx/esm/api';
+const { createPluginTools } = await tsImport('../src/plugins.ts', '/Users/mant1ssa/Projects/cc_reverse/scripts/x.mjs');
+const { loadProjectConfig } = await tsImport('../src/config.ts', '/Users/mant1ssa/Projects/cc_reverse/scripts/x.mjs');
+const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'c9ns-')));
+const workspace = path.join(root, 'proj'), source = path.join(root, 'source'), userDir = path.join(root, 'user');
+for (const d of [workspace, source, userDir]) fs.mkdirSync(d, { recursive: true });
+const put = (base, rel, v) => { const f = path.join(base, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof v === 'string' ? v : JSON.stringify(v)); };
+put(source, 'plugin.json', JSON.stringify({ name: 'fixture', version: '1', skills: 'skills' }));
+for (const name of ['shared', 'only']) put(source, `skills/${name}/SKILL.md`, `---\nname: ${name}\n---\n${name} body`);
+put(workspace, '.harness/settings.json', JSON.stringify({ plugins: { enabled: true }, features: { pluginSkillNamespaces: true } }));
+const tool = createPluginTools({ enabled: true }).find(t => t.schema.name === 'plugin_install');
+await tool.execute({ directory: source }, { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100000 });
+const cfg = loadProjectConfig(workspace, { userDir });
+console.log(JSON.stringify(cfg.skills.map(s => ({ name: s.name, aliases: s.aliases, head: s.body.slice(0, 40) })), null, 2));
+fs.rmSync(root, { recursive: true, force: true });

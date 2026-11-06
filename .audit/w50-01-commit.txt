@@ -1,0 +1,18 @@
+[work/w43-choice-preview 738f176] Recover a worktree archive left by an interrupted removal
+ 23 files changed, 4406 insertions(+), 7 deletions(-)
+ create mode 100644 .audit/w50-01-build.txt
+ create mode 100644 .audit/w50-01-chain.txt
+ create mode 100644 .audit/w50-01-full.txt
+ create mode 100644 .audit/w50-01-identity.txt
+ create mode 100644 .audit/w50-01-index.txt
+ create mode 100644 .audit/w50-01-notices.txt
+ create mode 100644 .audit/w50-01-records.mjs
+ create mode 100644 .audit/w50-01-smoke-compiled.txt
+ create mode 100644 .audit/w50-01-smoke.txt
+ create mode 100644 .audit/w50-01-test.txt
+ create mode 100644 .audit/w50-01-tsc.txt
+ create mode 100644 .audit/w50-01-worktrees.txt
+ create mode 100644 .audit/w50-runtime.todo.md
+ create mode 100644 .audit/w50-runtime.tsv
+ create mode 100644 research/ports/W50-worktree-archive-intent-evidence.json
+ create mode 100644 research/ports/W50-worktree-archive-intent.md

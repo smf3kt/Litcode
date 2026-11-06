@@ -1,0 +1,10 @@
+stage	decision	evidence
+source	Recover default-enabled tool and separate permission evaluation before product changes	manifest-verified fl/Kt/ki/$pn ranges in research/ports/W324-default-shell.md
+host	Resolve absent optional booleans in config assembly and preserve authored false	read-only workflow wf_759dec01-ad5
+baseline	Compiled default bypass still blocks Shell	w324-cli-red.txt;2owned requests
+settings	Save real user allowShell true with bypassPermissions	atomic queue;unrelated fields and0600preserved
+implementation	One DEFAULT_ALLOW_SHELL true shared by defaultConfig/CLI/reload	no evaluator rewrite;explicit false and pinned metadata retained
+validation	Check/build,affected136,CLI37,compiled6scenarios12requests	w324-check.txt;w324-build.txt;w324-affected.txt;w324-cli-tests.txt;w324-cli-green.txt
+comparison	Four source/target diffs acquired and read	w324-source-comparison.json
+review	Independent6/6 and compiled12requests pass;no scoped defect;one redundant comment removed	wf_8581fa6e-fde
+identity	Final1801files;only tools comments change;executable syntax equal	121c45188e36c4421994444a5fba1e5bb33c6275a93aab56ee4e0e8b8120754d

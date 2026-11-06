@@ -1,0 +1,3 @@
+2026-10-18T01:40:00Z	package	W133-01 workflow agent({disallowedTools,bashCommandClamp})工具收窄	选项spawn前校验；deny并池（精确/MCP）；clamp隐式mcp__*；schema与无shell拒spawn；逐reading逐组匹配；不完全读集拒绝	REPL/PowerShell/toolAliases/通配服务器名未移植	tsc 0；build 0；聚焦111/111；全量2235/2235
+2026-10-18T01:42:00Z	decision	W133-01 适配	Bash映射run_command/run_background/bash/Bash；clamp组写入子会话config随恢复重放	来源deny列表含td(REPL)，本运行时无REPL	无依赖变化
+2026-10-18T01:45:00Z	verification	W133-01 验收：全量2235/2235、notices 0、两项workflow冒烟	identity eff677d0…；dist重建	.audit/w133-runtime.todo.md

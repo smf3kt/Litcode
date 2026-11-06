@@ -1,0 +1,28 @@
+
+ 1 file changed +1 -1                                     ✕
+ uncommitted (vs HEAD)
+
+ package.json                                         +1 -1
+
+ ──────────────────────────────────────────────────────────
+ package.json
+ ──────────────────────────────────────────────────────────
+  1 -old
+  1 +new
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+native sidebar mounted and released
+(node:26340) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

@@ -1,0 +1,4 @@
+[work/w43-choice-preview d66b50d] Close the MCP lifecycle row as a decision
+ 6 files changed, 136 insertions(+), 4 deletions(-)
+ create mode 100644 .audit/w47-01-records.mjs
+ create mode 100644 research/ports/W47-mcp-dispositions-evidence.json

@@ -1,0 +1,18 @@
+
+### A9r [475702,475813) 111u
+function A9r(e){let{offset:n,bodyRows:r,top:s,bottom:h}=e,b=h>n+r?Math.max(0,Math.min(s,h-r)):n;return s<n?s:b}
+
+### Xq [476169,476191) 22u
+var Xq="above-prompt";
+
+### sZo [2336000,2336062) 62u
+var sZo=(e,n,r=[])=>oo(n,(s,h)=>r.includes(h)?s:()=>e.act(s));
+
+### iZo [2336190,2338444) 2254u
+function iZo(e){let{component:n,requestId:r,owner:s,focusables:h,isHeld:y}=e,{isHeldNow:b,indexNow:w,isEmptyNow:M,land:z}=e,V=R(void 0),X=R([]),he=R(!1),_e=R(!0),ke=le(()=>{while(V.current===void 0&&X.current.length>0){let[Je,...nt]=X.current;X.current=nt,Je?.()}},[]),Se=le(()=>{V.current?.abort.abort(),V.current=void 0,X.current=[]},[]),Re=le((Je,nt)=>{let ut={...nt,abort:new AbortController};V.current=ut;let Ze=Lqt({input:Je,signal:ut.abort.signal});function pt(){let Et=V.current===ut;if(Et)V.current=void 0;if(Et&&_e.current)ke()}return Ze instanceof Promise?void Ohe(`ui.focus ${r}`,Ze).finally(pt):pt()},[r,ke]),Ae=le((Je)=>{let nt=Ihe(h,Je.index);if(Je.index!==null&&nt===null)return;he.current=!0,Re({component:n,requestId:r,...nt&&{plugin:nt.plugin,element:nt.element},origin:{kind:"person"}},{expected:w(),move:Je})},[n,r,h,w,Re]),Pe=le((Je)=>{if(!(V.current!==void 0||X.current.length>0))Je();else if(X.current.length<GQt)X.current=[...X.current,Je]},[]),Me=le((Je,nt)=>h.findIndex((ut)=>ut.plugin===Je&&ut.element===nt),[h]),$e=le((Je)=>{let nt=V.current,ut=Je.element===void 0;if(Je.origin.kind==="person"){let Et=nt?.move;if(nt===void 0||Et===void 0||w()!==nt.expected)return"the focus moved meanwhile";let Pt=Ihe(h,Et.index);if(ut||Pt!==null&&Pt.plugin===Je.plugin&&Pt.element===Je.element){Et.apply();return}}let Ze=nt?.auto;if(Ze!==void 0&&Je.plugin===Ze.plugin&&Je.element===Ze.element&&w()!==nt?.expected)return"the focus moved meanwhile";let Rt=Me(Je.plugin,Je.element);if(Rt<0)return ut?"no element named":`no element of ${Je.plugin} is drawn under that key`;he.current=!0,z(Rt);return},[h,w,z,Me]);en(()=>{let Je=_z(n,r);return Uet().set(Je,{component:n,requestId:r,owner:s,isHeldNow:b,holderNow:()=>Ihe(h,w())?.plugin,hasElement:(nt,ut)=>Me(nt,ut)>=0,commit:$e}),Nqt().emit(),()=>{Uet().delete(Je)}},[n,r,s,h,b,w,Me,$e]);let Ve=Z(()=>h.find((Je)=>Je.isAutoFocus),[h]);return P(()=>{if(!y){he.current=!1,Se();return}if(!(he.current||V.current!==void 0||Ve===void 0||!M()))he.current=!0,Re({component:n,requestId:r,plugin:Ve.plugin,element:Ve.element,origin:{kind:"plugin",name:Ve.plugin}},{expected:w(),auto:Ve})},[y,Ve,M,w,n,r,Re,Se]),P(()=>()=>{_e.current=!1,Se()},[Se]),Z(()=>({act:Pe,moveByPerson:Ae,forget:Se}),[Pe,Ae,Se])}
+
+### ZD [3579,3835) 256u
+function ZD(n,t){let h=w(5),i=t===void 0?!0:t,r=Lc(),c,p;if(h[0]!==n||h[1]!==i||h[2]!==r)c=()=>{if(!r||!i){return}return r.registerActiveContext(n),()=>{r.unregisterActiveContext(n)}},p=[n,r,i],h[0]=n,h[1]=i,h[2]=r,h[3]=c,h[4]=p;else c=h[3],p=h[4];en(c,p)}
+
+### PYe [108086,108477) 391u
+function PYe(e){if(e===void 0||typeof e==="string"||e.type==="engine")return[];if(e.type==="Button"||e.type==="Input"||e.type==="Select"){let{plugin:s,handle:h}=e.press;return[{tag:e.type,plugin:s,handle:h,element:e.props.key,isAutoFocus:e.props.autoFocus===!0,...e.type!=="Button"&&{value:e.props.value},...e.type==="Select"&&{options:e.props.options}}]}return(e.children??[]).flatMap(PYe)}

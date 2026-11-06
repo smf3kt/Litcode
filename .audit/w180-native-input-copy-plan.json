@@ -1,0 +1,11 @@
+{
+  "blocks": [
+    {"file":"chunk-06azbynj.js","range":[135682,136139],"note":"S0 and click event"},
+    {"file":"chunk-06azbynj.js","range":[248708,248960],"note":"jd wheel event"},
+    {"file":"chunk-06azbynj.js","range":[249383,250176],"note":"cq native pointer hit test"},
+    {"file":"chunk-06azbynj.js","range":[250654,251135],"note":"ov click dispatch and focus"},
+    {"file":"chunk-06azbynj.js","range":[359028,359122],"note":"wheel handler ancestor predicate"}
+  ],
+  "imports": ["import { wEe, Wr } from './tui-render-engine.js';", "import { r7e } from './tui-render-host.js';", "var vo=256;"],
+  "exports": ["_4n","jd","cq","ov","$C"]
+}

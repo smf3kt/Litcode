@@ -57,6 +57,45 @@ function message(content: Anthropic.ContentBlockParam[], stop: "end_turn" | "too
     stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
 }
 
+test("interactive queues concurrent session approvals and removes a cancelled waiter", { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "approval-queue-")));
+  const input = new PassThrough(), lifetime = AbortSignal.timeout(6000);
+  const entered = deferred<void>(), finish = deferred<void>();
+  const provider: ModelProvider = { count: async () => 1, complete: async () => {
+    entered.resolve(); await finish.promise; return message([{ type: "text", text: "done" }], "end_turn");
+  } };
+  const config = { ...defaultConfig(workspace, []), model: "fixture" };
+  const runtime = await createRuntime(config, provider, lifetime);
+  config.tools = runtime.buildTools(config, "schema").map(tool => tool.schema);
+  const session = Session.open(workspace, { config });
+  let callback: Parameters<NonNullable<typeof runtime.bindAgentApproval>>[2] | undefined;
+  const original = runtime.bindAgentApproval!.bind(runtime);
+  runtime.bindAgentApproval = (cfg, owner, cb) => { callback = cb; return original(cfg, owner, cb); };
+  let text = "", statusText = "";
+  const output = new Writable({ write(chunk, _encoding, done) { text += String(chunk); done(); } });
+  const status = new Writable({ write(chunk, _encoding, done) { statusText += String(chunk); done(); } });
+  const waitFor = async (predicate: () => boolean) => {
+    while (!predicate()) { if (lifetime.aborted) throw new Error(`timed out: ${text} ${statusText}`); await new Promise(resolve => setTimeout(resolve, 5)); }
+  };
+  try {
+    const loop = interactiveLoop(session, provider, runtime, { input, output, status, signal: lifetime });
+    input.write("start\n"); await entered.promise; assert.ok(callback);
+    const tool = runtime.buildTools(config, session.id)[0]!;
+    const cancelled = new AbortController();
+    const first = callback(tool, { n: 1 }, { decision: "ask", reason: "first approval" }, lifetime);
+    const middle = callback(tool, { n: 2 }, { decision: "ask", reason: "cancelled approval" }, cancelled.signal);
+    const last = callback(tool, { n: 3 }, { decision: "ask", reason: "last approval" }, lifetime);
+    await waitFor(() => text.includes("first approval")); cancelled.abort();
+    assert.equal((await middle).decision, "deny");
+    assert.doesNotMatch(text, /cancelled approval|last approval/);
+    input.write("y\n"); assert.equal((await first).decision, "allow");
+    await waitFor(() => text.includes("last approval")); input.write("n\n");
+    assert.equal((await last).decision, "deny");
+    finish.resolve(); await waitFor(() => statusText.includes("finished: end_turn")); input.end("/exit\n"); await loop;
+    assert.doesNotMatch(statusText, /Another interaction/);
+  } finally { finish.resolve(); input.destroy(); session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test("real runtime release aborts in-flight form callbacks and stale unregister preserves the new owner", { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "mcp-form-owner-")));
   const entered = deferred<AbortSignal>(), exited = deferred<void>();

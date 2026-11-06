@@ -1,0 +1,20 @@
+ts	phase	decision	why	evidence	result
+2026-10-24	selection	Choose local /context all detail chain	The current matrix records a missing expanded report with source available	research/ports/W261-context.md;research/CURRENT.md	in_progress
+2026-10-24	source	Use source In full-screen summary and all expansion gates	Recovered command owns argument semantics	chunk-5d7rhstd.js [29624,31095) UTF-16	observed
+2026-10-24	source	Use source G/ue detail rows and source grouping	Available catalogs need provenance distinct from measured included context	chunk-5d7rhstd.js [22707,29624)/[21935,22350) UTF-16	observed
+2026-10-24	baseline	Compiled /context all is an unknown command	Observe missing user interaction before product edits	JOB_TMP/w327-cli-red.txt	exit0;0completions;locks released
+2026-10-24	tooling	Use dedicated Write/Edit fallback	apply_patch lookup exits1	command-v apply_patch	fallback recorded
+2026-10-24	implementation	Use unique included catalog rows and pinned instruction fragments	Available definitions and current disk differ from original request	context-details.ts;context-details.test.ts	three new groups pass
+2026-10-24	inline	Print expanded text for actual inline TTY without modal	TerminalInput has no prompt method;source In renders all local presentations	w327-inline-cli.txt	pass;0completions;unchanged journal
+2026-10-24	validation	Freeze final product after three compiled surface checks	Fullscreen,inline and headless are distinct real entry paths	w327-fullscreen-cli.txt;w327-inline-cli.txt;w327-headless-cli.txt	each exit0;MCP4;locks released
+2026-10-24	validation	Run affected readers and CLI suites	Changed interactive dispatch needs consumer checks	w327-final-affected2.txt;w327-cli-final-regressions.txt;w327-cli-gateway-final.txt	314/314;46/46;check/build0
+2026-10-24	source	Read fourteen AST-bound diffs and verify H3t syntax	Keep algorithm copy distinct from host inclusion rewrite	w327-source-comparison.json	6module identities;allocation equal
+2026-10-24	review	Freeze content and dispatch independent passes	One correctness reviewer plus scoped comment audit	w327-review-identity.json	d88ea0bb850be9f103864490480abb0c8d54ebd30f43969d76d006247a88243e
+2026-10-24	review	Retain eight required provenance anchors	Comment audit has no actionable finding	a6696844a83f94eb1	0findings;0touched
+2026-10-24	review	Reproduce duplicate catalog corrupting file boundary	Ambiguous uniqueSpan discarded a required instruction-end boundary	w327-independent-boundary-probe.txt;ad625abfea5fd88e1	1confirmedP2;expected2311observed4198
+2026-10-24	repair	Keep catalog ambiguity distinct from absence	Read XHo and buildSystem/section owners before editing	context-details.ts;first regression group	skill and agent duplicate examples leave file unassigned
+2026-10-24	validation	Rebuild and rerun repaired consumers and actual modes	New boundary gate changes attribution	w327-repair-affected.txt;w327-repair-fullscreen.txt;w327-repair-inline.txt;w327-repair-headless.txt	314/314;3CLIpass;check/build0
+2026-10-24	review	Freeze repaired candidate for fresh independent verdict	Previous identity belonged to the reproduced defect	w327-repair-review-identity.json;a7af637b0c73d05c7	f8a80bebd8a5b0e181ffeda2d9966fb0e3e5adaa64bb11391775ef378f1b2e6c
+2026-10-24	review	Accept fresh independent repair verdict	Own compiled probe and actual inline CLI verify provenance boundary	w327-repair-independent-probe.txt;w327-repair-independent-context-tests.txt;w327-repair-independent-inline.txt	16scenarios;288checks;9/9;0residual findings
+2026-10-24	identity	Compare complete final inventory and protected hashes	Frozen review must bind the delivered product	w327-repair-review-identity.json	1812entries equal;two user hashes unchanged
+2026-10-24	commit	Commit fourteen explicit paths locally	User local-only,no-coauthor,no-push authorization	9ac8a8606bc6d684d6329e2cdf2e1fffcb69ca33	committed;only two user tracked modifications remain;cron active

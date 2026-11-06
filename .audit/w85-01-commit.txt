@@ -1,0 +1,15 @@
+[work/w43-choice-preview b0b2687] Port the recovered TaskCompleted and TeammateIdle payloads
+ 21 files changed, 4425 insertions(+), 8 deletions(-)
+ create mode 100644 .audit/w85-01-records.mjs
+ create mode 100644 .audit/w85-build.txt
+ create mode 100644 .audit/w85-chain.txt
+ create mode 100644 .audit/w85-focused.txt
+ create mode 100644 .audit/w85-full.txt
+ create mode 100644 .audit/w85-identity.txt
+ create mode 100644 .audit/w85-index.txt
+ create mode 100644 .audit/w85-notices.txt
+ create mode 100644 .audit/w85-runtime.todo.md
+ create mode 100644 .audit/w85-runtime.tsv
+ create mode 100644 .audit/w85-tsc.txt
+ create mode 100644 research/ports/W85-task-completed-payload-evidence.json
+ create mode 100644 research/ports/W85-task-completed-payload.md

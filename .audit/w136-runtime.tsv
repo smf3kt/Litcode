@@ -1,0 +1,2 @@
+2026-10-18T03:55:00Z	package	W136-01 StopFailure答案丢弃	两条路径仍执行/记录钩子但不显示或注入additionalContext；保留error/last_assistant_message	不伪造error_details	聚焦136/136；全量2238/2238；tsc 0
+2026-10-18T03:58:00Z	verification	W136-01 验收：build 0、notices 0、identity 1d28148b…	dist重建	.audit/w136-runtime.todo.md

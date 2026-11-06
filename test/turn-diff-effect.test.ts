@@ -49,7 +49,7 @@ class Scripted implements ModelProvider {
 }
 
 const fileTools: ToolDefinition[] = createTools().filter((tool) =>
-  tool.schema.name === "write_file" || tool.schema.name === "edit_file");
+  tool.schema.name === "read_file" || tool.schema.name === "write_file" || tool.schema.name === "edit_file");
 
 function config(workspace: string): SessionConfig {
   return { model: "test-model", system: "test-system",
@@ -100,12 +100,14 @@ test("a write over existing non-empty content is an update row with its patch an
   fs.writeFileSync(path.join(ws, "kept.txt"), "alpha\nbeta\n");
   const session = Session.open(ws, { config: config(ws) });
   const provider = new Scripted([
+    reply([use("read", "read_file", { path: "kept.txt" })], "tool_use"),
     reply([use("t1", "write_file", { path: "kept.txt", content: "alpha\ngamma\n", overwrite: true })], "tool_use"),
     reply([{ type: "text", text: "done" } as Anthropic.TextBlock], "end_turn"),
   ]);
   const agent = new Agent(session, provider, fileTools, {});
   await agent.run("rewrite");
-  const row = session.events.find((event) => event.kind === "tool_result" && event.host !== undefined);
+  const row = session.events.find((event) => event.kind === "tool_result" && event.host !== undefined
+    && "type" in event.host && event.host.type === "update");
   assert.ok(row?.kind === "tool_result");
   assert.deepEqual(row.host, { type: "update", filePath: "kept.txt",
     structuredPatch: [{ oldStart: 1, oldLines: 2, newStart: 1, newLines: 2, lines: [" alpha", "-beta", "+gamma"] }] });

@@ -226,23 +226,76 @@ test('isolated child applies parent content rules to its own resolved paths', as
   fs.writeFileSync(path.join(parent, 'alias.txt'), 'PARENT');
   fs.writeFileSync(path.join(child, 'protected', 'data.txt'), 'PROTECTED_FIXTURE');
   fs.symlinkSync('protected/data.txt', path.join(child, 'alias.txt'));
-  const config = { ...defaultConfig(parent, tools), model: 'fixture',
-    permissions: { mode: 'bypass' as const, allow: [], deny: ['Read(protected/data.txt)'], ruleWorkspace: parent } };
-  const registry = new AgentRegistry({ source: config, tools,
-    provider: new Provider('read_file', { path: 'alias.txt' }), enableAdvanced: true,
-    childEnvironmentFactory: async request => ({ config: { ...request.config, workspace: child },
-      storageRoot: parent, tools: [...request.tools], close: async () => {} }) });
   try {
-    const result = await registry.launch({ prompt: 'exercise fixture', mode: 'general', isolation: 'worktree' }, undefined,
-      { config, tools, beforeTool: async () => {} });
-    const journal = fs.readFileSync(path.join(parent, '.agent', `${result.session_id}.jsonl`), 'utf8')
-      .trim().split('\n').map(line => JSON.parse(line));
-    const denied = journal.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'leaf-call')?.result;
-    assert.equal(denied?.is_error, true);
-    assert.doesNotMatch(String(denied?.content), /PROTECTED_FIXTURE/);
+    for (const deny of [[], ['Read(protected/data.txt)']]) {
+      const config = { ...defaultConfig(parent, tools), model: 'fixture',
+        permissions: { mode: 'bypass' as const, allow: [], deny, ruleWorkspace: parent } };
+      const registry = new AgentRegistry({ source: config, tools,
+        provider: new Provider('read_file', { path: 'alias.txt' }), enableAdvanced: true,
+        childEnvironmentFactory: async request => ({ config: { ...request.config, workspace: child },
+          storageRoot: parent, tools: [...request.tools], close: async () => {} }) });
+      try {
+        const result = await registry.launch({ prompt: 'exercise fixture', mode: 'general', isolation: 'worktree' }, undefined,
+          { config, tools, beforeTool: async () => {} });
+        const journal = fs.readFileSync(path.join(parent, '.agent', `${result.session_id}.jsonl`), 'utf8')
+          .trim().split('\n').map(line => JSON.parse(line));
+        const read = journal.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'leaf-call')?.result;
+        assert.ok(read);
+        if (deny.length) {
+          assert.equal(read.is_error, true);
+          assert.equal(String(read.content), 'Tool denied by permission rule: read_file');
+          assert.doesNotMatch(String(read.content), /PROTECTED_FIXTURE/);
+        } else {
+          assert.notEqual(read.is_error, true);
+          assert.match(String(read.content), /PROTECTED_FIXTURE/);
+        }
+      } finally { await registry.close(); }
+    }
     assert.equal(fs.readFileSync(path.join(child, 'protected', 'data.txt'), 'utf8'), 'PROTECTED_FIXTURE');
   } finally {
-    await registry.close();
+    fs.rmSync(child, { recursive: true, force: true });
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test('isolated child resolves unanchored and anchored read rules against their respective roots', async () => {
+  const parent = workspace(), child = workspace();
+  const tools = createTools();
+  fs.mkdirSync(path.join(parent, 'protected'));
+  fs.mkdirSync(path.join(child, 'protected'));
+  fs.writeFileSync(path.join(parent, 'protected', 'data.txt'), 'PARENT_FIXTURE');
+  fs.writeFileSync(path.join(child, 'protected', 'data.txt'), 'CHILD_FIXTURE');
+  fs.writeFileSync(path.join(child, 'other.txt'), 'OTHER_FIXTURE');
+  try {
+    for (const [rule, target, denied, content] of [
+      ['', 'protected/data.txt', false, 'CHILD_FIXTURE'],
+      ['Read(protected/data.txt)', 'protected/data.txt', true, 'CHILD_FIXTURE'],
+      ['Read(/protected/data.txt)', 'protected/data.txt', false, 'CHILD_FIXTURE'],
+      ['Read(/protected/data.txt)', path.join(parent, 'protected', 'data.txt'), true, 'PARENT_FIXTURE'],
+      [`Read(//${path.join(child, 'protected', 'data.txt').slice(1)})`, 'protected/data.txt', true, 'CHILD_FIXTURE'],
+      [`Read(//${path.join(child, 'protected', 'data.txt').slice(1)})`, 'other.txt', false, 'OTHER_FIXTURE'],
+    ] as const) {
+      const config = { ...defaultConfig(parent, tools), model: 'fixture',
+        permissions: { mode: 'bypass' as const, allow: [], deny: rule ? [rule] : [], ruleWorkspace: parent } };
+      const registry = new AgentRegistry({ source: config, tools,
+        provider: new Provider('read_file', { path: target }), enableAdvanced: true,
+        childEnvironmentFactory: async request => ({ config: { ...request.config, workspace: child },
+          storageRoot: parent, tools: [...request.tools], close: async () => {} }) });
+      try {
+        const result = await registry.launch({ prompt: 'exercise fixture', mode: 'general', isolation: 'worktree' }, undefined,
+          { config, tools, beforeTool: async () => {} });
+        const journal = fs.readFileSync(path.join(parent, '.agent', `${result.session_id}.jsonl`), 'utf8')
+          .trim().split('\n').map(line => JSON.parse(line));
+        const read = journal.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'leaf-call')?.result;
+        assert.ok(read, rule);
+        assert.equal(read.is_error === true, denied, rule);
+        if (denied) {
+          assert.equal(String(read.content), 'Tool denied by permission rule: read_file', rule);
+          assert.doesNotMatch(String(read.content), new RegExp(content));
+        } else assert.match(String(read.content), new RegExp(content));
+      } finally { await registry.close(); }
+    }
+  } finally {
     fs.rmSync(child, { recursive: true, force: true });
     fs.rmSync(parent, { recursive: true, force: true });
   }

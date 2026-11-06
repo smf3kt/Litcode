@@ -13,6 +13,7 @@ import { Session } from '../src/session.js';
 import { forkSession, listSessions } from '../src/sessions.js';
 import type { SkillInfo } from '../src/config.js';
 import { decodeKeybindingsJson } from '../src/keybindings.js';
+import { consumeHumanSkillAuthorization } from '../src/notification-authorization.js';
 
 function reply(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'test', role: 'assistant', type: 'message', content: [{ type: 'text', text }],
@@ -360,12 +361,20 @@ test('expansion hook is raised once before a skill run and its context reaches t
   config.hooks = { UserPromptExpansion: [{ command: `printf %s ${emitExpansion}; cat >> ${JSON.stringify(expansionLog)}` }] };
   const session = Session.open(workspace, { config });
   const ran: string[] = [];
-  const runtime = stubRuntime({ runSkill: async (_config, _owner, target, args) => { ran.push(`${target.name}:${args}`); return 'skill result'; } });
   const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
   const provider: ModelProvider = {
     count: async () => 10,
     complete: async request => { requests.push(request); return reply('done'); },
   };
+  const lifetime = new AbortController();
+  const leaseRuntime = await createRuntime(config, provider, lifetime.signal);
+  await leaseRuntime.bindSession!(session);
+  const runtime = stubRuntime({ sessionLease: leaseRuntime.sessionLease,
+    runSkill: async (_config, _owner, target, args, signal, _permission, _conversation, current, source, authorization) => {
+      assert.equal(source, 'user');
+      consumeHumanSkillAuthorization(authorization, current, target.name, args, signal);
+      ran.push(`${target.name}:${args}`); return 'skill result';
+    } });
   const stdout = output(), stderr = output();
   try {
     await interactiveLoop(session, provider, runtime, {
@@ -385,7 +394,7 @@ test('expansion hook is raised once before a skill run and its context reaches t
     const content = session.messages.find(message => message.role === 'user')?.content;
     assert.deepEqual(content, [{ type: 'text', text: 'skill result' },
       { type: 'text', text: 'Hook context:\nexpansion note' }]);
-  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+  } finally { await leaseRuntime.close(); session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
 test('a SessionStart initial message is queued before typed input', async () => {

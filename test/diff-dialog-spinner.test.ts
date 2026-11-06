@@ -86,7 +86,7 @@ test('the frame sets are the alternating cycles', () => {
   assert.deepEqual(FRAME_SETS.cycles, d);
   assert.deepEqual(FRAME_SETS.cyclesAlt, f);
   assert.deepEqual(FRAME_SETS.plain, T);
-  assert.deepEqual(frameSetForTerminal(), p);
+  assert.equal(frameSetForTerminal(), a.TERM === 'xterm-ghostty' ? l : p);
 });
 
 test('the frame picker follows the terminal environment', () => {

@@ -520,6 +520,9 @@ Next up, scoped but not started:
       the successor-session path. W293 carries custom Tips/Show tips and W294 carries Copy on select.
       Built-in/vendor catalogs remain excluded. W294 corrects the earlier blanket selection
       flag claim; Copy on select uses literal inAppSelection:true and defaults on.
+      Timestamp row preflight 2026-11-01: exact source identity, default-false feature gate,
+      existing display consumers and missing host gate/row bindings are recorded in W233. Gate
+      ownership and its actual value remain open; W385 remains the active work package.
       W295 carries Auto-scroll and corrects its earlier false-default gate claim; its row shares
       inAppSelection:true. Other unported rows still need individual source preflight: prompt
       suggestions / timestamps,

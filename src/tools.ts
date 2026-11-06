@@ -11,32 +11,60 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { types as utilTypes } from "node:util";
+import { fileURLToPath } from "node:url";
 
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { atomicWriteFile } from "./atomic-write.js";
+import { atomicWriteFile, syncDirectory } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
 import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
 import { editEffectResult, writeEffectResult, type ToolUseResult } from "./tool-use-result.js";
 import type { PlanModeHost } from './plan-mode.js';
-import { resolvePlanFile } from './plan-file.js';
+import type { PathApprovalCall } from './path-approval-call-owner.js';
+import { resolveOwnedPlanFile } from './plan-file.js';
+import type { SourceReadCache } from './controlled-read-projection-source.js';
+import { sourceBunHashString } from './wyhash-source.js';
+import { skillResultsDirectory } from './skill-output-source.js';
+import { copyStableDirectoryFile } from './directory-file-state.js';
+import { directoryWriteInputSchema } from './directory-publication-authorization.js';
+export { copyStableDirectoryFile } from './directory-file-state.js';
 
 export type ToolContext = {
+  session?: import('./session.js').Session;
+  toolUseId?: string;
   workspace: string;
   signal: AbortSignal;
+  abortController?: AbortController;
   allowShell: boolean;
   maxOutputBytes: number;
+  pathApprovalCall?: PathApprovalCall;
+  authorizationIdentity?: { readonly signal: AbortSignal };
+  directoryPublicationAuthorization?: import('./directory-publication-authorization.js').DirectoryPublicationAuthorization;
   shellHome?: { value: string | undefined };
   conversation?: readonly Anthropic.MessageParam[];
   interaction?: InteractionCallbacks;
   planMode?: PlanModeHost;
   fileHistory?: (file?: string) => void;
-  workingDirectories?: (readOnly: boolean) => readonly string[];
+  readFileCache?: SourceReadCache;
+  fileMutationGate?: { preReadGuard: boolean; readAllowed: (file: string, tool: 'write_file' | 'edit_file') => boolean };
+  workingDirectories?: (readOnly: boolean) => WorkingDirectories;
+  /** A host-owned, already verified directory handle; its owner retains and closes it. */
+  verifiedReadDirectory?: { readonly fd: number; readonly root: string };
+  /** Retain the exact directory grant used by this invocation until delivery. */
+  readGrantSignal?: (signal: AbortSignal) => void;
+  readGrantWitness?: (grant: { readonly owner: string; readonly incarnation: string }) => void;
   /** A file-effecting tool reports the structured host result of the effect it just performed. */
   hostResult?: (value: ToolUseResult) => void;
+  /** Context changes belong to this invocation and are merged by the scheduler. */
+  contextLayer?: (layer: ToolResultContextLayer) => void;
+  /** Child assistant tool-use progress, tied to the invoking parent call. */
+  agentProgress?: (agentId: string, message: Anthropic.ToolUseBlockParam) => void;
   /** Source `Czr`'s `emitToolProgress` progress frame, carrying the shell poll's snapshot. */
   onProgress?: (progress: ShellProgress) => void;
 };
+
+export type ToolResultContextLayer = { kind: 'allowed_tools'; allowedTools: readonly string[] };
 
 /**
  * Source `Czr` (chunk-sfn1dbxq.js 4340642): one shell poll frame. `output` is the tail kept for
@@ -54,6 +82,7 @@ export type ShellProgress = {
 export type ToolDefinition = {
   schema: Anthropic.Tool;
   readOnly: boolean;
+  concurrencySafe?(input: unknown): boolean;
   // SendFileTool/IA, 8t44px9f [22793,31590), 2bcyxj9q [231514,231561), UTF-16.
   readPaths?(input: unknown): readonly string[];
   mcpAnnotations?: { destructive: boolean; openWorld: boolean; toolName?: string; title?: string };
@@ -278,11 +307,11 @@ function truncateHead(text: string, maxBytes: number, label: string): string {
 // Atomic write
 // ---------------------------------------------------------------------------
 
-function atomicWrite(real: string, content: string, mode?: number): void {
+function atomicWrite(real: string, content: string, mode?: number) {
   // Delegated: the shared writer verifies the bytes it wrote and the directory
   // it wrote them in, and keeps the content rather than discarding it when the
   // rename cannot happen.
-  atomicWriteFile(real, content, mode === undefined ? {} : { mode });
+  return atomicWriteFile(real, content, mode === undefined ? {} : { mode });
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +530,106 @@ async function fallbackListFiles(
 // Bounded line-window reader (read_file)
 // ---------------------------------------------------------------------------
 
+async function readDirectoryFileLines(
+  directory: { readonly fd: number; readonly relative: string }, userPath: string,
+  offset: number, limit: number, maxBytes: number, signal: AbortSignal,
+  unchanged?: { timestamp: number; identity: { dev: string; ino: string } },
+): Promise<{ content: string; mtimeMs: number; truncated: boolean; identity: { dev: string; ino: string }; incomplete?: boolean } | { unchanged: true }> {
+  if (process.platform !== 'darwin' && process.platform !== 'linux') throw new Error('read_file: directory handles unsupported');
+  if (signal.aborted) throw abortError();
+  const child = spawn(fileURLToPath(new URL('../native/directory-read/read', import.meta.url)), [directory.relative],
+    { stdio: ['ignore', 'pipe', 'ignore', directory.fd, 'pipe'] });
+  const stdout = child.stdout;
+  const metadata = child.stdio[4];
+  if (!stdout || !metadata || !('read' in metadata)) { child.kill(); throw new Error('read_file: helper pipes unavailable'); }
+  const exit = new Promise<number | null>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', resolve);
+  });
+  // Install the handler before any await, including when spawn itself fails.
+  void exit.catch(() => {});
+  const onAbort = () => child.kill('SIGTERM');
+  signal.addEventListener('abort', onAbort, { once: true });
+  if (signal.aborted) onAbort();
+  let complete = false;
+  try {
+    const iterator = metadata[Symbol.asyncIterator]();
+    let header = '';
+    while (!header.includes('\n') && header.length <= 1024) {
+      const part = await iterator.next();
+      if (part.done) break;
+      header += String(part.value);
+    }
+    if (signal.aborted) throw abortError();
+    const firstEnd = header.indexOf('\n');
+    const first = header.slice(0, firstEnd + 1);
+    let rest = header.slice(firstEnd + 1);
+    const match = /^v1 begin ([0-9]+) ([0-9]+) ([0-9]+) (-?[0-9]+) ([0-9]+) (-?[0-9]+) ([0-9]+)\n$/.exec(first);
+    if (!match) throw new Error(`read_file: directory-relative open failed: ${userPath}`);
+    if (Number(match[5]) >= 1e9 || Number(match[7]) >= 1e9) throw new Error(`read_file: invalid directory-relative metadata: ${userPath}`);
+    const identity = { dev: match[1]!, ino: match[2]! };
+    const mtimeMs = Number(match[4]) * 1000 + Math.floor(Number(match[5]) / 1000000);
+    if (!Number.isSafeInteger(mtimeMs)) throw new Error(`read_file: invalid directory-relative timestamp: ${userPath}`);
+    stdout.setEncoding('utf8');
+    let lineNo = 1, current = '', chars = 0, capped = false, finished = false;
+    const lines: string[] = [];
+    const endLine = offset + limit - 1;
+    for await (const chunk of stdout) {
+      if (signal.aborted) throw abortError();
+      const text = String(chunk);
+      let cursor = 0;
+      for (;;) {
+        const nl = text.indexOf('\n', cursor);
+        const segment = nl < 0 ? text.slice(cursor) : text.slice(cursor, nl);
+        const inWindow = lineNo >= offset && lineNo <= endLine;
+        if (inWindow) {
+          const room = maxBytes - chars;
+          if (segment.length > room) {
+            current += room > 0 ? segment.slice(0, room) : '';
+            lines.push(current); current = ''; capped = true; finished = true; break;
+          }
+          current += segment; chars += segment.length;
+        }
+        if (nl < 0) break;
+        if (inWindow) {
+          lines.push(current); current = '';
+          if (lineNo === endLine) { finished = true; break; }
+        }
+        lineNo++; cursor = nl + 1;
+      }
+      if (finished) break;
+    }
+    if (!finished && lineNo >= offset && lineNo <= endLine) lines.push(current);
+    if (!finished) {
+      for (;;) {
+        const part = await iterator.next();
+        if (part.done) break;
+        rest += String(part.value);
+        if (rest.length > 1024) throw new Error(`read_file: invalid directory-relative status: ${userPath}`);
+      }
+      const code = await exit;
+      if (signal.aborted) throw abortError();
+      if (code !== 0) throw new Error(`read_file: directory-relative read failed: ${userPath}`);
+      if (rest !== first.replace('v1 begin ', 'v1 stable ')) throw new Error(`read_file: directory-relative file changed during read or status incomplete: ${userPath}`);
+      complete = true;
+      if (unchanged && unchanged.timestamp === mtimeMs && unchanged.identity.dev === identity.dev && unchanged.identity.ino === identity.ino) return { unchanged: true };
+    }
+    const joined = lines.join('\n');
+    if (capped) {
+      const bytes = Buffer.from(joined, 'utf8');
+      return { content: `${bytes.subarray(0, utf8PrefixEnd(bytes, maxBytes)).toString('utf8')}\n[read_file: output truncated; file continues]`, mtimeMs, truncated: true, identity, incomplete: finished };
+    }
+    const content = truncateHead(joined, maxBytes, 'read_file');
+    return { content, mtimeMs, truncated: content !== joined, identity, incomplete: finished };
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+    if (!complete) child.kill('SIGTERM');
+    stdout.destroy();
+    metadata.destroy();
+    await exit.catch(() => {});
+  }
+}
+
 /**
  * Stream `real` and return only the requested 1-based line window, mirroring
  * `String#split("\n")` semantics (a trailing newline yields a final empty
@@ -515,7 +644,9 @@ async function readFileLines(
   limit: number,
   maxBytes: number,
   signal: AbortSignal,
-): Promise<string> {
+  unchanged?: { timestamp: number; identity: { dev: string; ino: string } },
+  directory?: { readonly fd: number; readonly relative: string },
+): Promise<{ content: string; mtimeMs: number; truncated: boolean; identity: { dev: string; ino: string }; incomplete?: boolean } | { unchanged: true }> {
   const endLine = offset + limit - 1;
   const lines: string[] = [];
   let lineNo = 1;
@@ -528,11 +659,18 @@ async function readFileLines(
   // check the handle against the identity the resolver recorded. The stream
   // reads from that handle, so the bytes come from the file that was checked
   // rather than from whatever the path names when the read starts.
+  if (directory) return readDirectoryFileLines(directory, userPath, offset, limit, maxBytes, signal, unchanged);
   const fd = fs.openSync(resolved.path, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
   let stream: fs.ReadStream | undefined;
+  let mtimeMs = 0;
+  let identity: { dev: string; ino: string };
   try {
+    const metadata = fs.fstatSync(fd);
+    if (!metadata.isFile()) throw new Error(`read_file: not a regular file: ${userPath}`);
+    mtimeMs = metadata.mtimeMs;
+    const opened = fs.fstatSync(fd, { bigint: true });
+    identity = { dev: String(opened.dev), ino: String(opened.ino) };
     if (resolved.identity !== undefined) {
-      const opened = fs.fstatSync(fd, { bigint: true });
       if (
         String(opened.dev) !== resolved.identity.dev ||
         String(opened.ino) !== resolved.identity.ino ||
@@ -541,6 +679,11 @@ async function readFileLines(
       ) {
         throw new Error(`read_file: path changed after it was resolved: ${userPath}`);
       }
+    }
+    // Host adaptation of GIr, sfn1dbxq UTF-16 [3546500,3549105): mtime alone aliases replaced inodes.
+    if (unchanged && Math.floor(metadata.mtimeMs) === unchanged.timestamp &&
+        identity.dev === unchanged.identity.dev && identity.ino === unchanged.identity.ino) {
+      return { unchanged: true };
     }
     stream = fs.createReadStream("", {
       fd,
@@ -596,9 +739,10 @@ async function readFileLines(
   if (capped) {
     const buf = Buffer.from(joined, "utf8");
     const end = utf8PrefixEnd(buf, maxBytes);
-    return `${buf.subarray(0, end).toString("utf8")}\n[read_file: output truncated; file continues]`;
+    return { content: `${buf.subarray(0, end).toString("utf8")}\n[read_file: output truncated; file continues]`, mtimeMs, truncated: true, identity };
   }
-  return truncateHead(joined, maxBytes, "read_file");
+  const content = truncateHead(joined, maxBytes, "read_file");
+  return { content, mtimeMs, truncated: content !== joined, identity };
 }
 
 // ---------------------------------------------------------------------------
@@ -630,13 +774,7 @@ const searchSchema = z
   })
   .strict();
 
-const writeFileSchema = z
-  .object({
-    path: z.string().min(1),
-    content: z.string(),
-    overwrite: z.boolean().optional(),
-  })
-  .strict();
+const writeFileSchema = directoryWriteInputSchema;
 
 const editFileSchema = z
   .object({
@@ -808,8 +946,173 @@ function runShell(
 // Tool definitions
 // ---------------------------------------------------------------------------
 
+const builtinReadFiles = new WeakMap<ToolDefinition, { execute: ToolDefinition['execute']; schema: string }>();
+const builtinWriteExecutors = new WeakMap<ToolDefinition, ToolDefinition['execute']>();
+type ToolSnapshot = { prototype: object | null; properties: { key: string | symbol; descriptor: PropertyDescriptor }[]; schema: string };
+const builtinWriteSnapshots = new WeakMap<ToolDefinition, ToolSnapshot>();
+const runtimeBuiltinWrites = new WeakMap<ToolDefinition, { execute: ToolDefinition['execute']; original: ToolDefinition;
+  originalSnapshot?: ToolSnapshot; wrapperSnapshot?: ToolSnapshot }>();
+// Host execution evidence for Kt/uno/KWo, hwpb27as [121053,123737),
+// sfn1dbxq [739599,743280)/[2292400,2294250), UTF-16; source has no journal capability.
+export type BuiltinWriteExecutionAuthorization = object;
+type BuiltinWriteExecution = { input: z.infer<typeof directoryWriteInputSchema> } &
+  ({ phase: 'entered' } | { phase: 'completed'; outcome: 'returned' | 'threw' | 'blocked-additional-directory' });
+type BuiltinWriteInvocation = { tool: ToolDefinition; input: unknown; context: ToolContext;
+  state: { phase: 'dispatched' } | { phase: 'entered' | 'completed'; input: z.infer<typeof directoryWriteInputSchema> };
+  observe(authorization: BuiltinWriteExecutionAuthorization): void };
+const builtinWriteInvocations = new WeakMap<ToolContext, BuiltinWriteInvocation>();
+const builtinWriteObservations = new WeakMap<BuiltinWriteExecutionAuthorization, { invocation: BuiltinWriteInvocation; event: BuiltinWriteExecution }>();
+const blockedDirectoryWrites = new WeakSet<Error>();
+
+function observeBuiltinWrite(invocation: BuiltinWriteInvocation, event: BuiltinWriteExecution): void {
+  if (event.phase === 'entered' ? invocation.state.phase !== 'dispatched' : invocation.state.phase !== 'entered')
+    throw new Error('Runtime Write execution phase changed');
+  const authorization = {};
+  builtinWriteObservations.set(authorization, { invocation, event });
+  try { invocation.observe(authorization); invocation.state = { phase: event.phase, input: Object.freeze({ ...event.input }) }; }
+  finally { builtinWriteObservations.delete(authorization); }
+}
+
+export function consumeBuiltinWriteExecution(authorization: BuiltinWriteExecutionAuthorization, tool: ToolDefinition,
+    input: unknown, context: ToolContext): BuiltinWriteExecution | undefined {
+  const saved = builtinWriteObservations.get(authorization);
+  builtinWriteObservations.delete(authorization);
+  if (!saved || saved.invocation !== builtinWriteInvocations.get(context) || saved.invocation.tool !== tool ||
+      saved.invocation.input !== input || saved.invocation.context !== context) return;
+  return structuredClone(saved.event);
+}
+
+export function bindRuntimeTool(tool: ToolDefinition, checks: {
+  checkScope(): void;
+  refresh(): void;
+  checkJournal(tool: ToolDefinition): void;
+}): ToolDefinition {
+  let child: ToolDefinition | undefined;
+  const builtinWrite = builtinWriteExecutors.get(tool);
+  const wrapped: ToolDefinition = { ...tool,
+    async execute(input, context) {
+      context.signal.throwIfAborted();
+      checks.checkScope();
+      checks.refresh();
+      checks.checkJournal(tool);
+      // Host wrapper guard: Kt, hwpb27as [121053,123737), UTF-16 has no mutable refresh callback.
+      if (builtinWrite) {
+        const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+        if (!execute || !('value' in execute) || execute.value !== builtinWrite)
+          throw new Error('Runtime built-in write_file implementation changed');
+        const invocation = builtinWriteInvocations.get(context);
+        const observed = invocation?.tool === wrapped && invocation.input === input ? invocation : undefined;
+        let result: string;
+        try { result = await builtinWrite.call(tool, input, context); }
+        catch (error) {
+          if (observed && observed.state.phase === 'entered') observeBuiltinWrite(observed, { phase: 'completed', input: observed.state.input, outcome:
+            error instanceof Error && blockedDirectoryWrites.has(error) ? 'blocked-additional-directory' : 'threw' });
+          throw error;
+        }
+        if (observed && observed.state.phase === 'entered') observeBuiltinWrite(observed, { phase: 'completed', input: observed.state.input, outcome: 'returned' });
+        return result;
+      }
+      return tool.execute(input, context);
+    },
+    ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
+      context.signal.throwIfAborted();
+      checks.checkScope();
+      checks.checkJournal(tool);
+      return tool.executeBlocks!(input, context);
+    } } : {}),
+    ...(tool.forChild ? { forChild() { checks.checkScope(); return child ??= bindRuntimeTool(tool.forChild!(), checks); } } : {}),
+  };
+  if (builtinWrite) runtimeBuiltinWrites.set(wrapped, { execute: wrapped.execute, original: tool,
+    originalSnapshot: builtinWriteSnapshots.get(tool), wrapperSnapshot: snapshotTool(wrapped) });
+  return wrapped;
+}
+
+// Host dispatch guard: Kt/KWo, hwpb27as [121053,123737), sfn1dbxq [2275902,2308030), UTF-16.
+export async function executeAgentTool(tool: ToolDefinition, input: unknown, context: ToolContext,
+    observe?: (authorization: BuiltinWriteExecutionAuthorization) => void): Promise<Anthropic.ToolResultBlockParam['content']> {
+  const builtinWrite = runtimeBuiltinWrites.get(tool);
+  if (!builtinWrite) return tool.executeBlocks ? tool.executeBlocks(input, context) : tool.execute(input, context);
+  const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+  if (!execute || !('value' in execute) || execute.value !== builtinWrite.execute ||
+      Object.getOwnPropertyDescriptor(tool, 'executeBlocks') !== undefined || Object.getPrototypeOf(tool) !== Object.prototype)
+    throw new Error('Runtime built-in write_file wrapper changed');
+  if (!observe) return builtinWrite.execute.call(tool, input, context);
+  if (builtinWriteInvocations.has(context)) throw new Error('Runtime Write invocation already active');
+  const invocation: BuiltinWriteInvocation = { tool, input, context, observe, state: { phase: 'dispatched' } };
+  builtinWriteInvocations.set(context, invocation);
+  try { return await builtinWrite.execute.call(tool, input, context); }
+  finally { builtinWriteInvocations.delete(context); }
+}
+
+function snapshotTool(tool: ToolDefinition): ToolSnapshot | undefined {
+  try {
+    if (utilTypes.isProxy(tool)) return;
+    const properties = Reflect.ownKeys(tool).map(key => ({ key, descriptor: Object.getOwnPropertyDescriptor(tool, key) }));
+    if (properties.some(item => !item.descriptor)) return;
+    const schema = Object.getOwnPropertyDescriptor(tool, 'schema');
+    if (!schema || !('value' in schema)) return;
+    return { prototype: Object.getPrototypeOf(tool), properties: properties.map(item => ({ key: item.key, descriptor: item.descriptor! })),
+      schema: JSON.stringify(inertSchema(schema.value)) };
+  } catch { return; }
+}
+
+function matchesToolSnapshot(tool: ToolDefinition, saved: ToolSnapshot | undefined): boolean {
+  if (!saved || utilTypes.isProxy(tool)) return false;
+  try {
+    const current = snapshotTool(tool);
+    return !!current && current.prototype === Object.prototype && current.prototype === saved.prototype && current.schema === saved.schema &&
+      current.properties.length === saved.properties.length && saved.properties.every(({ key, descriptor }) => {
+        const found = current.properties.find(item => item.key === key)?.descriptor;
+        return !!found && found.value === descriptor.value && found.get === descriptor.get && found.set === descriptor.set &&
+          found.enumerable === descriptor.enumerable && found.configurable === descriptor.configurable && found.writable === descriptor.writable;
+      });
+  } catch { return false; }
+}
+
+export function isRuntimeBuiltinWrite(tool: ToolDefinition): boolean {
+  const saved = runtimeBuiltinWrites.get(tool);
+  return !!saved && matchesToolSnapshot(tool, saved.wrapperSnapshot) && matchesToolSnapshot(saved.original, saved.originalSnapshot);
+}
+
+function inertSchema(value: unknown, seen = new Set<object>()): unknown {
+  if (value === null || typeof value !== 'object') {
+    if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) return value;
+    throw new Error('Unsupported schema value');
+  }
+  if (utilTypes.isProxy(value) || seen.has(value)) throw new Error('Unsupported schema object');
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null) throw new Error('Unsupported schema prototype');
+  seen.add(value);
+  const copy: Record<string, unknown> | unknown[] = Array.isArray(value) ? [] : Object.create(null);
+  for (const key of Reflect.ownKeys(value)) {
+    if (Array.isArray(value) && key === 'length') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (typeof key !== 'string' || !descriptor || !('value' in descriptor) || !descriptor.enumerable) throw new Error('Unsupported schema property');
+    Object.defineProperty(copy, key, { value: inertSchema(descriptor.value, seen), enumerable: true, configurable: true });
+  }
+  seen.delete(value);
+  return copy;
+}
+
+// Runtime wrappers remain outside the unconnected trusted-read contract.
+export function isBuiltinReadFile(tool: ToolDefinition): boolean {
+  const original = builtinReadFiles.get(tool);
+  try {
+    if (!original || utilTypes.isProxy(tool)) return false;
+    const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+    const schema = Object.getOwnPropertyDescriptor(tool, 'schema');
+    const readOnly = Object.getOwnPropertyDescriptor(tool, 'readOnly');
+    if (!execute || !('value' in execute) || execute.value !== original.execute ||
+        !schema || !('value' in schema) || !readOnly || !('value' in readOnly) || readOnly.value !== true ||
+        Object.getOwnPropertyDescriptor(tool, 'readPaths') !== undefined ||
+        Object.getOwnPropertyDescriptor(tool, 'executeBlocks') !== undefined ||
+        Object.getOwnPropertyDescriptor(tool, 'forChild') !== undefined || Object.getPrototypeOf(tool) !== Object.prototype) return false;
+    return JSON.stringify(inertSchema(schema.value)) === original.schema;
+  } catch { return false; }
+}
+
 function readFileTool(): ToolDefinition {
-  return {
+  const tool: ToolDefinition = {
     readOnly: true,
     schema: {
       name: "read_file",
@@ -842,15 +1145,57 @@ function readFileTool(): ToolDefinition {
       const { path: userPath, offset = 1, limit = READ_DEFAULT_LIMIT } = readFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
       // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
-      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath, true))
-        || confineResolved(root, userPath, true, context.workingDirectories?.(true));
-      const stat = await fsp.stat(resolved.path);
-      if (!stat.isFile()) {
-        throw new Error(`read_file: not a regular file: ${userPath}`);
+      // Xce, 2bcyxj9q [242279,243972), UTF-16: the current root's result store is readable.
+      const results = skillResultsDirectory(context.session);
+      const directories: WorkingDirectories = context.workingDirectories?.(true) ?? [];
+      // eNe/Yg and Xce, 2bcyxj9q [214841,215541)/[242279,243972), UTF-16.
+      // Preserve the grant owner's observations when adding the separate result-store exception.
+      const readDirectories = results ? [...directories, results] : directories;
+      if (results) Object.defineProperty(readDirectories, 'rootSpellings', { value: [
+        ...(directories.rootSpellings ?? directories.flatMap(directory => observeWorkingDirectory(root, directory))),
+        ...observeWorkingDirectory(root, results),
+      ] });
+      const resolved = (context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership, true))
+        || confineResolved(root, userPath, true, readDirectories);
+      const requested = path.resolve(root, userPath);
+      const grant = [...directories].filter(directory => isWithin(directory, requested))
+        .sort((a, b) => b.length - a.length)[0];
+      if (!grant && directories.readHandle && !isWithin(root, resolved.path) &&
+          (!results || !isWithin(results, resolved.path)) &&
+          (directories.rootSpellings ?? []).some(spelling => isWithin(spelling, resolved.path))) {
+        throw new Error('read_file: directory grant spelling has no bound handle');
       }
-      return readFileLines(resolved, userPath, offset, limit, maxBytesFor(context), context.signal);
+      const owned = grant && directories.readHandle ? directories.readHandle(grant) : undefined;
+      if (grant && directories.readHandle && !owned) throw new Error('read_file: directory grant is no longer available');
+      if (owned) context.readGrantSignal?.(owned.signal);
+      const verified = context.verifiedReadDirectory ?? owned;
+      const relative = verified ? path.relative(verified.root, path.resolve(root, userPath)) : undefined;
+      if (verified && (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))) {
+        throw new Error('read_file: path outside verified directory');
+      }
+      const directory = verified && relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+        ? { fd: verified.fd, relative } : undefined;
+      // Host FD witness: source eNe/Yg, chunk-2bcyxj9q [214841,215541), UTF-16, retains paths only.
+      if (directory && owned && verified === owned) context.readGrantWitness?.({ owner: owned.owner, incarnation: owned.incarnation });
+      // GIr, sfn1dbxq [3546500,3549105), UTF-16: only an identical visible, nonpartial view can be reused.
+      const cacheKey = path.resolve(root, userPath);
+      const previous = context.readFileCache?.get(cacheKey);
+      const unchanged = previous && previous.identity && previous.realPath === resolved.path && !previous.isPartialView && !previous.contentNotInModelContext &&
+        previous.offset === offset && previous.limit === limit ? { timestamp: previous.timestamp, identity: previous.identity } : undefined;
+      const readSignal = owned ? AbortSignal.any([context.signal, owned.signal]) : context.signal;
+      const read = await readFileLines(resolved, userPath, offset, limit, maxBytesFor(context), readSignal, unchanged, directory);
+      readSignal.throwIfAborted();
+      if ('unchanged' in read) return 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.';
+      // QIr, sfn1dbxq [3559220,3562500), UTF-16: retain the descriptor-bound view.
+      context.readFileCache?.set(cacheKey, { content: read.content, timestamp: Math.floor(read.mtimeMs),
+        offset, limit, identity: read.identity, realPath: resolved.path, isPartialView: read.truncated || !!read.incomplete, contentNotInModelContext: true });
+      context.hostResult?.({ kind: 'file_read', filePath: resolved.path, cacheKey, content: read.content,
+        mtimeMs: read.mtimeMs, identity: read.identity, offset, limit, truncated: read.truncated || !!read.incomplete });
+      return read.content;
     },
   };
+  builtinReadFiles.set(tool, { execute: tool.execute, schema: JSON.stringify(tool.schema) });
+  return tool;
 }
 
 function listFilesTool(): ToolDefinition {
@@ -1019,7 +1364,7 @@ function searchTool(): ToolDefinition {
 }
 
 function writeFileTool(): ToolDefinition {
-  return {
+  const tool: ToolDefinition = {
     toAutoClassifierInput(input) { const value = writeFileSchema.parse(input); return `${value.path}: ${value.content}`; },
     readOnly: false,
     schema: {
@@ -1047,13 +1392,61 @@ function writeFileTool(): ToolDefinition {
     async execute(input, context) {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, content, overwrite = false } = writeFileSchema.parse(input);
+      const invocation = builtinWriteInvocations.get(context);
+      if (invocation && invocation.input === input && runtimeBuiltinWrites.get(invocation.tool)?.original === tool)
+        observeBuiltinWrite(invocation, { phase: 'entered', input: { path: userPath, content, overwrite } });
       const root = workspaceReal(context.workspace);
       // fl/aNe, 2bcyxj9q [205509,205734)/[241113,242279), UTF-16.
-      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath))
-        || confineResolved(root, userPath, false, context.workingDirectories?.(false));
+      const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership);
+      const resolved = planPath || confineResolved(root, userPath, false, context.workingDirectories?.(false));
       const real = resolved.path;
+      // Temporary host restriction: uno, sfn1dbxq [739599,743280), and sC,
+      // f606a53w [12501,15618), UTF-16, do not supply this host's grant-FD
+      // history and atomic publication contract. Refuse before any effect.
+      if (!planPath && !isWithin(root, real)) {
+        // T$n, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+        // UTF-16 [4739060,4739632): source copies by path. The host binds its FD
+        // copy to the Session's durable journal and receipt before accepting it.
+        const directories = context.workingDirectories?.(false);
+        const requested = path.resolve(root, userPath);
+        const grant = directories?.filter(directory => isWithin(directory, requested)).sort((a, b) => b.length - a.length)[0];
+        const owned = grant && directories?.readHandle?.(grant);
+        const relative = owned && path.relative(owned.root, requested);
+        if (context.session && context.toolUseId && owned && owned.owner === context.session.id && relative &&
+            relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) {
+          context.readGrantSignal?.(owned.signal);
+          const signal = AbortSignal.any([context.signal, owned.signal, context.session.closeSignal]);
+          const id = crypto.randomUUID();
+          const sidecar = `${context.session.file}.backup-unknown-${id}`;
+          let destination: fsp.FileHandle | undefined;
+          try {
+            signal.throwIfAborted();
+            const missing = context.session.recordMissingDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
+              grant: owned, value: { path: userPath, content, overwrite }, signal });
+            if (!missing) {
+              destination = await fsp.open(sidecar, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR | fs.constants.O_NOFOLLOW, 0o600);
+              signal.throwIfAborted();
+              syncDirectory(path.dirname(sidecar));
+              const copied = await copyStableDirectoryFile({ fd: owned.fd, relative }, destination, signal);
+              signal.throwIfAborted();
+              context.session.recordDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
+                grant: owned, destinationFd: destination.fd, ...copied,
+                source: { begin: copied.metadata, end: { ...copied.metadata } }, signal });
+            }
+          } catch {
+            // Partial or unsynced evidence stays unknown and is never removed here.
+          } finally {
+            await destination?.close();
+          }
+        }
+        const error = new Error('write_file: writes through additional directory grants are not implemented');
+        blockedDirectoryWrites.add(error);
+        throw error;
+      }
+      const cacheKey = path.resolve(root, userPath);
       const existed = fs.existsSync(real);
       let previous = "";
+      let landed: ReturnType<typeof atomicWrite>;
       if (existed) {
         const stat = fs.statSync(real);
         if (!stat.isFile()) {
@@ -1066,18 +1459,48 @@ function writeFileTool(): ToolDefinition {
         // replace, so the host row reports the effect against what the file actually held: an
         // existing but empty file takes the source's create branch.
         previous = fs.readFileSync(real, "utf8");
+        // dno, chunk-sfn1dbxq.js 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+        // UTF-16 [733986,735250): an advanced mtime requires a matching complete read.
+        const observed = context.readFileCache?.get(cacheKey);
+        const read = observed?.identity && (observed.realPath !== real ||
+          observed.identity.dev !== resolved.identity?.dev || observed.identity.ino !== resolved.identity?.ino) ? undefined : observed;
+        if (!read && context.fileMutationGate && (context.fileMutationGate.preReadGuard || !context.fileMutationGate.readAllowed(real, 'write_file'))) {
+          throw new Error('File has not been read in full. Read it again before attempting to write it.');
+        }
+        if (read?.isPartialView) throw new Error('File has not been read in full. Read it again before attempting to write it.');
+        if (read && !read.isPartialView && Math.floor(stat.mtimeMs) > read.timestamp) {
+          const complete = (read.offset ?? 1) <= 1 && (read.limit === undefined ||
+            (read.content !== '' && read.content.split('\n').length < read.limit));
+          const normalized = previous.replace(/^﻿/, '').replaceAll('\r\n', '\n');
+          const matches = read.contentHash === undefined ? read.content === normalized :
+            read.contentHash === sourceBunHashString(normalized);
+          if (!complete || !matches) throw new Error('File has been modified since read. Read it again before attempting to write it.');
+        }
         verifyUnchanged(resolved, "write_file", userPath);
         context.fileHistory?.(real);
-        atomicWrite(real, content, stat.mode & 0o7777);
+        landed = atomicWrite(real, content, stat.mode & 0o7777);
       } else {
         context.fileHistory?.(real);
-        atomicWrite(real, content);
+        landed = atomicWrite(real, content);
       }
       const rel = path.relative(root, real) || userPath;
-      context.hostResult?.(writeEffectResult(rel, previous, content));
+      // uno, sfn1dbxq [739599,743199), UTF-16: retain the landed write.
+      if (context.readFileCache) {
+        // Host conservative alias invalidation until write/edit/rewind alias ownership is mapped.
+        context.readFileCache.clear();
+        try { context.readFileCache.set(cacheKey, { content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'),
+          timestamp: Math.floor(landed.mtimeMs), identity: landed.identity, realPath: real, offset: undefined, limit: undefined }); }
+        catch { context.readFileCache.delete(cacheKey); }
+      }
+      context.hostResult?.({ ...writeEffectResult(rel, previous, content), landed: { filePath: real, cacheKey,
+        content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'), mtimeMs: landed.mtimeMs, identity: landed.identity } });
       return `${existed ? "overwrote" : "wrote"} ${Buffer.byteLength(content, "utf8")} bytes to ${rel}`;
     },
   };
+  builtinWriteExecutors.set(tool, tool.execute);
+  const snapshot = snapshotTool(tool);
+  if (snapshot) builtinWriteSnapshots.set(tool, snapshot);
+  return tool;
 }
 
 function editFileTool(): ToolDefinition {
@@ -1115,15 +1538,38 @@ function editFileTool(): ToolDefinition {
       const { path: userPath, old_string, new_string, replace_all = false } = editFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
       // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
-      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath, true))
-        || confineResolved(root, userPath, true, context.workingDirectories?.(false));
+      const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership, true);
+      const resolved = planPath || confineResolved(root, userPath, true, context.workingDirectories?.(false));
       const real = resolved.path;
+      // Host restriction: sjr, sfn1dbxq [4167188,4171835), UTF-16, uses
+      // US/recheckBeforeWrite; external grant-FD history/publication is unconnected.
+      if (!planPath && !isWithin(root, real)) throw new Error('edit_file: edits through additional directory grants are not implemented');
+      const cacheKey = path.resolve(root, userPath);
       const stat = await fsp.stat(real);
       if (!stat.isFile()) {
         throw new Error(`edit_file: not a regular file: ${userPath}`);
       }
       const original = await fsp.readFile(real, "utf8");
       const occurrences = original.split(old_string).length - 1;
+      // Edit validator and ajr, sfn1dbxq [4163900,4165400), [4172005,4172613), UTF-16.
+      const observed = context.readFileCache?.get(cacheKey);
+      const read = observed?.identity && (observed.realPath !== real ||
+        observed.identity.dev !== resolved.identity?.dev || observed.identity.ino !== resolved.identity?.ino) ? undefined : observed;
+      const gate = context.fileMutationGate;
+      const allowed = () => gate?.readAllowed(real, 'edit_file') ?? true;
+      if ((!read || read.isPartialView) && gate && (gate.preReadGuard || !allowed())) {
+        throw new Error('File has not been read in full. Read it again before attempting to edit it.');
+      }
+      if (read && (read.refreshedBehindModel || Math.floor(stat.mtimeMs) > read.timestamp)) {
+        const complete = (read.offset ?? 1) <= 1 && !read.isPartialView && (read.limit === undefined ||
+          (read.content !== '' && read.content.split('\n').length < read.limit));
+        const normalized = original.replace(/^﻿/, '').replaceAll('\r\n', '\n');
+        const matches = read.contentHash === undefined ? read.content === normalized : read.contentHash === sourceBunHashString(normalized);
+        const applicable = old_string !== '' && occurrences > 0 && (replace_all || occurrences === 1);
+        if ((read.refreshedBehindModel || !complete || !matches) && !(applicable && allowed())) {
+          throw new Error('File has been modified since read. Read it again before attempting to edit it.');
+        }
+      }
       if (occurrences === 0) {
         throw new Error(`edit_file: old_string not found in ${userPath}`);
       }
@@ -1141,10 +1587,21 @@ function editFileTool(): ToolDefinition {
         : original.replace(old_string, () => new_string);
       verifyUnchanged(resolved, "edit_file", userPath);
       context.fileHistory?.(real);
-      atomicWrite(real, updated, stat.mode & 0o7777);
+      const landed = atomicWrite(real, updated, stat.mode & 0o7777);
+      // sjr, sfn1dbxq [4167188,4170788), UTF-16: an edited view may not be fully visible.
+      const priorRead = context.readFileCache?.get(cacheKey);
+      if (context.readFileCache) {
+        context.readFileCache.clear();
+        try { context.readFileCache.set(cacheKey, { content: updated.replace(/^﻿/, ''),
+          timestamp: Math.floor(landed.mtimeMs), identity: landed.identity, realPath: real, offset: undefined, limit: undefined,
+          contentNotInModelContext: true, ...(priorRead?.isPartialView ? { isPartialView: true } : {}) }); }
+        catch { context.readFileCache.delete(cacheKey); }
+      }
       const count = replace_all ? occurrences : 1;
       const rel = path.relative(root, real) || userPath;
-      context.hostResult?.(editEffectResult(rel, original, updated, old_string, new_string, replace_all));
+      context.hostResult?.({ ...editEffectResult(rel, original, updated, old_string, new_string, replace_all), landed: {
+        filePath: real, cacheKey, content: updated.replace(/^﻿/, ''), mtimeMs: landed.mtimeMs, identity: landed.identity,
+        ...(priorRead?.isPartialView ? { isPartialView: true } : {}) } });
       return `edited ${rel}: ${count} replacement(s)`;
     },
   };

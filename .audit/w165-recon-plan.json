@@ -1,0 +1,13 @@
+{
+  "imports": [],
+  "exports": ["Vt", "ve", "K", "oe", "le", "Et", "si"],
+  "blocks": [
+    { "file": "chunk-twzxjzbk.js", "range": [20073, 20088], "note": "Et: empty up-from-first handler" },
+    { "file": "chunk-twzxjzbk.js", "range": [20088, 20154], "note": "Vt: file row item keyed by path" },
+    { "file": "chunk-twzxjzbk.js", "range": [20154, 20163], "note": "ve: visible row count" },
+    { "file": "chunk-twzxjzbk.js", "range": [20163, 20640], "note": "K: file list" },
+    { "file": "chunk-twzxjzbk.js", "range": [20640, 21165], "note": "oe: file row path and stats" },
+    { "file": "chunk-twzxjzbk.js", "range": [21165, 22140], "note": "le: file row stats label" },
+    { "file": "chunk-twzxjzbk.js", "range": [22672, 28980], "note": "si: DiffDialog component" }
+  ]
+}

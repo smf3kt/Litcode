@@ -11,10 +11,16 @@ import { bindContentRuleOwner, contentRuleMatches, ruleToolMatches, hasContentCo
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
+import { types as utilTypes } from 'node:util';
 import { resolveChain, verifyIdentity } from './path-identity.js';
 import { filePathDecision } from './path-leaf-permission.js';
 import { observePermissionPath, type PathPermissionObservation } from './path-permission-observation.js';
-import { resolvePlanFile } from './plan-file.js';
+import { ownsPlanPath, resolvePlanFile, resolveOwnedPlanFile, type PlanOwnership } from './plan-file.js';
+import { createPathIdentity } from './path-approval-identity-source.js';
+import { createPathApprovalBinding } from './path-approval-binding-source.js';
+import { Be, j8e } from './path-approval-stash-source.js';
+import { randomUUID } from 'node:crypto';
+import { createReadIdentity } from './path-read-identity-source.js';
 
 export const autoPolicySchema = z.object({ deny: z.array(z.string()).optional(), allow: z.array(z.string()).optional(), soft_deny: z.array(z.string()).optional(), hard_deny: z.array(z.string()).optional(), environment: z.array(z.string()).optional(), classifyAllShell: z.boolean().optional() }).strict();
 export const permissionLayerSchema = z.object({
@@ -120,6 +126,7 @@ export type SessionPermissionUpdates = {
   contentRuleOwner?: object;
   ruleWorkspace?: string;
   planFile?: string;
+  planOwnership?: PlanOwnership;
   ruleRoots?: Partial<Record<PermissionSource, string>>;
   mode?: PermissionPolicy['mode'];
   autoDuringPlan?: boolean;
@@ -146,11 +153,12 @@ export const emptySessionPermissionUpdates = (): SessionPermissionUpdates => ({ 
 export type LivePermissionOwner = {
   prepareAutoMode?(): void;
   state(): SessionPermissionUpdates;
-  workingDirectories(readOnly: boolean): readonly string[];
+  workingDirectories(readOnly: boolean): import('./path-identity.js').WorkingDirectories;
   adoptUpdates?(updates: readonly PermissionUpdate[]): PermissionUpdatesOutcome;
 };
 const permissionOwners = new WeakMap<PermissionPolicy, LivePermissionOwner>();
 const planFiles = new WeakMap<PermissionPolicy, string>();
+const planOwners = new WeakMap<PermissionPolicy, PlanOwnership>();
 
 export function permissionOwner(policy: PermissionPolicy | undefined): LivePermissionOwner | undefined {
   return policy && permissionOwners.get(policy);
@@ -268,6 +276,8 @@ export function effectivePermissionPolicy(policy: PermissionPolicy | undefined,
   bindContentRuleOwner(effective, session.contentRuleOwner ?? session);
   const planFile = session.planFile ?? (policy === undefined ? undefined : planFiles.get(policy));
   if (planFile !== undefined) planFiles.set(effective, planFile);
+  const planOwner = session.planOwnership ?? (policy === undefined ? undefined : planOwners.get(policy));
+  if (planOwner !== undefined) planOwners.set(effective, planOwner);
   return effective;
 }
 
@@ -548,6 +558,269 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
 
 export function permissionDecision(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
   session?: SessionPermissionUpdates, workspace?: string): PermissionDecision {
+  return decideWithObservations(policy, tool, input, session, workspace);
+}
+
+// $f/Yce and xv, 2bcyxj9q [231514,233054), [233474,235473), UTF-16.
+// A bare allow-list for other tools is not a Read denial in the source path check.
+export function sourceReadAutomaticallyAllowed(policy: PermissionPolicy | undefined, session: SessionPermissionUpdates,
+  workspace: string, file: string, activeTools: readonly string[], invoked: string): boolean {
+  if (activeTools.includes(invoked) && !activeTools.includes('read_file') && !activeTools.includes('repl')) return false;
+  const resolved = resolveDecisionPolicy(policy, session);
+  const current = resolved.policy;
+  const bareRead = (rules: readonly string[] | undefined) => (rules ?? []).some(rule => bareRuleMatches(rule, 'read_file'));
+  if (bareRead(current?.deny) || bareRead(current?.ask)) return false;
+  const adjusted = current && { ...current, allow: current.allow.filter(rule => Un(rule).ruleContent !== undefined || bareRuleMatches(rule, 'read_file')) };
+  const readTool: ToolDefinition = { schema: { name: 'read_file', input_schema: { type: 'object' } }, readOnly: true, execute: async () => '' };
+  const decision = decideWithObservations(adjusted, readTool, { path: file }, resolved.session, workspace);
+  return decision.decision === 'allow' || decision.decision === 'ask' && decision.floor !== 'rule' && session.mode === 'bypass';
+}
+
+type ReadCheckIdentity = { dev: bigint; ino: bigint } | null;
+
+const addAbortListener = EventTarget.prototype.addEventListener;
+const removeAbortListener = EventTarget.prototype.removeEventListener;
+
+// Read checkPermissions, chunk-sfn1dbxq.js [3542972,3543340), UTF-16,
+// sha256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+// This standalone host adapter returns evidence only; no approval stash or file handle is owned here.
+export class AsyncReadPermissionCheck {
+  #lanes = new WeakMap<object, { stash: InstanceType<typeof Be>; key: string; providerId: string; tool?: ToolDefinition; active: boolean; pending: boolean; paths: Set<string>; signal?: AbortSignal; retire?: () => void }>();
+
+  begin(providerId: string): object {
+    const lane = Object.freeze({ providerId });
+    this.#lanes.set(lane, { stash: new Be(), key: randomUUID(), providerId, active: true, pending: false, paths: new Set() });
+    return lane;
+  }
+
+  finish(lane: object): void {
+    const state = this.#lanes.get(lane);
+    if (!state?.active) return;
+    state.active = false;
+    if (state.signal && state.retire) removeAbortListener.call(state.signal, 'abort', state.retire);
+    for (const file of state.paths) state.stash.consume(state.key, file, 'read');
+    state.paths.clear();
+  }
+
+  // Be consumes the whole read lane after both identities have been retrieved.
+  take(lane: object, file: string, alternate?: string):
+    { kind: 'saved'; paths: string[]; identity: ReadCheckIdentity | undefined; alternateIdentity: ReadCheckIdentity | undefined } | { kind: 'expired' } {
+    const state = this.#lanes.get(lane);
+    if (!state?.active) return { kind: 'expired' };
+    const nativeAborted = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'aborted')?.get;
+    if (state.pending || (state.signal && (!nativeAborted || nativeAborted.call(state.signal)))) {
+      this.finish(lane);
+      return { kind: 'expired' };
+    }
+    const identity = state.stash.takeIdentity(state.key, file);
+    const alternateIdentity = alternate === undefined ? undefined : state.stash.takeIdentity(state.key, alternate);
+    const paths = state.stash.consume(state.key, file, 'read');
+    this.finish(lane);
+    if (paths === j8e || !Array.isArray(paths)) return { kind: 'expired' };
+    return { kind: 'saved', paths: [...paths], identity, alternateIdentity };
+  }
+
+  async check(args: { policy: PermissionPolicy | undefined; tool: ToolDefinition; input: { path: string };
+    workspace: string; toolUseId?: string; session?: SessionPermissionUpdates; signal?: AbortSignal }, lane?: object): Promise<
+      { kind: 'decision'; decision: PermissionDecision; observation: PathPermissionObservation | undefined; identity: ReadCheckIdentity | undefined } |
+      { kind: 'cancelled' } | { kind: 'failure'; reason: string }> {
+    let signal: AbortSignal | undefined;
+    let keepLane = false;
+    let retire: (() => void) | undefined;
+    // Accept native signals, including subclasses; proxies and signal-shaped objects fail the brand check.
+    const aborted = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'aborted')?.get;
+    try {
+      // Host adaptation: the separate lane identifies this invocation before inspecting its arguments.
+      if (args === null || typeof args !== 'object' || utilTypes.isProxy(args)) throw new Error('Expected non-proxy arguments');
+      const prototype = Object.getPrototypeOf(args);
+      const descriptor = Object.getOwnPropertyDescriptor(args, 'lane');
+      if ((prototype !== Object.prototype && prototype !== null) || descriptor) throw new Error('Unexpected lane argument');
+      const suppliedSignal = args.signal;
+      if (suppliedSignal !== undefined) {
+        if (utilTypes.isProxy(suppliedSignal) || !aborted) throw new Error('Expected a native AbortSignal');
+        const cancelled = aborted.call(suppliedSignal);
+        signal = suppliedSignal;
+        if (cancelled) return { kind: 'cancelled' };
+      }
+      const laneState = lane === undefined ? undefined : this.#lanes.get(lane);
+      if (lane !== undefined && !laneState?.active) throw new Error('Read lane expired');
+      if (laneState?.pending) throw new Error('Concurrent read lane check');
+      if (laneState) laneState.pending = true;
+      if (laneState && lane !== undefined) {
+        if (laneState.signal && laneState.signal !== signal) throw new Error('Read lane signal changed');
+        if (signal && !laneState.signal) {
+          const ownedLane = lane;
+          retire = () => this.finish(ownedLane);
+          laneState.signal = signal;
+          laneState.retire = retire;
+          addAbortListener.call(signal, 'abort', retire, { once: true });
+          retire = undefined;
+        }
+      }
+      const policy = args.policy;
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const session = args.session;
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const toolUseId = args.toolUseId;
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const sourceTool = args.tool;
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      if (!sourceTool || typeof sourceTool !== 'object' || utilTypes.isProxy(sourceTool)) throw new Error('Expected a plain read tool');
+      // Host lane ownership binds each observation to its call ID and tool instance.
+      if (laneState) {
+        if (toolUseId !== laneState.providerId || (laneState.tool && laneState.tool !== sourceTool)) throw new Error('Read lane owner changed');
+        laneState.tool = sourceTool;
+      }
+      const descriptors = Object.getOwnPropertyDescriptors(sourceTool);
+      if (Object.values(descriptors).some(descriptor => !('value' in descriptor))) throw new Error('Tool accessors are unsupported');
+      const schema = descriptors.schema?.value;
+      if (!schema || typeof schema !== 'object' || utilTypes.isProxy(schema)) throw new Error('Expected a read schema');
+      const schemaDescriptors = Object.getOwnPropertyDescriptors(schema);
+      if (Object.values(schemaDescriptors).some(descriptor => !('value' in descriptor)) || schemaDescriptors.name?.value !== 'read_file' ||
+          descriptors.readPaths?.value) throw new Error('Expected a single read path');
+      const merged = resolveDecisionPolicy(policy, session);
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const denied = [...(merged.policy?.deny ?? []), ...(merged.session?.deny ?? [])].some(rule => bareRuleMatches(rule, 'read_file'));
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      if (denied) {
+        return { kind: 'decision', decision: { decision: 'deny', reason: 'Tool denied by permission rule: read_file' }, observation: undefined, identity: undefined };
+      }
+      const input = snapshotPrototypeInput(args.input);
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      if (input === null || typeof input !== 'object' || Array.isArray(input) || typeof input.path !== 'string' || !input.path)
+        throw new Error('Expected a single read path');
+      const workspace = path.resolve(args.workspace);
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const readOnly = descriptors.readOnly?.value;
+      const execute = descriptors.execute?.value;
+      if (typeof readOnly !== 'boolean' || typeof execute !== 'function') throw new Error('Expected a read tool');
+      const tool: ToolDefinition = { schema: { name: 'read_file', input_schema: { type: 'object' } },
+        readOnly, planOperation: descriptors.planOperation?.value, execute };
+      const observation = observePermissionPath(workspace, input.path);
+      if (laneState) {
+        laneState.stash.stash(laneState.key, observation.requested, [...observation.spellings], 'read');
+        laneState.paths.add(observation.requested);
+      }
+      let captured: ReadCheckIdentity | undefined;
+      if (process.platform === 'darwin' && (toolUseId !== undefined || laneState !== undefined)) {
+        const filesystem = { cwd: () => workspace, lstatSync: fs.lstatSync, readlinkSync: fs.readlinkSync,
+          realpathSync: (file: string) => fs.realpathSync(file).normalize('NFC') };
+        const identities = createPathIdentity({ ie: () => filesystem, qpt: () => null });
+        const binding = createPathApprovalBinding({ ie: () => filesystem, ...identities,
+          O: undefined, QHt: undefined, Z3: undefined, lwe: undefined, t: undefined, ai: undefined, zut: undefined });
+        const result: { own: ReadCheckIdentity; alt?: { path: string; identity: ReadCheckIdentity } } =
+          await createReadIdentity(binding.vpe).whn(observation.requested, observation.spellings);
+        if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+        if (laneState && (!laneState.active || (lane !== undefined && this.#lanes.get(lane) !== laneState))) return { kind: 'cancelled' };
+        captured = result.own === null ? null : { ...result.own };
+        if (laneState) {
+          laneState.stash.stashIdentity(laneState.key, observation.requested, captured === null ? null : { ...captured });
+          if (result.alt) laneState.stash.stashIdentity(laneState.key, result.alt.path, result.alt.identity);
+        }
+      }
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      const decision = decideWithObservations(policy, tool, input, session, workspace, undefined, observation);
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      if (laneState && (!laneState.active || (lane !== undefined && this.#lanes.get(lane) !== laneState))) return { kind: 'cancelled' };
+      keepLane = decision.decision !== 'deny';
+      return { kind: 'decision', decision, observation: structuredClone(observation), identity: captured };
+    } catch (error) {
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      let reason: string;
+      try { reason = String(error instanceof Error ? error.message : error); }
+      catch { reason = 'Unknown error'; }
+      if (signal && aborted?.call(signal)) return { kind: 'cancelled' };
+      return { kind: 'failure', reason };
+    } finally {
+      if (signal && retire) {
+        try { removeAbortListener.call(signal, 'abort', retire); }
+        catch {
+          if (lane !== undefined) this.finish(lane);
+          if (aborted?.call(signal)) return { kind: 'cancelled' };
+          return { kind: 'failure', reason: 'Abort listener cleanup failed' };
+        }
+      }
+      if (signal && aborted?.call(signal)) {
+        if (lane !== undefined) this.finish(lane);
+        return { kind: 'cancelled' };
+      }
+      if (lane !== undefined) {
+        const state = this.#lanes.get(lane);
+        if (keepLane && !state?.active) return { kind: 'cancelled' };
+        if (!keepLane) this.finish(lane);
+        else if (state) state.pending = false;
+      }
+    }
+  }
+}
+
+type PrototypeInput = null | boolean | number | string | PrototypeInput[] | { [key: string]: PrototypeInput };
+type PrototypeDecision =
+  | { kind: 'unsupported-input'; reason: string }
+  | { kind: 'observed'; input: PrototypeInput; decision: PermissionDecision;
+      coverage: 'partial-host-short-circuit'; observations: PathPermissionObservation[] };
+
+// Only inert JSON-shaped data is accepted; accessors and shared memory are never cloned.
+function snapshotPrototypeInput(input: unknown, seen = new Set<object>()): PrototypeInput {
+  if (input === null || typeof input === 'string' || typeof input === 'boolean') return input;
+  if (typeof input === 'number' && Number.isFinite(input)) return input;
+  if (typeof input !== 'object' || utilTypes.isProxy(input) || seen.has(input)) throw new Error('Expected an acyclic JSON-shaped input without proxies');
+  seen.add(input);
+  try {
+    const proto = Object.getPrototypeOf(input);
+    const array = Array.isArray(input);
+    if (array ? proto !== Array.prototype : proto !== Object.prototype && proto !== null) {
+      throw new Error('Expected plain objects and arrays');
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    if (Object.getOwnPropertySymbols(input).length) throw new Error('Symbol keys are unsupported');
+    const output: PrototypeInput[] | { [key: string]: PrototypeInput } = array ? [] : Object.create(proto);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      if (array && key === 'length') continue;
+      if (!descriptor.enumerable || !('value' in descriptor)) throw new Error('Accessors and non-enumerable properties are unsupported');
+      if (array && (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= input.length)) throw new Error('Array properties are unsupported');
+      Object.defineProperty(output, key, { value: snapshotPrototypeInput(descriptor.value, seen), enumerable: true, writable: true, configurable: true });
+    }
+    if (array && Object.keys(output).length !== input.length) throw new Error('Sparse arrays are unsupported');
+    return output;
+  } finally { seen.delete(input); }
+}
+
+const prototypeReadHandoffs = new WeakMap<object, { input: object; inputText: string; workspace: string; observationsText: string; observation: PathPermissionObservation }>();
+
+// Private decision evidence prevents a caller from substituting or modifying observations.
+export function verifiedPrototypeRead(input: unknown, workspace: string, observations: readonly PathPermissionObservation[]): PathPermissionObservation | undefined {
+  const handoff = prototypeReadHandoffs.get(observations);
+  if (!handoff || handoff.input !== input || handoff.workspace !== path.resolve(workspace) ||
+      handoff.inputText !== JSON.stringify(snapshotPrototypeInput(input)) ||
+      handoff.observationsText !== JSON.stringify(snapshotPrototypeInput(observations))) return undefined;
+  return structuredClone(handoff.observation);
+}
+
+// Fixture-only host ordering; coverage is partial even when every visited path was observed.
+export function prototypePermissionDecision(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
+  session?: SessionPermissionUpdates, workspace?: string): PrototypeDecision {
+  let snapshot: PrototypeInput;
+  try { snapshot = snapshotPrototypeInput(input); }
+  catch (error) { return { kind: 'unsupported-input', reason: error instanceof Error ? error.message : String(error) }; }
+  const isolatedTool: ToolDefinition = Object.create(tool);
+  Object.defineProperty(isolatedTool, 'readPaths', { get() {
+    const readPaths = tool.readPaths;
+    return readPaths && ((value: unknown) => readPaths.call(tool, snapshotPrototypeInput(value)));
+  } });
+  const observations: PathPermissionObservation[] = [];
+  const decision = decideWithObservations(policy, isolatedTool, snapshot, session, workspace, observations);
+  const observation = observations[0];
+  if (decision.decision === 'allow' && tool.schema.name === 'read_file' && observations.length === 1 &&
+      observation && !observation.unresolved && snapshot !== null && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+    const effectiveWorkspace = workspace ?? session?.ruleWorkspace ?? policy?.ruleWorkspace ?? process.cwd();
+    prototypeReadHandoffs.set(observations, { input: snapshot, inputText: JSON.stringify(snapshot),
+      workspace: path.resolve(effectiveWorkspace), observationsText: JSON.stringify(observations), observation: structuredClone(observation) });
+  }
+  return { kind: 'observed', input: snapshot, decision, coverage: 'partial-host-short-circuit', observations };
+}
+
+function resolveDecisionPolicy(policy: PermissionPolicy | undefined, session?: SessionPermissionUpdates) {
   const owner = session ?? permissionOwner(policy)?.state();
   if (policy?.layers || policy && permissionOwners.has(policy)) {
     policy = effectivePermissionPolicy(policy, owner ?? seedPermissionUpdates(policy));
@@ -563,6 +836,20 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
       alwaysAskRules: { ...seeded.alwaysAskRules, ...session.alwaysAskRules } });
     session = undefined;
   }
+  return { policy, session, owner };
+}
+
+function decideWithObservations(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
+  session?: SessionPermissionUpdates, workspace?: string, observations?: PathPermissionObservation[],
+  fixedObservation?: PathPermissionObservation): PermissionDecision {
+  const observe = (directory: string, file: string): PathPermissionObservation => {
+    const result = observePermissionPath(directory, file);
+    if (observations) observations.push(structuredClone(result));
+    return result;
+  };
+  const resolved = resolveDecisionPolicy(policy, session);
+  ({ policy, session } = resolved);
+  const owner = resolved.owner;
   let baseline: PermissionDecision;
   try {
     const executionWorkspace = workspace ?? owner?.ruleWorkspace ?? policy?.ruleWorkspace ?? process.cwd();
@@ -574,12 +861,12 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
       if (!observed) {
         observed = true;
         if (FILE_PERMISSION_TOOLS.has(tool.schema.name) && typeof file === 'string' && file.length > 0) {
-          observation = observePermissionPath(executionWorkspace, file);
+          observation = fixedObservation ?? observe(executionWorkspace, file);
         }
       }
       return observation;
     };
-    baseline = decideOnce(policy, tool, input, session, owner?.planFile, getObservation, executionWorkspace);
+    baseline = decideOnce(policy, tool, input, session, owner?.planFile, getObservation, executionWorkspace, owner?.planOwnership);
     // SendFileTool/IA, 8t44px9f [22793,31590), 2bcyxj9q [231514,231561), UTF-16.
     if (tool.readPaths && baseline.decision !== 'deny') {
       const readTool: ToolDefinition = { schema: { name: 'read_file', input_schema: { type: 'object' } }, readOnly: true, execute: async () => '' };
@@ -587,9 +874,9 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
       for (const file of tool.readPaths(input)) {
         let readObservation: PathPermissionObservation | undefined;
         let decision = decideOnce(policy, readTool, { path: file }, session, owner?.planFile,
-          () => readObservation ??= observePermissionPath(executionWorkspace, file), executionWorkspace);
+          () => readObservation ??= observe(executionWorkspace, file), executionWorkspace, owner?.planOwnership);
         if (decision.decision !== 'deny') {
-          readObservation ??= observePermissionPath(executionWorkspace, file);
+          readObservation ??= observe(executionWorkspace, file);
           decision = filePathDecision(readTool.schema.name, readObservation) ?? decision;
         }
         if (decision.decision === 'deny') { reading = decision; break; }
@@ -608,11 +895,13 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
 }
 
 function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
-  session?: SessionPermissionUpdates, planFile?: string, observation?: () => PathPermissionObservation | undefined, workspace?: string): PermissionDecision {
+  session?: SessionPermissionUpdates, planFile?: string, observation?: () => PathPermissionObservation | undefined, workspace?: string,
+  planOwner?: PlanOwnership): PermissionDecision {
   const active = sessionUpdatesActive(session);
   if (!policy && !active) return { decision: 'allow' };
   const mode = session?.mode ?? policy?.mode ?? 'default';
   planFile ??= session?.planFile ?? (policy === undefined ? undefined : planFiles.get(policy));
+  planOwner ??= session?.planOwnership ?? (policy === undefined ? undefined : planOwners.get(policy));
   if (mode === 'default' && policy?.ask === undefined && policy?.inputRules === undefined && !active &&
       ![...(policy?.allow ?? []), ...(policy?.deny ?? [])].some(text => Un(text).ruleContent !== undefined)) {
     const reason = permissionError(policy, tool);
@@ -634,8 +923,13 @@ function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, 
   // c_/aNe/fl, 2bcyxj9q [235473,238027)/[241113,242279)/[205509,205734); et, wh2vcbh8 [3533,4062), UTF-16.
   const requestedPath = typeof input === 'object' && input !== null
     ? Object.getOwnPropertyDescriptor(input, 'path')?.value : undefined;
-  const ownedPlan = planFile !== undefined && ['read_file', 'write_file', 'edit_file'].includes(name)
-    && typeof requestedPath === 'string' && resolvePlanFile(workspace ?? policy?.ruleWorkspace ?? process.cwd(), requestedPath, planFile) !== undefined;
+  const directory = workspace ?? policy?.ruleWorkspace ?? process.cwd();
+  const observed = planOwner && typeof requestedPath === 'string' ? observation?.() : undefined;
+  const ownedPlan = ['read_file', 'write_file', 'edit_file'].includes(name) && typeof requestedPath === 'string' &&
+    (planOwner !== undefined ? resolveOwnedPlanFile(directory, requestedPath, planOwner) !== undefined &&
+      observed !== undefined && !observed.unresolved && observed.spellings.length > 0 &&
+      observed.spellings.every(spelling => ownsPlanPath(planOwner, spelling))
+      : planFile !== undefined && resolvePlanFile(directory, requestedPath, planFile) !== undefined);
   if (mode === 'plan' && !tool.readOnly && !ownedPlan && tool.planOperation !== 'exit') {
     return { decision: 'deny', reason: `Plan mode permits read-only tools: ${name}` };
   }
@@ -646,6 +940,7 @@ function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, 
   if ((policy?.allow.filter(text => Un(text).ruleContent === undefined).length ?? 0) && !explicitAllow) {
     return { decision: 'deny', reason: `Tool is outside the allow list: ${name}` };
   }
+  // xv/c_, 2bcyxj9q [233474,238027), UTF-16: explicit ask precedes the plan exception.
   if ((policy?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || applicable.some(rule => rule.decision === 'ask') ||
       (session?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || policy && contentRuleMatches(policy, 'ask', name, input, observation?.(), workspace)) {
     return { decision: 'ask', floor: 'rule', reason: `Tool requires approval by permission rule: ${name}` };

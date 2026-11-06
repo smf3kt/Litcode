@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { assertPaired } from "./agent.js";
 import { Session, configSchema, fingerprint, type SessionConfig, type SessionEvent } from "./session.js";
+import { captureReadWitnessTransfers, inheritedReadWitnessObservation } from "./sessions.js";
 import type { ToolDefinition } from "./tools.js";
 
 export type RelocatedToolBuilder = (config: SessionConfig) => ToolDefinition[];
@@ -51,7 +52,8 @@ function completedHistory(source: Session, extensions: readonly ToolDefinition[]
   assertPaired(source.messages);
   // v/RRn [16667,17235)/[4502962,4503404), UTF-16; retain the companion's marker across relocation.
   return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === 'permission_mode_command'
-    || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary' || event.kind === 'model_plan_mode');
+    || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary' || event.kind === 'model_plan_mode'
+    || ((event.kind === 'tool_effect' || event.kind === 'tool_result' || event.kind === 'read_observation') && event.readGrantWitness !== undefined));
 }
 
 /**
@@ -102,7 +104,10 @@ export function relocateSession(source: Session, targetWorkspace: string, buildT
   const next = Session.open(target, { config, startedAt: source.startedAt });
   try {
     if (source.config.features?.sourcePlanTools === true) next.carryForkPermissions(source);
+    const transferReadWitness = captureReadWitnessTransfers(source, next);
     for (const event of history) {
+      const readWitness = inheritedReadWitnessObservation(event, transferReadWitness);
+      if (readWitness) { next.append(readWitness); continue; }
       if (event.kind === "message") {
         const copied = structuredClone(event);
         if (Array.isArray(copied.message.content)) {
@@ -113,7 +118,7 @@ export function relocateSession(source: Session, targetWorkspace: string, buildT
         next.append(copied);
       } else next.append(event as Exclude<SessionEvent, { kind: "metadata" }>);
     }
-    next.append({ kind: "branch", source: source.id, workspace: source.config.workspace, boundary: source.events.length - 1, reason: "relocation" });
+    next.appendCheckpointBranch(source, { boundary: source.events.length - 1, reason: "relocation" });
     next.append(marker);
     next.append({ kind: "turn_end", reason: "workspace_relocated" });
     return next;

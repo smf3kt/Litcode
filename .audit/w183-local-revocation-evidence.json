@@ -1,0 +1,56 @@
+{
+  "package": "W183 bounded canonical and legacy local revocation",
+  "status": "bounded_independent_original_rerun_passed",
+  "independentRecheck": {"result":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-legacy-after-result.json","extra":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-legacy-after-extra.json","pass":true,"scope":"Same retained actual linked-worktree remove/replace inputs, reload empty rules, unknown fields, directory revoke and additive legacy byte preservation; entry hashes stable"},
+  "identity": "614ff6937c1545b30aecc17bb07cd189ccc10a62ff8ce4218b5bc0ba31cb4fc8",
+  "directory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-revocation.HVpgJ4nN",
+  "changedFiles": ["src/permission-settings.ts", "test/agent-lifecycle.test.ts", ".audit/w183-local-revocation-evidence.json"],
+  "baseline": {
+    "script": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-legacy-before.mjs",
+    "result": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-legacy-before-result.json",
+    "observed": "Actual Git linked-worktree removeRules and replaceRules empty wrote canonical allow=[] while legacy and reloaded allow retained Read(secret)."
+  },
+  "source": {
+    "coordinates": "zero-based UTF-16 half-open",
+    "root": "extracted-v2/modules",
+    "chunk-x0dc37w9.js": {
+      "sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92",
+      "ranges": {"us": [102833,105519], "hr": [106115,107544], "vxs": [107544,107795], "Cr": [105875,106006]}
+    },
+    "chunk-3cynezh1.js": {
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "ranges": {"Qnn": [427468,427907], "Y3": [428266,428518], "vse": [401294,401454]}
+    },
+    "acquisition": "All seven complete bodies read and both module byte hashes rechecked before product edits. Bodies treated as inert data."
+  },
+  "adaptation": {
+    "paths": "Existing canonical Git-root path plus optional cwd legacyLocalSettings. No projectConfigDir product surface exists.",
+    "transform": "The existing permission update switch is one transform used for canonical and cloned legacy objects. Canonical writes first, then vxs recursion intersects old legacy arrays by JSON equality, retains original scalar leaves and surviving original keys. New rules, directories and defaultMode remain canonical only.",
+    "unchanged": "Canonical null/no-content-change still evaluates legacy revocation. Aggregate written reports either changed document.",
+    "errors": "Missing legacy, malformed JSON and nonobject JSON preserve original bytes and remain unchanged. Read/transform errors retain phase. Cr marks all array patches removal-bearing, including additive rules/directories; only scalar setMode patches can return canonical success with warning after legacy evaluation error. Legacy publication errors always return error. Canonical read/write failure stops before legacy.",
+    "queue": "Acquire both resolved file queue keys in sorted order. All updates naming either file use the existing per-file queues. Shared canonical roots and overlapping destination paths serialize without lock-order cycles. No recursive acquisition of one key.",
+    "host": "Node atomicWriteFile keeps file mode, byte verification and parent identity. Existing strict regular-file and byte-limit boundaries remain. Source storageV5 publication, source cache observers and automatic local gitignore updates remain outside this bounded local-JSON persistence adaptation."
+  },
+  "validation": {
+    "check": {"exit":0,"log":"check.log"},
+    "build": {"exit":0,"log":"build.log"},
+    "affected": {"exit":0,"passed":215,"failed":0,"log":"affected.log", "files":["agent-lifecycle","permissions","path-identity","shell-permissions","config","reload","notebooks","media","lsp"]},
+    "regressions": "Extended the existing second W183 group only. Literal allow/deny/ask remove and replace, unchanged canonical revocation, directories, unknown fields, absent additive legacy keys, defaultMode preservation, malformed/nonobject JSON, read/transform/write errors, scalar warning and overlapping-path concurrent writes. Existing first-group memory-first and independent-owner assertions retained.",
+    "compiled": {"exit":0,"driver":"probe.mjs","log":"compiled.log","outcomes":["Actual git init and git worktree add fixture","Six allow/deny/ask remove/replace scenarios pass reload and fresh compiled child process","Directory revoke survives loader merge","Additions and scalar changes remain canonical","Malformed legacy bytes unchanged","Source/test/build identity unchanged during probe"]},
+    "identityFile":"identity-final.json",
+    "diffCheckExit":0,
+    "fixture":"fixture-jtcEqi"
+  },
+  "principles": {
+    "Fix Root Causes":"Repair canonical/legacy write ownership using source us/hr/vxs rather than loader symptoms.",
+    "Model the Domain":"Represent canonical plus optional legacy paths and reuse one JSON transform.",
+    "Separate Before Serializing Shared State":"Canonical file sharing is source-required; sorted file queues serialize actual shared documents.",
+    "Type System Discipline":"PermissionUpdate discriminant retains exhaustive transform cases; external JSON is parsed at its file boundary.",
+    "Prove It Works":"Real Git linked-worktree reload plus fresh compiled process checks against retained before evidence."
+  },
+  "workflow": "Coordinator bounded delegate brief prohibited further delegation and edits to coordinator-owned shared documents. Read how/architect guidance, executed source-prescribed design directly. apply_patch absent from callable tools and PATH; used documented dedicated Edit/Write fallback.",
+  "standards": "S1 exact before evidence and recovered source; S2 existing contracts and no additive legacy grants; S3 no UI changes; S4 memory-first/owner queues preserved; S5 literal reload/file assertions; S6 existing regression group and compiled public exports; S7 all complete source bodies hashed/read before edit.",
+  "preserved": ["Cumulative directory and content changes", "research/CURRENT.md", "research/FEATURES.md", "research/ports shared records", "unrelated audits and working tree changes"],
+  "remaining": ["Independent peer original-input rerun at frozen identity", "Full W183 auto, recovery, child/skill inheritance and whole-package CLI acceptance remain coordinator-owned", "Cross-process concurrent file updates are outside the existing in-process queue contract", "storageV5 publication/cache observers and automatic gitignore boundary remain explicit host differences"],
+  "writesFrozen": true
+}

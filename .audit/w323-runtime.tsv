@@ -1,0 +1,13 @@
+stage	decision	evidence
+source	Recovered completed-agent eligibility/group/order/open body before edits	7manifest-verified module identities;fLt3slices;kn before resume repair
+host	Existing registry keeps bounded same-process completed records	independent read-only owner report;existing transcript/view leases
+baseline	Compiled CLI hides2completed agents	w323-cli-red.txt;10owned requests;exit0
+implementation	Completed background rows;headings outside focus indices;live-only counts/stop	src/agent-registry.ts;tasks-panel.ts;runtime.ts;interactive.ts;task-details.ts;terminal.ts;tui.ts
+repair	Actual file touch mutates live skill config and breaks old strict resume	w323-cli-green.txt;immutable resumeConfig+exact live context;Session.open guard preserved
+validation	New3groups;affected321/321;CLI37/37;check/build	w323-review-affected.txt;w323-cli-tests.txt;w323-review-check.txt;w323-review-build2.txt
+compiled	Final history12/details9/transcript11owned requests;locks released	w323-review-cli-history.txt;w323-review-cli-details.txt;w323-review-cli-transcript.txt
+comparison	7AST-bound exact source/target diffs generated and read	w323-source-comparison.json
+review	Independent0confirmed defects;6/6;history12requests;two config resumes;comment review0findings/0touched	a3361e36439d09007;aef28237485fdd04e;w323-independent-tests.log;w323-independent-cli.log;w323-independent-probe.log
+identity	1806files	e87a28a792aef845ace8571ee0a5093239f858e35ccc0235094ad797f7a3f11c
+delivery	Verified16path local commit;two existing tracked user changes unstaged	57d3eb8;no coauthor/no push
+loop	Package closed;every-minute existing authorization continues	cron a7e317bd;next ready local usage chain

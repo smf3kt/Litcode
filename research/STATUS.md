@@ -1,3 +1,313 @@
+W385 local checkpoint: child journal authorization forwarding, 111 related passes, compiled child/transcript CLI, inactive async-journal prototype and source-mapping handoff. See [handoff](HANDOFF-2026-11-06.md) and [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 async process/callback state separation, real late return/throw, compiled CLI and installed evidence: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 hook call/parent and async job association, actual compiled CLI, unchanged stdin and installed cold-reader evidence: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 per-generation owner release settlement, actual compiled clear, failed-cleanup retention and installed evidence: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 actual builtin Write entry/settlement, four compiled process cuts, cold readers and installed evidence: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 Agent-issued runtime Write start, session ownership and installed evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 runtime Write wrapper and executing-Session owner probe: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 post-result Agent observer, cold snapshot and source-lock probe: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 builtin Write outer Agent dispatch guard, compiled CLI and offline-installed evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 builtin Write runtime executor guard, compiled CLI and offline-installed evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 runtime-wrapped Write, asynchronous failure-hook ordering and cold-process probe: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 blocked-Write hook/effect provenance and cold-configuration probe: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 nonempty-snapshot source-lock probe and tool-effect provenance gap: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 completed recovery followed by verified empty snapshots, source-lock, process/CLI and installation evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restart reconciliation after ordinary text turns, process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restart reconciliation after workspace file-history events, process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restart reconciliation after title and color events, process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restart reconciliation after color events and process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restart reconciliation/store serialization and process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 completed-recovery source lock identity and process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 post-recovery-created checkpoint torn inheritance and process/terminal evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 restarted torn-inheritance reconciliation and process/CLI evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 bounded repeated torn recovery, terminal, installation and process evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 indirect ordinary-origin torn recovery, source proof, terminal and writer-death evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 metadata-only torn continuation, regrant, later checkpoint lineage and renewed-crash evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 recovered checkpoint lineage, proof-removal and rehashed-tamper checks, terminal and installed cold evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 bounded torn direct-source checkpoint recovery, process-death, terminal and cold evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 committed rewind fatal notice delivery, lock-retention checks and terminal/cold evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 committed rewind acceptance failure, strict old-runtime cleanup, terminal-exit notice and remaining boundaries: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 committed rewind marker recovery, proof-regression stop and remaining boundaries: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 committed rewind inheritance failure, torn-journal stop and verified successor recovery: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 committed rewind successor binding recovery, strict cleanup, explicit regrant and remaining failure boundaries: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 completed runtime release acknowledgement, same-ID rewind recovery and remaining failure boundaries: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 prepared checkpoint receipt recovery after commitment, independent cold readers and remaining reconciliation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 historical checkpoint witness inheritance, bounded conversation rewind, source evidence dependencies and remaining reconciliation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 successor branch authorization, checkpoint tracking and remaining mixed rewind: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 workspace checkpoint association identity, manifest/object and Session-journal recovery, external rewind uncertainty and remaining directory-write integration: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 directory-grant runtime release barriers, fork witness, linked-grant compiled PTY and independent recovery: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
+
+W385 conditional Read ordering and compiled CLI: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 compiled headless skill result format and remaining permission-layer gap: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W121 single-use skill retry execution, actual retry writer-death barriers and remaining crash gaps are recorded in [W121](ports/W121-skill-effect-journal.md).
+
+W385 ordinary skill layer crash, warning-only recovery guard, explicit new-session recovery and remaining gaps are recorded in [W385](ports/W385-declaration-prefix-preflight.md#ordinary-permission-layer-task-card-2026-11-05-in-progress).
+
+W385 serial post-hook result ordering and its remaining evidence are recorded in [W385](ports/W385-declaration-prefix-preflight.md#concurrency-permission-preflight-2026-11-05).
+
+W385 classifier invocation snapshot and remaining concurrency gaps are recorded in [W385](ports/W385-declaration-prefix-preflight.md#concurrency-permission-preflight-2026-11-05).
+
+W385 compiled PTY cancellation, queued clear and captured late-progress isolation are recorded in [W385](ports/W385-declaration-prefix-preflight.md#read-concurrency-probe-2026-11-05).
+
+W385 directly allowed Agent/TaskStop grouping, owner-bound registry stop and compiled PTY are recorded in [W385](ports/W385-declaration-prefix-preflight.md#read-concurrency-probe-2026-11-05).
+
+W385 foreground terminal progress and remaining rendering/scheduler gaps are recorded in [W385](ports/W385-declaration-prefix-preflight.md#read-concurrency-probe-2026-11-05).
+
+W385 real Agent descriptor race, concurrent cold reconstruction, sibling cancellation persistence and one owner-release interleaving are recorded in [W385](ports/W385-declaration-prefix-preflight.md#read-concurrency-probe-2026-11-05).
+
+W385 real Read descriptor concurrency probe and serial cold replacement pass; concurrent Agent batch and cold reconstruction remain open: [W385](ports/W385-declaration-prefix-preflight.md#read-concurrency-probe-2026-11-05).
+
+W385 tool invocation context, outcomes and parent-linked cancellation signals are call-owned; shared execution dependencies and concurrency remain open: [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+W385 standalone child stop and witnessed cold continuation remain partial: [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+W385 root-only skill output persistence and directory-pin continuation are partial: [W385](ports/W385-declaration-prefix-preflight.md#skill-persistence-regression-preflight-2026-11-05).
+
+W385 new-root identity journal slice is partial: [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+W385 prior missing-path real-Agent failure is addressed by the root-only slice above; broader ownership and filesystem boundaries remain open.
+
+W385 notification commit authorization remains Partial: [W385](ports/W385-declaration-prefix-preflight.md#notification-content-guard-2026-11-04-in-progress).
+
+W385 independent notification input prerequisite remains Partial: [W385](ports/W385-declaration-prefix-preflight.md#notification-content-guard-2026-11-04-in-progress).
+
+W385 Session notification first-prompt guard and cold retry: [W385](ports/W385-declaration-prefix-preflight.md#notification-content-guard-2026-11-04-in-progress).
+
+W385 real background task compiled retry: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 explicit durable notification retry and compiled PTY: [W385](ports/W385-declaration-prefix-preflight.md#human-notification-coordination-task-card-2026-11-04-in-progress).
+
+W385 decision receipt post-rename process failures and compiled PTY: [W385](ports/W385-declaration-prefix-preflight.md#human-notification-coordination-task-card-2026-11-04-in-progress).
+
+W385 independent notification isolation and coordination owners: [W385](ports/W385-declaration-prefix-preflight.md#notification-batch-intent-task-card-2026-11-04-in-progress).
+
+W385 interactive unknown-notification visibility and remaining reconciliation gap: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 second-intent fsync handoff and remaining cold-replay gap: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 complete per-batch notification intents and validation: [W385](ports/W385-declaration-prefix-preflight.md#notification-batch-intent-task-card-2026-11-04-in-progress).
+
+W385 owner-bound notification intent prerequisite and validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 structured agent notification identity transfer and validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 background Session caller boundary and validation: [W385](ports/W385-declaration-prefix-preflight.md#persistence-dependency-follow-up-2026-11-04-open).
+
+W346 offline source bundle native input repair and acceptance: [W346](ports/W346-local-distribution.md#source-bundle-native-inputs-2026-11-04).
+
+W385 torn-recovery timeout follow-up and root identity source recheck: [W385](ports/W385-declaration-prefix-preflight.md#persistence-dependency-follow-up-2026-11-04-open).
+
+W385 persistence root semantics and temporary-delete source fixture: [W385](ports/W385-declaration-prefix-preflight.md#persistence-dependency-follow-up-2026-11-04-open).
+
+W385 Darwin custom-shell shared output and compiled plugin acceptance: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-04: custom shell start/exit comparison recorded in [W385](ports/W385-declaration-prefix-preflight.md); no product change.
+
+W385 installed skill classifier, model results and resume acceptance: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill shell exit classifier and journal acceptance: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill shared-output continuation and deterministic CLI sibling barrier: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 compiled Darwin switch warning, restart and retry: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 Darwin release/rebind warning commit and explicit Agent retry: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 Darwin offline installed skill supervisor acceptance and integration: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 immediate supervisor cleanup prerequisite: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 supervisor overflow cancellation prerequisite: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 supervisor live stream prerequisite and contract mapping: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 persistent watcher: standalone Darwin ownership/status slice and bounded validation; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 bounded fd3 drain and compiled real-process acceptance: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 standalone fd3 API and compiled real-process acceptance: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 SESSION acknowledgement process barriers: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 pre-session process ownership experiment: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 READY startup cancellation with stopped watcher: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 ordered status delivery and actor-loss probes: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 reciprocal pre-grant, control EOF and exec-status probes: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 independent reciprocal-owner and worker-status process experiment: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 compiled same-mtime different-inode cold replacement and identity-free legacy Read: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 compiled linked-directory Write/Edit and bounded legacy cold recovery: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 historical Write/Edit observations across branch and cold recovery: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 lexical Read, conservative invalidation and CLI validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 session lock atomic publication and process recovery: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 torn parent recovery: complete-prefix recovery, retained evidence and process/CLI validation in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 strict sidecar sync and recovery: failure injection, Agent SIGKILL and compiled CLI evidence in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 journal failure fence: controlled write/sync errors, repeated recovery and CLI crash validation in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 compiled CLI crash recovery: valid and rejected intent scenarios pass after SIGKILL and two restarts; bounded evidence and identity in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 host history intent: bounded write-order and failure evidence in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 repeated cold recovery and source preflight: bounded evidence and unresolved reconciliation in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 runtime release and same-ID approval rebind: bounded real Agent test in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 skill approval release: bounded real Agent test in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 preparation owner recheck: bounded fix and validation in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 preparation hook release and cold history: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 real Agent owner release and separate owner validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 explicit Session owner and cold history validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 default registry owner boundary and local validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 regression triage: affected files and full baseline pass after owner fixture corrections. [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03: W385 plan-family ownership prerequisite and remaining integration: [record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 standalone watcher-exclusive gate and ordered fault tests: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 independent watcher gate counterexample and baseline: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 reciprocal-owner source and simultaneous-loss boundary recheck: [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 PTY session switch race: old approval, command, journal and locks checked; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 source-backed turn owner correction and compiled concurrent/close validation: [evidence](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 concurrent inline scheduler, real Agent and CLI partial validation: [evidence](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W121 PTY fault, crash and concurrent notification fixtures: [evidence](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W121 output commit prerequisite; TUI delivery open: [evidence](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W121 model warning delivery, crash replay and explicit retry: [evidence](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W385 bounded caller status decoding and real-process validation; shellOutput integration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 standalone native supervisor status and abnormal-exit validation; shellOutput integration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 held group leader after descendant pipe closure: EPERM on group probe; native integration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+W385 active-shell owner and shutdown source preflight: [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 fenced overlap matching and compiled CLI: [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 empty skill command filtering and compiled CLI: [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 interactive startup mutation and cancellation: [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 disabled-plan fork: source-aligned local copy and cold reopen verified; [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 pending approval CLI shutdown and lock cleanup: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill history identity and hook continuation fixture validation: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 scope persistence: real Agent and compiled skill CLI validated; scoped cold restore remains open. [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 configured plan directory local integration: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 plan ownership and configured-directory dependency traced; [record](ports/W385-declaration-prefix-preflight.md).
+
+W385 plan Read and ownership continuation: see [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 local Edit/Write gates: see [port record](ports/W385-declaration-prefix-preflight.md); CLI validator coverage remains open.
+
+W385 ordinary read dedup and validation: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 running-child cancellation and Write/Edit cold cache observation: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 local Bun hash and Agent owner follow-up: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 descriptor-bound metadata and durable bounded read record: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 first-page excerpt and ownership trace: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 Eye errors and room trace: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 Eye caller, error mapping and handle lifetime traced; real host read tool 3/3, production binding open: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 controlled small-file projection copied and tested; production binding remains open: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 child tool names and host construction traced; two parent runtime tests pass. Nested resource ownership remains open: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 notification model-message conversion and cancellation boundary: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 notification resume and terminal stop host verification: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 isolated child absolute-rule controls: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 isolated child rule-denial and parent-target controls: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 keepalive producers and Shell settlement source trace: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 fork Shell host cleanup boundary and real-process controls: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 headless root async-hook teardown, fork shell teardown and snapshot drain ordering: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 host permission deny decision confirmation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 interaction signal suppression and claim ordering: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 interaction recheck-to-call trace and host PreToolUse observation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 optional interaction owner default repaired and verified: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill HOME fixture rerun and blocked implementation disposition: [W385](ports/W385-declaration-prefix-preflight.md).
+
 W385 Permissions plan-file follow-up (2026-10-30). Source-backed execution-workspace repair passes scoped independent review, focused tests and actual `/cwd` CLI write/overwrite; later boundary assertions pass at `7e8be1b6`. Broader path binding remains open. See [W385](ports/W385-declaration-prefix-preflight.md).
 
 W385 Permissions interactive hook candidate (2026-10-30). Two independent `NOT_VERIFIED` reviews found approval-time defects. Local repairs, including later live-rule confirmation and classic event-input fixes, pass 92 related tests at `f1b8e2f6`; an extended 14-case compiled CLI passes at `cd0ab4bd`. Two fresh readers terminated without verdicts. See [W385](ports/W385-declaration-prefix-preflight.md).
@@ -248,7 +558,13 @@ W332 live setting sources (2026-10-25): dedicated settings saves publish one fro
 
 2026-10-22 W243 model-picker chord live open and switch verified. Source `aL` (chunk-24k7d6mw.js 881614) opens the picker panel directly for local sessions and reserves `/model` with `fromKeybinding` for cloud sessions; the accept arm `w9`/`FL` (894465/895434) writes the model and effort to live state and persists defaults without restarting the session. The chord now calls `openModelPickerLive`, and `switchModelInPlace` shares the extracted `preModelSwitch` hook gate, updates `session.config` in place, persists on the enter arm only (`X9`, chunk-9vcaezw1.js 13965) and emits `PostModelSwitch`, so a running turn's next request uses the new model. Check/build, 87/87 picker tests and compiled 9/9 pass at identity `2ae8a9fb…` with the picker opened mid-turn, the same turn's next request and a later turn on the switched model; full suite 2997/2998 with the CLI-effort failure reproduced at HEAD. Independent review pending. [Record](ports/W243-model-picker-live.md). Local only.
 
+W385 hook preparation: reusable host hook approval and HOME capture; cold recovery remains gated, and one existing continuation test fails. [Record](ports/W385-declaration-prefix-preflight.md).
+
+W385 inline boundary: real skill and compiled CLI passed; source and identity in [W385](ports/W385-declaration-prefix-preflight.md).
+
 # Research and implementation status
+
+2026-11-04: W385 receipt recovery now re-establishes durability on cold reopen and retains unknown on sync failure; details and evidence in [W385](ports/W385-declaration-prefix-preflight.md#receipt-resynchronization-task-card-2026-11-04).
 
 2026-10-22 W242 kill-agents chord confirmation and stop verified. Source `Jr` (chunk-24k7d6mw.js 435644) shows `No background agents running` for 2000 ms when no running background work exists (`ane` 429125), else the first press arms a 3000 ms confirmation and the second stops the work. The chord now reads the session's live set through `bindBackgroundWork`: `Runtime.backgroundWorkCount` counts running background jobs plus running child agents, and `Runtime.stopBackground` stops both via `BackgroundRegistry.stop`/`AgentRegistry.stop`. The first delivery's none-only premise was disproved by independent review and is corrected; the second review and a delta re-review returned SOUND with the medium and lows fixed. Check/build, 80/80 TUI tests, 15/15 runtime-resources tests and compiled 10/10 pass at identity `174700e3…`; full suite 2997/2998 with the CLI-effort failure reproduced at HEAD. [Record](ports/W242-kill-agents.md). Local only.
 
@@ -3347,3 +3663,250 @@ itself. `renderChat` now carries the `borderText` record the engine already pain
 29/29 + 23/23, full 3201/3202, compiled 7/7 at identity `3c07dd53…`. [W283 record](ports/W283-composer-ultracode-tag.md).
 
 W284 ports the composer's `History n/total` top-border hint and its precedence over ultracode, using the existing history snapshot. Affected 160/160, check/build clean, compiled 17/17 at identity `fb0f5add…`. [W284 record](ports/W284-composer-history-tag.md).
+W385 hook update and interaction-tool source trace: see [W385](ports/W385-declaration-prefix-preflight.md); production correction remains open.
+
+# W385 shell provider ownership follow-up
+
+Static ownership and snapshot trace: [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 snapshot drain follow-up (2026-11-01)
+
+Static cleanup and fork ownership trace; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 async-hook ownership follow-up (2026-11-01)
+
+Static source and host findings, constraints and remaining questions: [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 cleanup identity follow-up (2026-11-01)
+
+Static predicate and caller identity trace: [W385](ports/W385-declaration-prefix-preflight.md). Host ownership and a complete runtime slice remain open.
+
+# W385 notification consumer boundary (2026-11-01)
+
+Local-process consumer regression and source rollback boundary: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 child cwd stream trace: scoped launch, async generator consumption and host workspace handoff inspected; callback scheduling remains open. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 agent notification claim (2026-11-01)
+
+Static source and host trace: [W385](ports/W385-declaration-prefix-preflight.md). No product change or runtime test.
+
+W385 restart and notification consumer source/host boundary: see [W385](ports/W385-declaration-prefix-preflight.md); static analysis, production integration open.
+W385 terminal child stop slice: [source and verification](ports/W385-declaration-prefix-preflight.md).
+
+# W385 invocation clamp update
+
+Inherited clamp groups now persist when a registry child adds a group; evidence and validation are in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 child-context layer retention and the inherited-clamp recheck are recorded in [W385](ports/W385-declaration-prefix-preflight.md); production layer conversion remains open.
+
+# W385 wake routing follow-up
+
+Source candidate selection and host ownership boundary are recorded in [W385](ports/W385-declaration-prefix-preflight.md); the human-continuation clamp fixture passes, while task-notification integration remains open.
+
+# 2026-11-01 W385 controlled reader
+
+Eye and stream copy, validation and unconnected production status: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 read-result mapping and query-room ownership trace: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 read-state lifecycle follow-up: source ownership and consumers traced; production integration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+W385 result timestamp: per-result journal timestamp and cold reload verified; read sidecar and state reconstruction remain open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+W385 read sidecar and descriptor follow-up: source and host lifetime comparison; production restoration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+W385 read-state reconstruction and fork/rewind verification: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 local model guard dependency: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 read-cache dependency follow-up (2026-11-01)
+
+Static LRU dependency, baseline gate and host consumer findings: [W385 record](ports/W385-declaration-prefix-preflight.md).
+
+W385 cache wrapper continuation: see [port record](ports/W385-declaration-prefix-preflight.md); session integration remains open.
+
+W385 Bun 1.4.4 local hash observations and remaining cache owner gap: [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 hash follow-up
+
+Node Wyhash adaptation and local Bun differential: [W385 record](ports/W385-declaration-prefix-preflight.md).
+
+W385 session cache continuation: see [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 descriptor timestamp (2026-11-01)
+
+Descriptor-bound Write/Edit cache timestamps and validation are recorded in [W385](ports/W385-declaration-prefix-preflight.md).
+
+
+W385 cold cache recovery: see [port record](ports/W385-declaration-prefix-preflight.md).
+# W385 cache context boundary (2026-11-01)
+
+Compaction reset and batched read visibility are integrated and tested; remaining source guards are tracked in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 local Write validation: see [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 compiled CLI mutation-gate validation and Read-policy trace: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 plan owner and spelling continuation: source and host boundaries traced; integrated ownership and cold recovery remain open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+W385 ordinary fork main-plan copy and cold reopen: see [W385](ports/W385-declaration-prefix-preflight.md); child authorization and rewind remain open.
+
+W385 cold skill import dependency and validation: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 live skill approval signal: child-owned signal reaches interactive approval after invocation completion; scoped cold recovery remains open. [Port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 live skill continuation: current scope and grants are checked on subsequent live turns; cold approval-owner gate remains. Evidence and validation: [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 cold restart gate (2026-11-02)
+
+Separate-process gate and identity checks pass; continuation remains blocked. [W385](ports/W385-declaration-prefix-preflight.md).
+
+# 2026-11-02
+
+W385 cold skill reconstruction preparation: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill continuation lifecycle ordering and verification: [port record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02: W385 skill scope identity and approval preparation continuation; cold admission remains gated. [Record](ports/W385-declaration-prefix-preflight.md).
+
+W385 restricted skill history import and fail-closed continuation: [record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02: W385 cold recovery approval and skill-change regressions; compiled cold CLI remains open. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+# W385 verification continuation (2026-11-02)
+
+Live permission mutation and compiled skill cold continuation evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 workshop fork (2026-11-02): source-mapped local copy and compiled CLI cold resume verified; remaining boundaries and identity in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 child plan ownership preflight: source identity and permission dependencies rechecked; existing main-session Agent regression passes, integrated child ownership remains open. [Record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02: W385 child plan ownership implementation and bounded validation; remaining boundaries in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02: W385 parent plan witness and remaining verification boundaries: [record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02: W385 cold identity and cache fixture corrections validated; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill plan cold approval: plan write passes without explicit ask; explicit ask fails before the interactive callback. [Evidence](ports/W385-declaration-prefix-preflight.md).
+
+W385 skill approval incremental revalidation: see [W385](ports/W385-declaration-prefix-preflight.md); child plan ask remains open.
+2026-11-02 W385: call-scoped authorization identity transport and lifetime implemented; skill plan approval remains open. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385: corrected live-deny fixture and verified concurrent cold skill approvals; three suites 133/133, check/build and compiled CLI pass. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 HOME initialization: provider input chain and local validation updated; production correction remains open. [Record](ports/W385-declaration-prefix-preflight.md).
+
+W121 (2026-11-02): same-process live effect filtering delivered; cross-process false positive remains. See [W121](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W121 torn-tail append guard; cross-process recovery remains open. [Record](ports/W121-skill-effect-journal.md).
+
+# W121 native journal locks
+
+Darwin cross-process journal locking and lease validation: [W121](ports/W121-skill-effect-journal.md).
+
+# 2026-11-02 W121 lease and packaging follow-up
+
+Journal failure cleanup, cross-process lease reclamation and target-host native build are recorded in [W121](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W385 sibling effect journal prerequisite: cross-process active lease and terminal cleanup verified; concurrent Agent/CLI execution remains open. [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-02 W385 command owner fixture repair and compiled CLI shutdown: related suites 83/83; source kill-backstop parity remains open. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+# 2026-11-02 W121 retry ordering
+
+Unknown-effect warning precedes retry; see [W121](ports/W121-skill-effect-journal.md).
+
+# 2026-11-02
+
+W121 conservative unknown-effect delivery foundation; details and open commit boundary in [W121](ports/W121-skill-effect-journal.md).
+
+# 2026-11-02 W121 TUI output investigation
+
+Source identities and the renderer/output ownership were rechecked; the TUI delivery contract remains open. See [W121](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W121 TUI notice output and 40x10 PTY retry: [evidence](ports/W121-skill-effect-journal.md).
+
+2026-11-02 W385 `/resume` approval race and reverse order verified in compiled PTY; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385: standalone reciprocal-owner prerequisite and separate compiled CLI smoke; integration remains open. [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 standalone supervisor startup gate verified for the bounded pre-release cases; details and hashes in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 reciprocal-owner double-loss counterexample, 2026-11-03: [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 2026-11-03: real foreground fork skill Agent plan-family and parent/scoped-deny cases pass; complete source comparison and remaining acceptance stay open. [W385](ports/W385-declaration-prefix-preflight.md).
+2026-11-03 W385: eight cross-process fork-skill persistence crash boundaries; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03: W385 completed witnessed child journal full-file validation and pre-recovery continuation check; bounded evidence and open crash limits in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 verified-intent cold recovery: implementation and bounded real-process evidence in [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 recovery-process SIGKILL barriers and repeated cold-history validation: [record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 lock initialization: process barriers exposed unrecoverable malformed owner lock; lock safety preserved, production recovery open. [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 Read cache alias follow-up (2026-11-03)
+
+Both Agent and compiled CLI directions now capture tool results; source and host cache keys differ. See [W385](ports/W385-declaration-prefix-preflight.md) for the bounded results and open permission mapping.
+
+2026-11-03: W385 alias approval and compiled cold-restart matrix continuation; see [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 interactive alias PTY and conditional source comparison: [port record](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 Read descriptor identity partial validation: [port record](ports/W385-declaration-prefix-preflight.md).
+
+W385 legacy persisted Read fixture: real Agent cold reopen and same-mtime inode replacement pass; Write/Edit identity and alias rewind remain open. [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-03 W385 landed Write/Edit descriptor identity and real Agent cold recovery: [package record](ports/W385-declaration-prefix-preflight.md).
+
+# W385 post-owner-check fork window
+
+Two ordered Darwin process barriers demonstrate worker creation without grant or pre-exec marker, followed by observed exits; all 42 existing cases pass. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+W385 post-grant exec barriers: three ordered Darwin cases establish actual shell execution after supervisor or watcher SIGKILL or control EOF once the watcher grant was consumed; all 44 prior cases pass. See [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 product supervisor barriers (2026-11-03)
+
+Ordered real-process startup, pre-grant and post-grant observations and limits are recorded in [W385](ports/W385-declaration-prefix-preflight.md).
+
+2026-11-04 W385 root identity: real Agent child and separate-process journal observation establish the current single-level boundary; source-backed nested ownership and cold root provenance remain blocked. [Evidence](ports/W385-declaration-prefix-preflight.md#persistence-dependency-follow-up-2026-11-04-open).
+
+# W385 notification transfer (2026-11-04)
+
+Ordered owner-bound background records now reach the interactive queue; see [W385](ports/W385-declaration-prefix-preflight.md) for scope and validation.
+
+W385 notification cold receipts: see [port record](ports/W385-declaration-prefix-preflight.md) for source, rewrite, regression and compiled CLI evidence.
+
+W385 human notification decisions: partial; see [decision evidence and validation](ports/W385-declaration-prefix-preflight.md#human-notification-coordination-task-card-2026-11-04-in-progress).
+
+W385 ordinary child root identity: witnessed creation and cold continuation, separate-process parent release and evidence tamper cases, and compiled cold-history CLI. Remaining boundaries and evidence: [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+# W385 standalone child follow-up (2026-11-05)
+
+Messaging-disabled child skills now use a live parent-bound Session lease; bounded real-Agent and compiled CLI validation, identity and remaining cold-continuation gap are recorded in [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+W385 stop writer-death follow-up: eight ordered crash boundaries and cold lock recovery; CLI stop remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+# W385 scheduler prerequisite (2026-11-05)
+
+Per-call structured result ownership and verification: [W385](ports/W385-declaration-prefix-preflight.md#root-identity-journal-slice-2026-11-05-in-progress).
+
+W385 independent post-hook writer SIGKILL, short-write, legacy recovery and compiled PTY crash checks: [port record](ports/W385-declaration-prefix-preflight.md#concurrency-permission-preflight-2026-11-05).
+
+W121/W385 (2026-11-05, partial): skill recovery warnings expose owner, effect ID and command digest; durable same-owner decisions remain open. See [W121](ports/W121-skill-effect-journal.md).
+
+2026-11-05: directory-grant human skill fixture repaired; subsequent forked-directory retarget assertion still fails. Evidence: [W385](ports/W385-declaration-prefix-preflight.md).
+
+# W385 directory Read grant (2026-11-05)
+
+Session-owned directory descriptors now reach actual Read; focused fork replacement and lifecycle regressions pass. See [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress) for evidence and remaining boundaries.
+
+# W385 directory result projection (2026-11-05)
+
+Session and Agent recovery projection, four revocation barriers and remaining CLI coverage: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
+
+W385 compiled directory grant PTY: real `/add-dir`, Read, Workspace removal, regrant, request projection and independent cold Session verified; remaining boundaries and identity in [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
+
+W385 directory retarget focused test now passes; compiled direct-grant replacement PTY passes. Details and limits: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
+
+# W385 native publication slice: standalone helper and local process tests; production Write remains blocked. See [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).

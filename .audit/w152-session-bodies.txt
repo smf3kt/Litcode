@@ -1,0 +1,18 @@
+
+### ctx [817,867)
+var l=qt(null),d=qt(null),P=qt(null),j=()=>()=>{};
+
+### provider [867,1334)
+function $3n(i){let r=w(11),{session:o,children:c}=i,s;if(r[0]!==o)s=()=>({subscribe:o.subscribe,get:()=>So(o)}),r[0]=o,r[1]=s;else s=r[1];let[u]=y(s),t;if(r[2]!==c||r[3]!==u)t=e(P.Provider,{value:u,children:c}),r[2]=c,r[3]=u,r[4]=t;else t=r[4];let n;if(r[5]!==o.host||r[6]!==t)n=e(d.Provider,{value:o.host,children:t}),r[5]=o.host,r[6]=t,r[7]=n;else n=r[7];let p;if(r[8]!==o||r[9]!==n)p=e(l.Provider,{value:o,children:n}),r[8]=o,r[9]=n,r[10]=p;else p=r[10];return p}
+
+### U3n [1334,1678)
+function U3n(i){let s=w(8),{host:o,project:c,children:r}=i,u;if(s[0]!==c)u=()=>({subscribe:j,get:()=>c}),s[0]=c,s[1]=u;else u=s[1];let[t]=y(u),n;if(s[2]!==r||s[3]!==t)n=e(P.Provider,{value:t,children:r}),s[2]=r,s[3]=t,s[4]=n;else n=s[4];let p;if(s[5]!==o||s[6]!==n)p=e(d.Provider,{value:o,children:n}),s[5]=o,s[6]=n,s[7]=p;else p=s[7];return p}
+
+### is [1678,1829)
+function is(){let i=Ae(d);if(!i){throw ReferenceError("useHost cannot be called outside of a <SessionProvider /> or <HostProjectProvider />")}return i}
+
+### sv [1829,2007)
+function sv(i){let o=Ae(P);if(!o){throw ReferenceError("useProject cannot be called outside of a <SessionProvider /> or <HostProjectProvider />")}return v(o,o.subscribe,o.get,i)}
+
+### hC [2007,2042)
+function hC(){return Ae(l)??void 0}

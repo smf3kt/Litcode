@@ -1,0 +1,28 @@
+(node:88741) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a client settings file supplies the gateway, the credential and the model (1.10775ms)
+✔ the key variable is an api-key credential unless the token variable is also set (0.193667ms)
+✔ the file answers first and the process environment fills the gaps (0.19125ms)
+✔ a client's own top-level model is read when its environment does not name one (0.200666ms)
+✔ a disabled or empty source yields nothing at all (0.332208ms)
+✔ a settings file that cannot be trusted is ignored rather than fatal (1.752917ms)
+✔ an oversized settings file is not read (0.407208ms)
+✔ the directory search follows this harness, then the client, then the home default (0.065417ms)
+✔ only the endpoint a credential was configured for compares equal (0.118959ms)
+✔ a resolved credential is a copy of the file contents, not the document itself (0.306583ms)
+✔ the home default is only consulted when no directory was chosen (0.211792ms)
+✔ the Magpie endpoint follows explicit, environment, its own address, the wiring record, then the default (0.703334ms)
+✔ only a loopback wiring record and a loopback MAGPIE_ADDR are used (0.691792ms)
+✔ an untrusted wiring record is ignored and the first client key is chosen deterministically (6.314958ms)
+✔ a revoked caller key is detected by its marker (0.042542ms)
+✔ a revoked caller key is skipped in favor of the next source (0.061209ms)
+✔ an all-revoked selection re-reads the client once for a rotated key (0.037416ms)
+✔ an all-revoked selection with no fresh value reports no credential and no value (0.046125ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 136.035917

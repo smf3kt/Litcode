@@ -34,10 +34,12 @@ export type AsyncHookCompletion = {
 export type AsyncHookDescriptor = {
   id: string;
   event: HookEvent;
-  state: AsyncHookState;
   started_at: number;
-  completed_at?: number;
-};
+} & ({ state: 'running' } | {
+  state: Exclude<AsyncHookState, 'running'>;
+  completed_at: number;
+  callbackState: 'none' | 'pending' | 'returned' | 'threw';
+});
 export type AsyncHookRegistryOptions = {
   workspace: string;
   signal?: AbortSignal;
@@ -279,6 +281,8 @@ export class AsyncHookRegistry {
     return this.closing;
   }
 
+  // Host promise observation over gc/WLe/CXo, sfn1dbxq [621218,621853)/[626248,626520)/[630237,630565), UTF-16.
+  // The source publishes synchronously; this host retains its existing callback grace independently of actual settlement.
   private async finish(job: Job, raw: HookResult, payload: HookPayload, complete: (value: AsyncHookCompletion) => void,
     failed?: "failed", wake?: RewakeSource): Promise<void> {
     const result = boundedResult(raw);
@@ -286,13 +290,17 @@ export class AsyncHookRegistry {
     const rewake = wake ? rewakeFor(wake) : undefined;
     const completion: AsyncHookCompletion = { id: job.descriptor.id, event: job.descriptor.event, payload, result, state,
       started_at: job.descriptor.started_at, completed_at: Date.now(), ...(rewake ? { rewake } : {}) };
-    job.descriptor.state = state;
-    job.descriptor.completed_at = completion.completed_at;
+    const descriptor: AsyncHookDescriptor = { id: completion.id, event: completion.event, state,
+      started_at: completion.started_at, completed_at: completion.completed_at, callbackState: this.onResult ? 'pending' : 'none' };
+    job.descriptor = descriptor;
     if (this.onResult) {
       let timer: NodeJS.Timeout | undefined;
       try {
         await Promise.race([
-          Promise.resolve().then(() => this.onResult!(structuredClone(completion))).catch(() => {}),
+          Promise.resolve().then(() => this.onResult!(structuredClone(completion))).then(
+            () => { descriptor.callbackState = 'returned'; },
+            () => { descriptor.callbackState = 'threw'; },
+          ),
           new Promise<void>(resolve => { timer = setTimeout(resolve, CALLBACK_GRACE_MS); }),
         ]);
       } finally { if (timer) clearTimeout(timer); }

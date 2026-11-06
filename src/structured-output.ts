@@ -257,7 +257,9 @@ export type HeadlessOutputOptions = { format: OutputFormat; sessionId: string; w
 export interface HeadlessOutput {
   text(delta: string): void;
   status(message: string): void;
+  deliverStatus(message: string, write: (text: string, errorStream: boolean) => Promise<void>): Promise<void>;
   event(event: HeadlessEvent): void;
+  deliverError(event: Extract<HeadlessEvent, { type: 'error' }>, write: (text: string, errorStream: boolean) => Promise<void>): Promise<void>;
   finish(result: HeadlessResultInput): HeadlessResult;
 }
 const usageShape = z.object({ input_tokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), output_tokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), cache_creation_input_tokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(), cache_read_input_tokens: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional() }).strict();
@@ -272,7 +274,7 @@ export function createHeadlessOutput(options: HeadlessOutputOptions): HeadlessOu
   let hasText = false;
   let lastText = '';
   const assertOpen = () => { if (finished) throw new Error('Headless output already finished'); };
-  const line = (event: HeadlessEvent | { type: 'result'; result: HeadlessResult }) => {
+  const line = (event: HeadlessEvent | { type: 'result'; result: HeadlessResult }, write = options.write) => {
     const fields: Record<string, unknown> = event.type === 'text' ? { type: event.type, text: event.text }
       : event.type === 'status' ? { type: event.type, message: event.message }
       : event.type === 'tool_start' ? { type: event.type, id: event.id, name: event.name }
@@ -281,7 +283,7 @@ export function createHeadlessOutput(options: HeadlessOutputOptions): HeadlessOu
       : event.type === 'error' ? { type: event.type, code: event.code, message: event.message }
       : { type: event.type, result: event.result };
     const envelope = { ...fields, sequence: ++sequence, session_id: options.sessionId };
-    options.write(JSON.stringify(envelope) + '\n');
+    write(JSON.stringify(envelope) + '\n');
   };
   const adapter: HeadlessOutput = {
     text(delta) {
@@ -295,6 +297,14 @@ export function createHeadlessOutput(options: HeadlessOutputOptions): HeadlessOu
       if (options.format === 'stream-json') line({ type: 'status', message });
       else options.writeError?.(message + '\n');
     },
+    async deliverStatus(message, write) {
+      assertOpen();
+      if (options.format === 'stream-json') {
+        let pending: Promise<void> | undefined;
+        line({ type: 'status', message }, text => { pending = write(text, false); });
+        await pending;
+      } else await write(message + '\n', true);
+    },
     event(event) {
       assertOpen();
       if (event.type === 'text') { adapter.text(event.text); return; }
@@ -303,6 +313,18 @@ export function createHeadlessOutput(options: HeadlessOutputOptions): HeadlessOu
       if (event.type === 'tool_result' && inspectJson(event.content, { nodes: STRUCTURED_OUTPUT_LIMITS.valueNodes, depth: STRUCTURED_OUTPUT_LIMITS.depth, bytes: STRUCTURED_OUTPUT_LIMITS.outputBytes })) throw new Error('Tool event content must be bounded JSON data');
       if (options.format === 'stream-json') line(event);
       else if (event.type === 'error') options.writeError?.(`${event.code}: ${event.message}\n`);
+    },
+    async deliverError(event, write) {
+      assertOpen();
+      // Host delivery rewrite: iye, chunk-sfn1dbxq [3368429,3370821), UTF-16,
+      // has no journal or delivery acknowledgement.
+      if (options.format === 'stream-json') {
+        let pending: Promise<void> | undefined;
+        line(event, text => { pending = write(text, false); });
+        await pending;
+      } else {
+        await write(`${event.code}: ${event.message}\n`, true);
+      }
     },
     finish(input) {
       if (finished) return finished;

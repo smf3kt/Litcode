@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1"
+    },
+    {
+      "module": "chunk-qpxbyxy2.js",
+      "sha256": "f9f559cdc5ed22076ae8e4c42bef7f772add2a23150edfe1175e740e1784c4fd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "range": [
+        549808,
+        555356
+      ],
+      "units": 5548,
+      "bodySha256": "10d189a4e5f4679d5218dd0e29eb7eb85827681832b7c1b35d1b7e7c256494d6",
+      "note": "gf the settings config manager state"
+    },
+    {
+      "module": "chunk-qpxbyxy2.js",
+      "sha256": "f9f559cdc5ed22076ae8e4c42bef7f772add2a23150edfe1175e740e1784c4fd",
+      "range": [
+        849,
+        1269
+      ],
+      "units": 420,
+      "bodySha256": "c7752822ee51b620c806b9c209298c4ab62078287da281750b8400eb622667f3",
+      "note": "n drain attempt count and Hh the per-key write queue"
+    }
+  ],
+  "missing": []
+}

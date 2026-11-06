@@ -1,0 +1,11 @@
+# W183 registry resumed child permission binding
+
+Source-confirmed and independently runtime-reproduced on frozen6b778562 dist. This is a remaining consumer in the active W183 package, assigned to sole auto writer aad7ceb6687a65845; no concurrent product writer.
+
+Source report /Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-resumed-child-owner-source.txt. chunk-40cepjpq.js SHA256473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2 vC[121205,145472), UTF16 zero-based half-open. Resume discriminator near122247 does not skip yn[123604,125280), _n[125284,125421), Rir call[135509,136008). Initial and resumed invocations both derive from current parent and retain shared root setter. Rir/eXn setter closure is already recorded in shared-child evidence. Background controller/parking does not establish detached permission snapshot semantics.
+
+Original independent script /Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-registry-resume-before.mjs and result w183-registry-resume-before-result.json. Retained fixture w183-registry-resume-KTavbf. Public registry initial foreground launch finishes after one local provider call; root adds session deny(write_file); sendMessage resumes the same child; root deny is present but marker is written with content owned. Total3provider calls. Registry/root cleanup completes and four relevant dist hashes remain stable. All processes private HOME/XDG/Gitglobal/system-disabled; no build or product edit in reproduction.
+
+Current registry binds initial Session in launch, then finally clears Session/Agent/hooks after every mailbox run. Later run opens from child.config without restoring live owner binding. Retain actual per-child liveOwner plus chosen full-inheritance/adoption-only kind and apply the same binding after every Session.open, before hooks/Agent start. Preserve beforeTool wrapper distinction and latest-parent/narrowing semantics. Do not serialize a parent permission snapshot into metadata.
+
+Repair acceptance uses original actual file scenario with absent marker, plus resumed allow/adoption/root drain/directory revocation as appropriate. Extend existing third regression group; no fourth. Check/build/affected/compiled identity after final edits, freeze and independent original after rerun. Whole W183 remains open until final gates.

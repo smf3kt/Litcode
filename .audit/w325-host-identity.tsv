@@ -1,0 +1,11 @@
+stage	decision	evidence
+source	Use product identity and host environment framing before edits	Nl/mFn/u_s,FHn/Ug/su exact manifest-verified source ranges
+host	Model routing id is separate from CLI;config roots are known	read-only workflow wf_53de479a-0af;current loaders
+baseline	Actual compiled request lacks product and skill-root facts	w325-cli-red.txt;1owned request
+implementation	Pure context from SessionConfig at request boundary	new/resume/custom prompt intact;other-client directory never scanned
+validation	Check/build,affected160/160,CLI37/37,compiled3requests	w325-check.txt;w325-build.txt;w325-affected.txt;w325-cli-tests.txt;w325-cli-green.txt
+comparison	Three literal source/target diffs read	w325-source-comparison.json
+review	Independent17/17+compiled3requests,0confirmed scoped defects;one redundant comment removed	wf_af666037-f26;w325-independent-tests.log;w325-independent-cli.log
+identity	1805files;review80d2eaa8transfers through comment-only source/build syntax equality	d011b9a195b88811ff50e10b245ce9ea253a87b2e9c48d926396fcf3c94e4466;w325-final-syntax.json
+records	README accurately scopes shared Agent requests;current/matrix/status/standard complete	No product change after reviewed candidate except one comment;loop/W323paused
+commit	11exact package paths;no coauthor/no push;prior2user tracked changes retained	eff6c89;final identityd011b9a195b88811ff50e10b245ce9ea253a87b2e9c48d926396fcf3c94e4466

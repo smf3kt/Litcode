@@ -1,0 +1,17 @@
+{
+  "blocks": [
+    {"file":"chunk-j8hqhz0c.js","range":[19725,23871],"note":"uxn and source collection, branch and no-commit helpers"},
+    {"file":"chunk-j8hqhz0c.js","range":[29373,29664],"note":"repository merge/rebase guard"},
+    {"file":"chunk-j8hqhz0c.js","range":[30153,32005],"note":"base resolution and untracked file collection"},
+    {"file":"chunk-j8hqhz0c.js","range":[33547,33868],"note":"origin and local merge-base preference"}
+  ],
+  "imports": [
+    "import { access as It, lstat as Me } from 'node:fs/promises';",
+    "import { join as M } from 'node:path';",
+    "import { parseGitDiffStats as gkt, isGitDiffPathWithinRoot as xcr, sanitizeGitDiffPath as re } from './git-diff-status.js';",
+    "import { parseGitShortStat as pxn } from './git-diff-hunks.js';",
+    "import { F, L, Nt, tDe, U3t, jnt, R1e, Rcr, ze, Hd, FR, t4, j, st, Ot, N, Vt, f, g, d, c, Pcr, dxn } from './git-diff-collector-host.js';",
+    "function je(e,n,r,s,o){return qt(n,r,s,o)}"
+  ],
+  "exports": ["uxn","Ut","Zt","qt"]
+}

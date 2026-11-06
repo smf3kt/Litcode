@@ -1,0 +1,13 @@
+ts	phase	decision	why	evidence	result
+2026-10-24	selection	Choose current /btw answer to retained background fork	Local interaction has recovered source and existing child owners	research/ports/W260-btw.md;research/CURRENT.md:727	in_progress
+2026-10-24	source	Use current nonsynthetic answer only; preserve parent history plus question and answer	we explicitly excludes history browsing and synthetic replies	chunk-qskwh3r4.js [19989,20853) UTF-16;SHA502871b1	observed
+2026-10-24	tooling	Use dedicated Write/Edit fallback	apply_patch command lookup exits1	command-v apply_patch	fallback recorded
+2026-10-24	incident	Bound source queries by actual declaration and named specifier	Earlier import query expanded side-effect imports and queue query matched historical giant lines	W326 source reads	no product changes
+2026-10-24	baseline	Compiled f produces no new call or file	Observe missing user action before product edits	JOB_TMP/w326-cli-red.txt	2requests;exit0;locks released
+2026-10-24	implementation	Use existing retained child owner with exact extra pair and explicit seed	Separate main/side/child state and support both type flags	src/runtime.ts;src/interactive.ts	implemented
+2026-10-24	comparison	Keep raw task detail and Ykn worker directive as separate inputs	Zjt records prompt:t while the model receives Ykn(t)	src/agent-registry.ts;w326-source-comparison.json	4body comparisons read
+2026-10-24	validation	Compiled both flags7requests each and shared subtask/fork pass	Verify actual file effect,transcript continuation,parent notifications and cleanup	w326-final-cli.txt;w326-final-cli-legacy.txt;w326-final-subtask.txt;w326-final-fork.txt	386/386affected;check/build;locks released
+2026-10-24	review	Freeze product/build at candidate b21d8b2d	Independent review must bind the tested content	w326-review-identity.json;ad0ba030745601505	correctness pending
+2026-10-24	review-result	Independent correctness and comment review pass	Source-backed behavior and required provenance retained	ad0ba030745601505;abc0b34cf10cf836d;w326-independent-tests.log;w326-independent-cli.log	3/3;compiled7requests;0confirmed;0comment findings;0files touched
+2026-10-24	identity	Final candidate remains b21d8b2d	No product/build edits after review	w326-review-identity.json	1808files;verified
+2026-10-24	delivery	Commit12explicit package paths locally	Close one verified unit before the next	493a0cf	no coauthor;no push;two original user changes unstaged

@@ -1,0 +1,5 @@
+
+> litcode@0.1.0 identity
+> node scripts/identity.mjs
+
+{"schema":"HarnessContentIdentity.v1","sha256":"3edf8eca0531c075b7411d8c3d8469b382ce3e282969b0467631c9e7e9fc8afb","inputs":{"sha256":"eaa320b1cb917fbc0234592da794b21d22e2d43309dc77ba5295480746d252a6","files":542},"validation":{"sha256":"b563f07555e3d6d492113fc201db02cdbeb023ee0e98bcedf379f89bd8c9c7a9","files":194},"build":{"sha256":"0c9e5d4f3e6ed4653ac0f95865ed8765119d572026891a15fdb5edee74784e52","files":374}}

@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        444994,
+        446991
+      ],
+      "units": 1997,
+      "bodySha256": "5e399249f3f7fe2a6f8c2029c9311683eb12c7f0c6cbb73c2933fe919d403f73",
+      "note": "RFe the pane scroll host"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476926,
+        477331
+      ],
+      "units": 405,
+      "bodySha256": "2962f441652bec31cb733ec329f642020c015f95eff9f16a9b0b95d8dd099954",
+      "note": "xwt the ui.scroll dispatch"
+    }
+  ],
+  "missing": []
+}

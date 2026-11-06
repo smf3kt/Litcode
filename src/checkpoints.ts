@@ -2,7 +2,11 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import { sessionGateIdentitySchema, sessionLockSchema, type SessionGateIdentity } from "./session-lock-record.js";
+import { directoryCheckpointPathsSchema, directoryRewindExternalSchema } from "./directory-file-history.js";
+import { lock as flock } from "./skill-effects.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
 
 const FILE_CAP = 2 * 1024 * 1024;
@@ -26,13 +30,19 @@ const entrySchema = z.discriminatedUnion("kind", [
 ]);
 type Entry = z.infer<typeof entrySchema>;
 type FileEntry = Extract<Entry, { kind: "file" }>;
-const manifestSchema = z.object({ version: z.literal(1), name: nameSchema, created_at: z.string().datetime(), workspace: z.string(), digest: z.string().regex(HASH), entries: z.array(entrySchema).max(ENTRY_CAP) }).strict();
+// Host rewrite: Fet/Tke/Cwt/E$n, sfn1dbxq [4731316,4733481)/[4734814,4735645)/[4743506,4743628), UTF-16,
+// select message snapshots but have no workspace manifest association or recovery receipt.
+const manifestAssociationSchema = z.object({ id: z.string().uuid(), session: z.string().uuid(), boundary: z.number().int().nonnegative() }).strict();
+const manifestSchema = z.object({ version: z.literal(1), name: nameSchema, created_at: z.string().datetime(), workspace: z.string(), digest: z.string().regex(HASH),
+  entries: z.array(entrySchema).max(ENTRY_CAP), association: manifestAssociationSchema.optional() }).strict();
 type Manifest = z.infer<typeof manifestSchema>;
+type ManifestAssociation = z.infer<typeof manifestAssociationSchema>;
 type Snapshot = { entries: Entry[]; digest: string; contents: Map<string, Buffer> };
 export type Change = { path: string; status: "added" | "deleted" | "modified"; before?: Entry; current?: Entry };
 const fileStateSchema = z.object({ mode: z.number().int().min(0).max(0o7777), size: z.number().int().min(0).max(FILE_CAP), sha256: z.string().regex(HASH) }).strict();
 const branchSchema = z.object({ id: z.string().uuid(), source: z.string().uuid(), boundary: z.number().int().min(0), checkpoint: nameSchema,
   digest: z.string().regex(HASH), inode: z.number().int().nonnegative(), device: z.number().int().nonnegative(),
+  gate: sessionGateIdentitySchema.optional(), external: directoryRewindExternalSchema.optional(), checkpointPaths: directoryCheckpointPathsSchema.optional(),
   prefixBytes: z.number().int().min(0).max(64 * 1024 * 1024), prefixSha256: z.string().regex(HASH) }).strict();
 export type CheckpointCommit = z.infer<typeof branchSchema>;
 const transactionSchema = z.object({ version: z.literal(1), id: z.string().uuid(), workspace: z.string(), state: z.enum(["pending", "committed"]),
@@ -40,6 +50,7 @@ const transactionSchema = z.object({ version: z.literal(1), id: z.string().uuid(
   directories: z.array(z.object({ path: z.string(), mode: z.number().int().min(0).max(0o7777), inode: z.number().int().nonnegative().nullable(), device: z.number().int().nonnegative().nullable() }).strict()).max(ENTRY_CAP),
   branch: branchSchema.optional() }).strict();
 type Transaction = z.infer<typeof transactionSchema>;
+type CommittedTransactionIdentity = { id: string; branch: CheckpointCommit; digest: string };
 type FileState = z.infer<typeof fileStateSchema> | null;
 const lockSchema = z.object({ pid: z.number().int().positive(), token: z.string().uuid() }).strict();
 const transactionPath = (store: string) => path.join(store, "transaction.json");
@@ -63,6 +74,21 @@ function aborted(context: ToolContext): void {
   }
 }
 function hash(bytes: Buffer | string): string { return crypto.createHash("sha256").update(bytes).digest("hex"); }
+function transactionDigest(transaction: Transaction): string {
+  const { state, ...identity } = transactionSchema.parse(transaction);
+  return hash(JSON.stringify(identity));
+}
+
+// Host committed-marker recovery for Cwt/kVr and gft, sfn1dbxq [4734814,4737243),
+// 24k7d6mw [38766,45161), UTF-16; source has no workspace transaction or branch gate.
+export class CommittedCheckpointTransactionError extends Error {
+  readonly identity: CommittedTransactionIdentity;
+  constructor(readonly workspace: string, transaction: Transaction, cause: unknown) {
+    super(`Checkpoint history committed; transaction retained for recovery. ${String(cause)}`, { cause });
+    if (!transaction.branch) throw new Error("Committed checkpoint branch is missing.");
+    this.identity = { id: transaction.id, branch: structuredClone(transaction.branch), digest: transactionDigest(transaction) };
+  }
+}
 function fingerprint(entries: Entry[]): string { return hash(JSON.stringify(entries)); }
 function exists(target: string): fs.Stats | undefined {
   try { return fs.lstatSync(target); } catch (error) {
@@ -116,7 +142,7 @@ function storeFor(root: string, create = false): string {
   directory(path.join(store, "manifests"), create);
   return store;
 }
-function readBounded(target: string, cap: number, context: ToolContext): Buffer {
+function readBounded(target: string, cap: number, context: ToolContext, durable = false): Buffer {
   aborted(context);
   const before = fs.lstatSync(target);
   if (!before.isFile() || before.isSymbolicLink() || before.size > cap) throw new Error(`Checkpoint file exceeds cap or is not regular: ${target}`);
@@ -132,6 +158,7 @@ function readBounded(target: string, cap: number, context: ToolContext): Buffer 
       if (!count) throw new Error(`Checkpoint file changed during read: ${target}`);
       offset += count;
     }
+    if (durable) fs.fsyncSync(fd);
     const extra = Buffer.alloc(1);
     const after = fs.fstatSync(fd);
     if (fs.readSync(fd, extra, 0, 1, offset) || after.size !== initial.size || after.mtimeMs !== initial.mtimeMs || after.ctimeMs !== initial.ctimeMs || fs.lstatSync(target).ino !== initial.ino) throw new Error(`Checkpoint file changed during read: ${target}`);
@@ -237,11 +264,17 @@ function lock<T>(store: string, operation: () => T): T {
     fs.unlinkSync(target); syncDir(store);
   }
 }
+// Host restart reconciliation for Cwt/kVr and gft, sfn1dbxq [4734814,4737243),
+// 24k7d6mw [38766,45161), UTF-16; the source has no workspace transaction lock.
+export function withIdleCheckpointStore<T>(workspace: string, operation: () => T): T | undefined {
+  const store = storeFor(canonicalRoot(workspace));
+  return lock(store, () => exists(transactionPath(store)) ? undefined : operation());
+}
 function alive(pid: number): boolean {
   try { process.kill(pid, 0); return true; }
   catch (error) { if ((error as NodeJS.ErrnoException).code === "ESRCH") return false; throw error; }
 }
-function readLock(target: string): { pid: number; token?: string } {
+function readLock(target: string, session = false): { pid: number; token?: string; gate?: SessionGateIdentity } {
   const bytes = readBounded(target, 4096, { signal: new AbortController().signal } as ToolContext).toString("utf8");
   // Older checkpoint locks contain only their owner PID.
   if (/^[1-9][0-9]*\n?$/.test(bytes)) {
@@ -249,12 +282,12 @@ function readLock(target: string): { pid: number; token?: string } {
     if (!Number.isSafeInteger(pid)) throw new Error("Invalid checkpoint lock owner.");
     return { pid };
   }
-  return lockSchema.parse(JSON.parse(bytes));
+  return (session ? z.union([lockSchema, sessionLockSchema]) : lockSchema).parse(JSON.parse(bytes));
 }
-function reclaimDeadLock(target: string): void {
+function reclaimDeadLock(target: string, session = false): void {
   const before = fs.lstatSync(target);
   let owner: ReturnType<typeof readLock>;
-  try { owner = readLock(target); } catch { throw new Error("EEXIST: Checkpoint lock owner is invalid; retain for inspection."); }
+  try { owner = readLock(target, session); } catch { throw new Error("EEXIST: Checkpoint lock owner is invalid; retain for inspection."); }
   if (alive(owner.pid)) throw new Error(`Checkpoint owner is active in process ${owner.pid}.`);
   const current = fs.lstatSync(target);
   if (before.ino !== current.ino || before.dev !== current.dev || before.mtimeMs !== current.mtimeMs || before.ctimeMs !== current.ctimeMs) throw new Error("Checkpoint lock changed during recovery.");
@@ -326,19 +359,40 @@ export function clearCheckpointAssociation(file: string): void {
   if (!stat.isFile()) throw new Error("Checkpoint association is not a regular file.");
   fs.unlinkSync(file); syncDir(path.dirname(file));
 }
-function manifestDigest(root: string, name: string): string | undefined {
+function manifestDigest(root: string, name: string, association?: ManifestAssociation): string | undefined {
   nameSchema.parse(name);
   const file = path.join(root, ".agent", "checkpoints", "manifests", `${name}.json`);
   const stat = exists(file);
   if (!stat) return undefined;
   if (!stat.isFile() || stat.size > MANIFEST_CAP) throw new Error(`Invalid checkpoint manifest: ${name}`);
-  const manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+  let manifest: Manifest;
+  if (association) {
+    const context = { workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 };
+    const checked = manifestFor(root, name, context, true);
+    for (const dir of [path.join(checked.store, "objects"), path.join(checked.store, "manifests"), checked.store, path.dirname(checked.store), root]) syncDir(dir);
+    const after = manifestFor(root, name, context).manifest;
+    if (JSON.stringify(checked.manifest) !== JSON.stringify(after)) throw new Error(`Checkpoint manifest changed during recovery: ${name}`);
+    manifest = after;
+  } else manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
   if (manifest.workspace !== root || manifest.name !== name || manifest.digest !== fingerprint(manifest.entries)) throw new Error(`Checkpoint manifest identity or digest mismatch: ${name}`);
+  if (association && (!manifest.association || manifest.association.id !== association.id || manifest.association.session !== association.session ||
+      manifest.association.boundary !== association.boundary)) throw new Error(`Checkpoint association identity mismatch: ${name}`);
   return manifest.digest;
+}
+export function inspectCheckpointAssociation(workspace: string, name: string, session: string, boundary: number):
+  { id: string; digest: string } | undefined {
+  try {
+    const root = canonicalRoot(workspace), context = { workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 };
+    const { manifest } = manifestFor(root, nameSchema.parse(name), context), association = manifest.association;
+    if (!association || association.session !== session || association.boundary !== boundary ||
+        manifestDigest(root, name, association) !== manifest.digest) return;
+    return { id: association.id, digest: manifest.digest };
+  } catch { return; }
 }
 /** Returns this session's intents that still need a journal event. Completed intents and intents
  *  whose capture never published a manifest are cleared; unreadable or foreign files stay. */
-export function recoverCheckpointAssociations(root: string, session: string, existing: (name: string) => string | undefined): CheckpointAssociation[] {
+export function recoverCheckpointAssociations(root: string, session: string,
+  existing: (name: string) => { digest: string; boundary: number } | undefined, confirmExisting: () => void): CheckpointAssociation[] {
   const agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
   const agentStat = exists(agent), storeStat = exists(store);
   if (!agentStat || !storeStat || !agentStat.isDirectory() || !storeStat.isDirectory() || agentStat.isSymbolicLink() || storeStat.isSymbolicLink()) return [];
@@ -356,7 +410,7 @@ export function recoverCheckpointAssociations(root: string, session: string, exi
     } catch { continue; }
     if (intent.session !== session) continue;
     let digest: string | undefined;
-    try { digest = manifestDigest(root, intent.name); }
+    try { digest = manifestDigest(root, intent.name, { id: intent.id, session: intent.session, boundary: intent.boundary }); }
     catch { continue; }
     if (digest === undefined) {
       try { fs.unlinkSync(file); syncDir(store); } catch { /* retain for inspection */ }
@@ -364,7 +418,10 @@ export function recoverCheckpointAssociations(root: string, session: string, exi
     }
     const saved = existing(intent.name);
     if (saved !== undefined) {
-      if (saved === digest) { try { fs.unlinkSync(file); syncDir(store); } catch { /* retain for inspection */ } }
+      if (saved.digest === digest && saved.boundary === intent.boundary) {
+        confirmExisting();
+        try { fs.unlinkSync(file); syncDir(store); } catch { /* retain for inspection */ }
+      }
       continue;
     }
     pending.push({ file, name: intent.name, digest, boundary: intent.boundary });
@@ -423,26 +480,62 @@ function sweepStore(root: string, store: string): void {
   }
   if (removed) syncDir(objects);
 }
-function branchProof(root: string, branch: CheckpointCommit, context: ToolContext): { committed: boolean; file?: string; stat?: fs.Stats } {
+function branchProof(root: string, branch: CheckpointCommit, context: ToolContext, durable = false): { committed: boolean; file?: string; stat?: fs.Stats; bytes?: Buffer } {
   const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);
   if (!stat) return { committed: false };
   if (stat.ino !== branch.inode || stat.dev !== branch.device) throw new Error("Checkpoint recovery branch identity changed.");
-  const bytes = readBounded(file, 64 * 1024 * 1024, context);
+  const bytes = readBounded(file, 64 * 1024 * 1024, context, durable);
   if (bytes.length < branch.prefixBytes || hash(bytes.subarray(0, branch.prefixBytes)) !== branch.prefixSha256) throw new Error("Checkpoint recovery branch prefix changed.");
   const tail = bytes.subarray(branch.prefixBytes).toString("utf8");
   const expected = [
     { kind: "rewind", source: branch.source, boundary: branch.boundary, checkpoint: branch.checkpoint, digest: branch.digest },
-    { kind: "branch", source: branch.source, workspace: root, boundary: branch.boundary, reason: "rewind" },
+    { kind: "branch", source: branch.source, workspace: root, boundary: branch.boundary, reason: "rewind", ...(branch.external ? { external: branch.external } : {}),
+      ...(branch.checkpointPaths ? { checkpointPaths: branch.checkpointPaths } : {}) },
   ].map(event => JSON.stringify(event) + "\n").join("");
-  if (tail === expected) return { committed: true, file, stat };
+  if (tail === expected) return { committed: true, file, stat, bytes };
   if (!expected.startsWith(tail)) throw new Error("Checkpoint recovery branch has unrelated history; retained for inspection.");
   return { committed: false, file, stat };
 }
-function recoverTransaction(root: string, store: string, context: ToolContext, forceRollback = false, ownBranch = false, applied?: ReadonlySet<string>): "none" | "rolled_back" | "committed" {
+
+// Host transaction/gate adaptation for kVr/EVr/RVr, sfn1dbxq [4735645,4737243)/[4739632,4743506), UTF-16.
+function acquireBranchGate(root: string, branch: CheckpointCommit): { assert: () => void; release: () => void } {
+  const lockPath = path.join(root, ".agent", `${branch.id}.jsonl.lock`), gatePath = `${lockPath}.gate`;
+  let fd: number;
+  try { fd = fs.openSync(gatePath, fs.constants.O_RDWR | fs.constants.O_NOFOLLOW); }
+  catch { throw new Error("Checkpoint recovery branch gate unavailable."); }
+  try {
+    const opened = fs.fstatSync(fd, { bigint: true });
+    const assert = () => {
+      const current = fs.fstatSync(fd, { bigint: true }), named = fs.lstatSync(gatePath, { bigint: true });
+      if (!opened.isFile() || !current.isFile() || !named.isFile() || named.isSymbolicLink() ||
+          opened.dev !== current.dev || opened.ino !== current.ino || opened.dev !== named.dev || opened.ino !== named.ino ||
+          (current.mode & 0o777n) !== 0o600n || (branch.gate && (branch.gate.dev !== String(opened.dev) || branch.gate.ino !== String(opened.ino))))
+        throw new Error("Checkpoint recovery branch gate changed.");
+      if (exists(lockPath)) {
+        const owner = readLock(lockPath, true);
+        if (owner.gate && (owner.gate.dev !== String(opened.dev) || owner.gate.ino !== String(opened.ino)))
+          throw new Error("Checkpoint recovery branch gate changed.");
+        if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
+      }
+    };
+    assert();
+    if (!flock(fd, false)) throw new Error("Checkpoint recovery branch gate is busy.");
+    assert();
+    return { assert, release: () => fs.closeSync(fd) };
+  } catch (error) { fs.closeSync(fd); throw error; }
+}
+
+function recoverTransaction(root: string, store: string, context: ToolContext, forceRollback = false, ownBranch = false,
+  applied?: ReadonlySet<string>, after?: () => void, expectedCommitted?: CommittedTransactionIdentity): "none" | "rolled_back" | "committed" {
   const target = transactionPath(store);
-  if (!exists(target)) return "none";
+  if (!exists(target)) {
+    if (expectedCommitted) throw new Error("Expected checkpoint transaction is missing.");
+    return "none";
+  }
   const transaction = transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString("utf8")));
   if (transaction.workspace !== root) throw new Error("Checkpoint transaction workspace mismatch.");
+  if (expectedCommitted && (transaction.id !== expectedCommitted.id || transactionDigest(transaction) !== expectedCommitted.digest ||
+      !isDeepStrictEqual(transaction.branch, expectedCommitted.branch))) throw new Error("Checkpoint transaction identity changed; retained for inspection.");
   const seen = new Set<string>(), buffers = new Map<string, Buffer>();
   let beforeTotal = 0, afterTotal = 0;
   for (const operation of transaction.operations) {
@@ -457,26 +550,36 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
     }
   }
   if (beforeTotal > TOTAL_CAP || afterTotal > TOTAL_CAP) throw new Error("Checkpoint transaction exceeds total byte cap.");
+  const gate = !forceRollback && !ownBranch && transaction.branch ? acquireBranchGate(root, transaction.branch) : undefined;
+  try {
+  gate?.assert();
+  if (expectedCommitted && (!transaction.branch || !gate || !branchProof(root, transaction.branch, context, true).committed))
+    throw new Error("Checkpoint committed branch proof is missing; transaction retained.");
   // The crashed writer held the store lock, so its staging files in the target directories are
   // orphans; sweeping them first also lets a recorded directory that must be removed come empty.
   const tag = hash(store).slice(0, 12), swept = new Set<string>();
-  for (const operation of transaction.operations) {
-    const directory = path.dirname(targetFor(root, operation.path));
-    if (swept.has(directory)) continue;
-    swept.add(directory);
-    sweepStaging(directory, tag);
-  }
+  const sweepTargets = () => {
+    for (const operation of transaction.operations) {
+      const directory = path.dirname(targetFor(root, operation.path));
+      if (swept.has(directory)) continue;
+      swept.add(directory);
+      gate?.assert(); sweepStaging(directory, tag);
+    }
+  };
+  if (!expectedCommitted) sweepTargets();
   const branch = transaction.branch ? branchProof(root, transaction.branch, context) : undefined;
+  if (expectedCommitted && !branch?.committed) throw new Error("Checkpoint committed branch proof changed; transaction retained.");
   // History proof remains authoritative when publishing the commit marker fails.
   const committed = branch?.committed === true || (!forceRollback && transaction.state === "committed");
   if (committed && branch && !branch.committed) throw new Error("Checkpoint commit marker lacks its history proof; transaction retained.");
   const conflicts: string[] = [];
-  const branchLock = branch?.file ? `${branch.file}.lock` : undefined;
+  const branchLock = transaction.branch ? path.join(root, ".agent", `${transaction.branch.id}.jsonl.lock`) : undefined;
   if (!forceRollback && !ownBranch && branchLock && exists(branchLock)) {
-    const owner = readLock(branchLock);
+    const owner = readLock(branchLock, true);
     if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
   }
   for (const saved of transaction.directories) {
+    gate?.assert();
     relativePath(saved.path);
     const stat = exists(targetFor(root, saved.path));
     if (stat && (saved.inode === null || saved.device === null || !stat.isDirectory() || stat.ino !== saved.inode || stat.dev !== saved.device || (stat.mode & 0o7777) !== saved.mode)) {
@@ -486,6 +589,7 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
   // Check every target before any rollback. Outside edits preserve the entire
   // transaction, including already-restored targets, for explicit reconciliation.
   for (const operation of transaction.operations) {
+    gate?.assert();
     const current = fileState(root, operation.path, context);
     const untouched = applied !== undefined && !applied.has(operation.path);
     if (committed ? !equalState(current, operation.after) : !equalState(current, operation.before) && (untouched || !equalState(current, operation.after))) {
@@ -495,16 +599,18 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
   }
   if (!committed) {
     for (const operation of [...transaction.operations].reverse()) {
+      gate?.assert();
       if (conflicts.includes(operation.path) || (applied !== undefined && !applied.has(operation.path))) continue;
       const current = fileState(root, operation.path, context);
       if (equalState(current, operation.before)) continue;
       const target = targetFor(root, operation.path);
-      const verify = () => { if (!equalState(fileState(root, operation.path, context), operation.after)) throw new Error(`Checkpoint recovery conflict during rollback: ${operation.path}`); };
+      const verify = () => { gate?.assert(); if (!equalState(fileState(root, operation.path, context), operation.after)) throw new Error(`Checkpoint recovery conflict during rollback: ${operation.path}`); };
       if (operation.before) atomicWrite(store, target, buffers.get(operation.before.sha256)!, operation.before.mode, verify);
       else { verify(); fs.unlinkSync(target); syncDir(path.dirname(target)); }
     }
     if (conflicts.length) throw new Error(`Checkpoint recovery conflict: ${conflicts.join(", ")}; transaction retained.`);
     for (const saved of [...transaction.directories].reverse()) {
+      gate?.assert();
       relativePath(saved.path);
       const directory = targetFor(root, saved.path), stat = exists(directory);
       if (!stat) continue;
@@ -512,19 +618,40 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
       fs.rmdirSync(directory); syncDir(path.dirname(directory));
     }
     if (!forceRollback && branch?.file && branch.stat) {
+      gate?.assert();
       const current = fs.lstatSync(branch.file);
       if (current.ino !== branch.stat.ino || current.dev !== branch.stat.dev || current.mtimeMs !== branch.stat.mtimeMs || current.ctimeMs !== branch.stat.ctimeMs) throw new Error("Checkpoint recovery branch changed before cleanup.");
       const branchLock = `${branch.file}.lock`;
-      if (exists(branchLock)) { const owner = readLock(branchLock); if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner."); reclaimDeadLock(branchLock); }
+      if (exists(branchLock)) { const owner = readLock(branchLock, true); if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner."); reclaimDeadLock(branchLock, true); }
       fs.unlinkSync(branch.file); syncDir(path.dirname(branch.file));
     }
   }
   if (committed && branchLock && exists(branchLock)) {
-    const owner = readLock(branchLock);
-    if (!alive(owner.pid)) reclaimDeadLock(branchLock);
+    gate?.assert();
+    const owner = readLock(branchLock, true);
+    if (!alive(owner.pid)) reclaimDeadLock(branchLock, true);
   }
+  gate?.assert();
+  if (expectedCommitted) { after?.(); gate?.assert(); }
   fs.unlinkSync(target); syncDir(store);
+  if (!expectedCommitted) after?.();
+  gate?.assert();
   return committed ? "committed" : "rolled_back";
+  } finally { gate?.release(); }
+}
+
+export function recoverCommittedCheckpoint(context: ToolContext, identity: CommittedTransactionIdentity): { bytes: number; sha256: string } {
+  const root = rootFor(context), store = storeFor(root);
+  let journal: { bytes: number; sha256: string } | undefined;
+  return lock(store, () => {
+    const recovery = recoverTransaction(root, store, context, false, false, undefined, () => {
+      const proof = branchProof(root, identity.branch, context, true);
+      if (!proof.committed || !proof.bytes) throw new Error("Checkpoint committed branch proof changed; transaction retained.");
+      journal = { bytes: proof.bytes.length, sha256: hash(proof.bytes) };
+    }, identity);
+    if (recovery !== "committed" || !journal) throw new Error("Checkpoint committed transaction recovery is incomplete.");
+    return journal;
+  });
 }
 export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "rolled_back" | "committed" } {
   const root = rootFor(context), agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
@@ -532,15 +659,18 @@ export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "r
   storeFor(root);
   return lock(store, () => {
     const tag = hash(store).slice(0, 12);
-    for (const directory of [store, path.join(store, "objects"), path.join(store, "manifests")]) sweepStaging(directory, tag);
-    const recovery = recoverTransaction(root, store, context);
-    sweepStore(root, store);
+    const cleanup = () => {
+      for (const directory of [store, path.join(store, "objects"), path.join(store, "manifests")]) sweepStaging(directory, tag);
+      sweepStore(root, store);
+    };
+    const recovery = recoverTransaction(root, store, context, false, false, undefined, cleanup);
+    if (recovery === "none") cleanup();
     return { recovery };
   });
 }
-function manifestFor(root: string, name: string, context: ToolContext): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {
+function manifestFor(root: string, name: string, context: ToolContext, durable = false): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {
   const store = storeFor(root);
-  const manifest = manifestSchema.parse(JSON.parse(readBounded(path.join(store, "manifests", `${name}.json`), MANIFEST_CAP, context).toString("utf8")));
+  const manifest = manifestSchema.parse(JSON.parse(readBounded(path.join(store, "manifests", `${name}.json`), MANIFEST_CAP, context, durable).toString("utf8")));
   if (manifest.workspace !== root || manifest.name !== name || manifest.digest !== fingerprint(manifest.entries)) throw new Error("Checkpoint manifest identity or digest mismatch.");
   const seen = new Map<string, Entry>();
   let total = 0;
@@ -556,7 +686,7 @@ function manifestFor(root: string, name: string, context: ToolContext): { store:
     if (entry.kind === "file") {
       total += entry.size;
       if (total > TOTAL_CAP) throw new Error("Checkpoint manifest exceeds total byte cap.");
-      const bytes = contents.get(entry.sha256) ?? readBounded(path.join(store, "objects", entry.sha256), FILE_CAP, context);
+      const bytes = contents.get(entry.sha256) ?? readBounded(path.join(store, "objects", entry.sha256), FILE_CAP, context, durable);
       if (bytes.length !== entry.size || hash(bytes) !== entry.sha256) throw new Error(`Checkpoint content digest mismatch: ${entry.path}`);
       contents.set(entry.sha256, bytes);
     }
@@ -694,7 +824,7 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
       saveTransaction(store, transaction);
     } catch (error) {
       if (branch && branchProof(root, branch, { ...context, signal: new AbortController().signal }).committed) {
-        throw new Error(`Checkpoint history committed; transaction retained for recovery. ${String(error)}`);
+        throw new CommittedCheckpointTransactionError(root, transaction, error);
       }
       try { recoverTransaction(root, store, { ...context, signal: new AbortController().signal }, true, false, applied); }
       catch (rollback) { throw new Error(`Checkpoint restore failed; rollback incomplete. ${String(rollback)} Original error: ${String(error)}`); }
@@ -705,7 +835,7 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
   });
 }
 
-export function captureCheckpoint(name: string, context: ToolContext) {
+export function captureCheckpoint(name: string, context: ToolContext, association?: ManifestAssociation) {
   nameSchema.parse(name);
   const root = rootFor(context);
   recoverCheckpoint(context);
@@ -716,7 +846,14 @@ export function captureCheckpoint(name: string, context: ToolContext) {
     const target = path.join(store, "manifests", `${name}.json`);
     if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before capture.");
     if (exists(target)) throw new Error(`Checkpoint already exists: ${name}`);
-    const manifest: Manifest = { version: 1, name, created_at: new Date().toISOString(), workspace: root, digest: captured.digest, entries: captured.entries };
+    if (association) {
+      association = manifestAssociationSchema.parse(association);
+      const intent = associationSchema.parse(JSON.parse(readBounded(associationPath(store, association.id), ASSOCIATION_CAP, context).toString("utf8")));
+      if (intent.id !== association.id || intent.session !== association.session || intent.boundary !== association.boundary || intent.name !== name)
+        throw new Error("Checkpoint association intent mismatch.");
+    }
+    const manifest: Manifest = { version: 1, name, created_at: new Date().toISOString(), workspace: root, digest: captured.digest, entries: captured.entries,
+      ...(association ? { association } : {}) };
     const encoded = Buffer.from(JSON.stringify(manifest));
     if (encoded.length > MANIFEST_CAP) throw new Error("Checkpoint manifest exceeds byte cap.");
     for (const [digest, bytes] of captured.contents) {

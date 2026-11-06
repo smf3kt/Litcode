@@ -1,0 +1,18 @@
+[work/w43-choice-preview 74aa379] List and restore preserved worktree histories
+ 24 files changed, 4343 insertions(+), 9 deletions(-)
+ create mode 100644 .audit/w51-01-build.txt
+ create mode 100644 .audit/w51-01-chain.txt
+ create mode 100644 .audit/w51-01-full.txt
+ create mode 100644 .audit/w51-01-identity.txt
+ create mode 100644 .audit/w51-01-index.txt
+ create mode 100644 .audit/w51-01-interactive.txt
+ create mode 100644 .audit/w51-01-notices.txt
+ create mode 100644 .audit/w51-01-records.mjs
+ create mode 100644 .audit/w51-01-smoke-compiled.txt
+ create mode 100644 .audit/w51-01-smoke.txt
+ create mode 100644 .audit/w51-01-test.txt
+ create mode 100644 .audit/w51-01-tsc.txt
+ create mode 100644 .audit/w51-runtime.todo.md
+ create mode 100644 .audit/w51-runtime.tsv
+ create mode 100644 research/ports/W51-worktree-archive-picker-evidence.json
+ create mode 100644 research/ports/W51-worktree-archive-picker.md

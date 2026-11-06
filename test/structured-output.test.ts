@@ -108,6 +108,43 @@ test('stream-json emits ordered typed line events and one final result', () => {
   assert.equal(lines[5].result.model_calls, 1);
 });
 
+test('headless error delivery waits for the complete multiline write and propagates failure', async () => {
+  for (const format of ['text', 'json', 'stream-json'] as const) {
+    const { sink } = output(format);
+    let release: (() => void) | undefined;
+    let printed = '', errorStream = false, completed = false;
+    const delivery = sink.deliverError({ type: 'error', code: 'error', message: 'first\nsecond' }, (text, isError) => {
+      printed = text; errorStream = isError;
+      return new Promise<void>(resolve => { release = resolve; });
+    }).then(() => { completed = true; });
+    await Promise.resolve();
+    assert.equal(completed, false);
+    assert.equal(errorStream, format !== 'stream-json');
+    assert.equal(format === 'stream-json' ? JSON.parse(printed).message : printed, format === 'stream-json' ? 'first\nsecond' : 'error: first\nsecond\n');
+    assert.ok(release); release(); await delivery;
+    await assert.rejects(sink.deliverError({ type: 'error', code: 'error', message: 'failed' }, async () => { throw new Error('write failed'); }), /write failed/);
+  }
+});
+
+test('headless status delivery awaits its output and preserves the format', async () => {
+  for (const format of ['text', 'json', 'stream-json'] as const) {
+    const { sink } = output(format);
+    let release: (() => void) | undefined;
+    let printed = '', errorStream = false, completed = false;
+    const delivery = sink.deliverStatus('notice', (text, isError) => {
+      printed = text; errorStream = isError;
+      return new Promise<void>(resolve => { release = resolve; });
+    }).then(() => { completed = true; });
+    await Promise.resolve();
+    assert.equal(completed, false);
+    assert.equal(errorStream, format !== 'stream-json');
+    if (format === 'stream-json') assert.deepEqual(JSON.parse(printed), { type: 'status', message: 'notice', sequence: 1, session_id: 'session-1' });
+    else assert.equal(printed, 'notice\n');
+    assert.ok(release); release(); await delivery;
+    await assert.rejects(sink.deliverStatus('failed', async () => { throw new Error('write failed'); }), /write failed/);
+  }
+});
+
 test('requested schema produces explicit schema_error and text mode buffers until validation', () => {
   for (const format of ['text', 'json', 'stream-json'] as const) {
     const { sink, stdout, stderr } = output(format, schema);

@@ -1,0 +1,29 @@
+
+> litcode@0.1.0 check
+> tsc --noEmit
+
+src/tui-renderer.ts(148,20): error TS2339: Property 'scope' does not exist on type '{ anchor: null; focus: null; isDragging: boolean; anchorSpan: null; scrolledOffAbove: never[]; scrolledOffBelow: never[]; scrolledOffAboveSW: never[]; scrolledOffBelowSW: never[]; lastPressHadAlt: boolean; }'.
+src/tui-renderer.ts(154,63): error TS2322: Type 'number' is not assignable to type 'never'.
+src/tui-renderer.ts(155,74): error TS2322: Type 'any' is not assignable to type 'never'.
+src/tui-renderer.ts(158,25): error TS2322: Type 'any' is not assignable to type 'never'.
+src/tui-renderer.ts(159,23): error TS2322: Type 'number' is not assignable to type 'never'.
+src/tui-renderer.ts(161,23): error TS2339: Property 'col' does not exist on type 'never'.
+src/tui-renderer.ts(161,44): error TS2339: Property 'row' does not exist on type 'never'.
+src/tui-renderer.ts(236,50): error TS2339: Property 'row' does not exist on type 'never'.
+src/tui-renderer.ts(236,64): error TS2339: Property 'viewportTop' does not exist on type 'never'.
+src/tui-renderer.ts(236,93): error TS2339: Property 'row' does not exist on type 'never'.
+src/tui-renderer.ts(236,107): error TS2339: Property 'viewportBottom' does not exist on type 'never'.
+src/tui-renderer.ts(237,18): error TS2339: Property 'virtualAnchorCol' does not exist on type '{ anchor: null; focus: null; isDragging: boolean; anchorSpan: null; scrolledOffAbove: never[]; scrolledOffBelow: never[]; scrolledOffAboveSW: never[]; scrolledOffBelowSW: never[]; lastPressHadAlt: boolean; }'.
+src/tui-renderer.ts(237,52): error TS2339: Property 'col' does not exist on type 'never'.
+src/tui-renderer.ts(237,67): error TS2339: Property 'viewportLeft' does not exist on type 'never'.
+src/tui-renderer.ts(238,18): error TS2339: Property 'virtualAnchorCol' does not exist on type '{ anchor: null; focus: null; isDragging: boolean; anchorSpan: null; scrolledOffAbove: never[]; scrolledOffBelow: never[]; scrolledOffAboveSW: never[]; scrolledOffBelowSW: never[]; lastPressHadAlt: boolean; }'.
+src/tui-renderer.ts(238,52): error TS2339: Property 'col' does not exist on type 'never'.
+src/tui-renderer.ts(238,67): error TS2339: Property 'viewportRight' does not exist on type 'never'.
+src/tui-renderer.ts(245,48): error TS2339: Property 'row' does not exist on type 'never'.
+src/tui-renderer.ts(245,75): error TS2339: Property 'row' does not exist on type 'never'.
+src/tui-renderer.ts(246,20): error TS2339: Property 'virtualFocusCol' does not exist on type '{ anchor: null; focus: null; isDragging: boolean; anchorSpan: null; scrolledOffAbove: never[]; scrolledOffBelow: never[]; scrolledOffAboveSW: never[]; scrolledOffBelowSW: never[]; lastPressHadAlt: boolean; }'.
+src/tui-renderer.ts(246,52): error TS2339: Property 'col' does not exist on type 'never'.
+src/tui-renderer.ts(246,67): error TS2339: Property 'viewportLeft' does not exist on type 'never'.
+src/tui-renderer.ts(247,20): error TS2339: Property 'virtualFocusCol' does not exist on type '{ anchor: null; focus: null; isDragging: boolean; anchorSpan: null; scrolledOffAbove: never[]; scrolledOffBelow: never[]; scrolledOffAboveSW: never[]; scrolledOffBelowSW: never[]; lastPressHadAlt: boolean; }'.
+src/tui-renderer.ts(247,52): error TS2339: Property 'col' does not exist on type 'never'.
+src/tui-renderer.ts(247,67): error TS2339: Property 'viewportRight' does not exist on type 'never'.

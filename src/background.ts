@@ -519,6 +519,11 @@ export class BackgroundRegistry {
     return this.view(job);
   }
 
+  peekNotifications(limit = DEFAULT_NOTIFICATION_LIMIT): { events: BackgroundEvent[]; dropped: number; pending: number } {
+    const events = this.events.slice(0, limit);
+    return { events: structuredClone(events), dropped: this.dropped, pending: this.events.length - events.length };
+  }
+
   /** Drain up to `limit` queued notification events (oldest first). */
   drainNotifications(limit?: number): {
     events: BackgroundEvent[];
@@ -1267,6 +1272,7 @@ function getBackgroundTaskTool(registry: BackgroundRegistry): ToolDefinition {
 function taskStopTool(registry: BackgroundRegistry): ToolDefinition {
   return {
     readOnly: false,
+    concurrencySafe: input => stopSchema.safeParse(input).success,
     schema: {
       name: "task_stop",
       description:

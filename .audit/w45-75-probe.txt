@@ -1,0 +1,29 @@
+CAPABILITY_NAMES = ["extendedKeys","synchronizedOutput","kittyKeyboard","kittyGraphics","mousePixels","programStatus"]
+DEFAULT_CAPABILITIES = {"extendedKeys":false,"synchronizedOutput":false,"kittyKeyboard":true,"kittyGraphics":false,"mousePixels":false,"programStatus":false}
+probe initial = {"state":"unasked"}
+probe begin 1 = true
+probe after begin = {"state":"asking"}
+probe begin 2 = false
+probe after unask = {"state":"unasked"}
+probe answer = true
+probe after answer = {"state":"settled","value":true,"source":"probe: answered OK"}
+probe now = true
+probe seen before settle = [[true,"before"]]
+probe answer again = false
+probe seen after settle = [true]
+probe begin after settle = false
+caps get extendedKeys = {"state":"settled","value":true,"source":"env: T"}
+caps now extendedKeys = true
+caps now synchronizedOutput = false
+caps pending = ["synchronizedOutput","kittyGraphics","programStatus"]
+caps answer pending true = true
+caps now after answer = true
+caps confirmed synchronizedOutput = true
+caps answer settled = false
+caps seen = [false]
+caps pending after answers = ["programStatus"]
+caps programStatus after deadline = {"state":"settled","value":false,"source":"env: no terminal, no answer"}
+caps now programStatus = false
+caps seen after deadline = [false]
+(node:31008) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

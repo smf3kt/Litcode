@@ -184,7 +184,9 @@ test("history append failure releases new session lock and removes partial journ
   };
   try { assert.throws(() => relocateSession(original, target, () => []), /synthetic append failure/); }
   finally { Session.prototype.append = append; }
-  assert.deepEqual(fs.readdirSync(path.join(target, ".agent")), []);
+  const retained = fs.readdirSync(path.join(target, ".agent"));
+  assert.equal(retained.length, 1);
+  assert.match(retained[0]!, /^[0-9a-f-]{36}\.jsonl\.lock\.gate$/);
   assert.deepEqual(fs.readFileSync(original.file), before);
   assert.ok(fs.existsSync(original.file + ".lock"));
 });

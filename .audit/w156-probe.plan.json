@@ -1,0 +1,7 @@
+{
+  "imports": [],
+  "exports": ["NFe"],
+  "blocks": [
+    { "file": "chunk-24k7d6mw.js", "range": [456049, 461905], "note": "NFe the AbovePrompt component" }
+  ]
+}

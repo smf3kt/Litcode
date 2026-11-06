@@ -1,0 +1,32 @@
+{
+  "scope": "W183 ordinary fork live permission carry",
+  "status": "independently_accepted_bounded_slice",
+  "identity": "6b778562a5e39c20ce6bf943359bfcedad344fcdde7c533d449c3431d2713c79",
+  "paths": ["src/session.ts", "src/sessions.ts", "test/agent-lifecycle.test.ts"],
+  "sourceReport": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-fork-live-permissions-source.txt",
+  "source": [
+    {"module":"chunk-24k7d6mw.js","sha256":"1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31","symbol":"HV","range":[348500,351100],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-agyp1qjr.js","sha256":"7959d496ef89e04625196bceac40da127ceafe5d100833db3cc1284f390d87aa","symbols":["Ngt","Wgt"],"ranges":[[7806,8245],[26752,26771]],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-0tza8h1f.js","sha256":"a3021e3ffe12431898b31ecf96086d4b1e76910027eae6eae02caacc33ad3ecf","symbol":"c_e","range":[661,700],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-sfn1dbxq.js","sha256":"4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da","symbol":"WKt","range":[4644173,4644259],"unit":"zero-based UTF16 half-open"}
+  ],
+  "adaptation": "Source ordinary fork retains the existing live store and skips rehydration. Product creates a new Session, so carryForkPermissions clones mutable state, retains contentRuleOwner identity and copies directory observations into a new owned Session. It neither reloads settings nor performs PLAN restoration; old Session may close before new adoption. Explicit rewind boundary path remains unchanged.",
+  "validation": {
+    "directory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-fork-repair-OFRt4u",
+    "check": "check.txt exit0",
+    "build": "build.txt exit0",
+    "affected": "affected.txt 88 passed zero failed",
+    "effects": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-fork-repair-OFRt4u/effects-result.json",
+    "effectsScope": "Compiled public Session and Agent actual PLAN denial, session allow/deny, grant removal, retained physical twins, directory retarget/revoke/regrant, parent close and new adoption",
+    "cli": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-plan-cli-ZGrNZl/result.json",
+    "cliScope": "Original A/B/C PLAN input, corrected fork absent-file expectation, 36 owned loopback requests pass",
+    "privateEnvironment": "Private HOME/XDG/GIT_CONFIG_GLOBAL/GIT_CONFIG_SYSTEM, system disabled and inherited Git injection cleared"
+  },
+  "independent": {
+    "apiResult": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-fork-independent-result.json",
+    "cliResult": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-fork-cli-Qle5Oh/result.json",
+    "result": "PASS: original missing-metadata resume/live PLAN/fork write denial, actual session allow/deny/removal and alias retarget after parent close; CLI36 owned requests at identical6b778562 identity"
+  },
+  "limitations": ["Scoped repair only; auto and whole-package integrated acceptance remain open", "No generic permission snapshot persistence or resumed child links introduced"],
+  "incidents": "Fixture rooted-pattern and unchanged old driver assertion corrected without product workarounds; recorded in research/question.md"
+}

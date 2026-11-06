@@ -66,7 +66,7 @@ export function createUnifiedAgentTools(registry: AgentRegistry, options: {
       ...tool,
       schema: { ...tool.schema, description: 'List this session\'s children and other live same-host sessions. Each row has a kind and an exact name or ID. Use send_message with that name; append a printed [ref] to choose among same-host namesakes. A child name takes precedence over a same-host name; use its uds: address in that case.' },
       async execute(raw, context) {
-        context.signal.throwIfAborted(); z.object({}).strict().parse(raw);
+        context.signal.throwIfAborted(); registry.assertCaller(context.session); z.object({}).strict().parse(raw);
         const current = await snapshot(); context.signal.throwIfAborted(); options.assertCurrent();
         const candidates = new Map(current.index.candidates.map(candidate => [`${candidate.kind}\0${candidate.id}`, candidate]));
         const sections = [];
@@ -94,7 +94,7 @@ export function createUnifiedAgentTools(registry: AgentRegistry, options: {
         input_schema: { type: 'object', properties: { id: { type: 'string', minLength: 1, maxLength: 300 }, message: { type: 'string' },
           ...(options.idle ? { notify_when_idle: { type: 'boolean' }, expires_ms: { type: 'integer', minimum: 1, maximum: 1_800_000 } } : {}) }, required: ['id'], additionalProperties: false } },
       async execute(raw, context) {
-        context.signal.throwIfAborted(); const args = sendSchema.parse(raw);
+        context.signal.throwIfAborted(); registry.assertCaller(context.session); const args = sendSchema.parse(raw);
         if (!options.idle && (args.notify_when_idle || args.expires_ms !== undefined)) throw new Error('Idle subscription is disabled');
         const message = args.message ?? '';
         if (message.trim().length === 0 && !args.notify_when_idle) throw new Error('Message or idle subscription is required');

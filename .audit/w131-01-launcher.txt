@@ -1,0 +1,1 @@
+{"launcher":"passed","discovery":true,"modelValidation":true,"pinnedResume":true,"exactCredentialOrigin":true,"compiledDemo":true,"noSecretOutput":true,"modelCalls":0}

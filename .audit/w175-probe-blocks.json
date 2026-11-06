@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1143017,
+        1145502
+      ],
+      "units": 2485,
+      "bodySha256": "dd75e61e1e0a1ee0c206b3491073ac42b39de20d4fd8ee6d814e7c8cb44af269",
+      "note": "question tab strip helpers, oZe and Ab"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1159815,
+        1161789
+      ],
+      "units": 1974,
+      "bodySha256": "e745e2366835cb0e842ddc5e2899e4c03042458a2927ab2b1b566ba35710da93",
+      "note": "b3 review page"
+    }
+  ],
+  "missing": []
+}

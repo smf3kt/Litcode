@@ -23,6 +23,7 @@ export interface WriteEffectResult {
   content: string;
   structuredPatch: StructuredPatchHunk[];
   originalFile: string | null;
+  landed?: LandedFileObservation;
 }
 
 /** What `edit_file` captures at the effect boundary, in the recovered `sjr` shape. */
@@ -33,9 +34,21 @@ export interface EditEffectResult {
   originalFile: string | null;
   structuredPatch: StructuredPatchHunk[];
   replaceAll: boolean;
+  landed?: LandedFileObservation;
 }
 
-export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult | QuestionHostResult;
+export type LandedFileObservation = { filePath: string; cacheKey?: string; content: string; mtimeMs: number;
+  identity: { dev: string; ino: string }; isPartialView?: boolean };
+
+// QIr, chunk-sfn1dbxq.js 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+// UTF-16 [3559220,3562500): host adaptation records the actual bounded output and descriptor mtime.
+export interface FileReadHostResult {
+  kind: 'file_read'; filePath: string; cacheKey?: string; content: string; mtimeMs: number;
+  offset: number; limit: number; truncated: boolean;
+  identity?: { dev: string; ino: string };
+}
+
+export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult | QuestionHostResult | FileReadHostResult;
 
 /**
  * The stored row: the source's storage projection. A write keeps its content only in the create
@@ -46,9 +59,10 @@ export type StoredToolUseResult =
   | FindingsHostResult
   | PlanHostResult
   | QuestionHostResult
-  | { type: 'create'; filePath: string; content: string; structuredPatch: StructuredPatchHunk[] }
-  | { type: 'update'; filePath: string; structuredPatch: StructuredPatchHunk[] }
-  | { filePath: string; oldString: string; newString: string; structuredPatch: StructuredPatchHunk[]; replaceAll: boolean };
+  | FileReadHostResult
+  | { type: 'create'; filePath: string; content: string; structuredPatch: StructuredPatchHunk[]; landed?: LandedFileObservation }
+  | { type: 'update'; filePath: string; structuredPatch: StructuredPatchHunk[]; landed?: LandedFileObservation }
+  | { filePath: string; oldString: string; newString: string; structuredPatch: StructuredPatchHunk[]; replaceAll: boolean; landed?: LandedFileObservation };
 
 /**
  * Source `uno`'s data payload for a write that has landed. The source branches on the prior
@@ -85,9 +99,9 @@ export function projectToolUseResult(value: ToolUseResult): StoredToolUseResult 
   if ('kind' in value) return value;
   if (!('type' in value)) {
     return { filePath: value.filePath, oldString: value.oldString, newString: value.newString,
-      structuredPatch: value.structuredPatch, replaceAll: value.replaceAll };
+      structuredPatch: value.structuredPatch, replaceAll: value.replaceAll, ...(value.landed && { landed: value.landed }) };
   }
   return value.type === 'create'
-    ? { type: 'create', filePath: value.filePath, content: value.content, structuredPatch: value.structuredPatch }
-    : { type: 'update', filePath: value.filePath, structuredPatch: value.structuredPatch };
+    ? { type: 'create', filePath: value.filePath, content: value.content, structuredPatch: value.structuredPatch, ...(value.landed && { landed: value.landed }) }
+    : { type: 'update', filePath: value.filePath, structuredPatch: value.structuredPatch, ...(value.landed && { landed: value.landed }) };
 }

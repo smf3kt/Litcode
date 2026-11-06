@@ -1,0 +1,180 @@
+{
+  "schema": "W385HandoffValidation.v1",
+  "date": "2026-11-06",
+  "branch": "work/w43-choice-preview",
+  "parentAtValidation": "1335d6afc7a6f96abba9711a15585b508da833d0",
+  "contentIdentity": "212f728bfdc720169e4bdb63ed443902cfbb8dc0c0b85155af668eecfaad43ed",
+  "identityManifest": ".audit/w385-handoff-identity.json",
+  "identityScopes": {
+    "inputs": "27f54b8555439e49aaa9d9c488bb6834ba94fbfe4b6bf82bb0124cc80c26c00c",
+    "validation": "11b34085b9fe4d4904f6ee4d446a03a83c092d2f8bdeb487a50aa445a1639d76",
+    "build": "1ff16f8cc07f9841d50eb3c2ba2b832d1891f7cd68a24f02e8540716bd42c0f4"
+  },
+  "checks": [
+    {
+      "command": "npm run check",
+      "exitCode": 0,
+      "result": "type check passed",
+      "log": {
+        "name": "w385-handoff-check.log",
+        "bytes": 39,
+        "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886"
+      }
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "result": "TypeScript build and native peer/file-lock build passed",
+      "log": {
+        "name": "w385-handoff-build.log",
+        "bytes": 393,
+        "sha256": "8338dbf17e9bbfb1161bcaa27794a2f52eeaef30f9b2ad80ddc9a221f5b1205d"
+      }
+    },
+    {
+      "command": "node --import tsx --test --test-concurrency=4 --test-timeout=30000 test/agent-registry.test.ts test/agent-transcript.test.ts test/agent-isolation-runtime.test.ts test/runtime-resources.test.ts test/async-hooks.test.ts",
+      "exitCode": 0,
+      "result": "111 tests; 111 pass; 0 fail; 0 cancelled; 0 skip",
+      "log": {
+        "name": "w385-handoff-related.log",
+        "bytes": 11843,
+        "sha256": "070c0c82a767c9663b2ebafc169637f8927e7ae62b721166bf35e5cff02456bb"
+      }
+    },
+    {
+      "command": "node scripts/smoke-agent-transcript-cli.mjs",
+      "exitCode": 0,
+      "result": "child/transcript CLI passed; locks released; 11 owned loopback SSE requests",
+      "log": {
+        "name": "w385-handoff-cli.log",
+        "bytes": 325,
+        "sha256": "53f32084b0c628f03d9dec2da5004a4a7175d00a165f6fd70f12734f3fa09365"
+      }
+    },
+    {
+      "command": "node --import tsx --test --test-name-pattern=\"child journal retains execution authorization validation through its budget wrapper\" test/agent-registry.test.ts",
+      "exitCode": 0,
+      "result": "1 pass; also included in the 111-test affected run",
+      "log": {
+        "name": "w385-handoff-registry-focused.log",
+        "bytes": 406,
+        "sha256": "1b073acd0d25eba6237ad352995428b5800717be91f75b8e04b623da418686cf"
+      }
+    }
+  ],
+  "cli": {
+    "cli": "passed",
+    "entryOnly": false,
+    "completedHistory": false,
+    "coldHistory": false,
+    "coldSkill": false,
+    "mutationGates": false,
+    "baseline": false,
+    "childView": true,
+    "modelRequests": 11,
+    "gateway": "owned loopback SSE",
+    "locksReleased": true
+  },
+  "native": [
+    {
+      "path": "native/directory-read/read",
+      "bytes": 34632,
+      "sha256": "6c1ea3298faad33881c219b0e5d0e1ef3441d544d48ce9727b153da2025e0613",
+      "kind": "build_output"
+    },
+    {
+      "path": "native/directory-read/read.c",
+      "bytes": 10602,
+      "sha256": "bfab718b3f5dbb2e7a7bac907c7ebb3f1d9cab78b631ee4f9a19b98bef713948",
+      "kind": "source"
+    },
+    {
+      "path": "native/directory-write/write",
+      "bytes": 35432,
+      "sha256": "8d17593cda15293267c9dcceeb51ef558a1f6ff5e6ea67cb00ac98ae91d33d14",
+      "kind": "build_output"
+    },
+    {
+      "path": "native/directory-write/write.c",
+      "bytes": 30046,
+      "sha256": "099251e384a05165a80366865201546f4709452c8584363f89a2e6746e322519",
+      "kind": "source"
+    },
+    {
+      "path": "native/file-lock/lock.c",
+      "bytes": 1116,
+      "sha256": "05c5fe641974f73fdfe094fa5c42c37f0c371b3607d3b56a797a9450f610ce0e",
+      "kind": "source"
+    },
+    {
+      "path": "native/file-lock/lock.node",
+      "bytes": 50888,
+      "sha256": "bd8f9abe026ca83fcf38c97450319c9fb3f2e00220ea0dd607a8ce33676025b1",
+      "kind": "build_output"
+    },
+    {
+      "path": "native/peer-identity/peer.c",
+      "bytes": 3097,
+      "sha256": "c44eb18b08d315708a3b27d9b28059b815b50be815e9befe8a8c5d9c2745b6de",
+      "kind": "source"
+    },
+    {
+      "path": "native/peer-identity/peer.node",
+      "bytes": 51016,
+      "sha256": "6488623a530fb4e091a0db6acc6004891feb2baab3010afe3d0ae4484e263ff8",
+      "kind": "build_output"
+    },
+    {
+      "path": "native/shell-supervisor/supervisor",
+      "bytes": 34664,
+      "sha256": "09a8c9a122bde3e7228ed47e87720226e3b578877b0f4e2b48cb79752fb0f9b3",
+      "kind": "build_output"
+    },
+    {
+      "path": "native/shell-supervisor/supervisor.c",
+      "bytes": 9869,
+      "sha256": "6199911905c6ceea3b8eb69ffb328ea9410c2675920be1b5419b7be15f35660b",
+      "kind": "source"
+    }
+  ],
+  "archive": {
+    "manifest": ".audit/w385-async-journal-draft.json",
+    "patchSha256": "eb700ba5cb2cffa8b6682a23af1385ced5f0e8e4fc84dadced012802560ac07f",
+    "state": "base",
+    "paths": 8,
+    "applicable": true,
+    "activated": false
+  },
+  "notRun": [
+    "whole-repository test suite for this checkpoint",
+    "offline package installation for this checkpoint",
+    "paid upstream acceptance",
+    "original lane-binding review or any substitute"
+  ],
+  "format": {
+    "scopedDiffCheck": "passed",
+    "wholeWorkspaceDiffCheck": "existing research/ports/W121-skill-effect-journal.md:227: new blank line at EOF",
+    "stagedDiffCheck": {
+      "exitCode": 2,
+      "diagnostics": 95,
+      "auditTextOrPatch": 93,
+      "researchEofBlankLines": 2,
+      "productCodeDiagnostics": 0,
+      "disposition": "Historical evidence bytes retained; no formatting cleanup of unrelated work."
+    }
+  },
+  "boundaries": {
+    "task43": "pending; source mapping incomplete; prototype inactive",
+    "tasksOpen": [
+      7,
+      11,
+      34,
+      35,
+      43
+    ],
+    "originalReview": "自动审查中止、无有效结论",
+    "loop": "cancelled; no scheduled replacement",
+    "publication": "local commit authorized; no push or PR"
+  },
+  "logRetention": "Only hashes and deciding results are durable here; job temporary logs may be deleted with the job."
+}

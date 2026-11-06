@@ -27,7 +27,7 @@ function fixture(t: TestContext) {
   const install = () => invoke('plugin_install', { directory: source });
   const update = () => invoke('plugin_update', { name: 'sample', directory: source,
     expected_digest: discoverInstalledPluginComponents(workspace, { enabled: true })[0]!.plugin.digest });
-  const catalog = () => loadPluginComponents(discoverInstalledPluginComponents(workspace, { enabled: true }));
+  const catalog = () => loadPluginComponents(discoverInstalledPluginComponents(workspace, { enabled: true }), undefined, undefined, false, workspace);
   return { workspace, source, user, put, invoke, install, update, catalog };
 }
 
@@ -92,6 +92,17 @@ test('W184 nested directory direct metadata inline formats continue after bad en
   assert.equal(failed.body, 'BODY');
   assert.ok(failed.error);
   assert.deepEqual(parsePluginFrontmatter('---\n- a\n---\nBODY').data, {});
+});
+
+test('plugin skill expands declared tool paths before splitting rules', async t => {
+  const f = fixture(t);
+  f.put(f.source, 'plugin.json', { name: 'sample', version: '1' });
+  f.put(f.source, 'skills/helper/SKILL.md', '---\nallowed-tools: ["read_file(${CLAUDE_SKILL_DIR}/a b)", "shell(${CLAUDE_PLUGIN_ROOT}/run)", "read_file(${CLAUDE_PROJECT_DIR}/a b,c)"]\ndisallowedTools: [write_file]\n---\nBODY');
+  await f.install();
+  const component = discoverInstalledPluginComponents(f.workspace, { enabled: true })[0]!;
+  const skill = f.catalog().skills.find(entry => entry.name === 'helper')!;
+  assert.deepEqual(skill.allowedTools, [`read_file(${path.dirname(skill.path)}/a b)`, `shell(${component.directory}/run)`, `read_file(${f.workspace}/a b,c)`]);
+  assert.deepEqual(skill.disallowedTools, ['write_file']);
 });
 
 test('W184 two catalog owners refresh after install update remove without replacing local content', async t => {

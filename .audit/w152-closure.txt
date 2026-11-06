@@ -1,0 +1,17 @@
+### Att
+function Att(e){switch(e.type){case"local_agent":return{id:e.agentId,teammateId:void 0,description:e.description,type:e.agentType,parentId:e.parentAgentId,name:void 0};case"in_process_teammate":return{id:e.identity.resumableAgentId??e.identity.agentId,teammateId:e.identity.agentId,description:e.spawnedWith.description??e.description,type:e.spawnedWith.agentType||"teammate",parentId:e.spawnedWith.parentAgentId,name:e.identity.agentName};default:return}}
+
+### a
+var a=new lt(()=>p());
+
+### QO
+var Ee=()=>Ae(Gfe),QO=Ee;
+
+### uq
+function uq(){return S.of(B().host).get()}
+
+### gbt
+function gbt(h){let T=uq(),M=hs("wheelScrollAccelerationEnabled",!0).value;return t(`wheel accel: ${T.useDecayCurve?"decay":"window (native)"} \xB7 base=${T.base} \xB7 platform=${T.platform} \xB7 TERM_PROGRAM=${T.termProgram}${T.wheelFlood?" \xB7 wheelFlood":""}${T.jediTerm?" \xB7 jediTerm":""}${mLr(h)?" \xB7 jbBugConfirmed":""}${M?"":" \xB7 accelDisabled"}`),fbt(T.useDecayCurve,T.base,T.wheelFlood,M,h)}
+
+### pbt
+function pbt(h,T,M){if(h.jediTerm.trackpadGesture){let Te=M-h.time;if(!h.jbBypass||Te>gLr)h.jbBypass=!0,h.frac=0,h.mult=1;else if(T!==h.dir)h.frac=0;h.dir=T,h.time=M;let Me=VNo(h.jediTerm);if(h.accelEnabled)h.mult=Math.min(mbt,h.mult+cbt+Me*ubt);h.frac+=dbt*h.mult;let Le=Math.floor(h.frac);return h.frac-=Le,Le}if(h.jbBypass)h.jbBypass=!1,h.pendingFlip=!1,h.wheelMode=!1,h.burstCount=0,h.frac=0,h.dir=0;if(!h.useDecayCurve){if(h.wheelFlood){let Me=M-h.time;return h.time=M,h.dir=T,h.mult=Me>QAe?h.base*JSt:h.base,Math.max(1,Math.floor(h.mult))}if(h.wheelMode&&M-h.time>obt)h.wheelMode=!1,h.burstCount=0,h.mult=h.base;if(h.pendingFlip){if(h.pendingFlip=!1,T!==h.dir||M-h.time>XSt)return h.dir=T,h.time=M,h.mult=h.base,Math.max(1,Math.floor(h.mult));h.wheelMode=!0}let Te=M-h.time;if(T!==h.dir&&h.dir!==0)return h.pendingFlip=!0,h.time=M,0;if(h.dir=T,h.time=M,h.wheelMode)if(Te<YAe)if(++h.burstCount>=5)h.wheelMode=!1,h.burstCount=0,h.mult=h.base;else return 1;else h.burstCount=0;if(h.wheelMode&&h.accelEnabled){let Me=Math.pow(0.5,Te/zAe),Le=Math.max(ebt*Math.min(h.base,1),h.base*2),He=1+(h.mult-1)*Me+ZSt*Me;return h.mult=Math.min(Le,He,h.mult+tbt),Math.max(1,Math.floor(h.mult))}if(Te>QAe||!h.accelEnabled)h.mult=h.base;else{let Me=Math.max(YSt*Math.min(h.base,1),h.base*2);h.mult=Math.min(Me,h.mult+zSt)}return Math.max(1,Math.floor(h.mult))}let L=M-h.time,ee=T===h.dir;if(h.time=M,h.dir=T,ee&&L<YAe)return 1;if(!h.accelEnabled)return Math.max(1,Math.floor(h.base));if(!ee||L>abt)h.mult=Math.max(2,h.base),h.frac=0;else{let Te=Math.pow(0.5,L/zAe),Me=L>=rbt?sbt:ibt;h.mult=Math.min(Me,1+(h.mult-1)*Te+nbt*Te)}let he=h.mult+h.frac,we=Math.floor(he);return h.frac=he-we,we}

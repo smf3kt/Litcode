@@ -1,0 +1,13 @@
+{
+  "schema":"W181IndependentReview.v1",
+  "date":"2026-10-18",
+  "workflow":"wf_eef1abf7-6a9",
+  "verdict":"changes_required",
+  "productEdits":false,
+  "findings":[
+    {"severity":"P1","file":"src/runtime.ts","line":668,"summary":"Independent runtimes retain removed or updated plugin script bodies","reproduction":["B initially returns v1","A updates installed plugin and returns v2","B still returns v1","A removes plugin; B still successfully returns v1"],"cause":"Mutation invalidation only reaches namedCatalogs within one createRuntime closure","requiredVerification":"Two independent runtimes on same canonical workspace; update and removal visible to top-level and nested named calls"},
+    {"severity":"P2","file":"src/runtime.ts","line":603,"summary":"Workflow component path diagnostics are dropped in production","reproduction":["Manifest workflows contains ../escape and missing","Install succeeds without diagnostics","Internal descriptor holds both errors","workflow_run reports only missing name; paths and reasons are absent"],"cause":"Production catalog has no logger sink and db projects structured errors as [object Object]","requiredVerification":"Actual user-facing tool or session diagnostics preserve error type and path"}
+  ],
+  "coverage":["source module digest and exact ranges","default/custom/empty paths","top-level/nested owner","release/rebuild/close","async generation guards","three focused regressions pass"],
+  "status":"Fix stage running; findings are not yet resolved"
+}

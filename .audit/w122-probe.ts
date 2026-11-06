@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { defaultConfig } from '../src/agent.js';
+import { Session } from '../src/session.js';
+import { activateTouchedSkills } from '../src/skill-catalog.js';
+const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'probe-')));
+const cfg = defaultConfig(root, []); cfg.model = 'fixture';
+cfg.skills = [];
+cfg.heldSkills = [{ name: 'scoped', description: 'S', path: 'x', body: 'b', userInvocable: true, disableModelInvocation: false, paths: ['src'] }];
+const s = Session.open(root, { config: cfg });
+console.log('session held', s.config.heldSkills?.length, s.config.skills?.length);
+console.log('activate', activateTouchedSkills(s.config, [path.join(root,'src/a.ts')]).length);
+console.log('after', s.config.skills?.length, s.config.heldSkills?.length);
+s.close(); fs.rmSync(root, { recursive: true, force: true });

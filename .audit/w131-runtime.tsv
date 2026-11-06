@@ -1,0 +1,3 @@
+2026-10-18T00:20:00Z	package	W131-01 Magpie启动/恢复闭环	端点解析：显式→LLM_BASE_URL→回环MAGPIE_ADDR→stash.json claude.wired_at→默认3425	撤销键sk-magpie-revoked-跳过、全撤销重读一次、只报变量名	tsc 0；build 0；聚焦18/18；两项Magpie冒烟
+2026-10-18T00:22:00Z	decision	W131-01 适配	仅消费stash.json端点；管理API/调用者密钥仍为用户现场操作	MAGPIE_ADDR与接线记录限回环；LLM_AUTH随最终凭据	无依赖变化
+2026-10-18T00:24:00Z	verification	W131-01 验收：聚焦18/18、notices 0、双冒烟	identity eac028a1…；dist重建	.audit/w131-01-focused.txt、w131-01-build.txt、w131-01-identity.txt、w131-01-launcher.txt、w131-01-startup.txt

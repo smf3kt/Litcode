@@ -1,0 +1,15 @@
+sequence	phase	decision	why	evidence	result
+01	selection	Select recurring-null lifecycle candidate	CURRENT next ready preflight after W318	Task104;HEAD95f3770	one local package;W301 paused;no push/coauthor
+02	source	Acquire full parser and deadline closure	A null deadline alone does not identify source calendar behavior	W319 source table	jrz/atz hashes verified;MCt/n6/wqe/L9t/b/me/He/list/store bodies read inertly
+03	boundary	Preserve existing host one-year/DST contract	Source MCt iteration cap may span multiple years;host tests real epoch bound	MCt/nextOccurrence comparison;test/scheduler.test.ts	adapt null-state lifecycle;no false leap-date equivalence claim
+04	baseline	Drive real compiled leap recurring task	Deletion must be observed through actual model/event/file path	w319-cli-baseline.txt	exit1;real scheduled turn completed;row retained/stamp assertion fails
+05	consumers	Check JSON/list/reload/store boundaries	Infinity is runtime state;stored rows and public JSON differ	agent a79c3f60d381cf0c0;main persistence callers	JSON null;finite-first sort;no date formatter;create/stamp omit nextAt
+06	implementation	Retain Infinity and stamp after unresolved fire	Source b keeps nonfinal recurring tasks;me/cre retain raw rows	src/scheduler.ts	null-nominal reload visible;final expiry and cancel retained
+07	verification	Run three necessary lifecycle groups and affected readers	No retry,restart,cancel,expiry and failed callbacks share ownership	w319-focused.txt;w319-affected.txt;w319-check.txt;w319-build.txt	3/3;131/131;check/build pass
+08	CLI	Drive compiled unresolved and prior consumer chains	Public artifact must list,restart,cancel and clean resources	w319-cli-unresolved.txt;w319-cli-delivery.txt;w319-cli-watch.txt	3/2/3owned loopback requests;all exits0;locks released
+09	source-diff	Read eight AST-bound body comparisons	Source and host parser/list boundaries need explicit adaptation record	w319-source-comparison.json	all8diffs read;module/body/target identities retained
+10	comments	Retain two source-coordinate anchors	Project S-7 requires exact provenance	agent a01b0e98939e9e634	0findings;0suppressions;0edits
+11	review	Accept fresh independent source and artifact verdict	Port ownership must survive reload/restart/cancellation	agent a73dca70a6bab45a9;w319-independent-groups.txt;w319-independent-cli.txt	3/3;compiled3requests;no confirmed scoped defect
+12	incident	Retain immediate-unlink supplemental failure	New stamp had not reached inherited stable watcher phase	w319-independent-lifecycle.txt;w319-independent-lifecycle-settled.txt	1000ms settlement then6scenarios pass;no product fix claimed
+13	identity	Recheck accepted artifact inventory	Final docs must identify actual reviewed source/tests/build	w319-reviewed-identity.json	1778hashes unchanged;482250a7457152f7149087e0b5644ca13afa759d846493397236c5e9c6c7cf18
+14	complete	Commit exact nine-file package locally	Source and all independent artifact gates complete	6e83a05	Task104complete;no push/coauthor;only two original tracked user changes unstaged

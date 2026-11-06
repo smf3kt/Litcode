@@ -1,0 +1,17 @@
+[work/w43-choice-preview 659abde] Reclaim a worktree store lock left by a dead owner
+ 21 files changed, 4416 insertions(+), 10 deletions(-)
+ create mode 100644 .audit/w47-02-build.txt
+ create mode 100644 .audit/w47-02-chain.txt
+ create mode 100644 .audit/w47-02-full.txt
+ create mode 100644 .audit/w47-02-identity.txt
+ create mode 100644 .audit/w47-02-index.txt
+ create mode 100644 .audit/w47-02-notices.txt
+ create mode 100644 .audit/w47-02-records.mjs
+ create mode 100644 .audit/w47-02-smoke-compiled.txt
+ create mode 100644 .audit/w47-02-smoke.txt
+ create mode 100644 .audit/w47-02-test.txt
+ create mode 100644 .audit/w47-02-tsc.txt
+ create mode 100644 .audit/w47-runtime.todo.md
+ create mode 100644 .audit/w47-runtime.tsv
+ create mode 100644 research/ports/W47-worktree-stale-lock-evidence.json
+ create mode 100644 research/ports/W47-worktree-stale-lock.md

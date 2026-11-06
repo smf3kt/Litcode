@@ -1,0 +1,1 @@
+{"tuiQuestionEditorCancel":"passed","exitCode":130,"descendantsReaped":true,"privateTemporaryFiles":true}

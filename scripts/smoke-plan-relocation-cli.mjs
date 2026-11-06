@@ -10,9 +10,9 @@ const project = path.resolve(import.meta.dirname, '..');
 const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : project, 'plan-relocation-cli-')));
 const parent = path.join(root, 'parent'), child = path.join(root, 'child'), user = path.join(child, '.local');
 fs.mkdirSync(parent); fs.mkdirSync(child); fs.mkdirSync(user);
-fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ prefersReducedMotion: true, promptSuggestionEnabled: false }));
+fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ prefersReducedMotion: true, promptSuggestionEnabled: false, plansDirectory: 'owned-plans' }));
 const screen = new TerminalScreen(120, 38);
-let server, processChild, failure, closed = true, stderr = '', count = 0, plan;
+let server, processChild, failure, closed = true, stderr = '', count = 0, plan, sibling;
 const requests = [];
 function send(res, block) {
   const tool = block.type === 'tool_use';
@@ -39,7 +39,7 @@ try {
         assert.equal(result?.is_error ?? false, false);
         const system = typeof body.system === 'string' ? body.system : body.system.map(b => b.text).join('\n');
         const match = /^Plan file: (".*")$/m.exec(system); assert.ok(match);
-        plan = JSON.parse(match[1]); assert.ok(plan.startsWith(user + path.sep));
+        plan = JSON.parse(match[1]); assert.equal(path.dirname(plan), path.join(child, 'owned-plans'));
         return send(res, tool('relative-plan', 'write_file', { path: path.relative(child, plan), content: '# PLAN FIXTURE\n' }));
       }
       if (count === 3) {
@@ -50,6 +50,22 @@ try {
       if (count === 4) {
         assert.equal(result?.is_error ?? false, false);
         assert.equal(fs.readFileSync(plan, 'utf8'), '# ABSOLUTE FIXTURE\n');
+        return send(res, tool('read-relative-plan', 'read_file', { path: path.relative(child, plan) }));
+      }
+      if (count === 5) {
+        assert.equal(result?.is_error ?? false, false);
+        assert.match(JSON.stringify(result?.content), /ABSOLUTE FIXTURE/);
+        sibling = plan.slice(0, -3) + '-agent-cli.md';
+        return send(res, tool('sibling-plan', 'write_file', { path: sibling, content: '# SIBLING FIXTURE\n' }));
+      }
+      if (count === 6) {
+        assert.equal(result?.is_error ?? false, false);
+        assert.equal(fs.readFileSync(sibling, 'utf8'), '# SIBLING FIXTURE\n');
+        return send(res, tool('sibling-read', 'read_file', { path: path.relative(child, sibling) }));
+      }
+      if (count === 7) {
+        assert.equal(result?.is_error ?? false, false);
+        assert.match(JSON.stringify(result?.content), /SIBLING FIXTURE/);
         return send(res, { type: 'text', text: 'PLAN_FIXTURE_DONE' });
       }
       throw new Error(`Unexpected request ${count}`);
@@ -77,13 +93,13 @@ try {
   processChild.stdin.write(`/cwd ${child}\r`);
   await until(() => fs.existsSync(path.join(child, '.agent')) && fs.readdirSync(path.join(child, '.agent')).some(name => name.endsWith('.jsonl.lock')), 'relocation');
   processChild.stdin.write('PLAN_FIXTURE\r');
-  await until(() => count === 4 && frame().includes('PLAN_FIXTURE_DONE'), 'plan result');
+  await until(() => count === 7 && frame().includes('PLAN_FIXTURE_DONE'), 'plan result');
   processChild.stdin.write('/exit\r');
   const exit = await Promise.race([exited, delay(5000).then(() => { throw new Error('CLI exit timed out'); })]);
   assert.equal(exit, 0);
-  assert.equal(count, 4);
+  assert.equal(count, 7);
   assert.equal(fs.readdirSync(path.join(child, '.agent')).some(name => name.endsWith('.lock')), false);
-  console.log(JSON.stringify({ actualCli: true, requests: count, relativeWrote: true, absoluteOverwrote: true, exit }));
+  console.log(JSON.stringify({ actualCli: true, requests: count, relativeWrote: true, absoluteOverwrote: true, relativeRead: true, siblingWroteAndRead: true, exit }));
 } finally {
   if (processChild && !closed) { try { process.kill(-processChild.pid, 'SIGKILL'); } catch {} await new Promise(resolve => processChild.once('close', resolve)); }
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

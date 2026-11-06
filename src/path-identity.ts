@@ -67,7 +67,12 @@ export interface ResolvedPath {
   readonly identity?: FileIdentity;
 }
 
-export type WorkingDirectories = readonly string[] & { readonly rootSpellings?: readonly string[] };
+export type DirectoryReadHandle = { readonly fd: number; readonly root: string; readonly dev: bigint; readonly ino: bigint; readonly signal: AbortSignal;
+  readonly incarnation: string; readonly owner: string };
+export type WorkingDirectories = readonly string[] & {
+  readonly rootSpellings?: readonly string[];
+  readonly readHandle?: (root: string) => DirectoryReadHandle | undefined;
+};
 
 /** eNe [214841,215024), Yg [215388,215541), chunk-2bcyxj9q, UTF-16.
  * The session retains this observation until the grant is removed. */

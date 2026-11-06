@@ -1,0 +1,16 @@
+(node:30152) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Switched to branch 'feature'
+✔ the collector shares HEAD, no-commit and branch revisions with its hunk data (168.59875ms)
+(node:30153) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ recovered components keep native state, context, refs and one cleanup (7.075375ms)
+✔ the fullscreen Git sidebar preserves the draft, cycles bases, scrolls and releases its owner (1694.413958ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2313.4575

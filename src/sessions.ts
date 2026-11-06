@@ -2,9 +2,62 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type SessionEvent } from './session.js';
 import type { ResumePreview, ResumePreviewMessage } from './resume-picker.js';
+import { readPlanBytes, savePlanFile } from './plan-file.js';
 
 export type SessionSummary = { id: string; model: string; updated: string; active: boolean; title?: string;
   parent?: { id: string; workspace: string; boundary: number; reason: string } };
+
+// I_n, 40cepjpq [72739,75980), UTF-16: retain state without copying effects into a branch.
+export function inheritedToolObservation(event: Extract<SessionEvent, { kind: 'tool_result' }>, source: Session)
+    : Extract<SessionEvent, { kind: 'read_observation' | 'write_observation' }> {
+  if (!event.result.is_error && event.host && 'landed' in event.host && event.host.landed) {
+    const landed = event.host.landed;
+    let cacheKey = landed.cacheKey;
+    if (!cacheKey) for (const message of source.messages) if (Array.isArray(message.content)) for (const block of message.content) {
+      if (block.type === 'tool_use' && block.id === event.result.tool_use_id &&
+          typeof block.input === 'object' && block.input !== null && 'path' in block.input && typeof block.input.path === 'string')
+        cacheKey = path.resolve(source.config.workspace, block.input.path);
+    }
+    if (cacheKey) return { kind: 'write_observation', result: { ...event.result, content: '' },
+      operation: 'oldString' in event.host ? 'edit_file' : 'write_file', landed: { ...landed, cacheKey } };
+  }
+  return { kind: 'read_observation', result: { ...event.result, content: '' },
+    ...(event.timestamp === undefined ? {} : { timestamp: event.timestamp }),
+    ...(event.host && 'kind' in event.host && event.host.kind === 'file_read' ? { host: event.host } : {}) };
+}
+
+type ReadWitness = NonNullable<Extract<SessionEvent, { kind: 'tool_result' }>['readGrantWitness']>;
+
+// Host FD witness rewrite: KWo, sfn1dbxq [2298500,2308030), UTF-16 has no descriptor grant.
+export function captureReadWitnessTransfers(source: Session, target: Session): (witness: ReadWitness) => ReadWitness {
+  const original = source.workingDirectories(true), copied = target.workingDirectories(true);
+  const transfers = new Map<string, { root: string; witness: ReadWitness }>();
+  for (const event of source.events) {
+    if ((event.kind !== 'tool_effect' && event.kind !== 'tool_result' && event.kind !== 'read_observation') || !event.readGrantWitness) continue;
+    const witness = event.readGrantWitness;
+    for (const root of original) {
+      const from = original.readHandle?.(root), to = copied.readHandle?.(root);
+      if (from && source.isReadGrantWitnessCurrent(root, witness) && to && !to.signal.aborted &&
+          to.owner === target.id && to.dev === from.dev && to.ino === from.ino) {
+        transfers.set(JSON.stringify(witness), { root, witness: { owner: to.owner, incarnation: to.incarnation, callId: witness.callId } });
+        break;
+      }
+    }
+  }
+  return witness => {
+    const transfer = transfers.get(JSON.stringify(witness));
+    return transfer && target.isReadGrantWitnessCurrent(transfer.root, transfer.witness) ? transfer.witness : witness;
+  };
+}
+
+export function inheritedReadWitnessObservation(event: SessionEvent, transfer: (witness: ReadWitness) => ReadWitness)
+    : Extract<SessionEvent, { kind: 'read_observation' }> | undefined {
+  if ((event.kind !== 'tool_effect' && event.kind !== 'tool_result' && event.kind !== 'read_observation') || !event.readGrantWitness) return;
+  return { kind: 'read_observation', result: { ...event.result, content: '' },
+    ...(event.timestamp === undefined ? {} : { timestamp: event.timestamp }),
+    ...(event.host && 'kind' in event.host && event.host.kind === 'file_read' ? { host: event.host } : {}),
+    readGrantWitness: transfer(event.readGrantWitness) };
+}
 
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -106,6 +159,7 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
   const fork = Session.open(source.config.workspace, { config: source.snapshotConfig(), startedAt: source.startedAt });
   try {
     if (eventBoundary === undefined) fork.carryForkPermissions(source);
+    const transferWitness = captureReadWitnessTransfers(source, fork);
     // Copy conversation epochs, not tool side-effect journals or locks.
     const boundaries = new Map<number, number>([[0, 0]]);
     for (const [index, event] of history.entries()) {
@@ -114,12 +168,42 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
         fork.append(event);
         if (event.kind === 'turn_end') boundaries.set(index, fork.events.length - 1);
       }
+      if (event.kind === 'read_observation') fork.append({ ...event, ...(event.readGrantWitness ? { readGrantWitness: transferWitness(event.readGrantWitness) } : {}) });
+      if (event.kind === 'write_observation' || event.kind === 'read_invalidate') fork.append(event);
+      if (event.kind === 'tool_effect') {
+        const observation = inheritedReadWitnessObservation(event, transferWitness);
+        if (observation) fork.append(observation);
+      }
+      if (event.kind === 'tool_result') {
+        const observation = inheritedToolObservation(event, source);
+        fork.append(observation.kind === 'read_observation' && event.readGrantWitness
+          ? { ...observation, readGrantWitness: transferWitness(event.readGrantWitness) } : observation);
+      }
       if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) fork.append({ ...event, boundary: boundaries.get(event.boundary)! });
-      if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') fork.append(event);
+      if (event.kind === 'model_plan_mode' && eventBoundary === undefined) fork.append({ ...event, planId: fork.id });
+      else if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') fork.append(event);
+    }
+    // Cwt/gft, sfn1dbxq [4734814,4735645), 24k7d6mw [38766,45161), UTF-16;
+    // host checkpoint rows may be journaled after the turn they witness.
+    if (eventBoundary !== undefined) for (const [index, event] of source.events.entries()) {
+      if (index > eventBoundary && event.kind === 'checkpoint' && boundaries.has(event.boundary))
+        fork.append({ ...event, boundary: boundaries.get(event.boundary)! });
+    }
+    // fNe/Xco, chunk-27et44g8.js [14970,15033)/[20754,21314), UTF-16.
+    if (eventBoundary === undefined) {
+      const sourcePlan = source.planFilePath, forkPlan = fork.planFilePath;
+      for (const suffix of ['.workshop.md', '.md']) {
+        const from = sourcePlan.slice(0, -3) + suffix, to = forkPlan.slice(0, -3) + suffix;
+        try {
+          const text = readPlanBytes(source.config.workspace, from);
+          if (text !== null) savePlanFile(fork.config.workspace, to, text);
+        } catch { /* Each source copy failure leaves the fork usable. */ }
+      }
     }
     if (eventBoundary !== undefined) fork.restoreModelPlanMode('prefix');
-    fork.append({ kind: 'branch', source: source.id, workspace: source.config.workspace,
-      boundary: eventBoundary ?? source.events.length - 1, reason: eventBoundary === undefined ? 'fork' : 'rewind' });
+    fork.appendCheckpointBranch(source, { boundary: eventBoundary ?? source.events.length - 1,
+      reason: eventBoundary === undefined ? 'fork' : 'rewind' });
+    fork.inheritCheckpointWitnesses(source);
     return fork;
   } catch (error) { fork.close(); throw error; }
 }

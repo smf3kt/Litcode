@@ -1,5 +1,23 @@
 # W346 local distribution closure
 
+W385 native Read stability (2026-11-05): offline package smoke regenerated and checked the source bundle including the revised Read helper, built the installed native helper and exercised compiled packaged CLI; archive SHA-256 `4b22533946f7d831cce4fbfb76c8c8448f00993efe09ee191d2227ab3eab2b92`, zero upstream requests. Production external Write remains blocked; scope and identity are in [W385](W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 native Write foundation (2026-11-05): source bundle and npm package include `native/directory-write/write.c`; offline install compiles the helper and excludes the binary from the archive. Native manifest hashes, installed helper and packaged CLI smoke passed with archive SHA-256 `21786a4564959e5169a4ee06e98fdd35f541e09b5d4d254a04f76e0c2ad75f60`, zero upstream requests. Production external Write remains blocked; details and limits are in [W385](W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+
+W385 native Read foundation (2026-11-05): `native/directory-read/read.c` is included in the source bundle and npm package; install builds the helper locally and the package excludes the executable. Package smoke checks the exact native manifest, content hashes and installed executable; offline package and compiled CLI smoke passed, archive SHA-256 `f69b22cdd599748b19d5ab3798113e3830bffc0d43a60955ffac276e6b08619d`. Source and runtime scope: [W385](W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
+
+## Source bundle native inputs (2026-11-04)
+
+The source-bundle generator is owned distribution tooling; this changes no recovered product behavior (S-7 not applicable). The build script requires `native/peer-identity/peer.c` on Darwin, `native/file-lock/lock.c`, and `native/shell-supervisor/supervisor.c`. The former bundle allowlist contained no native input. The generator now explicitly includes those three regular files; it does not copy the native directory or its built `.node`/supervisor binaries. The existing package smoke generates a real source bundle and checks the exact native manifest, bytes, and hashes.
+
+Before the change, the actual generated bundle under `$CLAUDE_JOB_DIR/tmp/source-bundle-diagnosis/before` passed `npm ci --offline --ignore-scripts` (exit 0), then `npm run build` failed (exit 1) when clang could not find `native/peer-identity/peer.c`. Full generation, install and build logs and exit codes remain in that directory's parent.
+
+After the change, the freshly generated `after` bundle has 1,424 records and manifest aggregate SHA-256 `f60ba042d11e45dd9df58f96279a808157e8e3f7d90eb9c46c6357642877f3b3`. Every record's path, bytes and digest matched both the manifest and original. Native inputs: file-lock `05c5fe641974f73fdfe094fa5c42c37f0c371b3607d3b56a797a9450f610ce0e`, peer `c44eb18b08d315708a3b27d9b28059b815b50be815e9befe8a8c5d9c2745b6de`, supervisor `6199911905c6ceea3b8eb69ffb328ea9410c2675920be1b5419b7be15f35660b`. These hashes bind the native inputs omitted by the shared identity script.
+
+In the isolated bundle on Darwin arm64 / Node 26.10.0, `npm ci --offline`, `npm run check`, `npm run build`, `node bin/litcode.mjs --help` and `--demo` each exited 0. Demo wrote and read its owned local file and paired both tool results. The shared identity script recorded inputs `f8ad32ecff7e41097ca7f3f8383321caf90de8f9566fd74ab3db14b1022c2eae`, validation `d9a809c1d13ea1c172ab817f3d7992c8409f8b364430d96fe8226f6e41532fc3`, build `d57a21cd9853dd8c4f1478dbeaf2f440ad9d3fb6d5fad3a0b08db6d64a521618`, combined `d32ebadcd06cdc26f2cdab8e5a85ca806828f8c4ad31ff98474c3f2fdcb00feb`; complete logs and identity JSON remain in `$CLAUDE_JOB_DIR/tmp/source-bundle-diagnosis` (job `594022fa`). `npm run smoke:package` exited 0: 716 package files, archive SHA-256 `4d4abc40e15bc6ffc4671913550be2219f0d54defb1539e3f04d064c517aa94b`, installed help/demo and launcher fixtures pass, upstream requests 0. This package is distinct from the source bundle. Other platforms and external integrations remain unverified.
+
+S-1: observed actual missing input before fixing. S-2/S-5: exact allowlist and digests preserve the existing manifest contract; full source identity includes separate native hashes. S-3/S-4: no renderer or product owner change. S-6: generator, smoke and current distribution records agree. S-7: owned packaging/build scripts inspected; no product implementation changed. The pre-existing unrelated EOF whitespace reported by whole-tree `git diff --check` was retained.
+
 Status: verified locally with independent review,2026-10-26. Parent dd17ea8. Local only,no coauthor/no push.
 
 ## Task card

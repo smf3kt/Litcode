@@ -19,8 +19,10 @@ import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { briefTranscriptEnabled, startupVerbose } from './focus-command.js';
 import { configuredEffort } from './effort-command.js';
 import { createTuiTerminal } from './tui.js';
+import { commitTerminalOutput } from './terminal.js';
 import { beginSpinnerTipsStartup } from './spinner-tips.js';
-import { skillRequiresExecution } from './skill-runtime.js';
+import { skillRequiresExecution, skillReturnsForkResult } from './skill-runtime.js';
+import { SkillEffectRecoveryError } from './skill-effects.js';
 import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
 import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
@@ -350,6 +352,7 @@ function newConfig(
   gateway: GatewayChoice,
 ): SessionConfig {
   const config = defaultConfig(workspace, []);
+  if (settings.plansDirectory !== undefined) config.plansDirectory = settings.plansDirectory;
   config.model = gateway.model;
   if (settings.modelSettings !== undefined) config.modelSettings = settings.modelSettings;
   const effort = (values.effort as string | undefined) ?? (demo ? undefined : process.env.LLM_EFFORT) ?? configuredEffort(settings, config.model);
@@ -785,6 +788,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   let finalText = '';
   let budgetExceeded = false;
   let outputFinished = false;
+  let noticeOutputFailed = false;
   const wrapProvider = (provider: ModelProvider): ModelProvider => {
     const wrapped = withUsageBudget(provider, budget, usage => { if (!outputFinished) headless?.event({ type: 'usage', usage }); });
     return { count: wrapped.count, async complete(...args) {
@@ -829,6 +833,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       // endpoint rather than whatever a new session would have chosen.
       const pinned = gatewayCredential(session.config.gateway.baseURL, inherited, stored);
       if (pinned.key === undefined && !interactiveStart) throw new Error(missingCredentialError(pinned, session.config.gateway.baseURL));
+      const recovery = await session.reconcileResumedCheckpointInheritance({ recoverLock: values['recover-lock'] });
+      if (recovery.kind === 'reconciled')
+        process.stderr.write('Checkpoint witness reconciled; add directories again to restore their grants.\n');
+      else if (recovery.kind === 'reclaimed') process.stderr.write('Checkpoint recovery source lock reclaimed.\n');
       announceInheritance(inherited, pinned.source === undefined ? [] : ['credential']);
       if (pinned.key === undefined) {
         pendingMessage = unconfigured;
@@ -980,6 +988,14 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     }
     headless = createHeadlessOutput({ format, sessionId: currentSession.id, schema,
       write: text => { process.stdout.write(text); }, writeError: text => { process.stderr.write(text); } });
+    // Host visibility rewrite: sfn1dbxq ns/Si [226694,227794)/[233465,234179), UTF-16;
+    // the recovered queue supplies no durable human-reconciliation notice.
+    for (const { deliveryId } of currentSession.notificationCoordination) {
+      try {
+        await headless.deliverStatus(`Notification delivery status unknown: ${deliveryId}. It has not been automatically retried; retain this ID for reconciliation.`,
+          (text, errorStream) => commitTerminalOutput(errorStream ? process.stderr : process.stdout, text));
+      } catch (error) { noticeOutputFailed = true; throw error; }
+    }
     const agent = activeAgent = new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
       text: text => { finalText += text; headless!.text(text); }, status: status => headless!.status(status),
       interruptTurn: () => controller.abort(new Error('Hook interrupt')),
@@ -1053,7 +1069,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
           schema === undefined ? output : completed.summary ?? '', completed.model_calls ?? 0);
         return;
       }
-      if (selectedSkill.context === 'fork' || selectedSkill.model || selectedSkill.effort || selectedSkill.background || selectedSkill.hooks || selectedSkill.allowedTools) {
+      if (skillReturnsForkResult(selectedSkill)) {
         const child = JSON.parse(output) as { reason: string; model_calls: number; text: string };
         await finish(child.reason, schema === undefined ? output : child.text, child.model_calls); return;
       }
@@ -1074,10 +1090,16 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     await finish(result.reason, result.text, result.modelCalls);
     if (demo && fs.readFileSync(path.join(workspace, 'hello.txt'), 'utf8') !== 'Hello from the independent agent.\n') throw new Error('Demo verification failed');
   } catch (error) {
+    if (noticeOutputFailed) throw error;
     if (!headless) throw error;
     const reason = error instanceof UsageBudgetExceeded || budget.snapshot().exceeded.length ? 'budget_exceeded'
       : controller.signal.aborted ? 'aborted' : 'error';
-    headless.event({ type: 'error', code: reason, message: error instanceof Error ? error.message : String(error) });
+    const event = { type: 'error' as const, code: reason, message: error instanceof Error ? error.message : String(error) };
+    if (error instanceof SkillEffectRecoveryError) {
+      await headless.deliverError(event, (text, errorStream) =>
+        commitTerminalOutput(errorStream ? process.stderr : process.stdout, text));
+      error.journal.acknowledge(error.pending);
+    } else headless.event(event);
     await finish(reason, finalText, budget.snapshot().model_calls);
   } finally {
     process.removeListener('SIGINT', onInterrupt);

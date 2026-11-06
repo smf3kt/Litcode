@@ -93,6 +93,23 @@ import { cellWidth, TerminalKeyDecoder } from '../src/terminal.js';
 
 const cli = path.join(import.meta.dirname, '..', 'src', 'cli.ts');
 
+test('recovery notice waits for its terminal write and rejects closure', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode(raw: boolean): void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let complete: ((error?: Error | null) => void) | undefined;
+  const output = new Writable({ write(chunk, _encoding, done) {
+    if (String(chunk).includes('FIRST RECOVERY LINE')) complete = done; else done();
+  } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  let delivered = false;
+  const delivery = tui.commitNotice('FIRST RECOVERY LINE\nSECOND RECOVERY LINE').then(() => { delivered = true; });
+  assert.ok(complete); assert.equal(delivered, false);
+  tui.close(); complete();
+  await assert.rejects(delivery, /closed during delivery/);
+  assert.equal(delivered, false);
+});
+
 test('recovered components keep native state, context, refs and one cleanup', async () => {
   const { nativeElement, Xe, qt, Ae, y, en, R } = await import('../src/plugin-chain-react-hooks.js');
   const context = qt('default');

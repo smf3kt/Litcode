@@ -1,0 +1,14 @@
+{"imports":[],"exports":["gno"],"blocks":[
+{"file":"chunk-n3ykh62m.js","needle":"async function gno(","k":"fn","note":"gno"},
+{"file":"chunk-n3ykh62m.js","needle":"var Pto=","k":"stmt","note":"core handler"},
+{"file":"chunk-n3ykh62m.js","needle":"var AAt=","k":"stmt","note":"metrics"},
+{"file":"chunk-n3ykh62m.js","needle":"var HD=","k":"stmt","note":"draw instance"},
+{"file":"chunk-n3ykh62m.js","needle":"var ls=","k":"stmt","note":"scheduler"},
+{"file":"chunk-n3ykh62m.js","needle":"var Mf=","k":"stmt","note":"lifecycle"},
+{"file":"chunk-n3ykh62m.js","needle":"var Ito=","k":"stmt","note":"site"},
+{"file":"chunk-n3ykh62m.js","needle":"function Pb(","k":"fn","note":"flush"},
+{"file":"chunk-n3ykh62m.js","needle":"function jss(","k":"fn","note":"invalid tree note"},
+{"file":"chunk-n3ykh62m.js","needle":"function BM(","k":"fn","note":"drop buttons"},
+{"file":"chunk-n3ykh62m.js","needle":"function FM(","k":"fn","note":"diff buttons"},
+{"file":"chunk-n3ykh62m.js","needle":"function M_(","k":"fn","note":"metrics store"}
+]}

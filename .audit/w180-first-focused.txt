@@ -1,0 +1,50 @@
+(node:26030) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the revision follows noCommits and the branch source (0.360583ms)
+✔ an absent entry yields the empty working-tree view (0.311417ms)
+✔ file rows sort by path and apply the large, truncation, binary and untracked rules (4.267416ms)
+✔ the prime store expires after its TTL and keeps a mismatched entry (0.079291ms)
+✔ an expired prime entry is dropped on take (0.037792ms)
+✔ priming stores the collected entry and skips an aborted collection (0.10175ms)
+✔ a failed prime stores a null entry that still counts as loaded (0.048458ms)
+✔ the controller collects immediately when no prime exists and reports the view (11.024708ms)
+✔ a prime for the current refresh key suppresses the mount fetch (11.296666ms)
+✔ a manual refresh debounces once data exists (192.919292ms)
+✔ a failed hunk collection keeps the previous hunks for the same revision (181.946375ms)
+✔ a stale collection is discarded and disabling aborts the in-flight one (419.04275ms)
+✔ the default collector answers null outside a repository (40.396917ms)
+(node:26031) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the Raster site component
+  ✔ renders a Box holding one raw-ansi element sized to the frame (1.141458ms)
+  ✔ registers the mount under plugin, request id and key, and drops it on unmount (0.129458ms)
+  ✔ reports "detached" when no focus context is mounted (0.101917ms)
+✔ the Raster site component (1.708583ms)
+▶ the surface hook and its paint path
+  ✔ paints a frame into the raw-ansi node, marks it and its ancestors dirty, and renders the root (0.202959ms)
+  ✔ coalesces a second paint within the frame and lets cancel drop it (26.270459ms)
+✔ the surface hook and its paint path (26.618084ms)
+▶ the paint scheduler
+  ✔ paints the first frame at once and the second after the frame interval (25.5025ms)
+  ✔ drops a pending paint on cancel (26.407959ms)
+  ✔ schedules the next paint by the surface standing: a frame while progressing, the settle delay waiting (0.1915ms)
+✔ the paint scheduler (52.280959ms)
+▶ the mount object builder
+  ✔ keeps its own props, takes the frame size, and carries the paint (0.057125ms)
+✔ the mount object builder (0.097208ms)
+▶ the element factory seam
+  ✔ builds a createElement element: the trailing arguments are its children (0.072334ms)
+  ✔ builds a jsx element: children stay in props and the third argument is the key (0.047958ms)
+✔ the element factory seam (0.156583ms)
+▶ the hook seam
+  ✔ exposes the Box and Text kinds as tokens (0.0305ms)
+  ✔ runs a component effect after the element tree is committed, so its ref is bound (0.096834ms)
+✔ the hook seam (0.161917ms)
+ℹ tests 26
+ℹ suites 6
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1050.998417

@@ -1,0 +1,1 @@
+{"startup":"passed","groups":["discovery-gates","command-ownership","cancellation"],"coldDiscovery":true,"modelReadiness":true,"exactCredentialOrigin":true,"defaultNoSpawn":true,"healthyNoStarter":true,"invalidIdentityNoStarter":true,"deadlinesMs":[750,1500],"signalCancellation":true,"ownedChildrenReaped":true,"deadCommandGroupReaped":true,"noSecretOutput":true,"modelCalls":0}

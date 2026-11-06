@@ -1,0 +1,20 @@
+[work/w43-choice-preview 135d17f] Add the W46-03 scoped picker frame
+ 32 files changed, 4596 insertions(+), 50 deletions(-)
+ create mode 100644 .audit/w46-03-build.txt
+ create mode 100644 .audit/w46-03-chain.txt
+ create mode 100644 .audit/w46-03-evidence.mjs
+ create mode 100644 .audit/w46-03-full.txt
+ create mode 100644 .audit/w46-03-identity.txt
+ create mode 100644 .audit/w46-03-index.txt
+ create mode 100644 .audit/w46-03-notices.txt
+ create mode 100644 .audit/w46-03-probe.ts
+ create mode 100644 .audit/w46-03-probe.txt
+ create mode 100644 .audit/w46-03-records.mjs
+ create mode 100644 .audit/w46-03-scan.txt
+ create mode 100644 .audit/w46-03-smoke-chain.txt
+ create mode 100644 .audit/w46-03-smoke-line.txt
+ create mode 100644 .audit/w46-03-smoke-tui.txt
+ create mode 100644 .audit/w46-03-test.txt
+ create mode 100644 .audit/w46-03-tsc.txt
+ create mode 100644 research/ports/W46-scope-picker-integration-evidence.json
+ create mode 100644 test/tui-scope-picker-frame-scoped.test.ts

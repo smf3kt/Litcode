@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import childProcess from "node:child_process";
+import { syncBuiltinESMExports } from "node:module";
+import { randomUUID } from 'node:crypto';
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 
-import { createTools, type ToolContext, type ToolDefinition } from "../src/tools.js";
+import { createTools, copyStableDirectoryFile, type ToolContext, type ToolDefinition } from "../src/tools.js";
+import { publishDirectoryFile, removeDirectoryFile } from '../src/directory-file-state.js';
 
 const tools = createTools();
 const byName = new Map(tools.map((tool) => [tool.schema.name, tool]));
@@ -78,6 +82,326 @@ test("read_file returns the requested 1-based line range", async () => {
   assert.equal(await run("read_file", { path: "a.txt" }, makeContext(ws)), "l1\nl2\nl3\nl4\n");
   assert.equal(await run("read_file", { path: "a.txt", offset: 2, limit: 2 }, makeContext(ws)), "l2\nl3");
   assert.equal(await run("read_file", { path: "a.txt", offset: 10 }, makeContext(ws)), "");
+});
+
+test('directory descriptor Read remains on the opened directory and rejects escapes', async () => {
+  const ws = fs.realpathSync(tmpDir());
+  const approved = path.join(ws, 'approved');
+  write(ws, 'approved/sub/file.txt', 'original\nsecond\n');
+  const fd = fs.openSync(approved, fs.constants.O_RDONLY);
+  try {
+    fs.renameSync(approved, path.join(ws, 'moved'));
+    write(ws, 'approved/sub/file.txt', 'replacement');
+    const ctx = makeContext(ws, { verifiedReadDirectory: { fd, root: approved } });
+    assert.equal(await run('read_file', { path: 'approved/sub/file.txt' }, ctx), 'original\nsecond\n');
+    assert.equal(await run('read_file', { path: 'approved/sub/file.txt', offset: 2, limit: 1 }, ctx), 'second');
+    assert.equal(await run('read_file', { path: 'approved/sub/file.txt' }, makeContext(ws)), 'replacement');
+    fs.symlinkSync('sub', path.join(ws, 'moved', 'link'));
+    fs.symlinkSync('file.txt', path.join(ws, 'moved', 'sub', 'leaf'));
+    const helper = path.resolve('native/directory-read/read');
+    for (const name of ['../approved/sub/file.txt', '/etc/passwd', 'link/file.txt', 'sub/leaf', 'sub/../../approved/sub/file.txt']) {
+      const child = spawnSync(helper, [name], { stdio: ['ignore', 'pipe', 'pipe', fd, 'pipe'] });
+      assert.notEqual(child.status, 0, name);
+      assert.equal(child.stdout.length, 0, name);
+    }
+    const unsupported = path.join(ws, 'unsupported-helper');
+    execFileSync('cc', ['-std=c11', '-Wall', '-Wextra', '-Werror', '-DDIRECTORY_READ_UNSUPPORTED', '-o', unsupported, 'native/directory-read/read.c']);
+    assert.equal(spawnSync(unsupported, ['sub/file.txt'], { stdio: ['ignore', 'pipe', 'pipe', fd, 'pipe'] }).status, 78);
+    const cancelled = new AbortController();
+    cancelled.abort();
+    await assert.rejects(run('read_file', { path: 'approved/sub/file.txt' }, { ...ctx, signal: cancelled.signal }), /abort/i);
+  } finally { fs.closeSync(fd); }
+});
+
+test('directory descriptor backup probe distinguishes a missing leaf from invalid ancestry', () => {
+  const ws = fs.realpathSync(tmpDir());
+  fs.mkdirSync(path.join(ws, 'sub'));
+  fs.symlinkSync('sub', path.join(ws, 'link'));
+  const fd = fs.openSync(ws, fs.constants.O_RDONLY);
+  try {
+    const helper = path.resolve('native/directory-read/read');
+    const probe = (name: string) => spawnSync(helper, ['--probe-missing', name],
+      { stdio: ['ignore', 'pipe', 'pipe', fd, 'pipe'] });
+    const missing = probe('sub/missing');
+    assert.equal(missing.status, 0);
+    assert.equal(missing.stdout.length, 0);
+    assert.match(String(missing.output[4]), /^v1 missing [0-9]+ [0-9]+ [0-9]+ -?[0-9]+ [0-9]+ -?[0-9]+ [0-9]+\n$/);
+    for (const name of ['absent/leaf', 'link/leaf', '../escape', '/absent']) {
+      const invalid = probe(name);
+      assert.notEqual(invalid.status, 0, name);
+      assert.doesNotMatch(String(invalid.output[4]), /v1 missing/, name);
+    }
+    write(ws, 'sub/existing', 'value');
+    const existing = probe('sub/existing');
+    assert.notEqual(existing.status, 0);
+    assert.doesNotMatch(String(existing.output[4]), /v1 missing/);
+  } finally { fs.closeSync(fd); }
+});
+
+test('directory backup stream copies all binary bytes from the pinned directory', async () => {
+  const root = fs.realpathSync(tmpDir());
+  const grant = path.join(root, 'grant');
+  fs.mkdirSync(grant);
+  fs.mkdirSync(path.join(grant, 'sub'));
+  const original = Buffer.alloc(2 * 1024 * 1024 + 17);
+  for (let i = 0; i < original.length; i++) original[i] = i % 251;
+  fs.writeFileSync(path.join(grant, 'sub', 'data'), original, { mode: 0o751 });
+  const fd = fs.openSync(grant, 'r');
+  const destination = await fs.promises.open(path.join(root, 'sidecar'), 'wx+', 0o600);
+  try {
+    fs.renameSync(grant, path.join(root, 'moved'));
+    fs.mkdirSync(grant);
+    fs.mkdirSync(path.join(grant, 'sub'));
+    fs.writeFileSync(path.join(grant, 'sub', 'data'), 'replacement');
+    const result = await copyStableDirectoryFile({ fd, relative: 'sub/data' }, destination, new AbortController().signal);
+    assert.deepEqual(fs.readFileSync(path.join(root, 'sidecar')), original);
+    assert.equal(result.bytes, original.length);
+    assert.equal(result.sha256, (await import('node:crypto')).createHash('sha256').update(original).digest('hex'));
+    const stat = fs.statSync(path.join(root, 'moved', 'sub', 'data'), { bigint: true });
+    assert.equal(result.metadata.dev, String(stat.dev));
+    assert.equal(result.metadata.ino, String(stat.ino));
+    assert.equal(result.metadata.mode, 0o751);
+    assert.equal(result.metadata.nlink, String(stat.nlink));
+    const parent = fs.statSync(path.join(root, 'moved', 'sub'), { bigint: true });
+    assert.deepEqual(result.metadata.parent, { dev: String(parent.dev), ino: String(parent.ino) });
+    const aborted = new AbortController(); aborted.abort();
+    await assert.rejects(copyStableDirectoryFile({ fd, relative: 'data' }, destination, aborted.signal));
+  } finally { await destination.close(); fs.closeSync(fd); }
+});
+
+test('directory backup stream rejects zero-progress writes and failed sync', async () => {
+  const root = fs.realpathSync(tmpDir());
+  fs.writeFileSync(path.join(root, 'data'), Buffer.alloc(128 * 1024, 42));
+  const fd = fs.openSync(root, 'r');
+  try {
+    for (const fault of ['write', 'sync'] as const) {
+      const destination = await fs.promises.open(path.join(root, `sidecar-${fault}`), 'wx+', 0o600);
+      try {
+        if (fault === 'write') Object.defineProperty(destination, 'write', { value: async () => ({ bytesWritten: 0, buffer: Buffer.alloc(0) }) });
+        else destination.sync = async () => { throw new Error('injected sync failure'); };
+        await assert.rejects(copyStableDirectoryFile({ fd, relative: 'data' }, destination, new AbortController().signal),
+          fault === 'write' ? /short write/ : /injected sync failure/);
+      } finally { await destination.close(); }
+    }
+  } finally { fs.closeSync(fd); }
+});
+
+test('bound directory publication uses prior descriptor state and restores bytes and mode', async () => {
+  const root = fs.realpathSync(tmpDir()), grant = path.join(root, 'grant');
+  fs.mkdirSync(grant); fs.mkdirSync(path.join(grant, 'sub'));
+  const original = Buffer.from([0, 255, 67, 10, 128]), target = path.join(grant, 'sub', 'data');
+  fs.writeFileSync(target, original, { mode: 0o751 });
+  const fd = fs.openSync(grant, 'r');
+  const before = await fs.promises.open(path.join(root, 'before'), 'wx+', 0o600);
+  const current = await fs.promises.open(path.join(root, 'current'), 'wx+', 0o600);
+  try {
+    const backup = await copyStableDirectoryFile({ fd, relative: 'sub/data' }, before, new AbortController().signal);
+    const invalid = publishDirectoryFile({ fd: -1, relative: 'sub/data', expected: backup.metadata, content: Buffer.from('INVALID') });
+    assert.equal(invalid.kind, 'not_published', JSON.stringify(invalid));
+    assert.deepEqual(fs.readFileSync(target), original);
+    const published = publishDirectoryFile({ fd, relative: 'sub/data', expected: backup.metadata, content: Buffer.from('NEW_BYTES') });
+    assert.equal(published.kind, 'durable', JSON.stringify(published));
+    assert.equal(fs.readFileSync(target, 'utf8'), 'NEW_BYTES');
+    assert.equal(fs.statSync(target).mode & 0o7777, 0o751);
+    const stale = publishDirectoryFile({ fd, relative: 'sub/data', expected: backup.metadata, content: Buffer.from('STALE') });
+    assert.equal(stale.kind, 'not_published', JSON.stringify(stale));
+    assert.equal(fs.readFileSync(target, 'utf8'), 'NEW_BYTES');
+    fs.chmodSync(target, 0o600);
+    const changed = await copyStableDirectoryFile({ fd, relative: 'sub/data' }, current, new AbortController().signal);
+    const restored = publishDirectoryFile({ fd, relative: 'sub/data', expected: changed.metadata, content: original, mode: backup.metadata.mode });
+    assert.equal(restored.kind, 'durable', JSON.stringify(restored));
+    assert.deepEqual(fs.readFileSync(target), original);
+    assert.equal(fs.statSync(target).mode & 0o7777, 0o751);
+    if (restored.kind === 'durable') {
+      const stat = fs.statSync(target, { bigint: true });
+      assert.equal(restored.observation.ino, String(stat.ino));
+      assert.equal(restored.observation.mode, 0o751);
+      assert.deepEqual(restored.observation.parent, backup.metadata.parent);
+    }
+  } finally { await before.close(); await current.close(); fs.closeSync(fd); }
+});
+
+test('bound directory removal checks the current target and retains uncertain effects', async () => {
+  const root = fs.realpathSync(tmpDir()), target = path.join(root, 'value'), fd = fs.openSync(root, 'r');
+  const helper = path.join(root, 'write-test');
+  execFileSync('cc', ['-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-DDIRECTORY_WRITE_TEST', '-o', helper, 'native/directory-write/write.c']);
+  try {
+    for (const scenario of ['durable', 'stale', 'hardlink', 'death', 'death-capture', 'collision', 'wrong-bytes', 'wrong-size', 'large', 'post-write', 'empty', 'uppercase-id'] as const) {
+      const original = scenario === 'large' ? Buffer.alloc(2 * 1024 * 1024 + 17, 0xa5) : scenario === 'empty' ? Buffer.alloc(0) : Buffer.from('ORIGINAL');
+      if (scenario === 'large') { original[0] = 0; original[original.length - 1] = 255; }
+      fs.writeFileSync(target, original);
+      const sidecar = await fs.promises.open(path.join(root, `${scenario}.backup`), 'wx+', 0o600);
+      const priorWriter = scenario === 'post-write' ? fs.openSync(target, 'r+') : undefined;
+      try {
+        const backup = await copyStableDirectoryFile({ fd, relative: 'value' }, sidecar, new AbortController().signal);
+        const transactionId = scenario === 'uppercase-id' ? randomUUID().toUpperCase() : randomUUID(), expectedBytes = scenario === 'wrong-bytes' ? Buffer.from('MUTATED!') :
+          scenario === 'wrong-size' ? Buffer.from('SHORT') : original;
+        const quarantine = path.join(root, `.litcode-remove-${transactionId}`);
+        if (scenario === 'stale') fs.writeFileSync(target, 'REPLACED');
+        if (scenario === 'hardlink') fs.linkSync(target, path.join(root, 'link'));
+        if (scenario === 'collision') { fs.mkdirSync(quarantine); fs.writeFileSync(path.join(quarantine, 'foreign'), 'KEEP'); }
+        let result: ReturnType<typeof removeDirectoryFile>;
+        if (scenario === 'death' || scenario === 'death-capture') {
+          const nativeSpawn = childProcess.spawnSync;
+          Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true,
+            value: (_file: unknown, args: unknown, options: object) => Reflect.apply(nativeSpawn, childProcess, [helper, args, {
+              ...options, env: { ...process.env, DIRECTORY_WRITE_TEST_POINT: scenario === 'death' ? 'remove_after_quarantine' : 'remove_after_capture', DIRECTORY_WRITE_TEST_SELF_KILL: '1' },
+            }]) });
+          syncBuiltinESMExports();
+          try { result = removeDirectoryFile({ fd, relative: 'value', expected: backup.metadata, expectedBytes, transactionId }); }
+          finally {
+            Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: nativeSpawn });
+            syncBuiltinESMExports();
+          }
+        } else result = removeDirectoryFile({ fd, relative: 'value', expected: backup.metadata, expectedBytes, transactionId });
+        assert.equal(result.kind, ['durable', 'large', 'post-write', 'empty', 'uppercase-id'].includes(scenario) ? 'quarantined' : ['death', 'death-capture', 'wrong-bytes'].includes(scenario) ? 'unknown' : 'not_removed');
+        if (result.kind === 'unknown' || result.kind === 'quarantined') assert.equal(result.transactionId, transactionId);
+        assert.equal(fs.existsSync(target), !['durable', 'death', 'death-capture', 'wrong-bytes', 'large', 'post-write', 'empty', 'uppercase-id'].includes(scenario), scenario);
+        if (scenario === 'stale') assert.equal(fs.readFileSync(target, 'utf8'), 'REPLACED');
+        if (scenario === 'hardlink') { assert.equal(fs.readFileSync(path.join(root, 'link'), 'utf8'), 'ORIGINAL'); fs.unlinkSync(path.join(root, 'link')); }
+        if (scenario === 'collision') assert.equal(fs.readFileSync(path.join(quarantine, 'foreign'), 'utf8'), 'KEEP');
+        if (['durable', 'large', 'death', 'death-capture', 'wrong-bytes', 'post-write', 'empty', 'uppercase-id'].includes(scenario)) assert.deepEqual(fs.readFileSync(path.join(quarantine, 'held')), original);
+        if (result.kind === 'quarantined') {
+          const held = fs.statSync(path.join(quarantine, 'held'), { bigint: true }), directory = fs.statSync(quarantine, { bigint: true });
+          assert.equal(result.observation.ino, String(held.ino));
+          assert.deepEqual(result.observation.parent, { dev: String(directory.dev), ino: String(directory.ino) });
+        }
+        if (priorWriter !== undefined) {
+          fs.writeSync(priorWriter, Buffer.from('MUTATED!'), 0, 8, 0); fs.fsyncSync(priorWriter);
+          assert.equal(fs.readFileSync(path.join(quarantine, 'held'), 'utf8'), 'MUTATED!');
+        }
+        assert.deepEqual(fs.readFileSync(path.join(root, `${scenario}.backup`)), original);
+      } finally { if (priorWriter !== undefined) fs.closeSync(priorWriter); await sidecar.close(); }
+      if (fs.existsSync(target)) fs.unlinkSync(target);
+    }
+  } finally { fs.closeSync(fd); }
+});
+
+test('bound directory publication refuses a different parent holding the same hard-linked file', async () => {
+  const root = fs.realpathSync(tmpDir());
+  fs.mkdirSync(path.join(root, 'approved')); fs.mkdirSync(path.join(root, 'replacement'));
+  const original = Buffer.from('PARENT_BOUND_BYTES');
+  fs.writeFileSync(path.join(root, 'approved/data'), original, { mode: 0o751 });
+  fs.linkSync(path.join(root, 'approved/data'), path.join(root, 'replacement/data'));
+  const fd = fs.openSync(root, 'r'), sidecar = await fs.promises.open(path.join(root, 'backup'), 'wx+', 0o600);
+  try {
+    const backup = await copyStableDirectoryFile({ fd, relative: 'approved/data' }, sidecar, new AbortController().signal);
+    fs.renameSync(path.join(root, 'approved'), path.join(root, 'original'));
+    fs.renameSync(path.join(root, 'replacement'), path.join(root, 'approved'));
+    const result = publishDirectoryFile({ fd, relative: 'approved/data', expected: backup.metadata, content: Buffer.from('REPLACEMENT_WRITE') });
+    assert.equal(result.kind, 'not_published', JSON.stringify(result));
+    assert.deepEqual(fs.readFileSync(path.join(root, 'approved/data')), original);
+    assert.deepEqual(fs.readFileSync(path.join(root, 'original/data')), original);
+  } finally { await sidecar.close(); fs.closeSync(fd); }
+});
+
+test('bound directory publication retains unknown on process death around rename', async () => {
+  const root = fs.realpathSync(tmpDir()), helper = path.join(root, 'write-test');
+  execFileSync('cc', ['-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-DDIRECTORY_WRITE_TEST',
+    '-o', helper, 'native/directory-write/write.c']);
+  const fd = fs.openSync(root, 'r');
+  try {
+    for (const phase of ['before_rename', 'after_rename'] as const) {
+      const target = path.join(root, phase), original = Buffer.from('ORIGINAL_PROCESS_DEATH');
+      fs.writeFileSync(target, original, { mode: 0o751 });
+      const sidecar = await fs.promises.open(path.join(root, `${phase}.backup`), 'wx+', 0o600);
+      try {
+        const backup = await copyStableDirectoryFile({ fd, relative: phase }, sidecar, new AbortController().signal);
+        const nativeSpawn = childProcess.spawnSync;
+        let result: ReturnType<typeof publishDirectoryFile>;
+        Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true,
+          value: (_file: unknown, args: unknown, options: object) => Reflect.apply(nativeSpawn, childProcess, [helper, args, {
+            ...options, env: { ...process.env, DIRECTORY_WRITE_TEST_POINT: phase, DIRECTORY_WRITE_TEST_SELF_KILL: '1' },
+          }]) });
+        syncBuiltinESMExports();
+        try { result = publishDirectoryFile({ fd, relative: phase, expected: backup.metadata, content: Buffer.from('NEW_AFTER_DEATH') }); }
+        finally {
+          Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: nativeSpawn });
+          syncBuiltinESMExports();
+        }
+        assert.equal(result.kind, 'unknown', `${phase}: ${JSON.stringify(result)}`);
+        assert.deepEqual(fs.readFileSync(target), phase === 'before_rename' ? original : Buffer.from('NEW_AFTER_DEATH'));
+        assert.deepEqual(fs.readFileSync(path.join(root, `${phase}.backup`)), original);
+      } finally { await sidecar.close(); }
+    }
+  } finally { fs.closeSync(fd); }
+});
+
+test('directory Read reports same-descriptor changes after a blocked stream', async () => {
+  const root = fs.realpathSync(tmpDir());
+  const dir = path.join(root, 'grant');
+  fs.mkdirSync(dir);
+  const fd = fs.openSync(dir, fs.constants.O_RDONLY);
+  const file = path.join(dir, 'data');
+  const helper = path.resolve('native/directory-read/read');
+  const bytes = Buffer.alloc(4 * 1024 * 1024, 65);
+  try {
+    for (const action of ['rewrite', 'truncate', 'replace-directory'] as const) {
+      fs.writeFileSync(file, bytes);
+      const child = spawn(helper, ['data'], { stdio: ['ignore', 'pipe', 'ignore', fd, 'pipe'] });
+      const meta = child.stdio[4];
+      assert.ok(meta && 'read' in meta);
+      assert.ok(child.stdout);
+      let status = '';
+      const begun = new Promise<void>((resolve, reject) => {
+        meta.on('data', chunk => { status += String(chunk); if (status.includes('\n')) resolve(); });
+        child.once('error', reject);
+      });
+      const exited = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+      await begun;
+      if (action === 'rewrite') {
+        const target = fs.openSync(file, 'r+');
+        try { fs.writeSync(target, Buffer.from('changed'), 0, 7, 0); } finally { fs.closeSync(target); }
+      } else if (action === 'truncate') fs.truncateSync(file, 32);
+      else {
+        fs.renameSync(dir, path.join(root, 'moved'));
+        fs.mkdirSync(dir);
+        fs.writeFileSync(file, 'replacement');
+      }
+      let count = 0;
+      for await (const chunk of child.stdout) count += Buffer.byteLength(chunk);
+      assert.equal(await exited, 0);
+      assert.match(status, /^v1 begin [^\n]+\nv1 (?:stable|changed) [^\n]+\n$/);
+      assert.match(status, action === 'replace-directory' ? /\nv1 stable / : /\nv1 changed /);
+      if (action === 'replace-directory') assert.equal(count, bytes.length);
+    }
+  } finally { fs.closeSync(fd); }
+});
+
+test('directory Read consumer rejects a changed descriptor and marks early windows partial', async () => {
+  const root = fs.realpathSync(tmpDir());
+  const dir = path.join(root, 'grant');
+  fs.mkdirSync(dir);
+  const file = path.join(dir, 'data');
+  fs.writeFileSync(file, Buffer.alloc(4 * 1024 * 1024, 65));
+  const fd = fs.openSync(dir, fs.constants.O_RDONLY);
+  const originalSpawn = childProcess.spawn;
+  let mutated = false;
+  childProcess.spawn = ((...args: Parameters<typeof originalSpawn>) => {
+    const child = originalSpawn(...args);
+    if (String(args[0]).endsWith('/native/directory-read/read')) {
+      const meta = child.stdio[4];
+      assert.ok(meta && 'on' in meta);
+      meta.once('data', () => { fs.truncateSync(file, 16); mutated = true; });
+    }
+    return child;
+  }) as typeof originalSpawn;
+  syncBuiltinESMExports();
+  try {
+    const ctx = makeContext(root, { verifiedReadDirectory: { fd, root: dir } });
+    await assert.rejects(run('read_file', { path: 'grant/data', offset: 2 }, ctx), /changed during read/);
+    assert.equal(mutated, true);
+  } finally {
+    childProcess.spawn = originalSpawn;
+    syncBuiltinESMExports();
+  }
+  try {
+    fs.writeFileSync(file, 'one\ntwo\nthree');
+    const events: unknown[] = [];
+    const ctx = makeContext(root, { verifiedReadDirectory: { fd, root: dir }, hostResult: value => events.push(value) });
+    assert.equal(await run('read_file', { path: 'grant/data', limit: 1 }, ctx), 'one');
+    assert.match(JSON.stringify(events), /"truncated":true/);
+  } finally { fs.closeSync(fd); }
 });
 
 test("read_file truncates output at maxOutputBytes and notes it", async () => {

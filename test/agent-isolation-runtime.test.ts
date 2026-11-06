@@ -59,9 +59,12 @@ async function fixture(provider: ModelProvider, override: Partial<SessionConfig>
   const controller = new AbortController();
   const runtime = await createRuntime(config, provider, controller.signal);
   config.tools = pinToolSchemas(runtime.tools);
-  return { workspace, config, controller, runtime,
-    invoke: (name: string, input: unknown) => tool(runtime.tools, name).execute(input, context(workspace)),
-    async cleanup() { await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); },
+  const session = Session.open(workspace, { config });
+  await runtime.bindSession!(session);
+  const tools = runtime.buildTools(session.config, session.id);
+  return { workspace, config, controller, runtime, session,
+    invoke: (name: string, input: unknown) => tool(tools, name).execute(input, { ...context(workspace), session }),
+    async cleanup() { await runtime.close(); session.close(); fs.rmSync(workspace, { recursive: true, force: true }); },
   };
 }
 
@@ -141,6 +144,8 @@ test('owned checkout rebuilds task, memory, checkpoint and worktree tools; resum
     const session = Session.open(child.workspace, { id: child.session_id, storageRoot: f.workspace });
     try {
       assert.equal(session.config.workspace, child.workspace);
+      assert.equal(session.config.parentSessionId, f.session.id);
+      assert.equal(session.config.parentPlanId, f.session.planId);
       assert.equal(session.config.features?.background, false);
       assert.equal(session.config.features?.agentIdle, false);
       assert.equal(session.config.features?.workflow, false);
@@ -335,9 +340,12 @@ async function hookFixture(hookPath: string, removeMarker: string, workspace = f
   const controller = new AbortController();
   const runtime = await createRuntime(config, provider, controller.signal);
   config.tools = pinToolSchemas(runtime.tools);
+  const session = Session.open(workspace, { config });
+  await runtime.bindSession!(session);
+  const tools = runtime.buildTools(session.config, session.id);
   return { workspace, runtime,
-    invoke: (name: string, input: unknown) => tool(runtime.tools, name).execute(input, context(workspace)),
-    async cleanup() { await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); } };
+    invoke: (name: string, input: unknown) => tool(tools, name).execute(input, context(workspace)),
+    async cleanup() { await runtime.close(); session.close(); fs.rmSync(workspace, { recursive: true, force: true }); } };
 }
 
 test('WorktreeCreate hooks supply and remove the isolated child checkout outside git', async () => {
@@ -362,11 +370,14 @@ test('a non-git workspace without WorktreeCreate hooks takes the source advisory
   const controller = new AbortController();
   const runtime = await createRuntime(config, provider, controller.signal);
   config.tools = pinToolSchemas(runtime.tools);
+  const parent = Session.open(workspace, { config });
   try {
-    await assert.rejects(tool(runtime.tools, 'agent').execute({ prompt: 'inspect', isolation: 'worktree' }, context(workspace)),
+    await runtime.bindSession!(parent);
+    await assert.rejects(tool(runtime.buildTools(parent.config, parent.id), 'agent').execute({ prompt: 'inspect', isolation: 'worktree' }, context(workspace)),
       /not in a git repository and no WorktreeCreate hooks are configured/);
   } finally {
     await runtime.close();
+    parent.close();
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });

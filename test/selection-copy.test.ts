@@ -72,8 +72,9 @@ test('selection copy keeps source latch, whitespace, byte cap and native no-clea
   assert.deepEqual(feedback, ['alpha', 'alpha']); assert.equal(observer.peek(), null);
   observer.reset(); text = 'x'.repeat(100001); assert.throws(() => observer.change(), /100000 UTF-8 bytes/);
   assert.equal(copied.length, 3);
-  const env = { terminal: process.env.TERM_PROGRAM, version: process.env.TERM_PROGRAM_VERSION };
+  const env = { terminal: process.env.TERM_PROGRAM, version: process.env.TERM_PROGRAM_VERSION, term: process.env.TERM };
   try {
+    process.env.TERM = 'xterm-256color';
     process.env.TERM_PROGRAM = 'iTerm.app';
     assert.match(selectionCopyFeedback('👩‍💻').text, /sent 1 char via OSC 52.*hold Option/);
     process.env.TERM_PROGRAM = 'Apple_Terminal';
@@ -82,7 +83,7 @@ test('selection copy keeps source latch, whitespace, byte cap and native no-clea
     assert.equal(selectionCopyFeedback('中').timeoutMs, 6000);
     assert.equal(selectionCopyFeedback('ascii').timeoutMs, 4000);
   } finally {
-    for (const [key, value] of [['TERM_PROGRAM', env.terminal], ['TERM_PROGRAM_VERSION', env.version]] as const)
+    for (const [key, value] of [['TERM_PROGRAM', env.terminal], ['TERM_PROGRAM_VERSION', env.version], ['TERM', env.term]] as const)
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
   const payloads: string[] = [];

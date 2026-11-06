@@ -1,0 +1,3 @@
+2026-10-17T17:10:00Z	package	W126-01 scriptPath文件加载	Chn 19175、Qt 18614、Oo 18913（chunk-hedqf2m1.js）；a7gk0710工具schema；wE=524288	O_NOFOLLOW、inode/nlink拒链、常规文件、读取前后大小上限、描述符读取、加载后解析meta	workflow-script新增1；工作流家族43/43；tsc 0；build 0
+2026-10-17T17:18:00Z	decision	W126-01 适配	相对路径按会话工作区解析；源的工具权限/read-tool检查无对应物；name/resumeFromRunId/journal/重新挂接仍开放	输入schema新增scriptPath与三选一anyOf；zod refine恰好其一	无依赖变化
+2026-10-17T17:25:00Z	verification	W126-01 验收：全量2,204/2,204、链768/768、notices 0	identity adad009d…；source index 75 chunks不变	.audit/w126-01-full.txt、.audit/w126-01-chain.txt

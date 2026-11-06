@@ -15,6 +15,10 @@ import { createShellSamplingScope } from '../src/shell-sampling-source.js';
 import { createShellCompoundPolicy } from '../src/shell-compound-policy-source.js';
 import { createPermissionEntry } from '../src/permission-entry-source.js';
 import { createPermissionInputParser } from '../src/shell-input-parser-source.js';
+import { Ye } from '../src/plugin-chain-source.js';
+import { E6 } from '../src/shell-analyser-source.js';
+import { w6 } from '../src/shell-command-clamp-source.js';
+import { createShellComplexPolicy } from '../src/shell-complex-policy-source.js';
 
 type State = { alwaysAllowRules: Record<string, string[]>; alwaysDenyRules: Record<string, string[]>;
   alwaysAskRules: Record<string, string[]>; blockReadsOutsideWorkingDirectories?: boolean };
@@ -26,15 +30,18 @@ const passthrough = { behavior: 'passthrough' };
 type Budget = { left: number; chars: number; judged: Map<unknown, unknown>; asked: Map<unknown, unknown> };
 function fixture(options: { complexResult?: object | null; nestedResult?: object | null;
   single?: (...args: unknown[]) => unknown; compound?: (...args: unknown[]) => unknown;
-  vector?: (...args: unknown[]) => unknown } = {}) {
+  vector?: (...args: unknown[]) => unknown; fallback?: (...args: unknown[]) => unknown;
+  Dl?: (reason: { type?: string } | undefined) => unknown;
+  projection?: { RTr: (...args: unknown[]) => unknown;
+    CX: () => boolean; A3e: (...args: unknown[]) => unknown } } = {}) {
   const calls: string[] = [];
   const nestedContexts: { depth: number; budget: Budget }[] = [];
   const policy = createShellCommandPolicy({
     $3e: () => null, A3e: () => { throw new Error('unexpected aggregate'); }, ATr: () => false,
     CTr: async () => true, CX: () => false, Cwe: () => false, Cy: () => false, Dcn: () => null,
-    Dl: () => undefined, EX: () => false, Edo: () => 'fixture', Fwe: () => true,
+    Dl: options.Dl ?? (() => undefined), EX: () => false, Edo: () => 'fixture', Fwe: () => true,
     GTr: rules.GTr, MO: (value: string) => value, MTr: async () => { calls.push('complex'); return options.complexResult ?? null; },
-    Mcn: () => passthrough, Mk: () => new Set(['/fixture']), N3e: () => null,
+    Mcn: options.fallback ?? (() => passthrough), Mk: () => new Set(['/fixture']), N3e: () => null,
     Nwe: async (_command: string, nested: { depth: number; budget: Budget }) => {
       calls.push('nested'); nestedContexts.push(nested); return options.nestedResult ?? null;
     },
@@ -44,12 +51,13 @@ function fixture(options: { complexResult?: object | null; nestedResult?: object
     Sun: () => false, TVt, Tv: () => false, Uwe: rules.Uwe,
     VW: (reason: string) => ({ behavior: 'ask', decisionReason: { type: 'safetyCheck', reason, circuitBreaker: 'outsideReadsBlocked' } }),
     X3: () => false, X5e: () => passthrough, XYt: () => [], Xcn: async () => null, Y5e: () => false,
-    YTr: 'fixture', Ye: () => undefined, _Tr: () => null, _n: (value: unknown) => String(value),
+    YTr: 'fixture', Ye, _Tr: () => null, _n: (value: unknown) => String(value),
     _un: () => {}, arn: () => ({ behavior: 'ask' }), bG: () => passthrough, bL: (value: string[]) => value,
     bwe: () => false, d: () => 'fixture', dO: () => {}, de: (value: State) => value,
     e$: () => undefined, ie: () => ({}), jcn: options.single ?? (() => ({ behavior: 'allow', decisionReason: { type: 'other', reason: 'fixture' } })),
     k: () => false, ki: { name: 'Bash' }, oTr: 100, pTr: () => false, pwe: (value: unknown) => value,
     qe: { isSandboxingEnabled: () => false, isAutoAllowBashIfSandboxedEnabled: () => false },
+    ...options.projection,
     se: () => '/fixture', to: (value: string) => value, u3e: () => false,
     vX: () => { calls.push('path'); return passthrough; }, wR: () => ({}), x3e: () => null,
     xTr: () => false, xwe: () => true, yo: (_fs: object, value: string) => ({ resolvedPath: value }), yw: () => false,
@@ -59,6 +67,496 @@ function fixture(options: { complexResult?: object | null; nestedResult?: object
 const invoke = (policy: ReturnType<typeof createShellCommandPolicy>, input: { command: string }, value: State,
   capture?: (count: number, keeps: boolean[]) => void) =>
   policy(input, value, undefined, undefined, undefined, undefined, capture);
+
+test('copied parser and command aggregation retain outer shell keys under injected feature state', async () => {
+  const command = 'bash -c "printf hello"';
+  const parsed = E6(command, await w6(command));
+  assert.equal(parsed.kind, 'simple');
+  assert.deepEqual(parsed.commands.map((item: { argv: string[] }) => item.argv), [['bash', '-c', 'printf hello']]);
+  const unused = () => { throw new Error('unexpected complex-policy dependency'); };
+  const complex = createShellComplexPolicy({ ...rules, ...store, $3e: unused, dO: unused, d: unused,
+    pwe: unused, Xcn: unused, se: unused, jcn: unused });
+  const texts = parsed.commands.map((item: { text: string }) => item.text);
+  const projected = complex.RTr(texts, parsed.commands, '/fixture', '/other');
+  assert.deepEqual(projected.subcommands, [command]);
+  assert.equal(projected.astCommandsByIdx[0], parsed.commands[0]);
+
+  for (const enabled of [false, true]) {
+    const featureCalls: unknown[][] = [];
+    const compound = createShellCompoundPolicy({ cd: (...args: unknown[]) => { featureCalls.push(args); return enabled; },
+      Cwe: () => false, EX: () => false, se: () => '/fixture', Rl: message });
+    for (const behavior of ['allow', 'deny'] as const) {
+      const decision = { behavior, decisionReason: { type: 'other', reason: 'fixture' } };
+      const run = fixture({ single: () => decision,
+        projection: { RTr: complex.RTr, CX: compound.CX, A3e: compound.A3e } });
+      const result = await invoke(run.policy, { command }, state());
+      assert.equal(result.behavior, behavior);
+      assert.deepEqual([...result.decisionReason.reasons.keys()], [command]);
+      assert.equal(result.decisionReason.reasons.get(command), decision);
+    }
+    const repeated = 'printf hi > a; printf hi; printf hi';
+    for (const behavior of ['allow', 'deny'] as const) {
+      const decision = { behavior, decisionReason: { type: 'other', reason: 'fixture' } };
+      const run = fixture({ single: () => decision,
+        projection: { RTr: complex.RTr, CX: compound.CX, A3e: compound.A3e } });
+      const result = await invoke(run.policy, { command: repeated }, state());
+      assert.equal(result.behavior, behavior);
+      assert.deepEqual([...result.decisionReason.reasons.keys()], enabled
+        ? ['printf hi > a', 'printf hi', 'printf hi #2'] : ['printf hi']);
+    }
+    assert.deepEqual(featureCalls, Array.from({ length: 4 }, () =>
+      ['tengu_moonlit_kettle', { safe: true }]));
+    const decisions = [{ behavior: 'allow' }, { behavior: 'deny' }, { behavior: 'allow' }];
+    const duplicateKeys = compound.A3e(['printf hi', 'printf hi', 'printf hi'],
+      [{ redirects: [{ fd: 2, op: '>', target: 'a' }] }, { redirects: [] }, { redirects: [] }], decisions);
+    assert.deepEqual([...duplicateKeys.keys()], ['printf hi 2> a', 'printf hi', 'printf hi #2']);
+    assert.deepEqual([...duplicateKeys.values()], decisions);
+  }
+});
+
+test('D3e aggregates mixed Mcn decisions after the initial early-return gates', async () => {
+  const command = 'printf hi > a; printf hi; printf hi; echo end';
+  const initialAsk = { behavior: 'ask', decisionReason: { type: 'other', reason: 'initial' } };
+  const initialPass = { behavior: 'passthrough' };
+  const later = [
+    { behavior: 'allow' },
+    { behavior: 'deny', message: 'later denial' },
+    { behavior: 'ask', decisionReason: { type: 'rule' } },
+    { behavior: 'allow' },
+  ];
+  for (const hasInitialAsk of [false, true]) {
+    let singleCalls = 0;
+    let fallbackCalls = 0;
+    const seen: string[] = [];
+    const single = (input: unknown) => {
+      const item = input as { command: string };
+      singleCalls++;
+      if (singleCalls <= 4) return hasInitialAsk && singleCalls === 1 ? initialAsk : initialPass;
+      seen.push(item.command);
+      return later[fallbackCalls++];
+    };
+    const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+      d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+    const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+      se: () => '/fixture', Rl: message });
+    const run = fixture({ single, fallback: (...args: unknown[]) => Reflect.apply(complex.Mcn, undefined, args),
+      projection: { RTr: complex.RTr, CX: compound.CX, A3e: compound.A3e } });
+    const result = await invoke(run.policy, { command }, state());
+    assert.equal(singleCalls, 8);
+    assert.deepEqual(seen, ['printf hi', 'printf hi', 'printf hi', 'echo end']);
+    assert.equal(result.behavior, hasInitialAsk ? 'ask' : 'passthrough');
+    assert.deepEqual([...result.decisionReason.reasons.entries()], [
+      ['printf hi', later[1]], ['echo end', later[3]],
+    ]);
+  }
+});
+
+test('D3e replaces an equal-priority result when only the newcomer has a safety-check reason', async () => {
+  const command = 'printf hi > a; printf hi; printf hi; echo end';
+  const plain = { behavior: 'ask', decisionReason: { type: 'other', reason: 'plain' } };
+  const safety = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'safety', circuitBreaker: 'fixture' } };
+  const allow = { behavior: 'allow' };
+  const later = [plain, safety, safety, allow];
+  let fallbackCalls = 0;
+  const seen: string[] = [];
+  const single = () => ({ behavior: 'passthrough' });
+  const fallback = (input: unknown) => {
+    const item = input as { command: string };
+    seen.push(item.command);
+    return later[fallbackCalls++];
+  };
+  const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+    d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+  const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+    se: () => '/fixture', Rl: message });
+  const run = fixture({ single, fallback,
+    Dl: (reason) => reason?.type === 'safetyCheck' ? reason : undefined,
+    projection: { RTr: complex.RTr, CX: compound.CX, A3e: compound.A3e } });
+  const result = await invoke(run.policy, { command }, state());
+  assert.deepEqual(seen, ['printf hi', 'printf hi', 'printf hi', 'echo end']);
+  assert.equal(result.behavior, 'passthrough');
+  assert.equal(result.decisionReason.reasons.get('printf hi'), safety);
+  assert.notEqual(result.decisionReason.reasons.get('printf hi'), plain);
+});
+
+test('D3e replaces an equal-priority Mcn result only when the newcomer alone has a Dl reason', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const withoutReason = { behavior: 'ask', decisionReason: { type: 'other', reason: 'without' } };
+  const withReason = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'with', circuitBreaker: 'fixture' } };
+  const priorWithReason = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'prior', circuitBreaker: 'fixture' } };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    replace: [withoutReason, withReason, allow],
+    keep: [priorWithReason, withoutReason, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    let fallbackCalls = 0;
+    const seen: string[] = [];
+    const single = () => ({ behavior: 'passthrough' });
+    const fallback = (input: unknown) => {
+      const item = input as { command: string };
+      seen.push(item.command);
+      return later[fallbackCalls++];
+    };
+    const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+      d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+    const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+      se: () => '/fixture', Rl: message });
+    const run = fixture({ single, fallback, Dl,
+      projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+    const result = await invoke(run.policy, { command }, state());
+    assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+    assert.equal(result.behavior, 'passthrough');
+    const kept = result.decisionReason.reasons.get('printf hi');
+    assert.equal(kept, name === 'keep' ? priorWithReason : withReason);
+    assert.notEqual(kept, name === 'keep' ? withoutReason : withoutReason);
+  }
+});
+
+test('D3e replaces a same-key result by behavior rank even when only the lower rank has a Dl reason', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const lowWithReason = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'low', circuitBreaker: 'fixture' } };
+  const highWithoutReason = { behavior: 'deny', message: 'higher rank' };
+  const lowNewcomerWithReason = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'lower newcomer', circuitBreaker: 'fixture' } };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    upgrade: [lowWithReason, highWithoutReason, allow],
+    downgrade: [highWithoutReason, lowNewcomerWithReason, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    let fallbackCalls = 0;
+    const seen: string[] = [];
+    const single = () => ({ behavior: 'passthrough' });
+    const fallback = (input: unknown) => {
+      const item = input as { command: string };
+      seen.push(item.command);
+      return later[fallbackCalls++];
+    };
+    const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+      d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+    const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+      se: () => '/fixture', Rl: message });
+    const run = fixture({ single, fallback, Dl,
+      projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+    const result = await invoke(run.policy, { command }, state());
+    assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+    assert.equal(result.behavior, 'passthrough');
+    const kept = result.decisionReason.reasons.get('printf hi');
+    assert.equal(kept, highWithoutReason);
+    assert.notEqual(kept, name === 'upgrade' ? lowWithReason : lowNewcomerWithReason);
+    assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+  }
+});
+
+test('D3e replaces a same-key result by the next adjacent behavior rank and keeps the prior object when the newcomer is lower', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const passthroughWithReason = { behavior: 'passthrough', decisionReason: { type: 'safetyCheck', reason: 'pass', circuitBreaker: 'fixture' } };
+  const askWithoutReason = { behavior: 'ask', decisionReason: { type: 'other', reason: 'ask' } };
+  const askWithReason = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'ask', circuitBreaker: 'fixture' } };
+  const denyWithoutReason = { behavior: 'deny', message: 'deny' };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    'passthrough-to-ask': [passthroughWithReason, askWithoutReason, allow],
+    'ask-to-deny': [askWithReason, denyWithoutReason, allow],
+  };
+  const reverse = {
+    'passthrough-to-ask': [askWithoutReason, passthroughWithReason, allow],
+    'ask-to-deny': [denyWithoutReason, askWithReason, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    for (const direction of ['upgrade', 'downgrade'] as const) {
+      let fallbackCalls = 0;
+      const seen: string[] = [];
+      const injected = direction === 'upgrade' ? later : reverse[name as keyof typeof reverse];
+      const single = () => ({ behavior: 'passthrough' });
+      const fallback = (input: unknown) => {
+        const item = input as { command: string };
+        seen.push(item.command);
+        return injected[fallbackCalls++];
+      };
+      const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+        d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+      const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+        se: () => '/fixture', Rl: message });
+      const run = fixture({ single, fallback, Dl,
+        projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+      const result = await invoke(run.policy, { command }, state());
+      assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+      assert.equal(result.behavior, 'passthrough');
+      const kept = result.decisionReason.reasons.get('printf hi');
+      const first = injected[0];
+      const second = injected[1];
+      // Do>fo stores the higher-ranked object regardless of arrival order.
+      assert.equal(kept, direction === 'upgrade' ? second : first);
+      assert.notEqual(kept, direction === 'upgrade' ? first : second);
+      assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+    }
+  }
+});
+
+test('D3e keeps the higher-ranked same-key object across passthrough/deny and allow/passthrough even when only the lower rank has a Dl reason', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const passthroughWithReason = { behavior: 'passthrough', decisionReason: { type: 'safetyCheck', reason: 'pass', circuitBreaker: 'fixture' } };
+  const denyWithoutReason = { behavior: 'deny', message: 'deny' };
+  const allowWithReason = { behavior: 'allow', decisionReason: { type: 'safetyCheck', reason: 'allow', circuitBreaker: 'fixture' } };
+  const passthroughWithoutReason = { behavior: 'passthrough', decisionReason: { type: 'other', reason: 'pass' } };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    'passthrough-to-deny': [passthroughWithReason, denyWithoutReason, allow],
+    'allow-to-passthrough': [allowWithReason, passthroughWithoutReason, allow],
+  };
+  const reverse = {
+    'passthrough-to-deny': [denyWithoutReason, passthroughWithReason, allow],
+    'allow-to-passthrough': [passthroughWithoutReason, allowWithReason, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    for (const direction of ['upgrade', 'downgrade'] as const) {
+      let fallbackCalls = 0;
+      const seen: string[] = [];
+      const injected = direction === 'upgrade' ? later : reverse[name as keyof typeof reverse];
+      const single = () => ({ behavior: 'passthrough' });
+      const fallback = (input: unknown) => {
+        const item = input as { command: string };
+        seen.push(item.command);
+        return injected[fallbackCalls++];
+      };
+      const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+        d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+      const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+        se: () => '/fixture', Rl: message });
+      const run = fixture({ single, fallback, Dl,
+        projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+      const result = await invoke(run.policy, { command }, state());
+      assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+      assert.equal(result.behavior, 'passthrough');
+      const kept = result.decisionReason.reasons.get('printf hi');
+      const first = injected[0];
+      const second = injected[1];
+      // Do>fo stores the later higher-ranked object; a lower newcomer keeps the earlier one.
+      assert.equal(kept, direction === 'upgrade' ? second : first);
+      assert.notEqual(kept, direction === 'upgrade' ? first : second);
+      assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+    }
+  }
+});
+
+test('D3e keeps the higher-ranked same-key object across allow/ask and allow/deny even when only the lower rank has a Dl reason', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const allowWithReason = { behavior: 'allow', decisionReason: { type: 'safetyCheck', reason: 'allow', circuitBreaker: 'fixture' } };
+  const askWithoutReason = { behavior: 'ask', message: 'ask' };
+  const denyWithoutReason = { behavior: 'deny', message: 'deny' };
+  const askWithReason = { behavior: 'ask', message: 'ask', decisionReason: { type: 'safetyCheck', reason: 'ask', circuitBreaker: 'fixture' } };
+  const denyWithReason = { behavior: 'deny', message: 'deny', decisionReason: { type: 'safetyCheck', reason: 'deny', circuitBreaker: 'fixture' } };
+  const allowWithoutReason = { behavior: 'allow', decisionReason: { type: 'other', reason: 'allow' } };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    'allow-to-ask': [allowWithReason, askWithoutReason, allow],
+    'allow-to-deny': [allowWithReason, denyWithoutReason, allow],
+  };
+  const reverse = {
+    'allow-to-ask': [askWithReason, allowWithoutReason, allow],
+    'allow-to-deny': [denyWithReason, allowWithoutReason, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    for (const direction of ['upgrade', 'downgrade'] as const) {
+      let fallbackCalls = 0;
+      const seen: string[] = [];
+      const injected = direction === 'upgrade' ? later : reverse[name as keyof typeof reverse];
+      const single = () => ({ behavior: 'passthrough' });
+      const fallback = (input: unknown) => {
+        const item = input as { command: string };
+        seen.push(item.command);
+        return injected[fallbackCalls++];
+      };
+      const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+        d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+      const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+        se: () => '/fixture', Rl: message });
+      const run = fixture({ single, fallback, Dl,
+        projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+      const result = await invoke(run.policy, { command }, state());
+      assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+      assert.equal(result.behavior, 'passthrough');
+      const kept = result.decisionReason.reasons.get('printf hi');
+      const first = injected[0];
+      const second = injected[1];
+      // Do>fo stores the later higher-ranked object; a lower newcomer keeps the earlier one.
+      assert.equal(kept, direction === 'upgrade' ? second : first);
+      assert.notEqual(kept, direction === 'upgrade' ? first : second);
+      assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+    }
+  }
+});
+
+test('D3e keeps the earlier equal-rank object when injected Dl rejects the later safetyCheck', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const prior = { behavior: 'ask', decisionReason: { type: 'other', reason: 'prior' } };
+  const laterSafety = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'rejected', circuitBreaker: 'fixture' } };
+  const allow = { behavior: 'allow' };
+  const injected = [prior, laterSafety, allow];
+  let fallbackCalls = 0;
+  const seen: string[] = [];
+  const single = () => ({ behavior: 'passthrough' });
+  const fallback = (input: unknown) => {
+    const item = input as { command: string };
+    seen.push(item.command);
+    return injected[fallbackCalls++];
+  };
+  const accept = () => false;
+  const Dl = (reason: { type?: string; reasons?: Map<string, { decisionReason?: unknown }> } | undefined): unknown => {
+    if (!reason) return;
+    if (reason.type === 'safetyCheck') return accept() ? reason : undefined;
+    if (reason.type === 'subcommandResults') {
+      for (const item of reason.reasons?.values() ?? []) {
+        const found = Dl(item.decisionReason as typeof reason);
+        if (found) return found;
+      }
+    }
+  };
+  const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+    d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+  const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+    se: () => '/fixture', Rl: message });
+  const run = fixture({ single, fallback, Dl,
+    projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+  const result = await invoke(run.policy, { command }, state());
+  assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+  assert.equal(result.behavior, 'passthrough');
+  const kept = result.decisionReason.reasons.get('printf hi');
+  // Equal rank and the predicate rejects the newcomer, so the stored object stays.
+  assert.equal(kept, prior);
+  assert.notEqual(kept, laterSafety);
+  assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+});
+
+test('D3e stores two different non-allow keys independently and does not let one replace the other', async () => {
+  const command = 'printf hi; echo end';
+  const askHi = { behavior: 'ask', message: 'ask-hi', decisionReason: { type: 'safetyCheck', reason: 'hi', circuitBreaker: 'fixture' } };
+  const denyEnd = { behavior: 'deny', message: 'deny-end' };
+  const injected = [askHi, denyEnd];
+  let fallbackCalls = 0;
+  const seen: string[] = [];
+  const single = () => ({ behavior: 'passthrough' });
+  const fallback = (input: unknown) => {
+    const item = input as { command: string };
+    seen.push(item.command);
+    return injected[fallbackCalls++];
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+    d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+  const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+    se: () => '/fixture', Rl: message });
+  const run = fixture({ single, fallback, Dl,
+    projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+  const result = await invoke(run.policy, { command }, state());
+  assert.deepEqual(seen, ['printf hi', 'echo end']);
+  assert.equal(result.behavior, 'passthrough');
+  const reasons = result.decisionReason.reasons;
+  assert.equal(reasons.get('printf hi'), askHi);
+  assert.equal(reasons.get('echo end'), denyEnd);
+  assert.equal(reasons.size, 2);
+});
+
+test('D3e uses a nested subcommandResults safety check at equal priority and keeps the prior result when recursion finds none', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const nestedSafety = { type: 'safetyCheck', reason: 'nested', circuitBreaker: 'fixture' };
+  const outerWithout = { behavior: 'ask', decisionReason: { type: 'other', reason: 'outer' } };
+  const nestedWith = {
+    behavior: 'ask',
+    decisionReason: {
+      type: 'subcommandResults',
+      reasons: new Map([['inner', { behavior: 'ask', decisionReason: nestedSafety }]]),
+    },
+  };
+  const nestedWithout = {
+    behavior: 'ask',
+    decisionReason: {
+      type: 'subcommandResults',
+      reasons: new Map([['inner', { behavior: 'ask', decisionReason: { type: 'other', reason: 'inner' } }]]),
+    },
+  };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    replace: [outerWithout, nestedWith, allow],
+    keep: [nestedWith, nestedWithout, allow],
+  };
+  const Dl = (reason: { type?: string; reasons?: Map<string, { decisionReason?: unknown }> } | undefined,
+    accept: (value: { type?: string }) => boolean = () => true): unknown => {
+    if (!reason) return;
+    if (reason.type === 'safetyCheck') return accept(reason) ? reason : undefined;
+    if (reason.type === 'subcommandResults') {
+      for (const item of reason.reasons?.values() ?? []) {
+        const found = Dl(item.decisionReason as typeof reason, accept);
+        if (found) return found;
+      }
+    }
+  };
+  for (const [name, later] of Object.entries(sequences)) {
+    let fallbackCalls = 0;
+    const seen: string[] = [];
+    const single = () => ({ behavior: 'passthrough' });
+    const fallback = (input: unknown) => {
+      const item = input as { command: string };
+      seen.push(item.command);
+      return later[fallbackCalls++];
+    };
+    const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+      d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+    const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+      se: () => '/fixture', Rl: message });
+    const run = fixture({ single, fallback, Dl,
+      projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+    const result = await invoke(run.policy, { command }, state());
+    assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+    assert.equal(result.behavior, 'passthrough');
+    const kept = result.decisionReason.reasons.get('printf hi');
+    assert.equal(kept, nestedWith);
+    assert.notEqual(kept, name === 'replace' ? outerWithout : nestedWithout);
+  }
+});
+
+test('D3e keeps the stored object when equal-priority Dl results are both present or both absent', async () => {
+  const command = 'printf hi; printf hi; echo end';
+  const firstWith = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'first', circuitBreaker: 'fixture' } };
+  const secondWith = { behavior: 'ask', decisionReason: { type: 'safetyCheck', reason: 'second', circuitBreaker: 'fixture' } };
+  const firstWithout = { behavior: 'ask', decisionReason: { type: 'other', reason: 'first' } };
+  const secondWithout = { behavior: 'ask', decisionReason: { type: 'other', reason: 'second' } };
+  const allow = { behavior: 'allow' };
+  const sequences = {
+    both: [firstWith, secondWith, allow],
+    neither: [firstWithout, secondWithout, allow],
+  };
+  const Dl = (reason: { type?: string } | undefined) => reason?.type === 'safetyCheck' ? reason : undefined;
+  for (const [name, later] of Object.entries(sequences)) {
+    let fallbackCalls = 0;
+    const seen: string[] = [];
+    const single = () => ({ behavior: 'passthrough' });
+    const fallback = (input: unknown) => {
+      const item = input as { command: string };
+      seen.push(item.command);
+      return later[fallbackCalls++];
+    };
+    const complex = createShellComplexPolicy({ ...rules, ...store, $3e: () => null, dO: () => {},
+      d: (value: string) => value, pwe: () => ({}), Xcn: async () => null, se: () => '/fixture', jcn: single });
+    const compound = createShellCompoundPolicy({ cd: () => true, Cwe: () => false, EX: () => false,
+      se: () => '/fixture', Rl: message });
+    const run = fixture({ single, fallback, Dl,
+      projection: { RTr: complex.RTr, CX: () => false, A3e: compound.A3e } });
+    const result = await invoke(run.policy, { command }, state());
+    assert.deepEqual(seen, ['printf hi', 'printf hi', 'echo end']);
+    assert.equal(result.behavior, 'passthrough');
+    const kept = result.decisionReason.reasons.get('printf hi');
+    assert.equal(kept, name === 'both' ? firstWith : firstWithout);
+    assert.notEqual(kept, name === 'both' ? secondWith : secondWithout);
+    assert.equal(result.decisionReason.reasons.get('echo end'), allow);
+  }
+});
 
 test('source scheduler, vector and command policy retain wrapper denial under explicit fixture adapters', async () => {
   const scope = createShellSamplingScope(() => {});
@@ -192,6 +690,22 @@ test('source scheduler propagates parser aborts as approval requests', async () 
   }
   assert.deepEqual(run.calls, ['complex', 'complex', 'complex']);
   assert.equal((await scheduler({ command: 'echo restored' }, state(), undefined, undefined)).behavior, 'allow');
+});
+
+test('source command policy throws the cancellation error after the classifier aborts', async () => {
+  const run = fixture({ single: () => passthrough });
+  const abortController = new AbortController();
+  const context = { ...state(), abortController, options: { isNonInteractiveSession: false } };
+  let calls = 0;
+  await assert.rejects(run.policy({ command: 'echo cancel' }, context, async (command: string, signal: AbortSignal, nonInteractive: boolean) => {
+    calls++;
+    assert.equal(command, 'echo cancel');
+    assert.equal(signal, abortController.signal);
+    assert.equal(nonInteractive, false);
+    abortController.abort();
+    return null;
+  }, undefined, undefined, undefined, undefined), Ye);
+  assert.equal(calls, 1);
 });
 
 test('source command policy captures declaration prefixes before complex decisions', async () => {

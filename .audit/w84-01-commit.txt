@@ -1,0 +1,16 @@
+[work/w43-choice-preview c7f125c] Port the recovered TaskCreated payload and rollback
+ 22 files changed, 4556 insertions(+), 13 deletions(-)
+ create mode 100644 .audit/w84-01-records.mjs
+ create mode 100644 .audit/w84-build.txt
+ create mode 100644 .audit/w84-chain.txt
+ create mode 100644 .audit/w84-focused.txt
+ create mode 100644 .audit/w84-full.txt
+ create mode 100644 .audit/w84-identity.txt
+ create mode 100644 .audit/w84-index.txt
+ create mode 100644 .audit/w84-lifecycle.txt
+ create mode 100644 .audit/w84-notices.txt
+ create mode 100644 .audit/w84-runtime.todo.md
+ create mode 100644 .audit/w84-runtime.tsv
+ create mode 100644 .audit/w84-tsc.txt
+ create mode 100644 research/ports/W84-task-created-hooks-evidence.json
+ create mode 100644 research/ports/W84-task-created-hooks.md

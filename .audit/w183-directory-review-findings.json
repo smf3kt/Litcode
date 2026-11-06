@@ -1,0 +1,28 @@
+{
+  "package": "W183",
+  "date": "2026-10-18",
+  "status": "changes_required",
+  "authority": "independent peer read-only compiled boundary probes; source/dist directory branch compared, not whole-tree identity",
+  "findings": [
+    {
+      "id": "invalid-grant-changes-absolute-contract",
+      "file": "src/tools.ts",
+      "line": 140,
+      "scenario": "Absolute workspace file with no directories is denied, but the same path with only relative-invalid or absent directory entries is allowed",
+      "cause": "directories.length selects expanded path branch before any grant is vetted",
+      "required": "An invalid grant must not change the existing no-grant absolute-path contract",
+      "scope": "Workspace absolute contract regression; external ungranted path still denied"
+    },
+    {
+      "id": "grant-alias-retarget-expands-roots",
+      "file": "src/tools.ts",
+      "line": 145,
+      "scenario": "Grant alias points to outside and alias/x is allowed; retarget alias to another ungranted directory and alias/x remains allowed",
+      "cause": "Each execution resolves the root alias anew and adds the new landing without preserving the grant's observed root spellings or identity",
+      "required": "Preserve source root observation/cache ownership so retargeted ungranted spelling is denied",
+      "source": {"module":"chunk-2bcyxj9q.js","sha256":"fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0","eNe":[214841,215024],"Yg":[215388,215541],"unit":"zero-based UTF-16 half-open"}
+    }
+  ],
+  "refuted": ["Additional cross-symlink escape with every target spelling check", "Revoked directories still allowing external access"],
+  "next": "Fix after current exclusive content-rule writer freezes; reproduce both original scenarios, extend existing directory regression group and independently recheck. No concurrent product writer."
+}

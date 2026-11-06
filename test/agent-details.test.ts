@@ -91,42 +91,48 @@ test('owned child details retain original prompt and progress across fork seeds,
     return message(`response-${id}`, [text('complete')], id * 100, 10);
   } };
   const runtime = await createRuntime(config, provider, controller.signal);
+  let parent: Session | undefined;
   const until = async (check: () => boolean) => { const end = Date.now() + 5000;
     while (!check()) { assert.ok(Date.now() < end, 'child lifecycle settled'); await delay(10); } };
   try {
     const listeners = getEventListeners(controller.signal, 'abort').length;
     assert.equal(runtime.backgroundTaskDetail!('absent', 'absent'), undefined);
     assert.equal(getEventListeners(controller.signal, 'abort').length, listeners); assert.deepEqual(fs.readdirSync(workspace), []);
-    const tools = runtime.buildTools(config, 'owner');
+    parent = Session.open(workspace, { config });
+    await runtime.bindSession!(parent);
+    const tools = runtime.buildTools(config, parent.id);
     const first = JSON.parse(await selected(tools, 'agent').execute({ prompt: 'ORIGINAL', background: true, subagent_type: 'fork', name: 'child' },
       { ...context, conversation: [{ role: 'user', content: 'SEED_MESSAGE' }, { role: 'assistant', content: 'SEED_REPLY' }] })) as { id: string };
     await until(() => release !== undefined); stream?.('abcdefgh');
-    let value = runtime.backgroundTaskDetail!('owner', first.id)!; assert.equal(value.kind, 'agent');
+    let value = runtime.backgroundTaskDetail!(parent.id, first.id)!; assert.equal(value.kind, 'agent');
     assert.equal(value.prompt, 'ORIGINAL'); assert.equal(value.progress.tokenCount, 2);
     assert.equal(runtime.backgroundTaskDetail!('foreign', first.id), undefined);
     const startedAt = value.startedAt;
     release!();
     await selected(tools, 'get_agent').execute({ id: first.id, wait_ms: 5000 }, context);
-    value = runtime.backgroundTaskDetail!('owner', first.id)!; assert.equal(value.kind, 'agent');
+    value = runtime.backgroundTaskDetail!(parent.id, first.id)!; assert.equal(value.kind, 'agent');
     assert.equal(value.status, 'completed'); assert.equal(value.progress.tokenCount, 115); assert.ok(value.endedAt! >= startedAt);
-    const events = runtime.drainEvents!('owner');
-    assert.equal(events.filter(event => event.kind === 'notification' && event.prompt.startsWith('Child agent events')).length, 1);
-    assert.deepEqual(runtime.drainEvents!('owner'), []);
+    const events = runtime.drainEvents!(parent.id);
+    const delivered = events.filter(event => event.kind === 'agent_events');
+    assert.equal(delivered.length, 1);
+    assert.equal(delivered[0]!.owner, parent.id);
+    assert.ok(delivered[0]!.events.some(event => event.agent.id === first.id));
+    assert.deepEqual(runtime.drainEvents!(parent.id), []);
     const before = calls; release = undefined;
     await selected(tools, 'send_message').execute({ id: first.id, message: 'FOLLOWUP' }, context);
     await until(() => release !== undefined && calls > before);
-    value = runtime.backgroundTaskDetail!('owner', first.id)!; assert.equal(value.kind, 'agent');
+    value = runtime.backgroundTaskDetail!(parent.id, first.id)!; assert.equal(value.kind, 'agent');
     assert.equal(value.prompt, 'ORIGINAL'); assert.equal(value.startedAt, startedAt); assert.equal(value.endedAt, undefined);
     release!(); await selected(tools, 'get_agent').execute({ id: first.id, wait_ms: 5000 }, context);
-    value = runtime.backgroundTaskDetail!('owner', first.id)!; assert.equal(value.kind, 'agent');
+    value = runtime.backgroundTaskDetail!(parent.id, first.id)!; assert.equal(value.kind, 'agent');
     assert.equal(value.progress.tokenCount, 225); assert.equal(value.status, 'completed');
     const stored = Session.open(workspace, { id: first.id });
     try { assert.ok(stored.messages.some(entry => entry.content === 'SEED_MESSAGE')); assert.ok(stored.messages.some(entry => entry.content === 'ORIGINAL')); }
     finally { stored.close(); }
-    await runtime.releaseSession!('owner'); assert.equal(runtime.backgroundTaskDetail!('owner', first.id), undefined);
+    await runtime.releaseSession!(parent.id); parent.close(); assert.equal(runtime.backgroundTaskDetail!(parent.id, first.id), undefined);
     assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
     assert.equal(getEventListeners(controller.signal, 'abort').length, listeners);
-  } finally { release?.(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+  } finally { release?.(); await runtime.close(); parent?.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
 test('agent modal polls data under reduced motion and releases keys, refresh and input ownership', async context => {

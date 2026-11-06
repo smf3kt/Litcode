@@ -1,0 +1,11 @@
+function ws({arrayLengthCap:e,isListSeenFirst:t}){let o=e===void 0?"":`if (len > ${e}) {
+          throw capErr('array length ' + len + ' exceeds the maximum of ${e} supported across the workflow VM boundary')
+        }`,r="const out = []; seen.set(v, out)";return`
+      const _WeakMap = WeakMap, _WeakSet = WeakSet, _isArray = Array.isArray,
+            _keys = Object.keys, _defineProperty = Object.defineProperty,
+            _Error = Error, _isSafeInteger = Number.isSafeInteger,
+            _isError = typeof Error.isError === 'function' ? Error.isError : null,
+            _ownDescriptor = Object.getOwnPropertyDescriptor
+      ${Lx}
+      ${$x}
+      

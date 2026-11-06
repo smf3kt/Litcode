@@ -169,6 +169,6 @@ function hxr(e){if(!e.unresolved)return e.spellings;let{resolvedPath:n,isCanonic
 function tl(t){return Bn(t)||fa(t)||qP(t)||aw(t)}
 // chunk-8pet3bvp.js Vut [3464,3525), UTF-16; sha256 7ea0f6b644fc0dc677717cb7e355edc647a0761fbd2ff903b896ad8ca5fa0086
 function Vut(e,n){return n==="windows"&&Bn(e)&&!cl(e)||fa(e)}
-return { yo, di, _o, ywe, UMt, tl, Vut };
+return { yo, di, _o, ywe, UMt, tl, Vut, ff };
 }
 export { createPathIdentity };

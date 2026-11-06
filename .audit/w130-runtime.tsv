@@ -1,0 +1,3 @@
+2026-10-17T23:55:00Z	package	W130-01 Apple Terminal启动头部	V chunk-9c78dh5n.js [960,15899)；前12行复用、第13-16行V专属	▗/▖、clawd_body背景、九格腹带、深色星	tsc 0；build 0；聚焦76/76；120x40 TERM_PROGRAM=Apple_Terminal PTY
+2026-10-17T23:58:00Z	decision	W130-01 适配	TERM_PROGRAM直接等值判断；紧凑分支优先；缓存键纳入termProgram	其余终端保持通用艺术	无依赖变化
+2026-10-17T23:59:00Z	verification	W130-01 验收：聚焦76/76、notices 0、索引不变	identity 21ac3022…；dist重建	.audit/w130-01-focused.txt、.audit/w130-01-build.txt、.audit/w130-01-identity.txt

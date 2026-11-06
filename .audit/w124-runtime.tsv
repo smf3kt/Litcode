@@ -1,0 +1,2 @@
+2026-10-17T15:40:00Z	package	W124-01 C-10收口	uRe 619（chunk-mven2c2x.js）；b9t 2913、I2 3550、cqe 3588、dqe 3950、vce 3817（chunk-xrjhyksm.js）；J9e 3373292、Qfe 3372867、Nxr 3373506（chunk-sfn1dbxq.js）；src/web-search.ts:155	保留名/冲突命名排除（账号同步域）；URL丢弃已实现（陈旧行文）；shell AST维持不移植	文档包无代码变更；沿用W123闸门；身份4149770c…不变
+2026-10-17T15:42:00Z	verification	W124-01 验收：CURRENT×3、FEATURES Skills行、dispositions第7项、STATUS与标准条目	无源文件改动；不需要重跑tsc/全量；W123最后一次全量2,194/2,194	identity 4149770c…；索引未变

@@ -28,7 +28,7 @@ function fixture(run: ModelProvider['complete'] = async () => response()) {
   const config = defaultConfig(workspace, tools); config.model = 'test'; config.allowShell = true;
   const provider: ModelProvider = { count: async () => 0, complete: run };
   const registry = new AgentRegistry({ source: () => config, tools, provider });
-  return { registry, config, workspace, async cleanup() {
+  return { registry, config, tools, workspace, async cleanup() {
     await registry.close(); fs.rmSync(workspace, { recursive: true, force: true });
   } };
 }
@@ -159,6 +159,50 @@ test('the child permission gate denies a clamped command and reports the allowed
       assert.equal(fs.existsSync('/tmp/never-created'), false);
     } finally { await f.cleanup(); }
   }
+});
+
+test('child invocation adds its clamp to inherited groups without changing the parent', async () => {
+  let calls = 0;
+  const f = fixture(async request => {
+    if (++calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-layer', name: 'run_command',
+      input: { command: 'printf forbidden > forbidden.txt' } } as Anthropic.ContentBlock]);
+    const result = request.messages.at(-1);
+    const block = Array.isArray(result?.content) ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+    assert.match(String(block && 'content' in block ? block.content : ''), /clamped to a fixed set/);
+    return response('done');
+  });
+  f.config.bashCommandClamp = [['Bash(echo:*)']];
+  try {
+    const child = await f.registry.launch({ prompt: 'work', mode: 'general',
+      bash_command_clamp: ['Bash(printf:*)'] }, undefined, { config: f.config, tools: f.tools });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    assert.equal(calls, 2);
+    assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
+    assert.deepEqual(f.config.bashCommandClamp, [['Bash(echo:*)']]);
+  } finally { await f.cleanup(); }
+});
+
+test('a resumed registry child retains its invocation clamp', async () => {
+  let calls = 0;
+  const f = fixture(async request => {
+    calls++;
+    if (calls === 1) return response('initial');
+    if (calls === 2) return response('', [{ type: 'tool_use', id: 'resumed-clamp', name: 'run_command',
+      input: { command: 'printf forbidden > forbidden.txt' } } as Anthropic.ContentBlock]);
+    const result = request.messages.at(-1);
+    const block = Array.isArray(result?.content) ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+    assert.match(String(block && 'content' in block ? block.content : ''), /clamped to a fixed set/);
+    return response('resumed');
+  });
+  try {
+    const child = await f.registry.launch({ prompt: 'initial', mode: 'general', bash_command_clamp: ['Bash(echo:*)'] });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    await f.registry.sendMessage(child.id, 'resume', undefined, { human: true });
+    const resumed = await f.registry.get(child.id, { waitMs: 5000 });
+    assert.equal(resumed.status, 'completed', resumed.error ?? undefined);
+    assert.equal(calls, 3);
+    assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
+  } finally { await f.cleanup(); }
 });
 
 test('the child gate rechecks PermissionRequest and PreToolUse command rewrites', async () => {

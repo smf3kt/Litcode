@@ -58,13 +58,39 @@ test('hook inputs and feedback reach the loop without breaking immediate batch p
     assert.equal(batch[0]!.type, 'tool_result');
     assert.equal(batch[1]!.type, 'text');
     const events = session.events.map(e => e.kind);
+    const effect = events.indexOf('tool_effect');
     const saved = events.indexOf('tool_result');
-    assert.equal(events[saved + 1], 'hook_start');
+    assert.equal(events[effect + 1], 'hook_start');
+    assert.ok(saved > effect + 1);
     assertPaired(session.messages);
     const id = session.id; session.close();
     const restored = Session.open(f.workspace, { id });
     try { assert.deepEqual(restored.events, session.events); } finally { restored.close(); }
   } finally { session.close(); f.cleanup(); }
+});
+
+test('aborted post hook retains the completed effect and pairs its result', async () => {
+  const f = fixture(), marker = path.join(f.workspace, 'post-entered');
+  f.config.hooks = { PostToolUse: [{ command: `touch '${marker}'; sleep 10` }] };
+  const session = Session.open(f.workspace, { config: f.config }), controller = new AbortController();
+  try {
+    const running = new Agent(session, f.provider, [f.tool]).run('task', controller.signal);
+    const deadline = Date.now() + 5000;
+    while (!fs.existsSync(marker) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.ok(fs.existsSync(marker));
+    controller.abort(new Error('fixture abort'));
+    await running;
+    const events = session.events;
+    const effect = events.findIndex(event => event.kind === 'tool_effect');
+    const hook = events.findIndex(event => event.kind === 'hook_start' && event.event === 'PostToolUse');
+    const result = events.findIndex(event => event.kind === 'tool_result');
+    assert.ok(effect >= 0 && effect < hook && hook < result);
+    assert.equal(f.inputs.length, 1);
+    assertPaired(session.messages);
+    session.close();
+    const restored = Session.open(f.workspace, { id: session.id });
+    try { assertPaired(restored.messages); } finally { restored.close(); }
+  } finally { controller.abort(); session.close(); f.cleanup(); }
 });
 
 test('policy denial precedes hooks and prevents both hook commands and tool effects', async () => {
@@ -263,8 +289,26 @@ test('failed tools and completed batches fire their own hooks after durable resu
     assert.match(JSON.stringify(f.requests[1]!.messages), /failure feedback/);
     assert.match(JSON.stringify(f.requests[1]!.messages), /batch feedback/);
     const events = session.events;
+    const failureHook = events.findIndex(event => event.kind === 'hook_result' && event.event === 'PostToolUseFailure');
+    const failedResult = events.findIndex(event => event.kind === 'tool_result');
+    assert.ok(failureHook >= 0 && failureHook < failedResult);
     const batchHook = events.findIndex(event => event.kind === 'hook_start' && event.event === 'PostToolBatch');
     assert.equal(events[batchHook - 1]!.kind, 'message'); assertPaired(session.messages);
+  } finally { session.close(); f.cleanup(); }
+});
+
+test('failed post hook leaves the successful tool result paired', async () => {
+  const f = fixture();
+  f.config.hooks = { PostToolUse: [{ command: 'printf "hook fixture failure" >&2; exit 2' }] };
+  const session = Session.open(f.workspace, { config: f.config });
+  try {
+    await new Agent(session, f.provider, [f.tool]).run('task');
+    const hook = session.events.findIndex(event => event.kind === 'hook_result' && event.event === 'PostToolUse');
+    const result = session.events.findIndex(event => event.kind === 'tool_result');
+    assert.ok(hook >= 0 && hook < result);
+    assert.equal(f.inputs.length, 1);
+    assert.match(JSON.stringify(session.messages), /effect saved/);
+    assertPaired(session.messages);
   } finally { session.close(); f.cleanup(); }
 });
 

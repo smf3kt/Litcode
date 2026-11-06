@@ -1,0 +1,15 @@
+[work/w43-choice-preview 31c2f99] Port the recovered SessionStart payload fields
+ 20 files changed, 4264 insertions(+), 5 deletions(-)
+ create mode 100644 .audit/w86-01-records.mjs
+ create mode 100644 .audit/w86-build.txt
+ create mode 100644 .audit/w86-chain.txt
+ create mode 100644 .audit/w86-full.txt
+ create mode 100644 .audit/w86-identity.txt
+ create mode 100644 .audit/w86-index.txt
+ create mode 100644 .audit/w86-lifecycle.txt
+ create mode 100644 .audit/w86-notices.txt
+ create mode 100644 .audit/w86-runtime.todo.md
+ create mode 100644 .audit/w86-runtime.tsv
+ create mode 100644 .audit/w86-tsc.txt
+ create mode 100644 research/ports/W86-session-start-payload-evidence.json
+ create mode 100644 research/ports/W86-session-start-payload.md

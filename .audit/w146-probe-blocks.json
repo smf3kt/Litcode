@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        443631,
+        443771
+      ],
+      "units": 140,
+      "bodySha256": "0ae921809cb9b477469c74a1298f0582ed2a3cca1fe8a6a5e8018ca14120b065",
+      "note": "wheel handler factory"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        443771,
+        443978
+      ],
+      "units": 207,
+      "bodySha256": "7b203869def0355b4be47e3cf3cf19db5b10c433f34c91d39ba2a93501c7c7d4",
+      "note": "held top/bottom"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        443978,
+        444350
+      ],
+      "units": 372,
+      "bodySha256": "c56e05bebfd1aae5b0bba10945a71f10c593082cb05e5fbf0c51c24c7a2193fb",
+      "note": "element key bounds walk"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        444675,
+        444845
+      ],
+      "units": 170,
+      "bodySha256": "b357488b6f25ae9b319b177d3ebcf93f9155ab6114209a91b96d4bdd0d8bf825",
+      "note": "content wrapper component"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        444923,
+        444956
+      ],
+      "units": 33,
+      "bodySha256": "51a725765a53540545059b266e531434ed4b842180e847b370a9c6d44769bce7",
+      "note": "props merge"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        444956,
+        444994
+      ],
+      "units": 38,
+      "bodySha256": "8f2735d1cec0cdc4e384a041e6508945742a031a90707440fcbabef62c619173",
+      "note": "floor clamp"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        446991,
+        447122
+      ],
+      "units": 131,
+      "bodySha256": "3cee1570439cd3cbe7e798de72348ea082fa827bdc883d83ab7434a951a7f7b3",
+      "note": "raised offset wrapper"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        447619,
+        448084
+      ],
+      "units": 465,
+      "bodySha256": "481f4b862bb8f6995859a79d6991dc695f48321ba037b1babe7e978df36820ed",
+      "note": "toggle label component"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448084,
+        448093
+      ],
+      "units": 9,
+      "bodySha256": "f28971609b4c7504c36b914fd3696ff70d6c8f86a482385c89d327bf404215f9",
+      "note": "toggle icon flag"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448093,
+        448285
+      ],
+      "units": 192,
+      "bodySha256": "f965ddd3440b14d2b3a9776fdbbaf523501bbb8b1bbf9302405a0a1585d375a3",
+      "note": "collapse handle component"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448295,
+        448698
+      ],
+      "units": 403,
+      "bodySha256": "ce5e53289e1275f8926f99170267f8cce8c61243e8a4928e6b157b4231497634",
+      "note": "expanded header component"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449506,
+        449633
+      ],
+      "units": 127,
+      "bodySha256": "6c932c6aac556cb483cdd0b1514fddc2d3b22eae25aa8f46e194bfa79de6a33e",
+      "note": "focus index computation"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449633,
+        449682
+      ],
+      "units": 49,
+      "bodySha256": "12e86433edf3c2306daeeb2e9175cb2ed36c9e8181315f1d50e578997223c47e",
+      "note": "highlight rows"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449682,
+        449785
+      ],
+      "units": 103,
+      "bodySha256": "2fcffc80a4bddbeeb7c8381f84ea810989760f9cd6e5822f5b24d89a2f6e893f",
+      "note": "more indicator text"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449785,
+        450018
+      ],
+      "units": 233,
+      "bodySha256": "a248d2901c84d310f72ce2a0cc7544eaf3cd329dfdd3a45278b40976a76189fd",
+      "note": "more indicator component"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        450018,
+        450068
+      ],
+      "units": 50,
+      "bodySha256": "520ad3deaebf03df023260950d4ef239603082801a9b5edb215d6fb817b01a72",
+      "note": "digit select"
+    }
+  ],
+  "missing": []
+}

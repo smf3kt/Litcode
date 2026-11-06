@@ -1,0 +1,16 @@
+[work/w43-choice-preview 1211b63] Correct script hook handling to the recovered refusal
+ 21 files changed, 4395 insertions(+), 28 deletions(-)
+ create mode 100644 .audit/w89-01-records.mjs
+ create mode 100644 .audit/w89-build.txt
+ create mode 100644 .audit/w89-chain.txt
+ create mode 100644 .audit/w89-focused.txt
+ create mode 100644 .audit/w89-full.txt
+ create mode 100644 .audit/w89-hooks.txt
+ create mode 100644 .audit/w89-identity.txt
+ create mode 100644 .audit/w89-index.txt
+ create mode 100644 .audit/w89-notices.txt
+ create mode 100644 .audit/w89-runtime.todo.md
+ create mode 100644 .audit/w89-runtime.tsv
+ create mode 100644 .audit/w89-tsc.txt
+ create mode 100644 research/ports/W89-script-hooks-evidence.json
+ create mode 100644 research/ports/W89-script-hooks.md

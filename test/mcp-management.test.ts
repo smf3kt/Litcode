@@ -88,7 +88,7 @@ test('owned MCP transports toggle without replacing peers, jobs or child catalog
   } };
   let runtime = await createRuntime(config, provider, context.signal);
   try {
-    const tools = runtime.buildTools(config, 'owner'), old = chosen(tools, 'mcp__alpha__ping');
+    const tools = runtime.buildTools(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842'), old = chosen(tools, 'mcp__alpha__ping');
     const beta = boots('beta')[0]!; assert.ok(alive(beta));
     assert.match(await old.execute({ text: 'ping' }, context), /^alpha:\d+$/);
     const job = JSON.parse(await chosen(tools, 'run_background').execute({ command: `${JSON.stringify(process.execPath)} -e 'setInterval(()=>{},1000)'`, timeout_ms: 15000 }, context));
@@ -101,15 +101,15 @@ test('owned MCP transports toggle without replacing peers, jobs or child catalog
     assert.deepEqual(disabledMcpServers(root, user), ['alpha']);
     assert.ok(boots('alpha').every(pid => !alive(pid))); assert.ok(alive(beta));
     assert.equal(boots('beta').length, 1);
-    assert.equal(runtime.buildTools(config, 'owner').some(tool => tool.schema.name === 'mcp__alpha__ping'), false);
-    assert.equal(runtime.backgroundTasks!('owner').jobs.some(task => task.id === jobId), true);
+    assert.equal(runtime.buildTools(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842').some(tool => tool.schema.name === 'mcp__alpha__ping'), false);
+    assert.equal(runtime.backgroundTasks!('be84c9c7-e99a-4ced-b5a8-27ab060c4842').jobs.some(task => task.id === jobId), true);
     await assert.rejects(old.execute({ text: 'stale' }, context), /disabled|absent|metadata changed/);
     await assert.rejects(runtime.reconnectMcp!('alpha', context.signal), /disabled/);
     assert.equal((await runtime.catalogListing!(context.signal)).resources.alpha, undefined);
     assert.equal((await runtime.catalogListing!(context.signal)).resources.beta?.length, 1);
     await runtime.setMcpEnabled!('alpha', true, context.signal);
     assert.equal(boots('alpha').length, 2); assert.ok(alive(boots('alpha')[1]!)); assert.ok(alive(beta));
-    assert.match(await chosen(runtime.buildTools(config, 'owner'), 'mcp__alpha__ping').execute({ text: 'new' }, context), /^alpha:\d+$/);
+    assert.match(await chosen(runtime.buildTools(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842'), 'mcp__alpha__ping').execute({ text: 'new' }, context), /^alpha:\d+$/);
     assert.equal(fs.readFileSync(notes, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line))
       .filter(row => row.server === 'alpha' && row.method === 'resources/subscribe').length, 1,
     'disable clears transient transport subscriptions; no effect is replayed');
@@ -119,7 +119,7 @@ test('owned MCP transports toggle without replacing peers, jobs or child catalog
     assert.equal(runtime.mcpServers!().alpha?.state, 'connected'); assert.ok(alive(boots('alpha')[1]!));
     fs.writeFileSync(state, saved);
     await runtime.setMcpEnabled!('alpha', false, context.signal);
-    await runtime.launchSubtask!(config, 'owner', 'inspect child tools', context.signal, [{ role: 'user', content: 'fixture history' }]);
+    await runtime.launchSubtask!(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842', 'inspect child tools', context.signal, [{ role: 'user', content: 'fixture history' }]);
     await until(() => requests.length === 1, 'child request');
     assert.equal(requests[0]!.tools?.some(tool => 'name' in tool && tool.name === 'mcp__alpha__ping'), false);
     assert.equal(requests[0]!.tools?.some(tool => 'name' in tool && tool.name === 'mcp__beta__ping'), true);
@@ -142,7 +142,7 @@ test('owned MCP transports toggle without replacing peers, jobs or child catalog
     assert.ok(boots('alpha').every(pid => !alive(pid)));
     fs.writeFileSync(control, '{}');
     await runtime.reconnectMcp!('alpha', context.signal);
-    assert.ok(runtime.buildTools(config, 'owner').some(tool => tool.schema.name === 'mcp__alpha__ping'));
+    assert.ok(runtime.buildTools(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842').some(tool => tool.schema.name === 'mcp__alpha__ping'));
     await runtime.setMcpEnabled!('alpha', false, context.signal);
     fs.writeFileSync(control, JSON.stringify({ holdMs: 1000 }));
     const controller = new AbortController(), attempt = runtime.setMcpEnabled!('alpha', true, controller.signal);
@@ -160,7 +160,7 @@ test('owned MCP transports toggle without replacing peers, jobs or child catalog
     assert.equal(runtime.mcpServers!().alpha?.state, 'disabled');
     assert.deepEqual(disabledMcpServers(root, user), ['alpha']);
     assert.ok(boots('alpha').every(pid => !alive(pid)));
-    const pinned = { ...config, tools: pinToolSchemas(runtime.buildTools(config, 'owner')) };
+    const pinned = { ...config, tools: pinToolSchemas(runtime.buildTools(config, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842')) };
     let session = Session.open(root, { config: pinned });
     try {
       await runtime.bindSession!(session);

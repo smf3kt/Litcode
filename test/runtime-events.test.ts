@@ -8,7 +8,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, assertPaired, defaultConfig } from '../src/agent.js';
 import { interactiveLoop } from '../src/interactive.js';
 import { getAutonomousLoopPreamble } from '../src/loop-file.js';
-import { createRuntime, pinToolSchemas } from '../src/runtime.js';
+import { createRuntime, pinToolSchemas, type RuntimeEvent } from '../src/runtime.js';
 import type { ModelProvider } from '../src/provider.js';
 import { Session } from '../src/session.js';
 import type { ToolContext } from '../src/tools.js';
@@ -88,13 +88,15 @@ test('WebSocket monitor notifications stay with their owner and release closes t
     const [socket] = await connected;
     socket.send('owner event');
     const deadline = Date.now() + 5000;
-    const events = [];
+    const events: RuntimeEvent[] = [];
+    const received = () => events.some(event => event.kind === 'background' && event.owner === 'socket-owner' &&
+      event.events.some(entry => entry.job_id === descriptor.id && entry.kind === 'line' && entry.text === 'owner event'));
     while (Date.now() < deadline) {
       events.push(...runtime.drainEvents!('socket-owner'));
-      if (events.some(event => event.prompt?.includes('owner event'))) break;
+      if (received()) break;
       await new Promise(resolve => setTimeout(resolve, 10));
     }
-    assert.ok(events.some(event => event.prompt?.includes('owner event')));
+    assert.ok(received());
     assert.ok(seen.length > 0 && seen.every(owner => owner === 'socket-owner'));
     assert.deepEqual(runtime.drainEvents!('other'), []);
     const other = runtime.buildTools(f.config, 'other');

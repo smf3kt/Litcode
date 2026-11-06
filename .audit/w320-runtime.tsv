@@ -1,0 +1,21 @@
+sequence	phase	decision	why	evidence	result
+01	selection	Choose legacy local shell/monitor details	CURRENT highest ready after W319	Task105;HEAD6e83a05	one active package;W301 paused;local only
+02	source	Acquire fLt/YG/Eae/bj/read/gate closure	Product behavior requires source body before edits	W320 source table	module digests verified;UTF16 half-open ranges;inert data only
+03	boundary	Use passive owned registry snapshots	Source file interleave unavailable;agent descriptor lacks full detail owner	agent afba85ea103544ad7	stdout+stderr UTF8 tail adapter;agent/WebSocket/newer gates separate
+04	baseline	Drive compiled run_background then /tasks	Actual entrypoint must reproduce missing auto-detail	w320-cli-baseline2.txt	exit1 valid red;earlier20column startup failure excluded
+05	implementation	Own list/detail sum-state and modal data timer	Source initial/back/loss and running refresh are distinct	src/task-details.ts;runtime;interactive;terminal;tui	passive access;1000ms polling;stop via registry;close/preempt cleanup
+06	incident	Correct PTY viewport and ready predicates	Below-viewport count and persistent footer confused driver	w320-cli-details.txt;details2.txt	PgDn and exact modal-title absence;no product symptom rewrite
+07	incident	Decode UTF8 stream and inspect generated event	Chunk corruption and fixed request count caused late fixture failures	w320-cli-details3.txt;details4.txt;owned fixture journal	stream decoding;actual notification-envelope assertions
+08	cleanup	Stop only exact orphaned fixture workers	Expect group teardown omits detached registry jobs	ps identities70503/70757/70917	terminated;driver finalizer writes done;later scan empty
+09	source-compare	Correct source loss/back and retain selected id	Ra loss and wi Left are separate;fLt persists focus	12AST comparisons;task-details test group3	fixed before final build/CLI;all12diffs read
+10	regression	Run three high-value behavioral groups	Tail/graphemes,passive events and live modal owners	w320-focused.txt	3/3 pass;fixture config tsc error corrected separately
+11	verification	Run affected and owner/CLI readers	Shared terminal/runtime contracts must hold	w320-affected.txt;w320-owners-cli.txt	166/166 and72/72 pass
+12	artifact	Drive rebuilt actual CLI and compile checks	Public user chain and cleanup need artifact proof	w320-cli-final.txt;check-final.txt;build-final.txt	5owned requests;exit0;locks released;check/build pass
+13	comments	Retain repository-required source anchors	S-7 exact provenance requirements	agent a4c20903f3e6f4f4c	8lines/7groups;0findings/0deletions/0suppressions
+14	review	Accept reproduced P2 stale selection index	Pre-await list differs from mounted accepted row	agent aae20f77f5efecf38;w320-independent-focus.txt	A..F/remove A/select D/remove D wrongly focuses/stops F;independent3groups+CLI5pass
+15	repair	Carry mounted selection index in terminal answer	Source Gs stores current js before fallback	src/terminal.ts;src/tui.ts;src/interactive.ts	backgroundTaskIndex;exact compiled probe focuses/stops E
+16	regression	Expand existing third group and exact answers	Prevent accepted-shrink/loss/stop regression	w320-repair-final-affected.txt;repair-final-check.txt;repair-build.txt	166/166;check/build pass;initial final-reopen/test-shape failures retained
+17	artifact	Drive repaired compiled chain	Original finding and main usage must pass on rebuilt artifact	w320-main-focus-repair.txt;w320-repair-cli.txt	E stop;5owned requests;exit0;locks/workers clean
+18	recheck	Accept fresh independent repair verdict	Original compiled failure must be corrected independently	agent add626135baef9bdd;w320-recheck-focus.txt;w320-recheck-assertions.txt	Efocus/Estop;3/3+1/1pass;source/provenance accurate;identity696d39dff985bc633c0d7602b0609e4476f5986ab12627af01f442dfa2a79640
+19	identity	Recheck every final input/test/build file	Prevent stale review or build evidence	w320-repaired-identity.json	1782hashes match;no fixture workers;all gates complete
+20	complete	Commit exact fourteen-file package locally	All source/artifact/independent gates complete	8b44e61	no push/coauthor;original audit/skills-command user changes excluded

@@ -1,0 +1,3 @@
+2026-10-17T18:40:00Z	package	W128-01 workflow脚本journal/resume	sn/Do/Hr/No/Qr 20500-23000、缓存47494-48200（chunk-hedqf2m1.js）；schema/预检/runId/Ir（chunk-a7gk0710.js 59981/65391/69003/70009/73879）	v2链式键、最长不变前缀、started重跑、失败不缓存、wf_ runId、活动/缺失拒绝	workflow-script新增4；工作流家族29/29；聚焦64/64；tsc 0；build 0
+2026-10-17T18:50:00Z	decision	W128-01 适配	本地无远程镜像；resumeFromRunId仅持久化暴露；remoteSessionId忽略；journals/子目录；脚本正文不入键	journal写入best-effort不失败；run_id加入结果	无依赖变化
+2026-10-17T18:58:00Z	verification	W128-01 验收：聚焦64/64、notices 0、索引不变	identity 4c2f329b…；全量/链本轮未重跑（用户中断全量）	.audit/w128-01-focused.txt、.audit/w128-01-build.txt

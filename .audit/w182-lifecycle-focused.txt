@@ -1,0 +1,13 @@
+(node:73057) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ question external editor preserves notes, Other selections and root draft ownership (452.455959ms)
+✔ question external editor cancellation waits descendants and rejects a stale duplicate-header result (431.714542ms)
+✔ question external editor keeps null and unchanged text, bounds edited text and pauses AFK (1842.944666ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3325.68025

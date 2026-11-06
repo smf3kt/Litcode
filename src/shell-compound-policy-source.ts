@@ -1,11 +1,23 @@
 // @ts-nocheck
 // Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.
-import { w6, Yx } from "./shell-command-clamp-source.js";
+import { Yx } from "./shell-command-clamp-source.js";
+import { vS } from "./bash-parser-source.js";
 import { Kg } from "./shell-rule-recheck-source.js";
 import { Dl, X3, ize, trn } from "./shell-reading-merge-source.js";
+// chunk-sfn1dbxq.js Cbr [3090771,3090944), Run/q5e [3090944,3091141), UTF-16;
+// module sha256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+// chunk-zjewzgfh.js ayr [1068,1300), nde [1631,2009), dt [2009,2205), UTF-16;
+// module sha256 83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3.
+var $e=1e4,re=new Set(["command","declaration_command"]);
+async function ayr(e){if(!e||e.length>$e)return null;try{let t=vS().parse(e);if(!t)return null;let r=nde(t,null),s=dt(r);return{rootNode:t,envVars:s,commandNode:r,originalCommand:e}}catch{return null}}
+function nde(e,t){let{type:r,children:s}=e;if(re.has(r))return e;if(r==="variable_assignment"&&t)return t.children.find((o)=>re.has(o.type)&&o.startIndex>e.startIndex)??null;if(r==="pipeline"){for(let o of s){let n=nde(o,e);if(n)return n}return null}if(r==="redirected_statement")return s.find((o)=>re.has(o.type))??null;for(let o of s){let n=nde(o,e);if(n)return n}return null}
+function dt(e){if(!e||e.type!=="command")return[];let t=[];for(let r of e.children)if(r.type==="variable_assignment")t.push(r.text);else if(r.type==="command_name"||r.type==="word")break;return t}
+// The local parser replaces the recovered dynamic module import.
+async function Cbr(e, project){if(!e)return null;try{let r=await ayr(e);if(r)return project(e,r.rootNode)}catch{}return null}
+class Run{lastCommand;lastResult;parse(e,project){if(e===this.lastCommand&&this.lastResult!==void 0)return this.lastResult;return this.lastCommand=e,this.lastResult=Cbr(e,project),this.lastResult}}
+const q5e=new Run;
 export function createShellCompoundPolicy({ cd, Cwe, EX, se, Rl }) {
 const ki = { name: "Bash" };
-const q5e = { parse: async e => { const tree = await w6(e); return tree && tree !== Yx ? z5e(e, tree) : null; } };
 // chunk-sfn1dbxq.js W5e [3085399,3085913), UTF-16; sha256 b4ea155e2ae289c9e4e7efd1967b21a518869edb56f79fe021481d8e2e48444c
 function W5e(e,n,r){switch(e.type){case"raw_string":n.raw.push([e.startIndex,e.endIndex]);return;case"ansi_c_string":n.ansiC.push([e.startIndex,e.endIndex]);return;case"string":if(!r)n.double.push([e.startIndex,e.endIndex]);for(let s of e.children)if(s)W5e(s,n,!0);return;case"heredoc_redirect":{let s=!1;for(let h of e.children)if(h&&h.type==="heredoc_start"){let y=h.text[0];s=y==="'"||y==='"'||y==="\\";break}if(s){n.heredoc.push([e.startIndex,e.endIndex]);return}break}}for(let s of e.children)if(s)W5e(s,n,r)}
 // chunk-sfn1dbxq.js _br [3085913,3085998), UTF-16; sha256 c75c774932afe33993fbca94dbe43a5b665d28106961c4f85212b4f775088e14
@@ -38,7 +50,7 @@ class Eun{originalCommand;commandBytes;pipePositions;redirectionNodes;treeSitter
 // chunk-sfn1dbxq.js z5e [3090696,3090771), UTF-16; sha256 6a2e9a9118b2cdc390ca56e108110b80acc77054051a234221b1119430e694fa
 function z5e(e,n){let r=Ebr(n),s=Rbr(n),h=Tun(n,e);return new Eun(e,r,s,h)}
 // chunk-sfn1dbxq.js Rcn [3195199,3195390), UTF-16; sha256 a8a621941b5868874d207e26464e423fe017c8c4dc4daa490e84c4032191dc4a
-async function Rcn(e,n,r,s,h,y,b){let w=s&&s!==Yx?z5e(e.command,s):await q5e.parse(e.command);if(!w)return{behavior:"passthrough",message:"Failed to parse command"};return Kvr(e,n,r,w,h,y,b)}
+async function Rcn(e,n,r,s,h,y,b){let w=s&&s!==Yx?z5e(e.command,s):await q5e.parse(e.command,z5e);if(!w)return{behavior:"passthrough",message:"Failed to parse command"};return Kvr(e,n,r,w,h,y,b)}
 // chunk-sfn1dbxq.js Kvr [3195390,3195877), UTF-16; sha256 c1b8da29d5c0201729f83b3cf212b0adb82cb7ba98ae00f785029623dd97fa5d
 async function Kvr(e,n,r,s,h,y,b){let{compoundStructure:w}=s.treeSitterAnalysis;if(w.hasSubshell||w.hasCommandGroup){let X={type:"other",reason:"This command uses shell operators that require approval for safety",bashMissKind:"shell-operators"};return{behavior:"ask",message:Rl(ki.name,X),decisionReason:X}}let z=s.getPipeSegments();if(z.length<=1)return{behavior:"passthrough",message:"No pipes found in command"};let V=await Promise.all(z.map((X)=>qvr(X)));return Gvr(e,V,z,n,r,h,y,b)}
 // chunk-a60ee1ne.js Q$ [2303,2397), UTF-16; sha256 23896286b912e1be1e02220b3876918941a106292c042b5ffd76f91aa6540d48
@@ -47,11 +59,13 @@ function Q$(e){return e.circuitBreaker!==void 0&&trn[e.circuitBreaker]?.classifi
 function CX(){return cd("tengu_moonlit_kettle",{safe:!0})}
 // chunk-sfn1dbxq.js C3e [3192046,3192162), UTF-16; sha256 a4767e093676233cb7ac92aa932a3a7b9303be3043a235316a6452c8d96b52b0
 function C3e(e){let n=new Map;for(let[r,s]of e){let h=r;for(let y=2;n.has(h);y++)h=`${r} #${y}`;n.set(h,s)}return n}
+// chunk-sfn1dbxq.js A3e [3255656,3255912), UTF-16; module sha256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+function A3e(e,n,r){let s=new Map;for(let h of e)s.set(h,(s.get(h)??0)+1);return C3e(r.map((h,y)=>{let b=e[y];return[(s.get(b)??0)>1?[b,...(n[y]?.redirects??[]).map((M)=>`${M.fd??""}${M.op}${M.op===">&"||M.op==="<&"?"":" "}${M.target}`)].join(" "):b,h]}))}
 // chunk-sfn1dbxq.js Gvr [3192162,3195089), UTF-16; sha256 8eb14490a8a0b16ecb220db7146e78e68bf1b2eff3dbf23d724fce54449e09cb
 async function Gvr(e,n,r,s,h,y,b,w){let M=new Map,z=[],V=CX();for(let Ae=0;Ae<n.length;Ae++){let Pe=n[Ae].trim();if(!Pe){let Je=r[Ae],nt=await s({...e,command:Je}),ut=nt.behavior==="passthrough"?{behavior:"allow",updatedInput:{...e,command:Je},decisionReason:{type:"other",reason:"Bare output redirection with no command; path layer approved"}}:nt;M.set(Je,ut),z.push([Je,ut]);continue}let Me=await s({...e,command:Pe});M.set(Pe,Me);let $e=r[Ae].trim(),Ve=Me;if(V&&$e!==Pe&&Me.behavior==="allow"&&ize(Me.decisionReason)){let Je=await s({...e,command:$e});Ve=Je.behavior==="allow"?Je:{...Me,decisionReason:{type:"subcommandResults",reasons:new Map([[Pe,Me],[$e,{behavior:"allow",updatedInput:Me.updatedInput,decisionReason:{type:"other",reason:"Allowed by a permission rule only with its output redirection removed; not allowed as written"}}]])}}}z.push([$e,Ve])}let X=Array.from(M.entries()).find(([,Ae])=>Ae.behavior==="deny");if(X){let[Ae,Pe]=X;return{behavior:"deny",message:Pe.behavior==="deny"?Pe.message:`Permission denied for: ${Ae}`,decisionReason:{type:"subcommandResults",reasons:M}}}let he=()=>e$(M.values(),!0)??w?.()??e$(M.values());if(n.filter((Ae)=>{let Pe=Ae.trim();return h.isNormalizedCdCommand(Pe)}).length>1){let Ae=he();if(Ae)return Ae;let Pe={type:"other",reason:"Multiple directory changes in one command require approval for clarity",bashMissKind:"multi-cd"};return{behavior:"ask",decisionReason:Pe,message:Rl(ki.name,Pe)}}{let Ae,Pe;if(y)Ae=y.some(($e)=>h.isNormalizedCdCommand($e.text)),Pe=y.some(($e)=>h.isNormalizedGitCommand($e.text));else{Ae=!1,Pe=!1;for(let $e of n)for(let Ve of Kg($e)){let Je=Ve.trim();if(h.isNormalizedCdCommand(Je))Ae=!0;if(h.isNormalizedGitCommand(Je))Pe=!0}}if(Pe&&(y?Cwe(y,se()):EX(e.command))){let $e=he();if($e)return $e;let Ve={type:"other",reason:"This command creates git repository structure files (HEAD/objects/refs/hooks) and then runs git, which can execute hooks/fsmonitor from the created files.",bashMissKind:"cd-git-compound"};return{behavior:"ask",decisionReason:Ve,message:Rl(ki.name,Ve)}}if(Ae&&Pe){let $e=[];for(let Je of n)for(let nt of Kg(Je))$e.push(nt.trim());if(!(b?await b($e):!1)){let Je=he();if(Je)return Je;let nt={type:"other",reason:"This command changes directory before running a version-control command, which can pick up untrusted hooks or repository configuration from the target directory. Approve only if you trust it.",bashMissKind:"cd-git-compound"};return{behavior:"ask",decisionReason:nt,message:Rl(ki.name,nt)}}}}if(Array.from(M.values()).every((Ae)=>Ae.behavior==="allow"))return{behavior:"allow",updatedInput:e,decisionReason:{type:"subcommandResults",reasons:V?C3e(z):M}};let Se=[];for(let[,Ae]of M)if(Ae.behavior!=="allow"&&"suggestions"in Ae&&Ae.suggestions)Se.push(...Ae.suggestions);let Re={type:"subcommandResults",reasons:M};return{behavior:"ask",message:Rl(ki.name,Re),decisionReason:Re,suggestions:Se.length>0?Se:void 0}}
 // chunk-sfn1dbxq.js qvr [3195089,3195199), UTF-16; sha256 6ee9f4b736a0ad5c674e6208859cd646dd2372b9096e151dfa52f9d18c157181
-async function qvr(e){if(!e.includes(">"))return e;return(await q5e.parse(e))?.withoutOutputRedirections()??e}
+async function qvr(e){if(!e.includes(">"))return e;return(await q5e.parse(e,z5e))?.withoutOutputRedirections()??e}
 // chunk-sfn1dbxq.js e$ [3195877,3196014), UTF-16; sha256 1210002a0c070ccc388ffe91a32aac19d59fb921b23286660d630b10b39a87c5
 function e$(e,n=!1){let r=(s)=>X3(s)&&(!n||!Q$(s));for(let s of e)if(s.behavior==="ask"&&Dl(s.decisionReason,r)!==void 0)return s;return}
-return { Rcn, z5e };
+return { Rcn, z5e, CX, C3e, A3e };
 }

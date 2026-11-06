@@ -1,0 +1,2 @@
+2026-10-18T03:35:00Z	package	W135-01 PostToolBatch输入形状	独立传输改发来源tool_calls（tool_name/tool_input/tool_use_id/tool_response）；与经典链共用数组；移除tool_use_ids	不改派遣顺序与阻断语义	聚焦83/83；全量2238/2238；tsc 0
+2026-10-18T03:37:00Z	verification	W135-01 验收：build 0、notices 0、identity 8066539f…	dist重建	.audit/w135-runtime.todo.md

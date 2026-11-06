@@ -1,0 +1,15 @@
+sequence	phase	decision	why	evidence	result
+01	selection	Choose local child details after W320	CURRENT highest ready local chain	Task106;HEAD8b44e61	one active package;W301paused;local only
+02	source	Acquire kG/gE/GD and progress producer/publisher/lifecycle closure	Source body precedes all product edits	W321 source table;IX full body	18module digests match;UTF16half-open;inert only
+03	boundary	Retain original launch prompt and progress on Child	Fork seeds/preloads precede actual prompt and cleanup drops Session/Agent	reader a56c45836af975704	passive owner reader;no allocation/wait/journal replay/event drain
+04	baseline	Launch real child read then /tasks on compiled CLI	Reproduce missing user entrypoint	w321-cli-baseline.txt	valid red;Background list instead of Prompt/Progress
+05	implementation	Add agent detail union and owned stream/journal observations	Keep source arithmetic and existing modal lifecycle	agent-progress;agent-details;registry;runtime;task-details;interactive;terminal;tui	both initial/resumed constructors;source5activity cap;1000ms data refresh
+06	incident	Narrow shell fixtures and remove post-close detail read	New union and dismissal lookup affect existing readers	check-initial;existing119/120	explicit kind narrowing;list read;oldshell3/3passes
+07	incident	Fix notification and SDK fixture shapes	Runtime emits notification not agents;SDK caller required	new-tests2;check4	new3/3andcheck pass;no weakened queues or timer assertions
+08	validation	Run affected and owner/CLI suites	Shared owner/schema/cleanup paths need coverage	w321-affected;w321-owners-cli	207/207and174/174pass
+09	artifact	Drive real compiled held child SSE	Prove live data and key lifecycle through public entrypoint	w321-cli-stream;w321-cli-final	9owned requests;1.2kto2.2k;actual read;Back/stop/completion;exit0;locks released
+10	source-compare	Read24AST-bound source/target diffs	S-7 requires body comparison,not comments alone	w321-source-comparison.json	all read;18full record module digests rechecked
+11	comments	Accept provenance gaps and name host usage adapter	Source and host final-message contracts differ	comment reviewer aaa0e4787136cef55	11required initial lines/9blocks;0deletions/0suppressions;added exact handler anchors
+12	artifact-binding	Rebuild comments and compare exact source inverses/parsed JS	Retain artifact validation without claiming unchanged bytes	w321-provenance-final;w321-final-identity	check/build pass;final CLI9pass;verifier incidents retained
+13	review	Independent correctness review	Writer verification does not replace independent verdict	aaf6dfaf4c2016cdd	3/3;CLI9;7tools/342tokens/50passivereads;failure/cancel/close;modal/formpreemption;0confirmeddefects;97e74abidentitymatches
+14	delivery	Keep explicit stage and local commit	Prior user authorization excludes push/coauthor	W321record	allgatespass;localcommit6340989;17files;no_coauthor;no_push;unrelateduserchangespreserved

@@ -1,0 +1,37 @@
+{
+  "scope": "W183 bounded shared child PermissionRequest adoption repair",
+  "status": "independently_accepted_bounded_slice",
+  "identity": "bc709f63050ae54a610dffbf1198a25b81af051e9bf38343eb17c7247c9daf2c",
+  "identityFile": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/final-identity.json",
+  "changedPaths": ["src/permissions.ts", "src/session.ts", "src/subagents.ts", "src/agent-registry.ts", "src/skill-runtime.ts", "test/agent-lifecycle.test.ts"],
+  "source": [
+    {"module":"chunk-rgay4wwx.js","sha256":"29286d382e9ab3ef57a1ef5ce41ef10c8e9709927d8f6195f32bc24507d6f90e","symbols":["eXn","LJe"],"ranges":[[1086,1317],[1317,1873]],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-40cepjpq.js","sha256":"473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2","symbols":["vC setup","yn","_n","vC Rir call"],"ranges":[[121205,123604],[123604,125280],[125284,125421],[135509,136008]],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-sfn1dbxq.js","sha256":"4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da","symbols":["cur","Rir","sxr","nxr","oxr","Zq","eK"],"ranges":[[2539551,2539630],[2539631,2543941],[3317869,3319984],[3316265,3316400],[3316400,3316484],[3316685,3316759],[3316759,3316999]],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-2bcyxj9q.js","sha256":"fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0","symbols":["KI","jd/sf existing copy","nms","rms","O1"],"ranges":[[197487,197681],[194801,197020],[197020,197414],[197414,197487],[199668,199720]],"unit":"zero-based UTF16 half-open"},
+    {"module":"chunk-bk5ct2gw.js","sha256":"efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1","symbols":["Wv"],"ranges":[[478311,478377]],"unit":"zero-based UTF16 half-open"}
+  ],
+  "adaptation": "LivePermissionOwner exposes typed optional adoption capability. Owned Session exposes it; inherited Sessions forward updates before reducing. Root Session reduces latest authoritative state and retains its existing persistence queue, notifications, directory observations and drain ownership. Direct and registry adapters resolve the current source owner. Skill derived owners forward adoption separately from their existing executor approval wrapper. No seeded child buckets merge into the root.",
+  "validation": {
+    "check": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/check.txt",
+    "build": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/build.txt",
+    "affected": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/affected.txt",
+    "affectedResult": "167 passed, zero failed across agent-lifecycle, permissions, skill-runtime, agent-registry and skill-effects; additions stay inside existing third W183 regression group",
+    "compiledDriver": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/compiled.mjs",
+    "compiledResult": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/compiled-result.json",
+    "compiledRows": "10 actual Agent+shell PermissionRequest+write_file effects across public Session, nested Session, direct subagent and registry foreground/background; one narrowing/revocation/mode/directory/disk/notification row; two existing skill approval callback rows",
+    "originalPeerProbe": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-adoption-ABbEIG/w183-child-adoption-before-result.json",
+    "originalPeerProbeResult": "Original script unchanged except scratch destination; deny first=true second=false hookCount=1, allow first=true second=true hookCount=1; both live and parent bucket contain write_file while child local bucket stays empty; entry hashes stable during run",
+    "privateEnvironment": "Every test process inherits private HOME, XDG_CONFIG_HOME, GIT_CONFIG_GLOBAL, GIT_CONFIG_SYSTEM absent path and GIT_CONFIG_NOSYSTEM=1",
+    "diffCheck": "pass",
+    "independentOriginalResult": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-child-adoption-after-result.json",
+    "independentNestedResult": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-child-adoption-nested-result.json",
+    "independentResult": "Original retained deny/allow effects and hook counts pass; nested root forwarding, parent revoke, allowedTools reapplication and root-only persistence/drain pass with stable dist entry hashes"
+  },
+  "ownership": "Shared parent changes intentionally. Nested setters forward to root. Root pending writes drain on root close/drain; child close does not drain root. Child journals and ordinary local state stay child-owned. Session carry/fork lifecycle is unchanged by this slice.",
+  "principles": {"model-the-domain":"adoption is a typed owner capability","fix-root-causes":"repair mismatched read/write authority instead of merging stale buckets","prove-it-works":"compiled Agent, hook counts and real file effects verify current versus next call"},
+  "limitations": [ "Skill foreground/background approval retains the existing executor callback route; these rows do not claim a newly implemented skill PermissionRequest hook dispatcher", "Ordinary/fork live PLAN inheritance and auto remain separate queued work", "No new permission journal serialization or resumed child-parent link is introduced", "Static policies with no live Session adoption capability retain existing local adoption behavior", "Full W183/all-C remain open"],
+  "attempts": ["Initial original-probe runner used a data URL, whose module base rejects absolute filesystem dynamic imports before effects. Corrected runner uses stdin module evaluation; product identity unchanged."],
+  "preserved": ["PLAN source copies and typed events", "cumulative source changes", "CURRENT/FEATURES/ports coordinator ownership", "session.ts.rej", "unrelated audit files"],
+  "manualEditTool": "apply_patch absent from PATH and dedicated tool catalog; dedicated Edit/Write fallback used as authorized"
+}

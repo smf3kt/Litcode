@@ -31,6 +31,32 @@ import { ENABLE_FOCUS_EVENTS, DISABLE_FOCUS_EVENTS } from './tui-modes.js';
 
 export const MAX_PASTE_BYTES = 256 * 1024;
 
+// Host delivery rewrite: Aje, chunk-06azbynj [320841,328782), UTF-16,
+// exposes no write completion for the host recovery journal.
+export function commitTerminalOutput(stream: Writable, text: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (stream.destroyed || stream.writableEnded) {
+      reject(new Error('Output stream closed before delivery'));
+      return;
+    }
+    let settled = false;
+    const finish = (error?: Error | null) => {
+      if (settled) return;
+      settled = true;
+      stream.off('close', onClose);
+      // Node may emit the write error immediately after invoking the callback.
+      setImmediate(() => stream.off('error', onError));
+      if (error) reject(error); else resolve();
+    };
+    const onError = (error: Error) => finish(error);
+    const onClose = () => finish(new Error('Output stream closed before delivery'));
+    stream.once('error', onError);
+    stream.once('close', onClose);
+    try { stream.write(text, finish); }
+    catch (error) { finish(error instanceof Error ? error : new Error(String(error))); }
+  });
+}
+
 export type EditorCommand = 'left' | 'right' | 'up' | 'down' | 'home' | 'end' | 'logicalHome' | 'logicalEnd' | 'wordLeft' | 'wordRight'
   | 'backspace' | 'delete' | 'newline' | 'submit' | 'interrupt' | 'eof' | 'search'
   | 'extendLeft' | 'extendRight' | 'extendUp' | 'extendDown' | 'extendLineStart' | 'extendLineEnd'
@@ -1424,6 +1450,8 @@ export interface TerminalSurface {
   viewAgent?(host: import('./agent-transcript.js').AgentViewHost): void;
   clearAgentView?(): void;
   setProgress?(event: import('./tui-progress.js').AgentProgressEvent): void;
+  setAgentProgress?(toolUseId: string, message: import('@anthropic-ai/sdk/resources/messages').ToolUseBlockParam): void;
+  clearAgentProgress?(toolUseId?: string): void;
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
   bindMcpCatalog?(load?: (signal: AbortSignal) => Promise<Pick<import('./mcp.js').McpCatalogListing, 'resources' | 'templates'>>,
@@ -1444,6 +1472,7 @@ export interface TerminalSurface {
   endAssistantMessage?(): void;
   /** A dialog's own report lines, returned as the command's result and shown as a system entry. */
   writeNotice?(text: string): void;
+  commitNotice?(text: string): Promise<void>;
   /** U/Ip, zsg1bb14 [20040,21857), phg89898 [113052,114313), UTF-16: fit raw fields at paint time. */
   writeForkRow?(fields: import('./fork-row.js').ForkRowFields): void;
   /**

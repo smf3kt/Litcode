@@ -23,7 +23,7 @@ export interface PluginComponentCatalog {
 }
 const objectSchema = z.record(z.unknown());
 /** Ygt/fHe/ib, chunk-sfn1dbxq.js [436958,437364); Lu, chunk-z6p21rxk.js [3933,4292); UTF-16. */
-const names = (value: unknown): string[] | undefined => {
+export const parseToolNames = (value: unknown): string[] | undefined => {
   if (value === undefined) return undefined;
   const values = typeof value === 'string' ? [value] : Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
   const result: string[] = [];
@@ -41,6 +41,7 @@ const names = (value: unknown): string[] | undefined => {
   }
   return result.includes('*') ? ['*'] : result;
 };
+const names = parseToolNames;
 const text = (value: unknown): string | undefined => typeof value === 'string' && value.trim() ? value.trim() : undefined;
 const description = (value: unknown): string | undefined => text(value) ?? (typeof value === 'number' || typeof value === 'boolean' ? String(value) : undefined);
 const summary = (body: string, fallback: string) => {
@@ -86,7 +87,7 @@ export function parsePluginFrontmatter(raw: string): { data: Record<string, unkn
 
 /** Adapted KU/DDt/nle/Z5t, chunk-sfn1dbxq.js [957150,972849), [2048211,2053851), UTF-16. */
 export function loadPluginComponents(components: readonly InstalledPluginComponents[], userFiles: ReadonlySet<string> = new Set(),
-  budget: ComponentBudget = { remaining: CONFIG_LIMITS.textBytesTotal }, namespaced = false): PluginComponentCatalog {
+  budget: ComponentBudget = { remaining: CONFIG_LIMITS.textBytesTotal }, namespaced = false, workspace?: string): PluginComponentCatalog {
   const result: PluginComponentCatalog = { skills: [], agents: [], diagnostics: [] };
   const skillFiles = new Set(userFiles);
   const skillNames = new Set<string>();
@@ -147,7 +148,14 @@ export function loadPluginComponents(components: readonly InstalledPluginCompone
       // The plugin-qualified name is the command; a bare frontmatter name is
       // only a declaration (source `pt`, chunk-sfn1dbxq.js offset 960220).
       if (format === 'skill' && namespaced && declaredName && !declaredName.includes(':') && slashName.safeParse(declaredName).success && declaredName !== fullName) skill.aliases = [...new Set([...(skill.aliases ?? []), declaredName])];
-      const allowed = names(data['allowed-tools']);
+      // j4/fce, chunk-sfn1dbxq.js [960200,960700), chunk-2kdsvp3x.js [25488,25778), UTF-16.
+      const expandAllowed = (value: unknown): unknown => typeof value === 'string'
+        ? value.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, () => item.directory)
+          .replace(/\$\{CLAUDE_PROJECT_DIR\}/g, () => workspace ?? '${CLAUDE_PROJECT_DIR}')
+          .replace(/\$\{CLAUDE_SKILL_DIR\}/g, () => format === 'skill' ? path.dirname(file) : '${CLAUDE_SKILL_DIR}')
+        : value;
+      const declaration = data['allowed-tools'];
+      const allowed = names(Array.isArray(declaration) ? declaration.map(expandAllowed) : expandAllowed(declaration));
       if (allowed) skill.allowedTools = allowed;
       if (format === 'skill' && data.hooks !== undefined) {
         const hooks = hooksSchema.safeParse(data.hooks);
@@ -161,7 +169,8 @@ export function loadPluginComponents(components: readonly InstalledPluginCompone
       if (shell) skill.shell = shell;
       const metadataValue = objectSchema.safeParse(data.metadata);
       if (metadataValue.success) skill.metadata = metadataValue.data;
-      const disallowed = names(data['disallowed-tools']);
+      // jde, chunk-sfn1dbxq.js [954216,954282), UTF-16.
+      const disallowed = names(data['disallowed-tools'] ?? data.disallowedTools);
       if (disallowed) skill.disallowedTools = disallowed;
       const argumentsList = names(data.arguments);
       if (argumentsList) skill.argumentNames = argumentsList.filter(value => !/^\d+$/.test(value));

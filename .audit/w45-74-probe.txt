@@ -1,0 +1,18 @@
+ac = [true,false,false,false]
+Z4t = [false,false,true,true]
+Uto = [false,false,false,true]
+B_ = [1,3,0,0]
+B_ png 4096 chars = 3072
+Dss png = {"format":"png","base64":"TQ=="}
+Dss rgba = {"format":"rgba","base64":"TWFu","width":1,"height":1}
+Dss file png = {"medium":"file","name":"/a.png","format":"png"}
+Dss file rgb = {"medium":"file","name":"/a.rgb","format":"rgb","width":2,"height":3}
+Dss shm png = {"medium":"shm","name":"/x","format":"png"}
+Dss shm rgba = {"medium":"shm","name":"/x","format":"rgba","width":2,"height":3}
+Dss both file and shm = {"medium":"shm","name":"/s.png","format":"png"}
+cFo(Dss file png) = "\u001b_Ga=T,U=1,q=1,f=100,t=f,i=1,c=1,r=1;L2EucG5n\u001b\\"
+cFo(Dss shm rgba) = "\u001b_Ga=T,U=1,q=1,f=32,s=2,v=3,t=s,i=2,c=1,r=1;L3g=\u001b\\"
+cFo(Dss png) = "\u001b_Ga=T,U=1,q=2,f=100,i=3,c=1,r=1;TQ==\u001b\\"
+cFo(Dss rgba) = "\u001b_Ga=T,U=1,q=2,f=32,s=1,v=1,i=4,c=1,r=1;TWFu\u001b\\"
+(node:26793) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

@@ -1,0 +1,984 @@
+diff --git a/src/hooks.ts b/src/hooks.ts
+--- a/src/hooks.ts
++++ b/src/hooks.ts
+@@ -24,6 +24,7 @@
+ import { spawn, type ChildProcess } from "node:child_process";
+ import { createHash } from "node:crypto";
+ import { basename } from "node:path";
++import { types as utilTypes } from 'node:util';
+ import { z } from "zod";
+ import { validateHookTerminalSequence } from "./hook-terminal.js";
+ import { permissionUpdateListSchema, type PermissionUpdate } from "./permissions.js";
+@@ -243,6 +244,8 @@
+   commandHome?: HookCommandHome;
+   /** The foreground process handle when the header was detected in a live run. */
+   handle?: HookCommandHandle;
++  /** Private registry observations travel outside the original stdin payload. */
++  observe?: (authorization: object) => void;
+ };
+ /** One command hook's raw process result, before exit-code interpretation. The
+  *  async registry keeps it so an asyncRewake hook can build its wake body from
+@@ -863,6 +866,33 @@
+   cleanup(): void;
+ };
+ 
++type HookCommandIdentity = { command: string; cwd: string; timeoutMs: number; input: string;
++  signal: AbortSignal; commandHome?: HookCommandHome };
++type OwnedHookCommand = Pick<HookCommandHandle, 'done' | 'pid' | 'detachForeground' | 'kill' | 'cleanup'>;
++const ownedHookCommands = new WeakMap<HookCommandHandle, { identity: HookCommandIdentity;
++  bindings: PropertyDescriptorMap; prototype: object | null; background: HookCommandHandle['background'];
++  command: OwnedHookCommand; claimed: boolean }>();
++
++// m5e/Axe, sfn1dbxq [2955889,2958184)/[82919,87427), UTF-16: transfer the original process only once.
++export function claimOwnedHookCommand(handle: HookCommandHandle, identity: HookCommandIdentity, taskId: string): OwnedHookCommand | undefined {
++  if (utilTypes.isProxy(handle)) return;
++  const saved = ownedHookCommands.get(handle);
++  if (!saved || saved.claimed || saved.command.pid === undefined || saved.command.pid <= 1 || Object.getPrototypeOf(handle) !== saved.prototype ||
++      saved.identity.command !== identity.command || saved.identity.cwd !== identity.cwd ||
++      saved.identity.timeoutMs !== identity.timeoutMs || saved.identity.input !== identity.input || saved.identity.signal !== identity.signal ||
++      (saved.identity.commandHome === undefined) !== (identity.commandHome === undefined) ||
++      saved.identity.commandHome?.value !== identity.commandHome?.value) return;
++  const keys = Reflect.ownKeys(saved.bindings);
++  if (Reflect.ownKeys(handle).length !== keys.length) return;
++  for (const key of keys) {
++    const before = Object.getOwnPropertyDescriptor(saved.bindings, key)?.value, after = Object.getOwnPropertyDescriptor(handle, key);
++    if (!before || !after || before.value !== after.value || before.get !== after.get || before.set !== after.set) return;
++  }
++  if (!saved.background(taskId)) return;
++  saved.claimed = true;
++  return { ...saved.command };
++}
++
+ export function startHookCommand(
+   command: string,
+   cwd: string,
+@@ -872,6 +902,7 @@
+   adoptable = true,
+   commandHome?: HookCommandHome,
+ ): HookCommandHandle {
++  const home = commandHome === undefined ? undefined : { value: commandHome.value };
+   let handle!: HookCommandHandle;
+   let backgrounded = false;
+   let transferred = false;
+@@ -919,7 +950,7 @@
+     try {
+       child = spawn("/bin/sh", ["-c", command], {
+         cwd,
+-        env: commandHome === undefined ? process.env : { ...process.env, HOME: commandHome.value },
++        env: home === undefined ? process.env : { ...process.env, HOME: home.value },
+         detached: true, // own process group so the whole tree can be killed
+         stdio: ["pipe", "pipe", "pipe"],
+       });
+@@ -1109,6 +1140,9 @@
+     });
+     child.on("close", () => finish());
+   });
++  ownedHookCommands.set(handle, { identity: { command, cwd, timeoutMs, input, signal, ...(home === undefined ? {} : { commandHome: home }) },
++    bindings: Object.getOwnPropertyDescriptors(handle), prototype: Object.getPrototypeOf(handle), background: handle.background,
++    command: { done, pid: childRef?.pid, detachForeground: handle.detachForeground, kill: handle.kill, cleanup: handle.cleanup }, claimed: false });
+   return handle;
+ }
+ 
+diff --git a/src/async-hooks.ts b/src/async-hooks.ts
+--- a/src/async-hooks.ts
++++ b/src/async-hooks.ts
+@@ -4,8 +4,9 @@
+ import fs from "node:fs";
+ import path from "node:path";
+ import { redactCredentialShapes } from "./credential-shapes.js";
+-import { HOOK_EVENTS, hookDefinitionSchema, interpretRawCommand, runHooks, syncOutputAfterHeader, type AsyncHookRequest,
++import { HOOK_EVENTS, claimOwnedHookCommand, hookDefinitionSchema, interpretRawCommand, runHooks, syncOutputAfterHeader, type AsyncHookRequest,
+   type CommandHookExecution, type HookEvent, type HookPayload, type HookResult, type HookCommandHandle } from "./hooks.js";
++import type { AsyncHookObservation, AsyncHookProcessState } from './async-hook-journal.js';
+ 
+ const MAX_ACTIVE = 16;
+ const MAX_HISTORY = 100;
+@@ -13,7 +14,7 @@
+ const MAX_INPUT_BYTES = 1024 * 1024;
+ const CALLBACK_GRACE_MS = 200;
+ 
+-export type AsyncHookState = "running" | "completed" | "blocked" | "failed" | "cancelled" | "timed_out";
++export type AsyncHookState = 'running' | AsyncHookProcessState;
+ /** What an asyncRewake hook asks the host to deliver when its run exits 2
+  *  (`m5e`, chunk-sfn1dbxq.js offset 2956018): a one-line summary and the body
+  *  the model reads, whose default prefix is `Stop hook blocking error from
+@@ -53,6 +54,73 @@
+   /** Owned process teardown for an adopted foreground handle. */
+   kill?: () => void;
+ };
++type HookJob = { registry: AsyncHookRegistry; job: Job; controller: AbortController; event: HookEvent; startedAt: number;
++  identity: Pick<AsyncHookObservation, 'registryId' | 'jobId' | 'event' | 'requestDigest' | 'mode'>;
++  observe?: AsyncHookRequest['observe']; phase: 'registered' | 'process_completed' | 'callback_settled' };
++type HookSettlement = { registry: AsyncHookRegistry; record: HookJob; raw: HookResult; payload: HookPayload;
++  complete: (value: AsyncHookCompletion) => void; failed?: 'failed'; wake?: RewakeSource };
++const registryIdentities = new WeakMap<AsyncHookRegistry, string>();
++const hookJobs = new WeakMap<Job, HookJob>();
++const hookSettlements = new WeakMap<object, HookSettlement>();
++const hookObservations = new WeakMap<object, { observe: NonNullable<AsyncHookRequest['observe']>; observation: AsyncHookObservation }>();
++const hookObservationErrors = new WeakMap<AsyncHookRegistry, unknown>();
++
++// Host facts for m5e/WLe/CXo, sfn1dbxq [2955889,2958184)/[626248,626520)/[630237,630565), UTF-16.
++export function asyncHookRequestDigest(request: Pick<AsyncHookRequest, 'event' | 'input' | 'cwd' | 'timeoutMs' | 'commandHome'> & { definition: unknown }): string {
++  return crypto.createHash('sha256').update(JSON.stringify({ event: request.event, definition: hookDefinitionSchema.parse(request.definition),
++    input: request.input, cwd: request.cwd, timeoutMs: request.timeoutMs,
++    home: request.commandHome === undefined ? null : { value: request.commandHome.value } })).digest('hex');
++}
++
++export function consumeAsyncHookObservation(authorization: object, observe: NonNullable<AsyncHookRequest['observe']>): AsyncHookObservation {
++  const saved = hookObservations.get(authorization); hookObservations.delete(authorization);
++  if (!saved || saved.observe !== observe) throw new Error('Async hook observation authorization invalid');
++  return structuredClone(saved.observation);
++}
++
++function observeHookJob(record: HookJob, observation: AsyncHookObservation): void {
++  if (!record.observe) return;
++  const token = {};
++  hookObservations.set(token, { observe: record.observe, observation: structuredClone(observation) });
++  try { record.observe(token); }
++  finally { hookObservations.delete(token); }
++}
++
++function rememberHookObservationError(registry: AsyncHookRegistry, error: unknown): void {
++  if (!hookObservationErrors.has(registry)) hookObservationErrors.set(registry, error);
++}
++
++function settleHookProcess(registry: AsyncHookRegistry, finish: (authorization: object) => Promise<void>, record: HookJob,
++    raw: HookResult, payload: HookPayload, complete: (value: AsyncHookCompletion) => void, failed?: 'failed', wake?: RewakeSource): Promise<void> {
++  const token = {};
++  hookSettlements.set(token, { registry, record, raw: structuredClone(raw), payload: structuredClone(payload), complete,
++    ...(failed === undefined ? {} : { failed }), ...(wake === undefined ? {} : { wake }) });
++  return finish(token).finally(() => { hookSettlements.delete(token); });
++}
++
++// m5e/Axe, sfn1dbxq [2955889,2958184)/[82919,87427), UTF-16; the owned run uses this parsed snapshot.
++function prepareAsyncHookRequest(request: AsyncHookRequest, signal: AbortSignal, workspace: string, requireDirectory: boolean) {
++  const event = request.event;
++  if (!HOOK_EVENTS.includes(event)) throw new Error('Invalid async hook event.');
++  const definition = hookDefinitionSchema.parse(request.definition);
++  if (!('command' in definition)) throw new Error('Async hook registry accepts command definitions only.');
++  const timeoutMs = request.timeoutMs;
++  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error('Async hook deadline must be positive.');
++  const input = request.input;
++  if (Buffer.byteLength(input) > MAX_INPUT_BYTES) throw new Error('Async hook input exceeds byte cap.');
++  const decoded: unknown = JSON.parse(input), payload = structuredClone(request.payload);
++  if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded) || !('hook_event_name' in decoded) ||
++      decoded.hook_event_name !== event || input !== `${JSON.stringify({ ...payload, hook_event_name: event })}\n`)
++    throw new Error('Async hook stdin must match the original newline-terminated event payload.');
++  const cwd = request.cwd, requestedCwd = fs.realpathSync(path.resolve(cwd));
++  const payloadCwd = typeof payload.cwd === 'string' && payload.cwd ? payload.cwd : process.cwd();
++  if (fs.realpathSync(path.resolve(payloadCwd)) !== requestedCwd) throw new Error('Async hook cwd conflicts with original payload.');
++  if (requestedCwd !== workspace && !requestedCwd.startsWith(workspace + path.sep)) throw new Error('Async hook cwd leaves registry workspace.');
++  if (requireDirectory && !fs.statSync(requestedCwd).isDirectory()) throw new Error('Async hook cwd must be a directory.');
++  const commandHome = request.commandHome;
++  return { definition, event, payload, input, cwd, timeoutMs, signal,
++    commandHome: commandHome === undefined ? undefined : { value: commandHome.value }, observe: request.observe };
++}
+ function abortError(): Error {
+   const error = new Error("Async hook cancelled before start.");
+   error.name = "AbortError";
+@@ -130,6 +198,7 @@
+     this.workspace = fs.realpathSync(path.resolve(options.workspace));
+     if (!fs.statSync(this.workspace).isDirectory()) throw new Error("Async hook workspace must be a directory.");
+     this.onResult = options.onResult;
++    registryIdentities.set(this, crypto.randomUUID());
+     this.signal = options.signal;
+     this.closed = options.signal?.aborted ?? false;
+     options.signal?.addEventListener("abort", this.onAbort, { once: true });
+@@ -137,24 +206,12 @@
+ 
+   /** Arrow binding can be passed directly as HookRunOptions.startAsyncCommand. */
+   readonly start = async (request: AsyncHookRequest): Promise<string> => {
+-    if (request.signal.aborted || this.signal?.aborted) throw abortError();
++    const signal = request.signal;
++    if (signal.aborted || this.signal?.aborted) throw abortError();
+     if (this.closed) throw new Error("Async hook registry is closed.");
+     if ([...this.jobs.values()].filter(job => !job.settled).length >= MAX_ACTIVE) throw new Error("Async hook active-job limit exceeded (16).");
+-    if (!HOOK_EVENTS.includes(request.event)) throw new Error("Invalid async hook event.");
+-    const definition = hookDefinitionSchema.parse(request.definition);
+-    if (!("command" in definition)) throw new Error("Async hook registry accepts command definitions only.");
+-    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) throw new Error("Async hook deadline must be positive.");
+-    if (Buffer.byteLength(request.input) > MAX_INPUT_BYTES) throw new Error("Async hook input exceeds byte cap.");
+-    const payload = JSON.parse(request.input) as Record<string, unknown>;
+-    if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.hook_event_name !== request.event || request.input !== `${JSON.stringify({ ...request.payload, hook_event_name: request.event })}\n`) throw new Error("Async hook stdin must match the original newline-terminated event payload.");
+-    // runHooks selects cwd from payload or process.cwd; validate instead of
+-    // silently changing the original stdin record while forwarding cwd.
+-    const requestedCwd = fs.realpathSync(path.resolve(request.cwd));
+-    const payloadCwd = typeof request.payload.cwd === "string" && request.payload.cwd ? request.payload.cwd : process.cwd();
+-    if (fs.realpathSync(path.resolve(payloadCwd)) !== requestedCwd) throw new Error("Async hook cwd conflicts with original payload.");
+-    if (requestedCwd !== this.workspace && !requestedCwd.startsWith(this.workspace + path.sep)) throw new Error("Async hook cwd leaves registry workspace.");
+-    if (!fs.statSync(requestedCwd).isDirectory()) throw new Error("Async hook cwd must be a directory.");
+-    const forwarded = structuredClone(request.payload);
++    const actual = prepareAsyncHookRequest(request, signal, this.workspace, true);
++    const { definition, event, payload: forwarded, commandHome: home } = actual;
+     const correlation = minimalPayload(forwarded);
+     // The source resolves one deadline and uses it on both sides: the foreground
+     // run takes `js=uo.timeout?uo.timeout*1000:b` (chunk-sfn1dbxq.js offset
+@@ -162,18 +219,26 @@
+     // (`asyncTimeout:e.timeout?e.timeout*1000:lu`, offset 2970018), where `b` is
+     // the caller's deadline and `lu` is 600000 (offset 2915815).
+     const timeout = typeof definition.timeout === "number" && definition.timeout > 0
+-      ? definition.timeout : request.timeoutMs / 1000;
++      ? definition.timeout : actual.timeoutMs / 1000;
+     const controller = new AbortController();
+     const id = crypto.randomUUID();
+-    const descriptor: AsyncHookDescriptor = { id, event: request.event, state: "running", started_at: Date.now() };
++    const descriptor: AsyncHookDescriptor = { id, event, state: "running", started_at: Date.now() };
+     let complete!: (value: AsyncHookCompletion) => void;
+     const done = new Promise<AsyncHookCompletion>(resolve => { complete = resolve; });
+     const job: Job = { descriptor, controller, done, settled: false };
++    const record: HookJob = { registry: this, job, controller, event, startedAt: descriptor.started_at,
++      identity: { registryId: registryIdentities.get(this)!, jobId: id, event,
++        requestDigest: asyncHookRequestDigest(actual), mode: 'configured' }, observe: actual.observe, phase: 'registered' };
++    hookJobs.set(job, record);
+     this.jobs.set(id, job);
++    try { observeHookJob(record, { ...record.identity, phase: 'registered', startedAt: record.startedAt }); }
++    catch (error) {
++      this.jobs.delete(id); hookJobs.delete(job); rememberHookObservationError(this, error); throw error;
++    }
+     // The caller's per-call signal is intentionally detached after ownership.
+     // asyncRewake implies async; the forwarded run must not re-enter the registry.
+     const { asyncRewake: _asyncRewake, ...foreground } = definition as typeof definition & { asyncRewake?: boolean };
+-    const config = { [request.event]: [{ ...foreground, async: false, timeout }] };
++    const config = { [event]: [{ ...foreground, async: false, timeout }] };
+     const wakeFields = "asyncRewake" in definition ? definition : undefined;
+     const wake = wakeFields?.asyncRewake === true
+       ? { definition: { command: wakeFields.command,
+@@ -182,17 +247,19 @@
+       : undefined;
+     let execution: CommandHookExecution | undefined;
+     let handle: HookCommandHandle | undefined;
+-    void runHooks(config, request.event, forwarded, controller.signal, {
++    void runHooks(config, event, forwarded, controller.signal, {
+       onCommandResult: raw => { execution = raw; },
+       onCommandHandle: value => { handle = value; },
+-      commandHome: () => request.commandHome,
++      commandHome: () => home,
+       // This run already owns the process; a header line is ordinary output for
+       // `gbt` to skip, not a second handoff (`UF` `_e` forceSync path).
+       adoptAsyncHeaders: false,
+       stripAsyncHeader: true,
+     }).then(
+-      result => this.finish(job, result, correlation, complete, undefined, wake ? { definition: wake.definition, raw: execution } : undefined),
+-      () => this.finish(job, { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, "failed"),
++      result => settleHookProcess(this, authorization => this.finish(authorization), record, result, correlation, complete,
++        undefined, wake ? { definition: wake.definition, raw: execution } : undefined),
++      () => settleHookProcess(this, authorization => this.finish(authorization), record,
++        { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, 'failed'),
+     );
+     return id;
+   };
+@@ -206,40 +273,38 @@
+   readonly adopt = async (request: AsyncHookRequest, handle: HookCommandHandle, taskId: string): Promise<string> => {
+     if (this.closed) throw new Error("Async hook registry is closed.");
+     if ([...this.jobs.values()].filter(job => !job.settled).length >= MAX_ACTIVE) throw new Error("Async hook active-job limit exceeded (16).");
+-    if (!HOOK_EVENTS.includes(request.event)) throw new Error("Invalid async hook event.");
+-    const definition = hookDefinitionSchema.parse(request.definition);
+-    if (!("command" in definition)) throw new Error("Async hook registry accepts command definitions only.");
+-    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) throw new Error("Async hook deadline must be positive.");
+-    if (Buffer.byteLength(request.input) > MAX_INPUT_BYTES) throw new Error("Async hook input exceeds byte cap.");
+-    const payload = JSON.parse(request.input) as Record<string, unknown>;
+-    if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.hook_event_name !== request.event ||
+-        request.input !== `${JSON.stringify({ ...request.payload, hook_event_name: request.event })}\n`) {
+-      throw new Error("Async hook stdin must match the original newline-terminated event payload.");
+-    }
+-    const requestedCwd = fs.realpathSync(path.resolve(request.cwd));
+-    const payloadCwd = typeof request.payload.cwd === "string" && request.payload.cwd ? request.payload.cwd : process.cwd();
+-    if (fs.realpathSync(path.resolve(payloadCwd)) !== requestedCwd) throw new Error("Async hook cwd conflicts with original payload.");
+-    if (requestedCwd !== this.workspace && !requestedCwd.startsWith(this.workspace + path.sep)) throw new Error("Async hook cwd leaves registry workspace.");
+-    if (!handle.background(taskId)) throw new Error("Async hook process already settled.");
+-    handle.detachForeground();
+-    const forwarded = structuredClone(request.payload);
++    const actual = prepareAsyncHookRequest(request, request.signal, this.workspace, false);
++    const { definition, event, payload: forwarded } = actual;
++    const owned = claimOwnedHookCommand(handle, { command: definition.command, cwd: actual.cwd, input: actual.input,
++      timeoutMs: actual.timeoutMs, signal: actual.signal, commandHome: actual.commandHome }, taskId);
++    if (!owned) throw new Error('Async hook process ownership invalid or already settled.');
+     const correlation = minimalPayload(forwarded);
+     const controller = new AbortController();
+     const id = crypto.randomUUID();
+-    const descriptor: AsyncHookDescriptor = { id, event: request.event, state: "running", started_at: Date.now() };
++    const descriptor: AsyncHookDescriptor = { id, event, state: "running", started_at: Date.now() };
+     let complete!: (value: AsyncHookCompletion) => void;
+     const done = new Promise<AsyncHookCompletion>(resolve => { complete = resolve; });
+-    const job: Job = { descriptor, controller, done, settled: false, kill: () => handle.kill() };
++    const job: Job = { descriptor, controller, done, settled: false, kill: owned.kill };
++    const record: HookJob = { registry: this, job, controller, event, startedAt: descriptor.started_at,
++      identity: { registryId: registryIdentities.get(this)!, jobId: id, event,
++        requestDigest: asyncHookRequestDigest(actual), mode: 'adopted' }, observe: actual.observe, phase: 'registered' };
++    hookJobs.set(job, record);
+     this.jobs.set(id, job);
++    try { observeHookJob(record, { ...record.identity, phase: 'registered', startedAt: record.startedAt }); }
++    catch (error) {
++      this.jobs.delete(id); hookJobs.delete(job); rememberHookObservationError(this, error);
++      owned.kill(); await owned.done; owned.cleanup(); throw error;
++    }
++    owned.detachForeground();
+     // The header bytes were already read by the foreground run and stay part of
+     // the final output. `gbt` (chunk-sfn1dbxq.js [622557,622798)) skips the
+     // async header and takes the first joined tail or line object without an
+     // `async` property, so the final sync payload is interpreted, not the header.
+-    void handle.done.then(raw => {
++    void owned.done.then(raw => {
+       const result: HookResult = { blocked: false, additionalContext: [] };
+       const output = syncOutputAfterHeader(raw);
+-      if (output) interpretRawCommand(request.event, definition, output, request.timeoutMs, result, []);
+-      this.finish(job, result, correlation, complete, undefined,
++      if (output) interpretRawCommand(event, definition, output, actual.timeoutMs, result, []);
++      return settleHookProcess(this, authorization => this.finish(authorization), record, result, correlation, complete, undefined,
+         "asyncRewake" in definition && definition.asyncRewake === true
+           ? { definition: { command: definition.command,
+               ...(definition.rewakeMessage !== undefined ? { rewakeMessage: definition.rewakeMessage } : {}),
+@@ -247,7 +312,8 @@
+             raw: { command: definition.command, code: raw.code, stdout: raw.stdout, stderr: raw.stderr,
+               timedOut: raw.timedOut, aborted: raw.aborted } }
+           : undefined).catch(() => {});
+-    }, () => this.finish(job, { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, "failed"));
++    }, () => settleHookProcess(this, authorization => this.finish(authorization), record,
++      { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, 'failed'));
+     return id;
+   };
+ 
+@@ -277,34 +343,49 @@
+       job.controller.abort();
+       job.kill?.();
+     }
+-    this.closing = Promise.all(jobs.map(job => job.done)).then(() => {});
++    this.closing = Promise.all(jobs.map(job => job.done)).then(() => {
++      if (hookObservationErrors.has(this)) throw hookObservationErrors.get(this);
++    });
+     return this.closing;
+   }
+ 
+   // Host promise observation over gc/WLe/CXo, sfn1dbxq [621218,621853)/[626248,626520)/[630237,630565), UTF-16.
+   // The source publishes synchronously; this host retains its existing callback grace independently of actual settlement.
+-  private async finish(job: Job, raw: HookResult, payload: HookPayload, complete: (value: AsyncHookCompletion) => void,
+-    failed?: "failed", wake?: RewakeSource): Promise<void> {
++  private async finish(authorization: object): Promise<void> {
++    const settled = hookSettlements.get(authorization); hookSettlements.delete(authorization);
++    if (!settled || settled.registry !== this || hookJobs.get(settled.record.job) !== settled.record || settled.record.phase !== 'registered')
++      throw new Error('Async hook process settlement authorization invalid');
++    const { record, raw, payload, complete, failed, wake } = settled, { job } = record;
+     const result = boundedResult(raw);
+-    const state = failed ?? terminalState(raw, job.controller.signal);
++    const state = failed ?? terminalState(raw, record.controller.signal);
+     const rewake = wake ? rewakeFor(wake) : undefined;
+-    const completion: AsyncHookCompletion = { id: job.descriptor.id, event: job.descriptor.event, payload, result, state,
+-      started_at: job.descriptor.started_at, completed_at: Date.now(), ...(rewake ? { rewake } : {}) };
++    const completion: AsyncHookCompletion = { id: record.identity.jobId, event: record.event, payload, result, state,
++      started_at: record.startedAt, completed_at: Date.now(), ...(rewake ? { rewake } : {}) };
++    const onResult = this.onResult;
+     const descriptor: AsyncHookDescriptor = { id: completion.id, event: completion.event, state,
+-      started_at: completion.started_at, completed_at: completion.completed_at, callbackState: this.onResult ? 'pending' : 'none' };
++      started_at: completion.started_at, completed_at: completion.completed_at, callbackState: onResult ? 'pending' : 'none' };
+     job.descriptor = descriptor;
+-    if (this.onResult) {
++    record.phase = 'process_completed';
++    let observed = true;
++    try { observeHookJob(record, { ...record.identity, phase: 'process_completed', state, callbackExpected: onResult !== undefined, completedAt: completion.completed_at }); }
++    catch (error) { observed = false; rememberHookObservationError(this, error); }
++    const callbackSettled = (outcome: 'none' | 'returned' | 'threw') => {
++      descriptor.callbackState = outcome; record.phase = 'callback_settled';
++      try { observeHookJob(record, { ...record.identity, phase: 'callback_settled', outcome }); }
++      catch (error) { rememberHookObservationError(this, error); }
++    };
++    if (onResult && observed) {
+       let timer: NodeJS.Timeout | undefined;
+       try {
+         await Promise.race([
+-          Promise.resolve().then(() => this.onResult!(structuredClone(completion))).then(
+-            () => { descriptor.callbackState = 'returned'; },
+-            () => { descriptor.callbackState = 'threw'; },
++          Promise.resolve().then(() => onResult(structuredClone(completion))).then(
++            () => { callbackSettled('returned'); },
++            () => { callbackSettled('threw'); },
+           ),
+           new Promise<void>(resolve => { timer = setTimeout(resolve, CALLBACK_GRACE_MS); }),
+         ]);
+       } finally { if (timer) clearTimeout(timer); }
+-    }
++    } else if (!onResult && observed) callbackSettled('none');
+     job.settled = true;
+     complete(completion);
+     const finished = [...this.jobs.values()].filter(entry => entry.settled);
+diff --git a/src/agent.ts b/src/agent.ts
+--- a/src/agent.ts
++++ b/src/agent.ts
+@@ -49,6 +49,9 @@
+ import { SkillEffectRecoveryError } from './skill-effects.js';
+ import { describeDirectoryWriteInput, directoryWriteFingerprint, issueDirectoryPublicationAuthorization } from './directory-publication-authorization.js';
+ import { runtimeWriteOwner } from './runtime-write-start.js';
++import { asyncHookRequestDigest, consumeAsyncHookObservation } from './async-hooks.js';
++import { sameHookJournalRecord, validateAsyncHookJournal, type AsyncHookJournalEvent, hookCallStartSchema } from './async-hook-journal.js';
++import type { AsyncHookRequest } from './hooks.js';
+ 
+ export type RuntimeWriteAuthorization = object;
+ type RuntimeWriteStart = { kind: 'tool_start'; id: string; name: 'write_file'; parentMessageId: string; writeInputDigest: string;
+@@ -60,6 +63,38 @@
+   { kind: 'execution'; grant: RuntimeWriteGrant; event: RuntimeWriteExecution };
+ const runtimeWriteGrants = new WeakMap<RuntimeWriteAuthorization, RuntimeWriteJournalGrant>();
+ type HookCall = { toolUseId: string; parentMessageId: string };
++export type AsyncHookJournalAuthorization = object;
++export type AgentJournalAuthorization = RuntimeWriteAuthorization | AsyncHookJournalAuthorization;
++type HookStart = ReturnType<typeof hookCallStartSchema.parse>;
++const asyncHookJournalGrants = new WeakMap<AsyncHookJournalAuthorization, { session: Session; start: HookStart; event: AsyncHookJournalEvent }>();
++
++// Host journal capability for m5e/WLe/CXo, sfn1dbxq [2955889,2958184)/[626248,626520)/[630237,630565), UTF-16.
++function observeAsyncHookRequest(session: Session, start: HookStart, request: AsyncHookRequest): AsyncHookRequest {
++  const expected = asyncHookRequestDigest(request);
++  const observe = (authorization: object) => {
++    const actual = consumeAsyncHookObservation(authorization, observe);
++    if (actual.event !== start.event || actual.requestDigest !== expected) throw new Error('Async hook request differs from its admitted input');
++    const event: AsyncHookJournalEvent = { ...actual, kind: 'hook_async', owner: session.id, hookId: start.id,
++      ...(start.toolUseId === undefined ? {} : { toolUseId: start.toolUseId }),
++      ...(start.parentMessageId === undefined ? {} : { parentMessageId: start.parentMessageId }) };
++    const token = {};
++    asyncHookJournalGrants.set(token, { session, start, event: structuredClone(event) });
++    try { session.append(event, undefined, undefined, token); }
++    finally { asyncHookJournalGrants.delete(token); }
++  };
++  return { ...request, observe };
++}
++
++export function consumeAgentJournalAuthorization(authorization: AgentJournalAuthorization, session: Session, event: unknown): unknown {
++  if (!asyncHookJournalGrants.has(authorization) && startData(event, 'kind') !== 'hook_async')
++    return consumeRuntimeWriteAuthorization(authorization, session, event);
++  const saved = asyncHookJournalGrants.get(authorization); asyncHookJournalGrants.delete(authorization);
++  if (!saved || saved.session !== session || !session.isOpen || session.isJournalFenced || !sameHookJournalRecord(event, saved.event) ||
++      session.events.filter(row => sameHookJournalRecord(row, saved.start)).length !== 1)
++    throw new Error('Async hook journal authorization invalid');
++  validateAsyncHookJournal([...session.events, saved.event], session.id);
++  return structuredClone(saved.event);
++}
+ 
+ function startData(value: unknown, key: PropertyKey): unknown {
+   if (typeof value !== 'object' || value === null || utilTypes.isProxy(value)) return;
+@@ -444,8 +479,14 @@
+     signal.throwIfAborted();
+     const id = randomUUID();
+     const associated = call?.toolUseId ?? payload.tool_use_id;
+-    this.session.append({ kind: 'hook_start', id, event, ...(associated ? { toolUseId: associated } : {}),
+-      ...(call === undefined ? {} : { parentMessageId: call.parentMessageId }) });
++    const start: HookStart = { kind: 'hook_start', id, event, ...(associated ? { toolUseId: associated } : {}),
++      ...(call === undefined ? {} : { parentMessageId: call.parentMessageId }) };
++    const capturedStart = structuredClone(start), session = this.session, options = { ...this.events.hookOptions };
++    this.session.append(start);
++    const starter = options.startAsyncCommand;
++    if (starter) options.startAsyncCommand = function(this: HookRunOptions, request: AsyncHookRequest) {
++      return starter.call(this, observeAsyncHookRequest(session, capturedStart, request));
++    };
+     const result = await runHooks(this.session.config.hooks!, event, {
+       session_id: this.session.id, transcript_path: this.session.file, cwd: this.session.config.workspace,
+       permission_mode: this.session.config.permissions?.mode ?? 'default', ...payload,
+@@ -527,7 +568,7 @@
+           pathApprovalCall.finish(hookSignal.aborted ? 'cancelled' : failed ? 'error' : 'success');
+         }
+       },
+-      ...this.events.hookOptions,
++      ...options,
+       lifecycle: hookLifecycle(this.session),
+     });
+     this.session.append({ kind: 'hook_result', id, event, blocked: result.blocked,
+diff --git a/src/session.ts b/src/session.ts
+--- a/src/session.ts
++++ b/src/session.ts
+@@ -45,7 +45,9 @@
+ import { subscribeSettingsWrites, type SettingsWrite } from './setting-writes.js';
+ import { atomicWriteFile, syncDirectory } from './atomic-write.js';
+ import { consumeNotificationAuthorization, type NotificationAuthorization } from './notification-authorization.js';
+-import { consumeRuntimeWriteAuthorization, type RuntimeWriteAuthorization } from './agent.js';
++import { consumeAgentJournalAuthorization, type AgentJournalAuthorization } from './agent.js';
++import { asyncHookJournalEnvelopeSchema, asyncHookJournalSchema, hookCallStartSchema, validateAsyncHookJournal,
++  type AsyncHookJournalEvent } from './async-hook-journal.js';
+ import { lock as flock, SkillEffectJournal, type SkillEffectRetryGrant } from './skill-effects.js';
+ import { directoryFileObservationSchema, boundDirectoryFileObservationSchema, copyStableDirectoryFile, probeMissingDirectoryFile, publishDirectoryFile,
+   publishRetainedDirectoryFile, observeRetainedDirectoryFile, type BoundDirectoryFileObservation, type DirectoryPublication, type DirectoryPublicationExpected,
+@@ -302,7 +304,8 @@
+   | { kind: 'session_color'; color: import('./session-color.js').SessionColor | null }
+   | { kind: 'refusal'; model: string; category?: string; explanation?: string; requestId?: string }
+   | { kind: 'branch'; source: string; workspace: string; boundary: number; reason: 'fork' | 'rewind' | 'reload' | 'configuration' | 'relocation'; external?: DirectoryRewindExternal; checkpointPaths?: DirectoryCheckpointPaths }
+-  | { kind: 'hook_start'; id: string; event: string; toolUseId?: string; parentMessageId?: string }
++  | z.infer<typeof hookCallStartSchema>
++  | AsyncHookJournalEvent
+   | { kind: 'hook_terminal'; id: string; event: string; sequences: string[] }
+   | { kind: 'instruction_watch'; workspace: string; paths: string[] }
+   | { kind: 'stop_hook_count'; count: number; hookId?: string }
+@@ -680,7 +683,8 @@
+   z.object({ kind: z.literal('checkpoint'), name: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), digest: z.string().regex(/^[a-f0-9]{64}$/), boundary: z.number().int().nonnegative() }).strict(),
+   z.object({ kind: z.literal('rewind'), source: z.string().uuid(), boundary: z.number().int().nonnegative(), checkpoint: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+   z.object({ kind: z.literal('hook_once'), event: z.enum(HOOK_EVENTS), key: z.string().max(256).regex(/^[A-Za-z]+:(?:0|[1-9]\d{0,3}):(?:flat|0|[1-9]\d{0,3}):[a-f0-9]{64}$/) }).strict(),
+-  z.object({ kind: z.literal('hook_start'), id: z.string(), event: z.string(), toolUseId: z.string().optional(), parentMessageId: z.string().uuid().optional() }).strict(),
++  hookCallStartSchema,
++  asyncHookJournalEnvelopeSchema,
+   z.object({ kind: z.literal('stop_hook_count'), count: z.number().int().min(0).max(1024), hookId: z.string().optional() }).strict(),
+   z.object({ kind: z.literal("instruction_watch"), workspace: z.string().min(1),
+     paths: z.array(z.string().min(1).refine(value => path.isAbsolute(value) && Buffer.byteLength(value) <= 4096)).max(2048)
+@@ -696,6 +700,9 @@
+   z.object({ kind: z.literal('turn_end'), reason: z.string(), duration: z.object({uuid:z.string().uuid(),
+     durationMs:z.number().finite().nonnegative(), timestamp:z.string().datetime({offset:true})}).strict().optional() }).strict(),
+ ]).superRefine((record, context) => {
++  if (record.kind === 'hook_async' && !asyncHookJournalSchema.safeParse(record).success) {
++    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid async hook journal phase' });
++  }
+   if (record.kind === 'runtime_write_execution' && ((record.phase === 'completed') !== (record.outcome !== undefined))) {
+     context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid runtime Write execution phase' });
+   }
+@@ -2978,6 +2985,7 @@
+         if (events.some(event => event.kind === 'tool_start' && event.runtimeWriteOwner && event.runtimeWriteOwner.owner !== id))
+           throw new Error('Runtime Write start owner mismatch');
+         validateRuntimeWriteExecutions(events, id);
++        validateAsyncHookJournal(events, id);
+         if (options.config && fingerprint(options.config) !== meta.fingerprint) throw new Error('Resume requires the original model, system, tools and runtime settings');
+         fd = fs.openSync(file, fs.constants.O_RDWR | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
+         if (boundary !== bytes.length) {
+@@ -3098,13 +3106,15 @@
+   }
+ 
+   append(event: Exclude<SessionEvent, { kind: 'metadata' }>, authorization?: NotificationAuthorization, backupToken?: symbol,
+-      runtimeWriteAuthorization?: RuntimeWriteAuthorization): void {
++      executionAuthorization?: AgentJournalAuthorization): void {
+     if (this.closed) throw new Error('Session is closed');
+     if (this.journalFailed) throw new Error('Session journal write failed; close and reopen before appending');
+-    const runtimeStart = runtimeWriteAuthorization === undefined ? undefined : consumeRuntimeWriteAuthorization(runtimeWriteAuthorization, this, event);
++    const runtimeStart = executionAuthorization === undefined ? undefined : consumeAgentJournalAuthorization(executionAuthorization, this, event);
+     if (utilTypes.isProxy(event) || (Object.getPrototypeOf(event) !== Object.prototype && Object.getPrototypeOf(event) !== null) ||
+         Object.getOwnPropertyDescriptor(event, 'toJSON') !== undefined) throw new Error('Session event must be a plain object');
+     const kind = Object.getOwnPropertyDescriptor(event, 'kind'), runtimeOwner = Object.getOwnPropertyDescriptor(event, 'runtimeWriteOwner');
++    if (kind && 'value' in kind && kind.value === 'hook_async' && runtimeStart === undefined)
++      throw new Error('Async hook journal authorization invalid');
+     if (kind && 'value' in kind && kind.value === 'runtime_write_execution' && runtimeStart === undefined)
+       throw new Error('Runtime Write execution authorization invalid');
+     if (!kind || !('value' in kind) || (runtimeOwner && !('value' in runtimeOwner)))
+@@ -3207,11 +3217,11 @@
+     try { serialized = JSON.stringify(event); serializedEvent = JSON.parse(serialized); }
+     catch (error) { this.journalFailed = true; throw error; }
+     const serializedRuntimeStart = typeof serializedEvent === 'object' && serializedEvent !== null &&
+-      'kind' in serializedEvent && (serializedEvent.kind === 'runtime_write_execution' ||
++      'kind' in serializedEvent && (serializedEvent.kind === 'runtime_write_execution' || serializedEvent.kind === 'hook_async' ||
+       serializedEvent.kind === 'tool_start' && 'runtimeWriteOwner' in serializedEvent && serializedEvent.runtimeWriteOwner !== undefined);
+     if ((runtimeStart !== undefined && !isDeepStrictEqual(serializedEvent, runtimeStart)) ||
+         (serializedRuntimeStart && runtimeStart === undefined))
+-      throw new Error('Runtime Write start authorization invalid');
++      throw new Error(kind.value === 'hook_async' ? 'Async hook journal authorization invalid' : 'Runtime Write start authorization invalid');
+     // W385 host rewrite: ns/Si [226694,227794)/[233465,234179), OMe/Tle
+     // [4543991,4544354), sfn1dbxq UTF-16, have no host journal receipt.
+     try {
+diff --git a/src/agent-registry.ts b/src/agent-registry.ts
+--- a/src/agent-registry.ts
++++ b/src/agent-registry.ts
+@@ -2,6 +2,8 @@
+ import { z } from 'zod';
+ import fs from 'node:fs';
+ import path from 'node:path';
++import { types as utilTypes } from 'node:util';
++import { flatHookJournalRecord } from './async-hook-journal.js';
+ import { Agent, assertPaired, type AgentEvents } from './agent.js';
+ import { Session, fingerprint, readSessionJournal, type SessionConfig } from './session.js';
+ import { instructionSources, loadProjectConfig, loadSkillsFromDirectories, rebaseChildInstructions, type SkillInfo } from './config.js';
+@@ -880,7 +882,7 @@
+   }
+ 
+   // IX, 40cepjpq [107910,110110); tqt/eqt, sfn1dbxq [4223404,4224352), UTF-16.
+-  // The journal adapter replaces its pending human echo and publishes committed tool/message rows.
++  // The host journal adapter keeps the complete append tuple and measures protected hook facts without getters.
+   private boundJournal(child: Child): void {
+     const session = child.session!;
+     child.journalEvents = session.events.length;
+@@ -891,9 +893,14 @@
+     const append = session.append.bind(session);
+     session.append = (...args: Parameters<Session['append']>) => {
+       const [event] = args;
+-      const bytes = Buffer.byteLength(JSON.stringify(event)) + 1;
++      if (!event || typeof event !== 'object' || utilTypes.isProxy(event)) throw new Error('Session event must be a plain object');
++      const kind = Object.getOwnPropertyDescriptor(event, 'kind');
++      if (!kind || !('value' in kind)) throw new Error('Session event must be a plain object');
++      const measured = kind.value === 'hook_async' ? flatHookJournalRecord(event) : event;
++      if (!measured) throw new Error('Async hook journal authorization invalid');
++      const bytes = Buffer.byteLength(JSON.stringify(measured)) + 1;
+       // Reserve one record and enough bytes to commit a failed turn boundary.
+-      const boundary = event.kind === 'turn_end';
++      const boundary = kind.value === 'turn_end';
+       if (child.journalEvents + 1 > this.limits.maxJournalEvents - (boundary ? 0 : 1) ||
+           child.journalBytes + bytes > this.limits.maxJournalBytes - (boundary ? 0 : 128)) {
+         throw new Error('Child journal limit reached');
+diff --git a/test/async-hooks.test.ts b/test/async-hooks.test.ts
+--- a/test/async-hooks.test.ts
++++ b/test/async-hooks.test.ts
+@@ -4,7 +4,8 @@
+ import path from "node:path";
+ import { after, test } from "node:test";
+ import { spawnSync } from 'node:child_process';
+-import { AsyncHookRegistry, type AsyncHookCompletion } from "../src/async-hooks.js";
++import { AsyncHookRegistry, asyncHookRequestDigest, consumeAsyncHookObservation, type AsyncHookCompletion } from "../src/async-hooks.js";
++import type { AsyncHookObservation } from '../src/async-hook-journal.js';
+ import { runHooks, type AsyncHookRequest, type HookCommandHandle, type HookEvent, type HookPayload } from "../src/hooks.js";
+ 
+ const workspaces: string[] = [];
+@@ -278,6 +279,36 @@
+   }
+ });
+ 
++test('registry observations bind the actual parsed dispatch after the registration callback', async () => {
++  const root = workspace(), script = path.join(root, 'observed-command.mjs'), input = path.join(root, 'observed-input.json');
++  fs.writeFileSync(script, `import fs from 'node:fs';fs.writeFileSync(process.argv[2],fs.readFileSync(0,'utf8'));process.stdout.write('{}');`);
++  const invocation = request(root, `${shellQuote(process.execPath)} ${shellQuote(script)} ${shellQuote(input)}`);
++  const digest = asyncHookRequestDigest(invocation), facts: AsyncHookObservation[] = [];
++  const observe = (authorization: object) => {
++    const fact = consumeAsyncHookObservation(authorization, observe); facts.push(fact);
++    assert.throws(() => consumeAsyncHookObservation(authorization, observe), /authorization invalid/);
++    if (fact.phase === 'registered') invocation.event = 'FileChanged';
++  };
++  invocation.observe = observe;
++  const registry = new AsyncHookRegistry({ workspace: root });
++  try {
++    const id = await registry.start(invocation); await registry.wait(id);
++    assert.equal(JSON.parse(fs.readFileSync(input, 'utf8')).hook_event_name, 'PostToolUse');
++    assert.deepEqual(facts.map(fact => ({ phase: fact.phase, event: fact.event, digest: fact.requestDigest })),
++      ['registered', 'process_completed', 'callback_settled'].map(phase => ({ phase, event: 'PostToolUse', digest })));
++    assert.throws(() => consumeAsyncHookObservation({}, observe), /authorization invalid/);
++    const finish = Object.getOwnPropertyDescriptor(AsyncHookRegistry.prototype, 'finish')?.value;
++    assert.equal(typeof finish, 'function');
++    await assert.rejects(Reflect.apply(finish, registry, [{}]), /settlement authorization invalid/);
++    const raw = { stdout: '{}', stderr: '', code: 0, timedOut: false, aborted: false, truncated: false, spawnError: null };
++    const fake: HookCommandHandle = { command: invocation.definition.command, result: Promise.resolve(raw), done: Promise.resolve(raw), pid: process.pid,
++      background: () => true, detachForeground() {}, kill() {}, cleanup() {} };
++    const fakeRequest = request(root, invocation.definition.command);
++    await assert.rejects(registry.adopt(fakeRequest, fake, 'fake-process'), /ownership invalid/);
++    assert.equal(facts.length, 3);
++  } finally { await registry.close(); }
++});
++
+ test("job concurrency and history are bounded", async () => {
+   const root = workspace();
+   const registry = new AsyncHookRegistry({ workspace: root });
+diff --git a/src/async-hook-journal.ts b/src/async-hook-journal.ts
+new file mode 100644
+--- /dev/null
++++ b/src/async-hook-journal.ts
+@@ -0,0 +1,87 @@
++import { isDeepStrictEqual, types as utilTypes } from 'node:util';
++import { z } from 'zod';
++
++export const asyncHookProcessStateSchema = z.enum(['completed', 'blocked', 'failed', 'cancelled', 'timed_out']);
++export type AsyncHookProcessState = z.infer<typeof asyncHookProcessStateSchema>;
++const digest = z.string().regex(/^[a-f0-9]{64}$/);
++const observed = z.object({ registryId: z.string().uuid(), jobId: z.string().uuid(), event: z.string().min(1),
++  requestDigest: digest, mode: z.enum(['configured', 'adopted']) });
++const registered = observed.extend({ phase: z.literal('registered'), startedAt: z.number().int().nonnegative() }).strict();
++const completed = observed.extend({ phase: z.literal('process_completed'), state: asyncHookProcessStateSchema,
++  callbackExpected: z.boolean(), completedAt: z.number().int().nonnegative() }).strict();
++const callback = observed.extend({ phase: z.literal('callback_settled'), outcome: z.enum(['none', 'returned', 'threw']) }).strict();
++export const asyncHookObservationSchema = z.discriminatedUnion('phase', [registered, completed, callback]);
++export type AsyncHookObservation = z.infer<typeof asyncHookObservationSchema>;
++
++export const hookCallStartSchema = z.object({ kind: z.literal('hook_start'), id: z.string(), event: z.string(),
++  toolUseId: z.string().optional(), parentMessageId: z.string().uuid().optional() }).strict();
++const journal = { kind: z.literal('hook_async'), owner: z.string().uuid(), hookId: z.string().uuid(),
++  toolUseId: z.string().optional(), parentMessageId: z.string().uuid().optional() };
++export const asyncHookJournalSchema = z.discriminatedUnion('phase', [registered.extend(journal), completed.extend(journal), callback.extend(journal)]);
++export type AsyncHookJournalEvent = z.infer<typeof asyncHookJournalSchema>;
++export const asyncHookJournalEnvelopeSchema = observed.extend(journal).extend({
++  phase: z.enum(['registered', 'process_completed', 'callback_settled']), startedAt: registered.shape.startedAt.optional(),
++  state: completed.shape.state.optional(), callbackExpected: completed.shape.callbackExpected.optional(),
++  completedAt: completed.shape.completedAt.optional(), outcome: callback.shape.outcome.optional(),
++}).strict();
++
++// Host journal boundary for m5e/WLe/CXo, sfn1dbxq [2955889,2958184)/[626248,626520)/[630237,630565), UTF-16.
++export function flatHookJournalRecord(value: unknown): Record<string, unknown> | undefined {
++  if (!value || typeof value !== 'object' || utilTypes.isProxy(value)) return;
++  if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) return;
++  const entries: [string, unknown][] = [];
++  for (const key of Reflect.ownKeys(value)) {
++    if (typeof key !== 'string') return;
++    const field = Object.getOwnPropertyDescriptor(value, key);
++    if (!field || !('value' in field) || field.value !== undefined &&
++        !['string', 'number', 'boolean'].includes(typeof field.value)) return;
++    entries.push([key, field.value]);
++  }
++  return Object.fromEntries(entries);
++}
++
++export function sameHookJournalRecord(value: unknown, expected: unknown): boolean {
++  const record = flatHookJournalRecord(value);
++  return record !== undefined && isDeepStrictEqual(record, expected);
++}
++
++// Source pending records have no durable host pairing; this validator checks the added Session protocol.
++export function validateAsyncHookJournal(events: readonly unknown[], owner: string): void {
++  type Start = z.infer<typeof hookCallStartSchema>;
++  type Registration = Extract<AsyncHookJournalEvent, { phase: 'registered' }>;
++  type Completion = Extract<AsyncHookJournalEvent, { phase: 'process_completed' }>;
++  type State = { phase: 'registered'; start: Registration } |
++    { phase: 'process_completed'; start: Registration; completion: Completion } |
++    { phase: 'callback_settled'; start: Registration };
++  const starts = new Map<string, Start[]>(), jobs = new Map<string, State>(), used = new Set<string>();
++  const invalid: () => never = () => { throw new Error('Async hook journal sequence invalid'); };
++  for (const value of events) {
++    if (!value || typeof value !== 'object' || utilTypes.isProxy(value)) continue;
++    const kind = Object.getOwnPropertyDescriptor(value, 'kind');
++    if (!kind || !('value' in kind)) continue;
++    if (kind.value === 'hook_start') {
++      const start = hookCallStartSchema.parse(flatHookJournalRecord(value));
++      if (used.has(start.id)) invalid();
++      const existing = starts.get(start.id) ?? []; existing.push(start); starts.set(start.id, existing);
++    }
++    if (kind.value !== 'hook_async') continue;
++    const record = asyncHookJournalSchema.parse(flatHookJournalRecord(value));
++    const candidates = starts.get(record.hookId), hook = candidates?.[0];
++    if (record.owner !== owner || candidates?.length !== 1 || !hook || hook.event !== record.event ||
++        hook.toolUseId !== record.toolUseId || hook.parentMessageId !== record.parentMessageId) invalid();
++    const key = JSON.stringify([record.registryId, record.jobId]), current = jobs.get(key);
++    if (record.phase === 'registered') {
++      if (current) invalid();
++      used.add(record.hookId); jobs.set(key, { phase: 'registered', start: record }); continue;
++    }
++    if (!current || current.start.hookId !== record.hookId || current.start.requestDigest !== record.requestDigest ||
++        current.start.mode !== record.mode || current.start.owner !== record.owner || current.start.event !== record.event ||
++        current.start.toolUseId !== record.toolUseId || current.start.parentMessageId !== record.parentMessageId) invalid();
++    if (record.phase === 'process_completed') {
++      if (current.phase !== 'registered') invalid();
++      jobs.set(key, { phase: 'process_completed', start: current.start, completion: record }); continue;
++    }
++    if (current.phase !== 'process_completed' || (record.outcome === 'none') === current.completion.callbackExpected) invalid();
++    jobs.set(key, { phase: 'callback_settled', start: current.start });
++  }
++}
+diff --git a/test/async-hook-journal.test.ts b/test/async-hook-journal.test.ts
+new file mode 100644
+--- /dev/null
++++ b/test/async-hook-journal.test.ts
+@@ -0,0 +1,235 @@
++import assert from 'node:assert/strict';
++import fs from 'node:fs';
++import os from 'node:os';
++import path from 'node:path';
++import { createHash, randomUUID } from 'node:crypto';
++import { spawnSync } from 'node:child_process';
++import { after, test } from 'node:test';
++import type Anthropic from '@anthropic-ai/sdk';
++import { Agent, defaultConfig } from '../src/agent.js';
++import { createRuntime, pinToolSchemas } from '../src/runtime.js';
++import { Session, type SessionEvent } from '../src/session.js';
++import type { ModelProvider } from '../src/provider.js';
++import type { AsyncHookJournalEvent } from '../src/async-hook-journal.js';
++
++const roots: string[] = [];
++function workspace(): string {
++  const temporary = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir();
++  const root = fs.realpathSync(fs.mkdtempSync(path.join(temporary, 'async-hook-journal-')));
++  fs.mkdirSync(path.join(root, '.git')); roots.push(root); return root;
++}
++after(() => { for (const root of roots) fs.rmSync(root, { recursive: true, force: true }); });
++const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
++function response(content: Anthropic.ContentBlock[], stop: Anthropic.Message['stop_reason'] = 'end_turn'): Anthropic.Message {
++  return { id: 'fixture', model: 'fixture', container: null, diagnostics: null, role: 'assistant', type: 'message',
++    content, stop_reason: stop, stop_sequence: null, stop_details: null,
++    usage: { input_tokens: 1, output_tokens: 1, cache_creation: null, cache_creation_input_tokens: null,
++      cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null } };
++}
++const done = () => response([{ type: 'text', text: 'done', citations: null }]);
++function write(index: number): Anthropic.Message {
++  return response([{ type: 'tool_use', id: 'reused-hook-write', caller: { type: 'direct' }, name: 'write_file',
++    input: { path: 'value.txt', content: `WRITE_${index}`, overwrite: true } }], 'tool_use');
++}
++function facts(events: readonly SessionEvent[]): AsyncHookJournalEvent[] { return events.filter(event => event.kind === 'hook_async'); }
++function factDigest(records: readonly AsyncHookJournalEvent[]): string {
++  const keys = [...new Set(records.flatMap(record => Object.keys(record)))].sort();
++  return createHash('sha256').update(JSON.stringify(records, keys)).digest('hex');
++}
++function cold(root: string, id: string, expected: readonly AsyncHookJournalEvent[]): void {
++  const reader = `import{Session}from'./src/session.ts';import{createHash}from'node:crypto';const s=Session.open(process.argv[1],{id:process.argv[2]});
++    const records=s.events.filter(e=>e.kind==='hook_async'),keys=[...new Set(records.flatMap(Object.keys))].sort();
++    process.stdout.write(JSON.stringify({count:records.length,digest:createHash('sha256').update(JSON.stringify(records,keys)).digest('hex')}));await s.close();`;
++  for (let i = 0; i < 2; i++) {
++    const child = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', reader, root, id],
++      { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
++    assert.equal(child.status, 0, child.stderr); assert.deepEqual(JSON.parse(child.stdout), { count: expected.length, digest: factDigest(expected) });
++  }
++}
++
++async function guardedObservation(mode: 'getter' | 'serialization' | 'digest' | 'foreign' | 'replay' | 'returned-event' |
++    'request-drift' | 'unowned-starter' | 'process-failure' | 'callback-failure'): Promise<void> {
++  const root = workspace(), marker = path.join(root, 'command-effect'), script = path.join(root, 'command.mjs');
++  fs.writeFileSync(script, `import fs from 'node:fs';fs.appendFileSync(process.argv[2],'x');process.stdout.write('{}');`);
++  let calls = 0;
++  const provider: ModelProvider = { count: async () => 1, complete: async () => calls++ === 0 ? write(1) : done() };
++  const config = { ...defaultConfig(root, []), model: 'fixture', permissions: { mode: 'bypass' as const, allow: [], deny: [] },
++    features: { tasks: false, subagents: false, background: false },
++    hooks: { PostToolUse: [{ command: `${quote(process.execPath)} ${quote(script)} ${quote(marker)}`, async: true }] } };
++  const runtime = await createRuntime(config, provider, new AbortController().signal); config.tools = pinToolSchemas(runtime.tools);
++  const session = Session.open(root, { config }), other = mode === 'foreign' ? Session.open(root, { config }) : undefined;
++  const append = session.append.bind(session);
++  let touched = 0, getterCalls = 0, settled!: () => void;
++  const boundary = new Promise<void>(resolve => { settled = resolve; });
++  session.append = (event, notification, backup, execution) => {
++    if (event.kind !== 'hook_async') return append(event, notification, backup, execution);
++    if (event.phase === 'registered' && ['getter', 'serialization', 'digest', 'foreign'].includes(mode)) {
++      touched++;
++      const changed = { ...event };
++      if (mode === 'getter') Object.defineProperty(changed, 'jobId', { get() { getterCalls++; return event.jobId; }, enumerable: true });
++      if (mode === 'serialization') Object.defineProperty(changed, 'toJSON', { value: () => { getterCalls++; return event; } });
++      if (mode === 'digest') changed.requestDigest = 'f'.repeat(64);
++      if (mode === 'foreign') { assert.ok(other); assert.throws(() => other.append(event, notification, backup, execution), /authorization invalid/); }
++      else assert.throws(() => append(changed, notification, backup, execution), /authorization invalid/);
++      return append(event, notification, backup, execution);
++    }
++    if (mode === 'process-failure' && event.phase === 'process_completed' || mode === 'callback-failure' && event.phase === 'callback_settled') {
++      touched++; settled(); throw new Error('owned async journal fault');
++    }
++    append(event, notification, backup, execution);
++    if (mode === 'replay') { touched++; assert.throws(() => append(event, notification, backup, execution), /authorization invalid/); }
++    if (mode === 'returned-event') { touched++; event.hookId = randomUUID(); event.jobId = randomUUID(); }
++    if (event.phase === 'callback_settled') settled();
++  };
++  let saved: AsyncHookJournalEvent[] = [];
++  try {
++    assert.ok(runtime.bindSession); await runtime.bindSession(session);
++    const options = runtime.hookOptions?.(session.config, session.id); assert.ok(options?.startAsyncCommand);
++    if (mode === 'unowned-starter') options.startAsyncCommand = async () => 'unowned-job';
++    if (mode === 'request-drift') {
++      const start = options.startAsyncCommand;
++      options.startAsyncCommand = request => start({ ...request, definition: { ...request.definition, command: 'printf changed' } });
++    }
++    await new Agent(session, provider, runtime.buildTools(session.config, session.id), { hookOptions: options }).run('guarded async journal');
++    const active = ['replay', 'returned-event', 'process-failure', 'callback-failure'].includes(mode);
++    if (active) {
++      let timer: ReturnType<typeof setTimeout> | undefined;
++      try { await Promise.race([boundary, new Promise<void>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(`Missing ${mode} boundary`)), 5000); })]); }
++      finally { if (timer) clearTimeout(timer); }
++    }
++    saved = facts(session.events);
++    const expected = mode === 'process-failure' ? 1 : mode === 'callback-failure' ? 2 : active ? 3 : 0;
++    assert.equal(saved.length, expected, mode); assert.equal(getterCalls, 0, mode);
++    assert.equal(fs.existsSync(marker), active, mode);
++    if (active) assert.equal(fs.readFileSync(marker, 'utf8'), 'x');
++    if (mode !== 'request-drift' && mode !== 'unowned-starter') assert.ok(touched > 0, mode);
++    if (other) assert.equal(facts(other.events).length, 0);
++    assert.ok(runtime.drainEvents); const queued = runtime.drainEvents(session.id);
++    assert.equal(queued.length, mode === 'process-failure' || !active ? 0 : 1, mode);
++    assert.ok(runtime.releaseSession);
++    if (mode === 'replay' || mode === 'returned-event' || mode === 'unowned-starter') await runtime.releaseSession(session.id, () => {});
++    else await assert.rejects(runtime.releaseSession(session.id, () => {}), /Runtime cleanup incomplete/, mode);
++  } finally { await runtime.close(); await other?.close(); await session.close(); }
++  cold(root, session.id, saved);
++}
++
++test('actual root and child hook facts survive queue loss, ownership release and cold reads', { timeout: 60000 }, async () => {
++  for (const mode of ['configured', 'adopted', 'released', 'cancelled', 'child', 'registry-child'] as const) {
++    const root = workspace(), marker = path.join(root, 'hook-effect'), release = path.join(root, 'release'), script = path.join(root, 'hook.mjs');
++    const count = mode === 'configured' ? 60 : 1, controller = new AbortController(), turn = new AbortController();
++    fs.writeFileSync(script, `import fs from 'node:fs';import{setTimeout as delay}from'node:timers/promises';
++      if(${JSON.stringify(mode)}==='adopted'){process.stdout.write('{"async":true}\\n');while(!fs.existsSync(${JSON.stringify(release)}))await delay(5)}
++      if(${JSON.stringify(mode)}==='released')await delay(1000);fs.writeFileSync(${JSON.stringify(marker)},'HOOK_EFFECT');process.stdout.write('{}');`);
++    const command = mode === 'configured' ? `printf '{}'` : `${quote(process.execPath)} ${quote(script)}`;
++    let modelCalls = 0, advance: () => void = () => {};
++    let previous = Promise.resolve();
++    const provider: ModelProvider = { count: async () => 1, complete: async () => {
++      const index = modelCalls++;
++      if (mode === 'configured') {
++        if (index > 0) await previous;
++        previous = new Promise<void>(resolve => { advance = resolve; });
++      }
++      if (mode === 'child' || mode === 'registry-child') {
++        if (index === 0) return response([{ type: 'tool_use', caller: { type: 'direct' }, id: 'child-launch', name: 'agent',
++          input: { prompt: 'child hook write', mode: 'general', ...(mode === 'registry-child' ? { background: false } : {}) } }], 'tool_use');
++        return index === 1 ? write(1) : done();
++      }
++      return index < count ? write(index) : done();
++    } };
++    const config = { ...defaultConfig(root, []), model: 'fixture', maxTurns: count + 4,
++      permissions: { mode: 'bypass' as const, allow: [], deny: [] },
++      features: { tasks: false, subagents: mode === 'child' || mode === 'registry-child', agentMessaging: mode === 'registry-child', background: false },
++      hooks: { PostToolUse: [{ command, timeout: 5, async: mode !== 'adopted' }] } };
++    const runtime = await createRuntime(config, provider, controller.signal); config.tools = pinToolSchemas(runtime.tools);
++    const session = Session.open(root, { config });
++    let releaseResult: Promise<void> | undefined, acknowledgement = false, settledJobs = 0, complete!: () => void;
++    const persisted = new Promise<void>(resolve => { complete = resolve; });
++    const append = session.append.bind(session);
++    session.append = (event, notification, backup, execution) => {
++      append(event, notification, backup, execution);
++      if (event.kind === 'hook_async' && event.phase === 'callback_settled') {
++        advance(); if (++settledJobs >= count) complete();
++      }
++      if (event.kind === 'hook_async' && event.phase === 'registered') {
++        if (mode === 'released' && !releaseResult) { assert.ok(runtime.releaseSession); releaseResult = runtime.releaseSession(session.id, () => { acknowledgement = true; }); }
++        if (mode === 'cancelled') turn.abort();
++      }
++    };
++    let saved: AsyncHookJournalEvent[] = [];
++    try {
++      assert.ok(runtime.bindSession); await runtime.bindSession(session);
++      const options = runtime.hookOptions?.(session.config, session.id); assert.ok(options?.startAsyncCommand);
++      if (mode === 'adopted') {
++        const start = options.startAsyncCommand;
++        options.startAsyncCommand = async request => { const id = await start(request); fs.writeFileSync(release, 'go'); return id; };
++      }
++      const run = new Agent(session, provider, runtime.buildTools(session.config, session.id), { hookOptions: options }).run('owned hook writes', turn.signal);
++      if (mode === 'cancelled') await run.catch(error => { assert.equal(error.name, 'AbortError'); });
++      else await run;
++      let timer: ReturnType<typeof setTimeout> | undefined;
++      try { await Promise.race([persisted, new Promise<void>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(`Missing persisted hook settlement: ${mode}/${settledJobs}`)), 5000); })]); }
++      finally { if (timer) clearTimeout(timer); }
++      if (mode === 'released') { assert.ok(releaseResult); await releaseResult; assert.equal(acknowledgement, true); assert.equal(fs.existsSync(marker), false); }
++      saved = facts(session.events);
++      const registered = saved.filter(record => record.phase === 'registered');
++      assert.equal(registered.length, count);
++      assert.equal(saved.length, count * 3, JSON.stringify({ mode, settledJobs, phases: saved.map(record => record.phase) }));
++      assert.equal(new Set(registered.map(record => record.parentMessageId)).size, count);
++      for (const start of registered) {
++        assert.equal(start.owner, session.id);
++        assert.equal(start.toolUseId, mode === 'child' || mode === 'registry-child' ? 'child-launch' : 'reused-hook-write');
++        assert.deepEqual(saved.filter(record => record.jobId === start.jobId).map(record => record.phase),
++          ['registered', 'process_completed', 'callback_settled']);
++      }
++      if (mode === 'configured') {
++        assert.ok(runtime.drainEvents);
++        const queued = runtime.drainEvents(session.id);
++        assert.equal(queued.filter(event => event.kind === 'notification').length, 51);
++        assert.equal(queued[0]?.prompt, 'Scheduler queue dropped 10 older events.');
++        assert.equal(new Set(registered.map(record => record.parentMessageId)).size, 60);
++      }
++      if (mode === 'released') assert.equal(saved.find(record => record.phase === 'process_completed')?.state, 'cancelled');
++      const first = saved[0]; assert.ok(first);
++      assert.throws(() => session.append(first), /authorization invalid/);
++      let reads = 0;
++      const forged = { ...first };
++      Object.defineProperty(forged, 'jobId', { get() { reads++; return first.jobId; }, enumerable: true });
++      assert.throws(() => session.append(forged), /authorization invalid/); assert.equal(reads, 0);
++    } finally { await runtime.close(); await session.close(); }
++    cold(root, session.id, saved);
++    if (mode === 'child' || mode === 'registry-child') {
++      const names = fs.readdirSync(path.join(root, '.agent')).filter(file => file.endsWith('.jsonl') && file !== `${session.id}.jsonl`);
++      assert.equal(names.length, 1);
++      const name = names[0]; assert.ok(name);
++      const child = Session.open(root, { id: name.slice(0, -6) });
++      const childFacts = facts(child.events);
++      try {
++        assert.equal(childFacts.length, 3, JSON.stringify({ mode, hooks: child.config.hooks,
++          results: child.events.filter(event => event.kind === 'tool_result').map(event => event.result),
++          starts: child.events.filter(event => event.kind === 'hook_start') }));
++        assert.equal(childFacts[0]?.owner, child.id); assert.equal(childFacts[0]?.toolUseId, 'reused-hook-write');
++      }
++      finally { await child.close(); }
++      cold(root, child.id, childFacts);
++    }
++    if (mode === 'adopted') {
++      const original = fs.readFileSync(session.file, 'utf8'), rows = original.trimEnd().split('\n').map(line => JSON.parse(line));
++      const positions = rows.flatMap((row, index) => row.kind === 'hook_async' ? [index] : []);
++      for (const corruption of ['owner', 'digest', 'registry', 'parent', 'duplicate', 'missing', 'outcome'] as const) {
++        const changed = structuredClone(rows), first = positions[0], second = positions[1], last = positions[2];
++        assert.notEqual(first, undefined); assert.notEqual(second, undefined); assert.notEqual(last, undefined);
++        if (corruption === 'owner') changed[first!].owner = randomUUID();
++        if (corruption === 'digest') changed[second!].requestDigest = 'a'.repeat(64);
++        if (corruption === 'registry') changed[second!].registryId = randomUUID();
++        if (corruption === 'parent') changed[second!].parentMessageId = randomUUID();
++        if (corruption === 'duplicate') changed.splice(last!, 0, changed[last!]);
++        if (corruption === 'missing') changed.splice(first!, 1);
++        if (corruption === 'outcome') changed[last!].outcome = 'none';
++        try { fs.writeFileSync(session.file, changed.map(row => JSON.stringify(row)).join('\n') + '\n'); assert.throws(() => Session.open(root, { id: session.id }), corruption); }
++        finally { fs.writeFileSync(session.file, original); }
++      }
++    }
++  }
++  for (const mode of ['getter', 'serialization', 'digest', 'foreign', 'replay', 'returned-event', 'request-drift',
++    'unowned-starter', 'process-failure', 'callback-failure'] as const) await guardedObservation(mode);
++});

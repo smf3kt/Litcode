@@ -13,6 +13,7 @@ import { INSTRUCTION_INTRO } from '../src/config.js';
 import { listSessions } from '../src/sessions.js';
 import { capChildOutput, createSubagentTool, selectChildTools } from '../src/subagents.js';
 import { createTools, type ToolDefinition } from '../src/tools.js';
+import { permissionOwner } from '../src/permissions.js';
 
 function gate() {
   let resolve!: () => void;
@@ -42,6 +43,36 @@ const context = (workspace: string, signal = new AbortController().signal, maxOu
 async function settled(registry: AgentRegistry, id: string) { return registry.get(id, { waitMs: 30_000 }); }
 
 // All providers below are in-process fixtures; gates choose ordering explicitly.
+test('session approval binding replaces and revokes callbacks on registry close', async () => {
+  const f = fixture();
+  const registry = f.make({ parentSessionId: 'parent' });
+  const other = f.make({ parentSessionId: 'other' });
+  const tool = f.tools[0]!;
+  const signal = new AbortController().signal;
+  const ask = { decision: 'ask' as const, reason: 'fixture' };
+  const pending = gate();
+  try {
+    let boundSignal: AbortSignal | undefined;
+    const releaseFirst = registry.bindApproval(async (_tool, _input, _decision, currentSignal) => { boundSignal = currentSignal; await pending.promise; return { decision: 'allow' }; });
+    const first = registry.requestApproval(tool, {}, ask, signal);
+    const releaseSecond = registry.bindApproval(async () => ({ decision: 'allow', reason: 'second' }));
+    assert.equal(boundSignal?.aborted, true);
+    releaseFirst();
+    assert.equal((await registry.requestApproval(tool, {}, ask, signal)).reason, 'second');
+    assert.equal((await other.requestApproval(tool, {}, ask, signal)).decision, 'deny');
+    pending.resolve();
+    assert.equal((await first).decision, 'deny');
+    releaseSecond();
+    assert.equal((await registry.requestApproval(tool, {}, ask, signal)).decision, 'deny');
+    let closeSignal: AbortSignal | undefined;
+    registry.bindApproval(async (_tool, _input, _decision, currentSignal) => { closeSignal = currentSignal; await pending.promise; return { decision: 'allow' }; });
+    await registry.requestApproval(tool, {}, ask, signal);
+    await registry.close();
+    assert.equal(closeSignal?.aborted, true);
+    assert.equal((await registry.requestApproval(tool, {}, ask, signal)).decision, 'deny');
+  } finally { pending.resolve(); await f.cleanup(); }
+});
+
 test('sync launch isolates sessions and preserves child config, schemas and explore mode', async () => {
   const f = fixture(async request => {
     assert.equal(request.model, 'child-model');
@@ -64,6 +95,51 @@ test('sync launch isolates sessions and preserves child config, schemas and expl
       assert.equal(session.config.maxTurns, 2); assert.equal(session.config.model, 'child-model');
       assert.equal(session.events.at(-1)?.kind, 'turn_end');
     } finally { session.close(); }
+  } finally { await f.cleanup(); }
+});
+
+test('child journal preserves directory snapshot transaction authority', async () => {
+  const f = fixture(), outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-registry-directory-')));
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  const parent = Session.open(f.workspace, { config: f.config });
+  const registry = f.make({ source: () => parent.config });
+  try {
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    assert.ok(permissionOwner(parent.config.permissions)?.workingDirectories(false).includes(outside));
+    const child = await registry.launch({ prompt: 'inspect' });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    const cold = Session.open(f.workspace, { id: child.session_id });
+    try {
+      const history = cold.directoryFileHistory;
+      assert.equal(history.kind, 'available');
+      if (history.kind === 'available') assert.equal(history.snapshots.length, 1);
+    } finally { await cold.close(); }
+  } finally { await registry.close(); await parent.close(); await f.cleanup(); fs.rmSync(outside, { recursive: true, force: true }); }
+});
+
+test('child journal retains execution authorization validation through its budget wrapper', async () => {
+  let calls = 0;
+  const f = fixture(async () => calls++ === 0
+    ? response('', [{ type: 'tool_use', id: 'journal-probe', caller: { type: 'direct' }, name: 'probe_journal', input: {} }])
+    : response());
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  const probe: ToolDefinition = { readOnly: false, schema: { name: 'probe_journal', description: 'Check the child journal boundary.',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false } }, async execute(_input, context) {
+    const session = context.session; assert.ok(session);
+    assert.throws(() => session.append({ kind: 'title', title: 'DROPPED_AUTHORIZATION' }, undefined, undefined, {}), /authorization invalid/);
+    return 'execution authorization validated';
+  } };
+  const registry = f.make({ tools: [probe] });
+  try {
+    const child = await registry.launch({ prompt: 'check journal authority', mode: 'general' });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    const saved = Session.open(f.workspace, { id: child.session_id });
+    try {
+      assert.equal(saved.events.some(event => event.kind === 'title' && event.title === 'DROPPED_AUTHORIZATION'), false);
+      const result = saved.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'journal-probe');
+      assert.ok(result?.kind === 'tool_result'); assert.equal(result.result.content, 'execution authorization validated');
+      assert.notEqual(result.result.is_error, true);
+    } finally { await saved.close(); }
   } finally { await f.cleanup(); }
 });
 
@@ -237,11 +313,20 @@ test('completed child resumes its pinned journal and name after source config ch
   const registry = f.make();
   try {
     const first = await registry.launch({ prompt: 'first', name: 'worker' });
+    const firstEvents = registry.drainNotifications().events;
+    assert.equal(firstEvents.length, 1);
+    assert.equal(firstEvents[0]?.agent.id, first.id);
+    assert.equal(firstEvents[0]?.agent.summary, 'result-1');
     f.config.model = 'changed-parent'; f.config.system = 'changed-system';
     const queued = await registry.sendMessage('worker', 'follow up');
     assert.equal(queued.id, first.id);
     const second = await settled(registry, first.id);
     assert.equal(second.summary, 'result-2'); assert.equal(second.model_calls, 2);
+    const resumedEvents = registry.drainNotifications().events;
+    assert.equal(resumedEvents.length, 1);
+    assert.equal(resumedEvents[0]?.agent.id, first.id);
+    assert.equal(resumedEvents[0]?.agent.summary, 'result-2');
+    assert.ok(resumedEvents[0]!.sequence > firstEvents[0]!.sequence);
     assert.equal(seen[1]?.model, 'test'); assert.match(String(seen[1]?.system), /child agent/);
     assert.equal(seen[1]?.messages.length, 3);
     assert.equal(listSessions(f.workspace).length, 1);
@@ -480,6 +565,36 @@ test('internal execution policy overlay enforces parent rules and runs argument 
     await registry.launch({ prompt: 'work', mode: 'general' }, undefined, { config: weakened, tools: [tool] });
     assert.equal(executed, 1);
   } finally { await f.cleanup(); }
+});
+
+test('child execution intersects parent and scoped ask and deny rules', async () => {
+  for (const parentDecision of ['allow', 'ask', 'deny'] as const) {
+    for (const scopedDecision of ['allow', 'ask', 'deny'] as const) {
+      let call = 0; let error: boolean | undefined;
+      const f = fixture(async request => {
+        if (++call === 1) return response('', [{ type: 'tool_use', id: 'matrix', name: 'fixture_write',
+          input: {}, caller: { type: 'direct' } }]);
+        const content = request.messages.at(-1)?.content;
+        if (Array.isArray(content) && content[0]?.type === 'tool_result') error = content[0].is_error;
+        return response();
+      });
+      const marker = path.join(f.workspace, 'marker');
+      const tool: ToolDefinition = { readOnly: false, schema: { name: 'fixture_write', input_schema: { type: 'object' } },
+        async execute() { fs.writeFileSync(marker, 'executed'); return 'done'; } };
+      const policy = (decision: 'allow' | 'ask' | 'deny') => ({ mode: 'default' as const,
+        allow: decision === 'allow' ? ['fixture_write'] : [],
+        ask: decision === 'ask' ? ['fixture_write'] : [], deny: decision === 'deny' ? ['fixture_write'] : [] });
+      f.config.permissions = policy(parentDecision);
+      const registry = f.make({ tools: [tool] });
+      try {
+        const scoped = { ...structuredClone(f.config), permissions: policy(scopedDecision) };
+        await registry.launch({ prompt: 'work', mode: 'general' }, undefined, { config: scoped, tools: [tool] });
+        const allowed = parentDecision === 'allow' && scopedDecision === 'allow';
+        assert.equal(fs.existsSync(marker), allowed, `${parentDecision}/${scopedDecision}`);
+        assert.equal(Boolean(error), !allowed, `${parentDecision}/${scopedDecision}`);
+      } finally { await f.cleanup(); }
+    }
+  }
 });
 
 test('structured tool results enforce parent and scoped input rules before block execution', async () => {
@@ -1051,6 +1166,23 @@ test('completed-child waits include delayed lease cleanup and retain timeout and
     releaseCleanup.resolve(); const [, result] = await Promise.all([stopped, waiting]);
     assert.equal(waitDone, true); assert.equal(result.summary, 'done'); assert.equal(closes, 1);
   } finally { releaseCleanup.resolve(); await f.cleanup(); }
+});
+
+test('stopping a completed child preserves its result and does not emit another notification', async () => {
+  const f = fixture(); const registry = f.make();
+  try {
+    const child = await registry.launch({ prompt: 'work' });
+    assert.equal(child.status, 'completed');
+    const initial = registry.drainNotifications();
+    assert.equal(initial.events.length, 1);
+    const stopped = await registry.stop(child.id);
+    assert.equal(stopped.status, 'completed');
+    assert.equal(stopped.summary, child.summary);
+    assert.equal(registry.drainNotifications().events.length, 0);
+    const again = await registry.stop(child.id);
+    assert.equal(again.status, 'completed');
+    assert.equal(registry.drainNotifications().events.length, 0);
+  } finally { await f.cleanup(); }
 });
 
 test('lease cleanup failures preserve completed results and report the retained workspace', async () => {

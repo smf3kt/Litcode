@@ -1,0 +1,5 @@
+
+> litcode@0.1.0 check
+> tsc --noEmit
+
+src/tui-renderer.ts(252,52): error TS2352: Conversion of type 'undefined' to type 'HostNode | null' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.

@@ -1,0 +1,34 @@
+{
+  "package": "W183 bounded directory repair",
+  "status": "bounded_independent_recheck_passed",
+  "independentRecheck": {"result":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-directory-independent-result.json","pass":true,"scope":"Original invalid-grant and alias-retarget scenarios, actual read/write denial, unchanged files, remove/regrant, seeded first-use and owner isolation"},
+  "scope": ["invalid nonempty directory list absolute workspace contract", "session-owned root spelling observations and alias retarget denial"],
+  "prior_content_freeze": "36ece6bd",
+  "content_closure": "not_claimed",
+  "source": [
+    {"path": "extracted-v2/modules/chunk-2bcyxj9q.js", "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0", "ranges": [{"symbol":"eNe","range":[214841,215024]}, {"symbol":"Yg","range":[215388,215541]}], "coordinate_unit":"zero-based UTF-16 half-open", "acquisition":"local readFileSync, SHA-256, String.slice; exact bodies read before product edits"},
+    {"path": "extracted-v2/modules/chunk-gyf58rwf.js", "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad", "ranges": [{"symbol":"er","range":[74593,76645]}, {"symbol":"_o","range":[76820,76853]}], "coordinate_unit":"zero-based UTF-16 half-open", "acquisition":"local readFileSync, SHA-256, String.slice; exact bodies read before product edits"}
+  ],
+  "adaptation": "eNe owner map and Yg every-spelling containment adapted to Session.directoryObservations and existing resolveChain. Existing walker supplies er/_o spelling projection and file identity checks. Source host session accessor is replaced with per-Session storage; removal invalidates observations and later explicit addition observes again. Invalid roots yield no effective grant. Only vetted nonempty observations select expanded absolute-path handling. No global authorization cache.",
+  "changed_files": ["/Users/mant1ssa/Projects/cc_reverse/src/path-identity.ts", "/Users/mant1ssa/Projects/cc_reverse/src/session.ts", "/Users/mant1ssa/Projects/cc_reverse/src/tools.ts", "/Users/mant1ssa/Projects/cc_reverse/test/agent-lifecycle.test.ts"],
+  "test_group": "Extended existing third W183 live directory test; no new fourth group; cumulative content assertions preserved",
+  "validation": {
+    "directory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx",
+    "probe": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/probe.mjs",
+    "before": {"log":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/before.log", "invalid":["denied","allowed","allowed"], "alias":{"before":"allowed","after":"allowed"}},
+    "after": {"log":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/after.log", "exit":0, "invalid":["denied","denied","denied"], "alias":{"before":"allowed","after":"denied"}, "outsideUnchanged":true,"otherUnchanged":true},
+    "check":{"exit":0,"log":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/check.log"},
+    "build":{"exit":0,"log":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/build.log"},
+    "tests":{"exit":0,"pass":168,"fail":0,"files":["agent-lifecycle","permissions","tools","path-identity","media","notebooks","lsp","statusline"],"log":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/tests.log"},
+    "diff_check_exit":0,
+    "identity":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-directory-repair.PrxOcEXx/identity-final.json",
+    "sha256":"a7a5bebab3505a60f4270d4f415947cdd584d1ac25ef023e6919e93e306c5891"
+  },
+  "driver_corrections": "Before product edits, Session probe setup first failed missing required config fields, then empty model. Reused defaultConfig with explicit fixture model; successful before.log demonstrates both original behavioral disagreements. Product was unchanged during setup corrections.",
+  "manual_edit_tool": "command -v apply_patch exited 1; dedicated Edit/Write fallback used as handoff permits",
+  "coding_standard": {"S1":"literal compiled before/after observations and exact module digests", "S2":"no-valid-root absolute contract restored; existing expectations retained", "S3":"no rendering changes", "S4":"cache owned by Session, removed grants invalidated; isolated owner checked", "S5":"literal outcomes and external file content assertions", "S6":"existing arrays carry non-enumerable rootSpellings through file/notebook/media/LSP consumers; affected tests passed", "S7":"four exact recovered ranges acquired and read before product edits; adapt rather than claim exact copy"},
+  "preserved_audit_final_sha256": {"/Users/mant1ssa/Projects/cc_reverse/.audit/w45-77-evidence.mjs":"9a3b57af640773f1283975e6ca49523407d8fb8469639817da5ab807b7b4d3aa"},
+  "limitations": ["Independent peer7198 rerun pending", "Whole W183 and content closure remain open", "No full-suite, CLI PermissionRequest acceptance, child/restore/auto/content scope work performed", "Bare standalone caller-supplied string arrays have invocation-local observations; session callbacks carry retained owner observations", "Existing path walker platform and identity precision limits remain; target operations retain existing verifyIdentity checks"],
+  "shared_records": "CURRENT/FEATURES left to coordinator",
+  "writes_frozen": true
+}

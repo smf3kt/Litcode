@@ -1,4 +1,7 @@
 import { cloneClassifierMessages } from './message-origin.js';
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
 import { toolNameDenied } from './agent-tool-restrictions.js';
 import { refreshPluginComponents, agentTypesSection, skillsSection } from './skill-catalog.js';
 import { z } from 'zod';
@@ -32,6 +35,10 @@ export type ChildEnvironmentFactory = (request: {
 export type AdvancedChildOptions = {
   enableAdvanced?: boolean; agentTypes?: readonly AgentTypeInfo[];
   childEnvironmentFactory?: ChildEnvironmentFactory;
+  childOwner?: (parent: Session | undefined) => {
+    signal: AbortSignal; stopSignal: AbortSignal; isOwner: () => boolean;
+    register: (session: Session, tools: ToolDefinition[]) => void; release: (error?: unknown) => void;
+  } | undefined;
 };
 export type ChildLaunchOptions = {
   mode?: 'explore' | 'general'; max_turns?: number; model?: string;
@@ -268,6 +275,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
   const input = z.object({ prompt: z.string().min(1), mode: z.enum(['explore', 'general']).optional(), max_turns: z.number().int().min(1).max(30).optional(),
     ...(options.enableAdvanced ? advancedChildFields : {}) }).strict();
   return {
+    concurrencySafe: raw => input.safeParse(raw).success,
     schema: { name: 'agent', description: 'Run an isolated child conversation on a focused task. Explore uses only read-only tools; general may edit the shared workspace. Returns a summary and child session ID. Children cannot launch further agents.',
       input_schema: { type: 'object', properties: { prompt: { type: 'string' }, mode: { type: 'string', enum: ['explore', 'general'] }, max_turns: { type: 'integer', minimum: 1, maximum: 30 }, ...(options.enableAdvanced ? advancedChildProperties : {}) }, required: ['prompt'], additionalProperties: false } },
     readOnly: false,
@@ -287,13 +295,20 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
       let session: Session | undefined;
       let agent: Agent | undefined;
       let hooks: ReturnType<typeof createChildHookLifecycle> | undefined;
+      let history: AgentHistoryStore | undefined;
+      let header: AgentHistoryHeader | undefined;
       let output: { session_id: string; reason: string; text: string; model_calls: number; workspace?: string; cleanup_error?: string } | undefined;
       let failure: unknown;
       let failed = false;
+      let historyActive = false;
+      let historyError: unknown;
+      const owner = options.childOwner?.(context.session);
+      // mQo/uxe and _k, sfn1dbxq [4235407,4236600)/[4228512,4230112), UTF-16.
+      const childSignal = owner ? AbortSignal.any([context.signal, owner.signal, owner.stopSignal]) : context.signal;
       try {
         if (launch.isolation) {
           if (!options.childEnvironmentFactory) throw new Error('Child worktree environment is unavailable');
-          environment = await options.childEnvironmentFactory({ config: child, tools: selected, isolation: launch.isolation, signal: context.signal });
+          environment = await options.childEnvironmentFactory({ config: child, tools: selected, isolation: launch.isolation, signal: childSignal });
           validateChildEnvironment(child, selected, environment);
           // The recovered child reads its instructions from the path it runs in
           // (`Sar` -> `Znr` -> `gCt`, chunk-sfn1dbxq.js [3671831,3672142)), so an
@@ -309,8 +324,20 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           }
           selected = environment.tools;
         }
-        context.signal.throwIfAborted();
-        session = Session.open(child.workspace, { config: child, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
+        childSignal.throwIfAborted();
+        if (owner && context.session) child.parentSessionId = context.session.id;
+        session = Session.open(child.workspace, { config: child, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}),
+          ...(owner && context.session && !environment && !launch.fork ? { childRoot: { parent: context.session, isOwner: owner.isOwner } } : {}) });
+        owner?.register(session, selected);
+        // OMe/Tle, sfn1dbxq [4543991,4544354), UTF-16; host adds the parent witness transaction.
+        if (owner && context.session && !environment && !launch.fork) {
+          history = new AgentHistoryStore(context.session, 16 * 1024 * 1024, 100);
+          header = history.header(session, { name: null, prompt: args.prompt, backgrounded: false, fork: false,
+            ...(typeof args.subagent_type === 'string' ? { subagentType: args.subagent_type } : {}), startedAt: Date.now() });
+          if (!owner.isOwner()) throw new Error('Child session owner released');
+          history.write({ ...header, state: { kind: 'active' } });
+          historyActive = true;
+        }
         // yn, 40cep [123604,125280), UTF-16. Read the current parent on each decision.
         const sourceOwner = () => permissionOwner((typeof source === 'function' ? source() : source).permissions);
         session.inheritPermissions({
@@ -334,21 +361,53 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           reason: launch.fork && messages.length ? 'fork_seed' : 'skill_preload' });
         hooks = createChildHookLifecycle(session, options);
         agent = new Agent(session, provider, selected, { hookOptions: hooks.hookOptions,
+          // Agent caller, wj6fycw8 [38800,42500), UTF-16: child tool-use messages carry agentId in progress.
+          toolUse: message => context.agentProgress?.(session!.id, message),
           ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session!.config.workspace, paths) } : {}),
           ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session!.id, sequence) } : {}),
           ...(options.stopState ? { stopState: options.stopState } : {}) });
-        await agent.startSession(launch.fork ? 'fork' : 'startup', context.signal);
-        const result = await agent.run(args.prompt, context.signal, undefined, undefined, [], undefined, { kind: 'child', source: 'agent' });
+        await agent.startSession(launch.fork ? 'fork' : 'startup', childSignal);
+        const result = await agent.run(args.prompt, childSignal, undefined, undefined, [], undefined, { kind: 'child', source: 'agent' });
         output = { session_id: session.id, reason: result.reason, text: result.text, model_calls: result.modelCalls,
           ...(options.enableAdvanced ? { workspace: child.workspace } : {}) };
       } catch (error) { failure = error; failed = true; }
       finally {
-        try { await agent?.endSession(context.signal.aborted ? 'interrupt' : 'other'); }
+        try { await agent?.endSession(childSignal.aborted ? 'interrupt' : 'other'); }
         catch { /* Shutdown diagnostics must not replace the child result. */ }
         try { await hooks?.close(); }
         catch (error) { if (!failed) { failure = error; failed = true; } }
+        // nsr, sfn1dbxq [4233452,4233793), UTF-16 retains the original failure;
+        // the journal boundary and witnessed sidecar are host adaptations (W385).
+        const explicitlyStopped = owner?.stopSignal.aborted === true && !context.signal.aborted && owner.isOwner();
+        if ((explicitlyStopped || failed && !childSignal.aborted) && session?.awaitingResponse && owner?.isOwner()) {
+          try { session.append({ kind: 'turn_end', reason: explicitlyStopped ? 'aborted' : 'agent_error' }); }
+          catch { /* Keep the original failure and let history remain unwitnessed. */ }
+        }
+        if (historyActive && session && history && header && owner?.isOwner() &&
+          (explicitlyStopped || !childSignal.aborted && (failed || output))) {
+          try {
+            if (session.awaitingResponse) throw new Error('Child journal has an unfinished turn');
+            const fd = fs.openSync(session.file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+            let journal: Buffer;
+            try {
+              if (fs.fstatSync(fd).size > 16 * 1024 * 1024) throw new Error('Child journal limit reached');
+              journal = fs.readFileSync(fd);
+            } finally { fs.closeSync(fd); }
+            if (journal.length === 0 || journal[journal.length - 1] !== 10) throw new Error('Child journal is incomplete');
+            if (!owner.isOwner()) throw new Error('Child session owner released');
+            history.write({ ...header, state: { kind: 'settled', status: explicitlyStopped ? 'cancelled' : failed ? 'failed' : 'completed', summary: output?.text ?? '',
+              error: failed && !explicitlyStopped ? (failure instanceof Error ? failure.message : String(failure)) : null,
+              reason: output?.reason ?? null, modelCalls: output?.model_calls ?? 0, endedAt: Date.now(), config: session.config,
+              journal: { bytes: journal.length, sha256: createHash('sha256').update(journal).digest('hex') } } });
+          } catch (error) {
+            historyError = error;
+            if (failed) failure = new AggregateError([failure, error], `Child execution and history commit failed: ${failure instanceof Error ? failure.message : String(failure)}`);
+            else { failure = error; failed = true; }
+          }
+        }
         try { session?.close(); }
         catch (error) { if (!failed) { failure = error; failed = true; } }
+        owner?.release(historyError);
         try { await environment?.close(); }
         catch (error) {
           const cleanup = `${child.workspace}: ${error instanceof Error ? error.message : String(error)}`;

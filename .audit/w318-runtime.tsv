@@ -1,0 +1,15 @@
+sequence	phase	decision	why	evidence	result
+01	source	Select synchronous delivery failure recovery	Source b branches on thrown outcome while host branches on diagnostic truthiness	W318 source table;agent a4eacba24dd612775	one coherent local package;W301 paused
+02	baseline	Preserve actual compiled red baseline	Empty Error deletes an undelivered durable row	w318-cli-baseline.txt	exit1;expected failed row;actual empty array
+03	source	Acquire diagnostic dependency closure before edits	Error.message or String conversion can throw	Ee/ot/VV/G recorded digests and UTF-16 ranges	fixed source fallback;host callbackError API retained
+04	implementation	Separate callback outcome from text	Message contents cannot own durable retention	src/scheduler.ts	private boolean return;conversion contained;siblings continue
+05	verification	Run three necessary lifecycle groups and affected consumers	Failure/reload/restart and category cleanup need direct proof	w318-focused-final.txt;w318-affected.txt;w318-check-final.txt;w318-build.txt	3/3;121/121;check/build pass
+06	incident	Preserve stalled first repaired driver	New frozen clock reaches lock release but awaits child exit	w318-cli-delivery.txt	verified owned child terminated;exact root cause unestablished;no product cleanup rewrite
+07	fixture	Reuse existing durable clock and bound exits	Restore known driver timing without unbounded close waits	w318-cli-delivery2.txt	exit0;2owned requests;retention/sibling/restart/locks
+08	review	Accept independent source correctness	Compare source outcome/diagnostic/category owners	agent a7de0398640fd2617	independent3/3;no confirmed product defect
+09	comments	Keep required source anchor	S-7 requires exact source/range/unit provenance	agent a222da1d90103408c	one two-line block;0actions;0suppressions;no edits
+10	fixture	Expose a retry after the first fault	Repeated injected failure could hide retry from request counts	independent initial CLI report;one-shot fault latch;first sibling-prompt assertion	acceptance gap repaired;unit callback attempts already exact
+11	review	Accept independent final compiled artifact	Final one-shot fault must exercise reload and restart	w318-independent-cli-final.txt;agent a9b12351aa14be980	exit0;2requests;bounded retry observation;catch-up instruction;zero leftover processes/locks
+12	verification	Retain existing runtime consumers	Small shared emit change still affects watcher/headless delivery	w318-cli-watch.txt;w318-cli-headless.txt	3/3owned requests;locks released
+13	identity	Bind final driver/tests/build	Documentation must cite the actual accepted artifact	w318-final-identity.json	1777files rechecked;5f38c6a8745bfd88b07ad94880c4aa89bcc784443a2a4557139c91dc4f071345
+14	complete	Commit exact nine-path package locally	All acceptance gates completed	95f3770	no push;no coauthor;only original two tracked user edits remain unstaged;Task103complete

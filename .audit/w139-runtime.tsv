@@ -1,0 +1,2 @@
+2026-10-18T06:05:00Z	package	W139-01 PostCompact保留terminalSequence	共享生成器在记录沉降时发射序列；PostCompact分支仅为该副作用解析stdout	其余结构化字段仍不读；沿用journal-before-effect	聚焦139/139；全量2241/2241；tsc 0
+2026-10-18T06:07:00Z	verification	W139-01 验收：build 0、notices 0、identity a118ac44…	dist重建	.audit/w139-runtime.todo.md

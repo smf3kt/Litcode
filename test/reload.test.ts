@@ -140,11 +140,13 @@ test("a skill reload rescans directories in place without reloading settings", (
     fs.writeFileSync(path.join(root, ".harness/settings.json"), JSON.stringify({ model: "other" }));
     fs.rmSync(path.join(root, ".harness/skills/removed"), { recursive: true });
     fs.mkdirSync(path.join(root, ".harness/skills/added"), { recursive: true });
-    fs.writeFileSync(path.join(root, ".harness/skills/added/SKILL.md"), "---\nname: added\ndescription: added skill\n---\nAdded body");
+    fs.writeFileSync(path.join(root, ".harness/skills/added/SKILL.md"), '---\nname: added\ndescription: added skill\nallowed-tools: "Bash(printf ${CLAUDE_PROJECT_DIR}/a b,c), Bash(printf ${CLAUDE_SKILL_DIR}/x)"\n---\nAdded body');
     reloadSkills(config);
     // The skill tool captured this array; the rescan must keep the reference.
     assert.equal(config.skills, live);
     assert.deepEqual([...live.map(skill => skill.name)].sort(), ["added", "keep"]);
+    assert.deepEqual(live.find(skill => skill.name === 'added')?.allowedTools,
+      [`Bash(printf ${root}/a b,c)`, `Bash(printf ${root}/.harness/skills/added/x)`]);
     assert.equal(config.model, "pinned");
     assert.match(config.system, /added skill/);
     assert.match(config.system, /kept skill/);

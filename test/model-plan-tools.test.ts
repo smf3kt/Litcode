@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig, assertPaired } from '../src/agent.js';
@@ -11,7 +12,7 @@ import { Session, managedPolicySchema } from '../src/session.js';
 import { permissionDecision, effectivePermissionPolicy } from '../src/permissions.js';
 import { planHistoryState, permissionModeCommand } from '../src/plan-resume.js';
 import { planReviewChoices } from '../src/plan-mode.js';
-import { readPlanFile } from '../src/plan-file.js';
+import { ownsPlanPath, planDirectory, readPlanFile } from '../src/plan-file.js';
 import { createRuntime, parseSettings, pinToolSchemas } from '../src/runtime.js';
 import { reloadConfig } from '../src/reload.js';
 import { forkSession } from '../src/sessions.js';
@@ -25,6 +26,124 @@ const context = (session: Session, signal = new AbortController().signal): ToolC
   workspace: session.config.workspace, signal, allowShell: false, maxOutputBytes: 100000,
   planMode: session.planMode, workingDirectories: readOnly => session.workingDirectories(readOnly),
 });
+
+test('session plan ownership recognizes the source main and agent path family', () => {
+  const workspace = temporary();
+  const config = { ...defaultConfig(workspace, []), model: 'fixture', plansDirectory: 'plans',
+    features: { tasks: false, subagents: false, sourcePlanTools: true } };
+  const session = Session.open(workspace, { config });
+  try {
+    const owner = session.planOwnership;
+    assert.equal(ownsPlanPath(owner, session.planFilePath), true);
+    assert.equal(ownsPlanPath(owner, path.join(owner.directory, `${owner.slug}-agent-other.md`)), true);
+    assert.equal(ownsPlanPath(owner, path.join(owner.directory, `${owner.slug}-agent-.md`)), true);
+    assert.equal(ownsPlanPath(owner, path.join(owner.directory, `${owner.slug}.workshop.md`)), false);
+    assert.equal(ownsPlanPath(owner, path.join(owner.directory, `other-agent-${owner.slug}.md`)), false);
+    assert.equal(ownsPlanPath(owner, path.join(workspace, 'other', `${owner.slug}.md`)), false);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('real agent uses plan family and explicit rules override each family member', async () => {
+  const workspace = temporary(), tools = [...createTools(), ...createInteractionTools({ sourcePlanTools: true })];
+  const config = { ...defaultConfig(workspace, tools), model: 'fixture', plansDirectory: 'plans',
+    features: { tasks: false, subagents: false, sourcePlanTools: true },
+    permissions: { mode: 'default' as const, allow: [], deny: [], ask: [] } };
+  const session = Session.open(workspace, { config });
+  try {
+    session.planMode!.enter();
+    const owner = session.planOwnership, sibling = path.join(owner.directory, `${owner.slug}-agent-sibling.md`);
+    const foreign = path.join(owner.directory, `different-agent-sibling.md`);
+    const write = find(tools, 'write_file'), read = find(tools, 'read_file');
+    let calls = 0;
+    const provider: ModelProvider = { count: async () => 0, complete: async () => {
+      calls++;
+      if (calls === 1) return reply([{ type: 'tool_use', id: 'sibling', name: 'write_file', input: { path: sibling, content: 'FAMILY' }, caller: { type: 'direct' } }], 'tool_use');
+      if (calls === 2) return reply([{ type: 'tool_use', id: 'family-read', name: 'read_file', input: { path: sibling }, caller: { type: 'direct' } }], 'tool_use');
+      return reply([{ type: 'text', text: 'done', citations: null }], 'end_turn');
+    } };
+    await new Agent(session, provider, tools).run('Use the sibling plan');
+    assert.equal(fs.readFileSync(sibling, 'utf8'), 'FAMILY');
+    assert.ok(session.events.some(event => event.kind === 'tool_result' && event.result.tool_use_id === 'family-read' && !event.result.is_error));
+    assert.equal(permissionDecision(session.config.permissions, write, { path: foreign, content: '' }).decision, 'deny');
+    for (const behavior of ['deny', 'ask'] as const) {
+      session.adoptPermissionUpdates([{ type: 'addRules', rules: [{ toolName: 'read_file' }, { toolName: 'write_file' }], behavior, destination: 'session' }]);
+      assert.equal(permissionDecision(session.config.permissions, write, { path: sibling, content: '' }).decision, behavior);
+      assert.equal(permissionDecision(session.config.permissions, read, { path: sibling }).decision, behavior);
+      session.adoptPermissionUpdates([{ type: 'removeRules', rules: [{ toolName: 'read_file' }, { toolName: 'write_file' }], behavior, destination: 'session' }]);
+    }
+    const link = path.join(owner.directory, `${owner.slug}-agent-link.md`);
+    fs.symlinkSync(sibling, link);
+    assert.equal(permissionDecision(session.config.permissions, read, { path: link }).decision, 'deny');
+    await assert.rejects(read.execute({ path: link }, context(session)), /symbolic links/);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('fork copies workshop independently and preserves it across a process restart', () => {
+  const workspace = temporary(), userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'fixture', configSources: { userDir },
+    plansDirectory: 'plans', features: { tasks: false, subagents: false, sourcePlanTools: true } };
+  const source = Session.open(workspace, { config });
+  const workshop = (file: string) => file.slice(0, -3) + '.workshop.md';
+  try {
+    const main = source.planMode!.filePath, sibling = workshop(main);
+    fs.mkdirSync(path.dirname(main), { recursive: true });
+    fs.writeFileSync(sibling, 'workshop 内容\n');
+    let fork = forkSession(source);
+    const id = fork.id, copied = workshop(fork.planMode!.filePath);
+    assert.equal(fs.readFileSync(copied, 'utf8'), 'workshop 内容\n');
+    assert.equal(fs.existsSync(fork.planMode!.filePath), false);
+    fork.close();
+    const script = `import { Session } from './src/session.ts'; import fs from 'node:fs'; const s=Session.open(process.argv[1],{id:process.argv[2]}); try { process.stdout.write(fs.readFileSync(s.planMode.filePath.slice(0,-3)+'.workshop.md','utf8')); } finally { s.close(); }`;
+    assert.equal(execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', script, workspace, id], { cwd: process.cwd(), encoding: 'utf8' }), 'workshop 内容\n');
+    const bytes = Buffer.from([0xff, 0x00, 0x80, 0x0a]);
+    fs.writeFileSync(sibling, bytes);
+    fork = forkSession(source);
+    try { assert.deepEqual(fs.readFileSync(workshop(fork.planMode!.filePath)), bytes); }
+    finally { fork.close(); }
+    fs.unlinkSync(sibling);
+    fs.writeFileSync(main, 'main survives');
+    fs.symlinkSync(main, sibling);
+    fork = forkSession(source);
+    try {
+      assert.equal(fs.readFileSync(fork.planMode!.filePath, 'utf8'), 'main survives');
+      assert.equal(fs.existsSync(workshop(fork.planMode!.filePath)), false);
+    } finally { fork.close(); }
+    const rewind = forkSession(source, 0);
+    try { assert.equal(fs.existsSync(workshop(rewind.planMode!.filePath)), false); }
+    finally { rewind.close(); }
+  } finally { source.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('fork copies plans while plan tools are disabled and preserves them on cold open', () => {
+  const workspace = temporary(), userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'fixture', configSources: { userDir },
+    plansDirectory: 'plans', features: { tasks: false, subagents: false, sourcePlanTools: false } };
+  const source = Session.open(workspace, { config });
+  try {
+    assert.equal(source.planMode, undefined);
+    const main = source.planFilePath, sibling = main.slice(0, -3) + '.workshop.md';
+    fs.mkdirSync(path.dirname(main), { recursive: true });
+    fs.writeFileSync(main, 'disabled main\n');
+    fs.writeFileSync(sibling, 'disabled workshop\n');
+    const fork = forkSession(source);
+    const id = fork.id, copied = fork.planFilePath;
+    try {
+      assert.equal(fork.planMode, undefined);
+      assert.equal(fs.readFileSync(copied, 'utf8'), 'disabled main\n');
+      assert.equal(fs.readFileSync(copied.slice(0, -3) + '.workshop.md', 'utf8'), 'disabled workshop\n');
+    } finally { fork.close(); }
+    const script = `import { Session } from './src/session.ts'; import fs from 'node:fs'; const s=Session.open(process.argv[1],{id:process.argv[2]}); try { if(s.planMode!==undefined) throw Error('plan tools enabled'); process.stdout.write(JSON.stringify([fs.readFileSync(s.planFilePath,'utf8'),fs.readFileSync(s.planFilePath.slice(0,-3)+'.workshop.md','utf8')])); } finally { s.close(); }`;
+    assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', script, workspace, id], { cwd: process.cwd(), encoding: 'utf8' })), ['disabled main\n', 'disabled workshop\n']);
+    fs.unlinkSync(main); fs.unlinkSync(sibling);
+    const empty = forkSession(source);
+    try {
+      assert.equal(fs.existsSync(empty.planFilePath), false);
+      assert.equal(fs.existsSync(empty.planFilePath.slice(0, -3) + '.workshop.md'), false);
+    } finally { empty.close(); }
+  } finally { source.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
 function reply(content: Anthropic.ContentBlock[], stop: 'tool_use' | 'end_turn'): Anthropic.Message {
   return { id: 'fixture', model: 'fixture', role: 'assistant', type: 'message', content, stop_reason: stop,
     stop_sequence: null, container: null, diagnostics: null, stop_details: null,
@@ -32,6 +151,30 @@ function reply(content: Anthropic.ContentBlock[], stop: 'tool_use' | 'end_turn')
       cache_creation: null, inference_geo: null, output_tokens_details: null,
       server_tool_use: null, service_tier: null } };
 }
+
+test('configured plan directory validates real paths and survives session reload', () => {
+  const workspace = temporary(), outside = temporary(), userDir = path.join(outside, 'user');
+  fs.mkdirSync(userDir);
+  fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ plansDirectory: 'plans/nested' }));
+  fs.symlinkSync(outside, path.join(workspace, 'escape'));
+  try {
+    assert.equal(planDirectory(workspace, 'plans/nested'), path.join(workspace, 'plans/nested'));
+    assert.equal(planDirectory(workspace, '../outside'), undefined);
+    assert.equal(planDirectory(workspace, 'escape/plans'), undefined);
+    const config = { ...defaultConfig(workspace, []), model: 'fixture', configSources: { userDir }, plansDirectory: 'plans/nested', features: { tasks: false, subagents: false, sourcePlanTools: true } };
+    let session = Session.open(workspace, { config });
+    const id = session.id;
+    try {
+      const file = session.planMode!.filePath;
+      assert.equal(path.dirname(file), path.join(workspace, 'plans/nested'));
+      session.close(); session = Session.open(workspace, { id });
+      assert.equal(session.planMode!.filePath, file);
+      fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ plansDirectory: 'next' }));
+      const refreshed = reloadConfig(session.config);
+      assert.equal(refreshed.plansDirectory, 'next');
+    } finally { session.close(); }
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); fs.rmSync(outside, { recursive: true, force: true }); }
+});
 
 test('model plan transitions affect the next call in a batch and survive cold reopen with exact typed results', async () => {
   const workspace = temporary(), userDir = path.join(workspace, 'user');
@@ -196,12 +339,18 @@ test('relocated plan file uses the execution workspace and retains rule priority
     assert.equal(decide(write, input), 'deny');
     removeRule('Write', actualRootPattern, 'deny');
     let calls = 0;
-    const provider: ModelProvider = { count: async () => 0, complete: async () => ++calls === 1
-      ? reply([{ type: 'tool_use', id: 'relative-plan', name: 'write_file', input, caller: { type: 'direct' } }], 'tool_use')
-      : reply([{ type: 'text', text: 'planned', citations: null }], 'end_turn') };
+    const provider: ModelProvider = { count: async () => 0, complete: async () => {
+      calls++;
+      if (calls === 1) return reply([{ type: 'tool_use', id: 'relative-plan', name: 'write_file', input, caller: { type: 'direct' } }], 'tool_use');
+      if (calls === 2) return reply([{ type: 'tool_use', id: 'read-relative-plan', name: 'read_file', input: { path: relative }, caller: { type: 'direct' } }], 'tool_use');
+      return reply([{ type: 'text', text: 'planned', citations: null }], 'end_turn');
+    } };
     await new Agent(session, provider, tools).run('Write the current plan');
     const written = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'relative-plan');
     assert.ok(written?.kind === 'tool_result'); assert.notEqual(written.result.is_error, true);
+    const readResult = session.events.find(event => event.kind === 'tool_result' && event.result.tool_use_id === 'read-relative-plan');
+    assert.ok(readResult?.kind === 'tool_result'); assert.notEqual(readResult.result.is_error, true);
+    assert.match(JSON.stringify(readResult.result.content), /PLAN FIXTURE/);
     assert.equal(fs.readFileSync(host.filePath, 'utf8'), input.content);
     const editInput = { path: relative, old_string: 'PLAN', new_string: 'LOCAL PLAN' };
     assert.equal(decide(read, { path: relative }), 'allow');
@@ -271,9 +420,15 @@ test('plan catalogs pin original metadata, reload and managed choices, and keep 
             files.close(); files = Session.open(workspace, { id });
             assert.equal(files.permissionOwner.state().mode, 'bypass');
           } finally { files.close(); }
-          const fork = forkSession(session);
+          fs.mkdirSync(path.dirname(session.planMode!.filePath), { recursive: true });
+          fs.writeFileSync(session.planMode!.filePath, 'parent plan');
+          let fork = forkSession(session);
           try {
-            assert.equal(fork.planMode?.filePath, session.planMode?.filePath);
+            assert.notEqual(fork.planMode?.filePath, session.planMode?.filePath);
+            assert.equal(fs.readFileSync(fork.planMode!.filePath, 'utf8'), 'parent plan');
+            const forkId = fork.id, forkFile = fork.planMode!.filePath;
+            fork.close(); fork = Session.open(workspace, { id: forkId });
+            assert.equal(fork.planMode?.filePath, forkFile);
             assert.equal(fork.permissionOwner.state().mode, 'plan');
           } finally { fork.close(); }
           const rewind = forkSession(session, session.events.length - 1);

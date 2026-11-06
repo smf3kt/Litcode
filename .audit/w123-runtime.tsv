@@ -1,0 +1,3 @@
+2026-10-17T15:05:00Z	package	W123-01 动态技能目录发现	MU 3399634、dAr 3396591、E3t 3397661、mO 3384052、WRn 3399814、KAr 4806（chunk-x0dc37w9.js）	逐级向上、候选先记录后检查、git check-ignore、每目录一次、坏条目跳过、并入live目录并重渲染	config新增1；skill-runtime新增2；lifecycle新增1；聚焦137/137；三件套164/164；tsc 0；build 0；全量2,194/2,194；链768/768
+2026-10-17T15:07:00Z	decision	W123-01 适配	.claude→.harness；请求时排空→touch内await；同名不覆盖live/held；paths动态技能直接可见（E3t语义）	dynamicSkillDirs记入严格session schema；reload重读已发现目录；diskless/policy/sync门无对应物	.audit/w123-01-notices.txt
+2026-10-17T15:09:00Z	verification	W123-01 验收：聚焦137/137、三件套164/164、tsc 0、build 0、2,194/2,194、768/768	祖先发现；每会话一次；工作区外不发现；真实git check-ignore跳过；下一请求system含新技能；数组身份保持	notices 0；索引75 chunks/323,525 units不变；identity 4149770c…

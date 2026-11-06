@@ -1,0 +1,27 @@
+
+### vp [299367,299397) 30u
+function vp(){return oI($r())}
+
+### IV [299493,299598) 105u
+function IV(){let h=vp();return Rt(h.subscribe,()=>{let{value:T}=h.getState();return T.length<=1?T:KCt})}
+
+### _Fe [444845,444923) 78u
+function _Fe(h,T){let M=AZ();return CFe(h,(L)=>M(L,performance.now()).rows,T)}
+
+### RFe [444994,446987) 1993u
+function RFe(h){let{component:T,requestId:M,owner:L,content:ee}=h,{bodyRows:he,contentRows:we,maxOffset:Te}=h,[Me,Le,He]=fd(0),[$e,je,Je]=fd(!1),[at,_t]=hh((go)=>go+1,0),xt=R({bodyRows:he,contentRows:we,maxOffset:Te}),Ct=R(!1),Pt=R(void 0),Mt=R(!1),Ft=R(0),Et=R(void 0),Kt=R(!0),Xt=le(()=>Je()?xt.current.maxOffset:Math.min(He(),xt.current.maxOffset),[He,Je]),no=le((go)=>{let Mo=W1(go);if(Mo!==Xt())Mt.current=Ct.current,Ft.current=0,Et.current=void 0;je(!1),Le(Mo)},[Le,je,Xt]),io=le((go,Mo)=>{if(Mo.kind==="plugin")return no(go),!0;if(Mt.current)return!1;let ko=W1(go),Fo=Pt.current;if(!(Je()&&Fo!==void 0&&Fo.by>0&&ko===Fo.offset)&&ko!==Xt())je(!1),Le(ko);return!0},[Le,je,no,Xt,Je]),po=le((go)=>{let Mo=Xt(),ko=go();if(Xt()!==Mo)_t();return ko},[Xt]),co=le((go,Mo)=>{let ko=xt.current,Fo=Math.min(ko.maxOffset,W1(Xt()+go));Ct.current=!0,Pt.current={by:go,offset:Fo},Mt.current=!1,Ohe(`ui.scroll ${T} ${M}`,xwt({input:{component:T,requestId:M,offset:Fo,by:go,bodyRows:ko.bodyRows,contentRows:ko.contentRows,origin:{kind:"person"},...Mo!==void 0&&{pointer:Mo}}})).finally(()=>{Ct.current=!1,Pt.current=void 0;let Yo=Ft.current,Vo=Et.current;if(Ft.current=0,Et.current=void 0,Kt.current&&Yo!==0)co(Yo,Vo)})},[T,M,Xt]),_o=le((go)=>no(go(He())),[no,He]);function xo(go,Mo){if(go===0)return;if(Ct.current){Ft.current+=go,Et.current=Mo;return}co(go,Mo)}return en(()=>{xt.current={bodyRows:he,contentRows:we,maxOffset:Te}},[he,we,Te]),en(()=>{if($e&&He()!==Te)Le(Te)},[$e,Te,He,Le]),P(()=>{let go=_z(T,M);return ahe().set(go,{component:T,requestId:M,owner:L,bodyRows:he,contentRows:we,maxOffset:Te,offset:()=>Je()?Te:Math.min(He(),Te),keyRows:(Mo,ko)=>{let Fo=ee.current;return Fo?kFe(Fo,ko,Mo):void 0},commit:(Mo,ko)=>po(()=>io(Math.min(Te,Mo),ko)),followEnd:()=>po(()=>je(!0))}),()=>{ahe().delete(go)}},[T,M,L,he,we,Te,ee,io,po,He,Je,je]),P(()=>()=>{Kt.current=!1},[]),xFe({offset:$e?Te:Math.min(Me,Te),bodyRows:he,contentRows:we,maxOffset:Te,scrollBy:xo},{placed:$e?Te:Me,place:_o,raised:at})}
+
+### q1 [447223,447294) 71u
+function q1(){let h=V(AFe);return Z(()=>h===void 0?{}:{agentId:h},[h])}
+
+### Z1 [450435,450470) 35u
+var Z1=Ge(bs(),(h)=>h.set(void 0));
+
+### tK [450848,450963) 115u
+var tK=(h,T)=>Ey((M,L,ee)=>{let we=Pne(M===""?ee:M,L,h);for(let Te of we)TIe(Te);return we.length>0},{isActive:T});
+
+### cK [453589,453644) 55u
+var cK=(h,T,M)=>P(()=>{if(h!==null&&h>=T)M()},[h,T,M]);
+
+### Ine [453648,453782) 134u
+var Ine=(h,T,M)=>P(()=>{if(T===null)return;let L=h.getState().value;return h.subscribe(()=>{if(h.getState().value!==L)M()})},[T,h,M]);

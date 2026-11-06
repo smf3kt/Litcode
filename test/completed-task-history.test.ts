@@ -81,26 +81,27 @@ test('history projection retains only owned background completions and follows e
     assert.equal(registry.backgroundTasks().length, 2);
     release(); await until(() => registry.transcript(first.id) === undefined);
     assert.deepEqual(registry.backgroundTasks().map(row => row.id), [second.id]);
-    await registry.stop(second.id); assert.deepEqual(registry.backgroundTasks(), []);
-    const tools = runtime.buildTools(runtimeConfig, 'owner'), agent = tools.find(tool => tool.schema.name === 'agent');
+    assert.equal((await registry.stop(second.id)).status, 'completed');
+    assert.deepEqual(registry.backgroundTasks().map(row => [row.id, row.status]), [[second.id, 'completed']]);
+    const tools = runtime.buildTools(runtimeConfig, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842'), agent = tools.find(tool => tool.schema.name === 'agent');
     assert.ok(agent);
     const launched = JSON.parse(await agent.execute({ prompt: 'RUNTIME_BACKGROUND', background: true }, context)) as { id: string };
     await until(() => {
-      const detail = runtime.backgroundTaskDetail!('owner', launched.id);
+      const detail = runtime.backgroundTaskDetail!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id);
       return detail?.kind === 'agent' && detail.status === 'completed';
     });
     const journal = path.join(workspace, '.agent', `${launched.id}.jsonl`);
     const metadata = fs.readFileSync(journal, 'utf8').split('\n')[0];
-    assert.ok(JSON.stringify(runtime.agentTranscript!('owner', launched.id)).includes('OWNED_FILE'));
-    assert.deepEqual(runtime.backgroundTasks!('owner').agents.map(row => row.id), [launched.id]);
+    assert.ok(JSON.stringify(runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)).includes('OWNED_FILE'));
+    assert.deepEqual(runtime.backgroundTasks!('be84c9c7-e99a-4ced-b5a8-27ab060c4842').agents.map(row => row.id), [launched.id]);
     assert.deepEqual(runtime.backgroundTasks!('foreign'), empty);
-    assert.equal(runtime.backgroundWorkCount!('owner'), 0);
-    assert.equal(await runtime.stopTask!('owner', launched.id), undefined);
-    await runtime.submitAgentInput!('owner', launched.id, 'HUMAN_RESUME');
-    await until(() => runtime.agentTranscript!('owner', launched.id)?.status === 'completed');
-    assert.ok(JSON.stringify(runtime.agentTranscript!('owner', launched.id)).includes('HUMAN_RESUME'));
+    assert.equal(runtime.backgroundWorkCount!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'), 0);
+    assert.equal(await runtime.stopTask!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id), undefined);
+    await runtime.submitAgentInput!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id, 'HUMAN_RESUME');
+    await until(() => runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)?.status === 'completed');
+    assert.ok(JSON.stringify(runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)).includes('HUMAN_RESUME'));
     assert.equal(fs.readFileSync(journal, 'utf8').split('\n')[0], metadata);
-    await runtime.releaseSession!('owner'); assert.deepEqual(runtime.backgroundTasks!('owner'), empty);
+    await runtime.releaseSession!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'); assert.deepEqual(runtime.backgroundTasks!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'), empty);
     await registry.close(); assert.deepEqual(registry.backgroundTasks(), []);
     assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   } finally { await registry.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }

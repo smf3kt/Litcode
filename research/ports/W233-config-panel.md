@@ -55,6 +55,17 @@ Port the complete local row loop for Reduce motion, Thinking mode, Show turn dur
 format, Theme, Editor mode, Question timeout, Model and Dialog expiry in source row order.
 Theme and Model reuse their existing local pickers. Source category grouping Hhe is off, so the
 panel stays flat. Message timestamps are gated off in vWe and stay absent from this panel.
+Timestamp row follow-up (2026-11-01): manifest entry 1106 and the recovered module both have
+SHA-256 `0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca`.
+The row at zero-based half-open UTF-16 [21298,21613), whose UTF-8 slice SHA-256 is
+`31ceb48acb9590bca404d10a8d98abde725a25a87cba066523f371cc881c743c`, is conditional on
+`k("tengu_silk_hinge", false)`. It reads the global setting and writes it through `W`, then
+updates the global-config snapshot and app state. Imported `k` in chunk-bk5ct2gw.js (SHA-256
+`efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1`) delegates to
+`Ue().getFeatureValueWithSource(key, default).value`; the fallback alone does not establish the
+actual gate value. The host already loads, reloads and renders `showMessageTimestamps` (W206),
+but its Config row, write/update path and corresponding gate owner are absent. Gate value and
+host ownership remain open; W385 is active, so this candidate stays queued without product edits.
 Verbose, Auto-compact enable, tips, terminal progress, notifications and selection flags have no
 complete local consumers yet and stay explicitly unported; no pretend controls are added.
 W297 supersedes the notifications exclusion with the obtained seven-channel Config and mounted

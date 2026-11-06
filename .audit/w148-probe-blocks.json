@@ -1,0 +1,45 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        450068,
+        450435
+      ],
+      "units": 367,
+      "bodySha256": "23577632153927a67bbeab3e78f42f6cc85d4b67b003e94b8cc4b910747d72bd",
+      "note": "key handler builder"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        450474,
+        450586
+      ],
+      "units": 112,
+      "bodySha256": "06d249ba524ff31e51d1d5d0d2c0548aeeb12272f880817550bae18afd3289fa",
+      "note": "seat identity memo"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        450967,
+        452484
+      ],
+      "units": 1517,
+      "bodySha256": "b16b805ab56b081fcf2b71391874670dd67a51db683e7920e6a2b9024cda2e57",
+      "note": "seat map, seat scans, select keyboard"
+    }
+  ],
+  "missing": []
+}

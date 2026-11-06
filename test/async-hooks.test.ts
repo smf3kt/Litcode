@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
+import { spawnSync } from 'node:child_process';
 import { AsyncHookRegistry, type AsyncHookCompletion } from "../src/async-hooks.js";
 import { runHooks, type AsyncHookRequest, type HookCommandHandle, type HookEvent, type HookPayload } from "../src/hooks.js";
 
@@ -197,6 +198,84 @@ test("throwing and stalled callbacks are contained and close remains bounded", a
   await stalled.close();
   assert.ok(Date.now() - started < 1000);
   assert.equal((await stalled.wait(pending)).state, "completed");
+});
+
+test('process completion and bounded close preserve the actual callback settlement', async () => {
+  for (const route of ['configured', 'adopted'] as const) for (const outcome of ['returned', 'threw'] as const) {
+    const root = workspace(), effect = path.join(root, 'callback-effect'), processRelease = path.join(root, 'process-release');
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const registry = new AsyncHookRegistry({ workspace: root, onResult: async () => {
+      await gate; fs.writeFileSync(effect, outcome);
+      if (outcome === 'threw') throw new Error('late callback failure');
+    } });
+    try {
+      let id: string;
+      if (route === 'configured') id = await registry.start(request(root, emit({})));
+      else {
+        const command = `printf '%s\\n' '{"async":true}'; while [ ! -f ${shellQuote(processRelease)} ]; do sleep 0.01; done; printf '{}'`;
+        const foreground = await runHooks({ PostToolUse: [{ command }] }, 'PostToolUse', { cwd: root }, new AbortController().signal, {
+          startAsyncCommand: async request => { assert.ok(request.handle); return registry.adopt(request, request.handle, 'callback-adoption'); },
+        });
+        assert.equal(foreground.backgroundTasks?.length, 1); id = foreground.backgroundTasks![0]!;
+        fs.writeFileSync(processRelease, 'release');
+      }
+      assert.equal((await registry.wait(id)).state, 'completed');
+      const read = () => {
+        const descriptor = registry.get(id); assert.ok(descriptor);
+        return descriptor.state === 'running' ? 'running' : descriptor.callbackState;
+      };
+      assert.equal(read(), 'pending'); assert.equal(fs.existsSync(effect), false);
+      const snapshot = registry.get(id); assert.ok(snapshot);
+      Object.assign(snapshot, { callbackState: 'returned' }); assert.equal(read(), 'pending');
+      await registry.close(); assert.equal(read(), 'pending'); assert.equal(fs.existsSync(effect), false);
+      release(); await new Promise<void>(resolve => setImmediate(resolve));
+      assert.equal(fs.readFileSync(effect, 'utf8'), outcome); assert.equal(read(), outcome);
+      assert.equal((await registry.wait(id)).state, 'completed');
+    } finally { release(); await new Promise<void>(resolve => setImmediate(resolve)); await registry.close(); }
+  }
+  const root = workspace(), plain = new AsyncHookRegistry({ workspace: root });
+  try {
+    const id = await plain.start(request(root, 'true')); await plain.wait(id);
+    const descriptor = plain.get(id); assert.ok(descriptor);
+    if (descriptor.state === 'running') assert.fail('wait returned before process completion');
+    assert.equal(descriptor.callbackState, 'none'); assert.equal(plain.get('missing'), undefined);
+  } finally { await plain.close(); }
+});
+
+test('compiled CLI distinguishes a completed hook process from its held completion callback', { timeout: 30000 }, () => {
+  for (const outcome of ['returned', 'threw'] as const) {
+    const root = workspace(), user = path.join(root, 'user'), settings = path.join(root, '.harness');
+    const preload = path.join(root, 'callback-provider.mjs'), observed = path.join(root, 'callback-state.json'), marker = path.join(root, 'callback-effect');
+    fs.mkdirSync(user); fs.mkdirSync(settings); fs.mkdirSync(path.join(root, '.git'));
+    fs.writeFileSync(path.join(settings, 'settings.json'), JSON.stringify({ hooks: { PostToolUse: [{ command: 'printf "{}"', async: true }] } }));
+    fs.writeFileSync(preload, `import fs from 'node:fs';globalThis.fetch=()=>{throw Error('fixture network disabled')};
+      const {AsyncHookRegistry}=await import(${JSON.stringify(new URL('../dist/async-hooks.js', import.meta.url).href)});
+      const finish=AsyncHookRegistry.prototype.finish,close=AsyncHookRegistry.prototype.close;let open,entered;
+      const gate=new Promise(resolve=>open=resolve),started=new Promise(resolve=>entered=resolve),closing=new WeakMap;
+      AsyncHookRegistry.prototype.finish=function(...args){const notify=this.onResult;this.onResult=async completion=>{
+        await notify?.(completion);entered();await gate;fs.writeFileSync(${JSON.stringify(marker)},'LATE_CALLBACK_EFFECT');
+        if(${JSON.stringify(outcome)}==='threw')throw Error('late fixture failure')};return finish.apply(this,args)};
+      AsyncHookRegistry.prototype.close=function(){let done=closing.get(this);if(done)return done;done=(async()=>{
+        await started;const id=this.list()[0].id,completion=await this.wait(id),afterWait=this.get(id);await close.call(this);
+        const afterClose=this.get(id),beforeEffect=fs.existsSync(${JSON.stringify(marker)});open();await new Promise(resolve=>setImmediate(resolve));
+        fs.writeFileSync(${JSON.stringify(observed)},JSON.stringify({process:completion.state,afterWait:afterWait.callbackState,
+          afterClose:afterClose.callbackState,beforeEffect,afterCallback:this.get(id).callbackState,effect:fs.readFileSync(${JSON.stringify(marker)},'utf8')}));
+      })();closing.set(this,done);return done};
+      const {GatewayProvider}=await import(${JSON.stringify(new URL('../dist/provider.js', import.meta.url).href)});let n=0;
+      GatewayProvider.prototype.count=async()=>1;GatewayProvider.prototype.complete=async(_request,_signal,onText)=>{const first=n++===0;
+        const content=first?[{type:'tool_use',id:'callback-write',name:'write_file',input:{path:'value.txt',content:'CLI_CALLBACK'}}]:[{type:'text',text:'done'}];
+        if(!first)onText?.('done');return{id:'fixture',model:'fixture',type:'message',role:'assistant',content,stop_reason:first?'tool_use':'end_turn',
+          stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}};`);
+    const cli = spawnSync(process.execPath, ['bin/litcode.mjs', '--workspace', root, '--user-dir', user, '--model', 'fixture-model',
+      '--permission-mode', 'bypass', '--interactive', '--no-tui', '--no-inherit-gateway'], { cwd: process.cwd(),
+      input: 'write the callback fixture\n/exit\n', encoding: 'utf8', timeout: 20000,
+      env: { ...process.env, HOME: user, LLM_API_KEY: 'fixture-only', NODE_OPTIONS: `--import=${preload}` } });
+    assert.equal(cli.status, 0, cli.stderr + cli.stdout); assert.equal(fs.readFileSync(path.join(root, 'value.txt'), 'utf8'), 'CLI_CALLBACK');
+    assert.deepEqual(JSON.parse(fs.readFileSync(observed, 'utf8')), { process: 'completed', afterWait: 'pending', afterClose: 'pending',
+      beforeEffect: false, afterCallback: outcome, effect: 'LATE_CALLBACK_EFFECT' });
+    assert.equal(fs.readdirSync(path.join(root, '.agent')).some(file => file.endsWith('.lock')), false);
+  }
 });
 
 test("job concurrency and history are bounded", async () => {

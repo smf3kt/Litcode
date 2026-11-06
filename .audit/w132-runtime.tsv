@@ -1,0 +1,3 @@
+2026-10-18T01:05:00Z	package	W132-01 workflow agent({schema})结构化输出	根对象校验与非法schema拒绝；StructuredOutput工具+bs注记；校验失败重试上限5；未满足批次强制提示一次；endsTurn；脚本拿回对象	ups保留键/扫描器未移植；同提示词下追加bs	tsc 0；build 0；聚焦73/73；全量2223/2223
+2026-10-18T01:06:00Z	decision	W132-01 适配	工具按名替换（本运行时列表持定义）；第五次失败以cap错误作为工具结果并锁定；跨realm纯对象/数组接受、类实例拒绝	journal记录脚本可见结构化对象，恢复形状不变	无依赖变化
+2026-10-18T01:08:00Z	verification	W132-01 验收：全量2223/2223、notices 0、两项workflow冒烟	identity eaeec9c8…；dist重建	.audit/w132-01-focused.txt、w132-01-full.txt、w132-01-build.txt、w132-01-identity.txt

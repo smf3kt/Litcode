@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { w6 } from '../src/shell-command-clamp-source.js';
 import { createShellCompoundPolicy } from '../src/shell-compound-policy-source.js';
+import { vS } from '../src/bash-parser-source.js';
 
 type Decision = { behavior: 'allow' | 'deny' | 'ask' | 'passthrough'; message?: string;
   decisionReason?: { type: string; reason?: string; circuitBreaker?: string }; suggestions?: string[] };
@@ -78,4 +79,90 @@ test('source compound policy preserves suggestion aggregation and duplicate segm
   context, await w6('echo hi | cat'), undefined, undefined, undefined);
   assert.equal(pending.behavior, 'ask');
   assert.deepEqual(pending.suggestions, ['fixture suggestion']);
+});
+
+test('fallback catches malformed trees and parser failures while supplied tree errors propagate', async () => {
+  const compound = fixture();
+  const parser = vS();
+  const original = parser.parse;
+  const allow = async () => ({ behavior: 'allow' });
+  const malformed = { type: 'program', text: '', startIndex: 0, endIndex: 0, children: [undefined] };
+  try {
+    parser.parse = () => malformed;
+    const fallback = await compound.Rcn({ command: 'malformed fixture' }, allow, context, undefined, undefined, undefined, undefined);
+    assert.equal(fallback.behavior, 'passthrough');
+    assert.equal(fallback.message, 'Failed to parse command');
+    await assert.rejects(compound.Rcn({ command: 'supplied fixture' }, allow, context, malformed, undefined, undefined, undefined), TypeError);
+    parser.parse = () => { throw new Error('actual parser failure'); };
+    const failed = await compound.Rcn({ command: 'parser failure fixture' }, allow, context, undefined, undefined, undefined, undefined);
+    assert.equal(failed.message, 'Failed to parse command');
+  } finally {
+    parser.parse = original;
+  }
+});
+
+test('fallback handles failures while extracting assignment text', async () => {
+  const parser = vS();
+  const original = parser.parse;
+  const assignment = { type: 'variable_assignment', children: [], get text(): string { throw new Error('fixture'); } };
+  const command = { type: 'command', children: [assignment] };
+  try {
+    parser.parse = () => ({ type: 'program', text: '', startIndex: 0, endIndex: 0, children: [command] });
+    const result = await fixture().Rcn({ command: 'assignment extraction fixture' }, async () => ({ behavior: 'allow' }),
+      context, undefined, undefined, undefined, undefined);
+    assert.equal(result.behavior, 'passthrough');
+    assert.equal(result.message, 'Failed to parse command');
+  } finally {
+    parser.parse = original;
+  }
+});
+
+test('concurrent fallback failures share the cached result until another command replaces it', async () => {
+  const parser = vS();
+  const original = parser.parse;
+  const command = 'cache concurrency failure fixture';
+  let parses = 0;
+  try {
+    parser.parse = (...args: Parameters<typeof original>) => {
+      if (args[0] === command) {
+        parses++;
+        throw new Error('fixture parser failure');
+      }
+      return original(...args);
+    };
+    const run = (text: string) => fixture().Rcn({ command: text }, async () => ({ behavior: 'allow' }),
+      context, undefined, undefined, undefined, undefined);
+    const results = await Promise.all([run(command), run(command)]);
+    assert.deepEqual(results.map((result: { message: string }) => result.message),
+      ['Failed to parse command', 'Failed to parse command']);
+    assert.equal(parses, 1);
+    assert.equal((await run(command)).message, 'Failed to parse command');
+    assert.equal(parses, 1);
+    assert.equal((await run('printf cache-replacement')).message, 'No pipes found in command');
+    assert.equal((await run(command)).message, 'Failed to parse command');
+    assert.equal(parses, 2);
+  } finally {
+    parser.parse = original;
+  }
+});
+
+test('repeated redirected pipeline segments share the last fallback parse across factories', async () => {
+  const parser = vS();
+  const original = parser.parse;
+  const command = 'cat > cache-fixture | cat > cache-fixture';
+  const tree = await w6(command);
+  let parses = 0;
+  try {
+    parser.parse = (...args: Parameters<typeof original>) => {
+      if (args[0] === 'cat > cache-fixture') parses++;
+      return original(...args);
+    };
+    for (const compound of [fixture(), fixture()]) {
+      const result = await compound.Rcn({ command }, async () => ({ behavior: 'allow' }), context, tree, undefined, undefined, undefined);
+      assert.equal(result.behavior, 'allow');
+    }
+    assert.equal(parses, 1);
+  } finally {
+    parser.parse = original;
+  }
 });

@@ -1,0 +1,1577 @@
+(node:79404) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ settings parse plugins, agent catalogs and optional feature gates; legacy schemas stay stable (309.116625ms)
+✔ owned checkout rebuilds task, memory, checkpoint and worktree tools; resume keeps the lease (1085.925583ms)
+✔ clean child checkout closes on stop while its parent-owned journal stays available (824.781459ms)
+✔ child writes remain in owned checkout and dirty checkout path is retained after close (489.134542ms)
+✔ isolated child retains parent deny policy even with a narrower named tool catalog (748.922584ms)
+✔ runtime abort releases a running clean checkout after provider cancellation (509.162459ms)
+✔ standalone agent factory enables isolated checkouts without registry messaging (714.775416ms)
+✔ standalone dirty checkout returns its successful child result with cleanup diagnostics (231.307541ms)
+✔ unmerged child commits survive stop and expose the preserved checkout (322.367458ms)
+✔ concurrent child checkouts serialize owned metadata updates and runtime close cleans both (497.868709ms)
+✔ WorktreeCreate hooks supply and remove the isolated child checkout outside git (27.740834ms)
+✔ a non-git workspace without WorktreeCreate hooks takes the source advisory (5.530959ms)
+✔ WorktreeCreate hook paths with dot segments or symlink ancestors are refused (8.465042ms)
+(node:79405) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ hook display fields persist across resume and suppression preserves model context (76.006917ms)
+✔ instruction and file events carry the recovered payload fields (142.468292ms)
+✔ InstructionsLoaded reports imports and the path-access reasons (197.661708ms)
+✔ prompt model hook stays a single counted call with no workspace tools (18.129708ms)
+✔ agent model hook reads real workspace evidence through exactly the read-tool allowlist (51.154958ms)
+✔ agent hook pairs denied read input and attempted write as errors without effects (29.834625ms)
+✔ Agent main loop invokes configured model hook read loop and keeps hook tools out of durable batches (87.240625ms)
+✔ agent hook accepts exactly 32 tool calls and counts the paired context again (29.113125ms)
+✔ agent hook context budget is counted before any model request or tool effect (30.784667ms)
+✔ agent hook stops at eight counted calls even when model keeps requesting reads (31.652334ms)
+✔ agent hook rejects batches beyond 32 tool calls before executing any tool (33.354542ms)
+✔ prompt hook unexpected tool request terminates its single call without execution (39.754042ms)
+✔ PermissionRequest allowing updatedInput executes the replacement and exposes it to PreToolUse (124.409625ms)
+✔ PermissionRequest deny with interrupt aborts the turn before the tool runs (84.41125ms)
+✔ PermissionRequest allow applies session permission updates before the call runs (133.026375ms)
+✔ PermissionRequest allow adds a session deny rule that survives the answer (124.031625ms)
+✔ PermissionRequest allow with an unrepresentable tightening refuses the call (80.795667ms)
+✔ PermissionRequest replacement denied by input rules produces a paired error before tool effects (92.061792ms)
+✔ PermissionDenied retry adds the recovered hint after the denied tool result (100.990292ms)
+✔ approval callback exceptions leave every call paired and later calls still execute (81.092708ms)
+✔ PreToolUse ask resolves through interactive approval true (79.995958ms)
+✔ PreToolUse ask resolves through interactive approval false (83.5455ms)
+✔ PreToolUse defer resolves through interactive approval true (90.284291ms)
+✔ PreToolUse defer resolves through interactive approval false (83.098334ms)
+✔ TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects (126.861709ms)
+✔ WorktreeRemove receives the removed worktree path only (80.603ms)
+✔ MessageDisplay receives the recovered delta fields and rewrites only the displayed text (58.983917ms)
+✔ PreCompact receives custom instructions and hook stdout becomes Additional Instructions (45.983833ms)
+✔ UserPromptSubmit omits source and carries the recorded session title (37.940666ms)
+✔ Stop carries the runtime-provided background jobs and session cron tasks (35.002ms)
+✔ SessionStart watchPaths are returned for the front-end watcher (19.181125ms)
+✔ SubagentStart additional context reaches the child's first request (64.88925ms)
+✔ Setup additional context reaches the startup request (65.007584ms)
+✔ PostModelSwitch additional context reaches exactly the next request (83.239ms)
+✔ SessionStart carries the child agent type and the recorded session title (64.654125ms)
+✔ SessionStart and UserPromptSubmit hook titles are normalized and recorded (83.574ms)
+✔ a clear start ignores the SessionStart hook title (35.46175ms)
+✔ SessionStart initialUserMessage is returned for the caller to queue (64.007791ms)
+✔ SessionStart reloadSkills refreshes the live skill catalog (42.579625ms)
+✔ a touched path activates a held conditional skill before the next request (61.376125ms)
+✔ a touch outside a held skill's paths leaves it conditional (69.997958ms)
+✔ a touched path loads a nested skill directory before the next request (81.075958ms)
+✔ TaskCreated receives the created task's fields and a block rolls the task back (141.147709ms)
+✔ TaskCreated additional context leaves the created task in place (129.514208ms)
+✔ TaskCompleted receives the task metadata and blocks before the update (109.015416ms)
+✔ TaskCompleted teammate_name follows the task owner (156.469541ms)
+✔ child SubagentStop block continues with active marker and respects maxTurns (70.27725ms)
+✔ Stop block counter survives interrupted feedback commit and child tool work resets it (108.999958ms)
+✔ PostToolUse updatedMCPToolOutput rewrites only namespaced MCP tools (121.979792ms)
+✔ durable transformed tool_output replays after interruption without rerunning tool or hook (86.365208ms)
+✔ conditional read rules match actual tool path and append context after the full result batch (82.965625ms)
+✔ first mutable rule match returns retry context before write and the next informed call executes (92.648042ms)
+✔ conditional rule sources and imports remain pinned through durable resume (106.218958ms)
+✔ SessionEnd maps close causes onto the recovered reason enum (138.525084ms)
+✔ StopFailure carries the recovered error fields without stop_reason (55.909208ms)
+✔ UserPromptExpansion is raised only for an expansion and carries its recovered fields (89.127541ms)
+(node:79406) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ final text budget bounds custom tool output before journal and model delivery (85.521084ms)
+✔ final text budget bounds post-hook replacement before journal and model delivery (196.578708ms)
+(node:79407) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ sync launch isolates sessions and preserves child config, schemas and explore mode (65.824917ms)
+✔ background launch returns immediately and caller cancellation leaves child running (44.39375ms)
+✔ cancelled synchronous wait and get wait do not cancel the launched child (48.280125ms)
+✔ messages during tool batches wait for complete turn boundaries and remain FIFO (118.731875ms)
+✔ completed child resumes its pinned journal and name after source config changes (55.964459ms)
+✔ messages arriving during completion notifications are resumed after cleanup (50.100792ms)
+✔ owner isolation, strict schemas, duplicate names and nested controls (38.57075ms)
+✔ concurrency, mailbox bytes/count and total accepted-message bounds (54.883ms)
+✔ finished history and event queues are bounded by count and bytes (123.212416ms)
+✔ stop and lifetime close abort active work, discard messages, await cleanup and release locks (44.927375ms)
+✔ failure notifications and journal limits release session locks (41.485291ms)
+✔ constructor failures clean locks for registry and legacy child tools (39.622833ms)
+✔ UTF-8 output caps include marker and bound summaries, errors and all tool responses (147.920166ms)
+✔ start/end hooks run for startup and resume and child configuration disables all parent controls (207.106125ms)
+✔ metadata budget rejects before journal creation and event budget reserves failure boundaries (49.142334ms)
+✔ mailbox count and byte limits are independent and a running child survives history eviction (196.714208ms)
+✔ internal execution overrides validate workspace and tool provenance and retain scoped model/hooks (80.798416ms)
+✔ internal execution policy overlay enforces parent rules and runs argument grants before original executor (187.157458ms)
+✔ structured tool results enforce parent and scoped input rules before block execution (200.494125ms)
+✔ child tools use scoped factories before mode/control filtering and keep loader schemas (136.028833ms)
+✔ child async hooks execute with independent ownership and settle before journal unlock on startup/resume (196.271959ms)
+✔ child cancellation waits for async process groups and preserves lock until completion delivery (268.930291ms)
+✔ legacy children run owned async startup/shutdown hooks with unchanged schema (117.737666ms)
+✔ hook option construction failures release child journal locks (71.484875ms)
+✔ idle controls are opt-in and preserve all five legacy input schemas (30.460417ms)
+✔ idle subscriptions follow the next settled conversation once and do not send a message (86.163833ms)
+✔ idle callbacks can resume and resubscribe without duplicate workers or same-transition delivery (94.788709ms)
+✔ failed and stopped children satisfy pending idle subscriptions once after cleanup (50.243125ms)
+✔ idle expiry is bounded, once-only, capacity-releasing and survives caller abort (44.7235ms)
+✔ idle event bounds apply to subscriptions and retained subscription descriptors are isolated (119.087334ms)
+✔ poll snapshots are owner-local and minimal, and waits observe messages and completion (63.528333ms)
+✔ poll waiters timeout or abort without child cancellation and free bounded capacity (40.061916ms)
+✔ closing cancels subscriptions and releases poll waits without idle delivery (23.661416ms)
+✔ closing in an idle callback cancels other subscriptions in that transition (49.841042ms)
+✔ legacy agent schema retains the exact original properties (3.771208ms)
+✔ advanced agent schema is gated and configured types only narrow parent tools (76.572959ms)
+✔ fork copies paired conversation data, omits bound reasoning and inherits the parent model (69.157916ms)
+✔ child environment lease binds tools to the new workspace and survives completed-child resume (128.394167ms)
+✔ environment preparation reserves concurrency and names and close awaits rollback (1.358292ms)
+✔ environment changes never bypass inherited configuration or original override provenance (3.755ms)
+✔ stop, wait and registry close share delayed cancelled-child cleanup (36.902667ms)
+✔ completed-child waits include delayed lease cleanup and retain timeout and cancellation semantics (29.998667ms)
+✔ lease cleanup failures preserve completed results and report the retained workspace (44.747542ms)
+(node:79446) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ no supplied directories means no discovery or filesystem reads (0.787292ms)
+✔ full YAML fields load into typed metadata and original CRLF body stays pinned (19.279709ms)
+✔ default general mode and comma-separated tool metadata retain empty allowlists (18.853333ms)
+✔ project beats user and plugins; stable filename and plugin order break ties (68.628417ms)
+✔ reserved runtime names report collisions for every source (24.835667ms)
+✔ invalid YAML and invalid known or unknown fields are reported without hiding valid entries (38.856708ms)
+✔ all five effort values are preserved and exported schema validates full catalogs (30.267ms)
+✔ realpath dedup covers files and source directory aliases without double charging (27.237709ms)
+✔ escaping file symlinks are reported before reading; nested directories stay unscanned (32.098792ms)
+✔ missing directories are explicit diagnostics and malformed options fail (20.040459ms)
+✔ budget uses original disk bytes including malformed UTF-8 and invalid definitions (41.933ms)
+✔ per-file and standalone aggregate limits remain hard even with a larger caller budget (83.860458ms)
+✔ bounded descriptor read catches a file growing after the stat precheck (27.058ms)
+✔ directory entry ceiling applies before any definition bytes are read (3326.998959ms)
+(node:80682) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a thinking block with its signature is preserved and multi-tool results pair immediately in order (101.607875ms)
+✔ a throwing tool and an unknown tool both produce is_error results without aborting the turn (89.021625ms)
+✔ a max_tokens response with malformed tool calls runs nothing but pairs error results (55.947917ms)
+✔ cancellation mid-batch skips the remaining tools and still pairs every call (73.930375ms)
+✔ hitting the round limit ends with a paired turn_end (74.656709ms)
+✔ a session file is exclusively locked until it is closed (14.932334ms)
+✔ resume keeps every complete event and drops an unterminated final record (42.925333ms)
+✔ recovery pairs a started-but-unfinished call and a never-started call without replay (56.874458ms)
+✔ recovery reuses a completed tool result verbatim instead of re-running it (83.25475ms)
+✔ resume rejects a changed config fingerprint and a changed tool schema (62.791167ms)
+✔ a model failure after tool results resumes append-only without re-running tools (42.860959ms)
+✔ compaction starts a summary-only epoch that omits the old thinking block (41.027291ms)
+✔ context that refills immediately after compaction stops the loop (53.042958ms)
+✔ toolCalls, assertPaired and fingerprint behave as the loop depends on (0.328709ms)
+✔ the default config is accepted by the agent without a schema mismatch (10.779958ms)
+(node:81004) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ async registry integrates start callback and executes command exactly once with original stdin/cwd (25.4795ms)
+✔ async registry preserves Stop continuation, PreCompact raw output and permission translation (14.472458ms)
+✔ asyncRewake wakes only on exit 2 with the configured prefix, summary and escaped output (16.854417ms)
+✔ caller cancellation after ownership does not cancel the async job (62.219291ms)
+✔ lifetime abort kills owned process groups and close waits under a bounded deadline (12.916875ms)
+✔ stop cancels one owned job and leaves another job running (66.029833ms)
+✔ request deadline and configured timeout clamp execution duration (76.071708ms)
+✔ pre-aborted, closed and invalid requests start no commands (4.202625ms)
+✔ completion callbacks are delivered once in completion order and cannot mutate retained results (98.359416ms)
+✔ throwing and stalled callbacks are contained and close remains bounded (208.278375ms)
+✔ job concurrency and history are bounded (299.664583ms)
+✔ retained hook results are capped despite JSON duplication and large stderr (16.469625ms)
+(node:81320) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a written file holds exactly the bytes that were handed to it (9.334584ms)
+✔ the verified size is bytes, not characters (5.2935ms)
+✔ a new file gets the requested mode and an overwrite keeps the caller's (15.987625ms)
+✔ an overwrite replaces the content wholesale (14.958458ms)
+✔ missing parent directories are created (2.864125ms)
+✔ a directory that is no longer the one identified is refused (3.214083ms)
+✔ content that cannot be published is kept and named, not discarded (3.837042ms)
+✔ a write that never began leaves nothing behind (0.284625ms)
+✔ a labelled write whose temporary file cannot be created leaves nothing behind (0.260916ms)
+(node:81339) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interactive quoted PNG task preserves its attachment and survives journal reopen (64.89375ms)
+✔ selected PDF remains attached after prior history compaction (66.535542ms)
+✔ attachment overflow, invalid input and cancellation persist no user attachment (20.856167ms)
+(node:81508) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ startup memory is read-only, policy-aware, cancelable, and inherits path confinement (1.883709ms)
+✔ memory context preserves hashes and inert Unicode data within whole JSON byte budgets (239.593667ms)
+✔ a memory that disagrees with an instruction file reaches one of three verdicts (0.11275ms)
+(node:81941) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ background seed takes the latest real user text and assistant line (0.752584ms)
+✔ background seed skips tool results, command records and local meta messages (0.087333ms)
+✔ background seed truncates in UTF-16 units without splitting a pair (0.092334ms)
+✔ startBackgroundSession forks the journal before spawning a detached headless child (47.223958ms)
+✔ a failed spawn removes the unused fork and reports the source failure text (48.20025ms)
+✔ an empty conversation without a prompt is refused with the source gate text (8.425583ms)
+(node:81995) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ createBackgroundTools exposes the five job tools with the right flags (1.040125ms)
+✔ active reports only running jobs for the Stop payload (6.398833ms)
+✔ run_background completes a natural success and reports exit 0 (81.40425ms)
+✔ monitor defaults to a longer deadline than run_background (81.903333ms)
+✔ run_background reports a natural failure with its nonzero exit code (80.032416ms)
+✔ a job past its deadline is killed and reported as timed_out (203.672458ms)
+✔ task_stop kills a running job and reports it cancelled (3.409ms)
+✔ get_background_task returns a running view when the deadline has not elapsed (53.994042ms)
+✔ start rejects a non-finite, non-positive or over-maximal deadline (3.790833ms)
+✔ a concurrency cap refuses to start more than the allowed running jobs (2.956125ms)
+✔ output tails are byte-bounded and never emit a replacement character (79.658042ms)
+✔ unknown job ids are rejected by get and stop (3.520625ms)
+✔ the finished-job history is bounded and never evicts a running job (248.173084ms)
+✔ registry.close kills and reaps every running job (85.446291ms)
+✔ stopping a job also kills descendants in its process group (199.421583ms)
+✔ monitor turns every stdout line into a notification without silent loss (79.228791ms)
+✔ monitor streams stdout only; stderr stays a readable tail (74.934583ms)
+✔ an over-long newline-free line is emitted once with a truncation marker (74.266042ms)
+✔ the notification queue is bounded by event count and reports drops (189.447875ms)
+✔ the notification queue is bounded by bytes and reports drops (197.183583ms)
+✔ read_notifications honors a limit and reports the remaining queue (233.689375ms)
+✔ an onNotification callback receives queued events (77.17375ms)
+✔ a throwing onNotification callback is contained and never breaks the job (91.810333ms)
+✔ run_background and monitor require allowShell (0.448333ms)
+✔ pre-aborted caller signals prevent start, waiting, drain, and stop (1.629791ms)
+✔ the registry lifetime signal cancels running jobs on abort (129.358333ms)
+(node:82054) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ only the mode that skips every check counts as a bypass request (0.339917ms)
+✔ root outside a container is refused and everyone else is not (0.079584ms)
+✔ a container or the explicit opt-in is the deliberate sandbox (0.075583ms)
+✔ the refusal only fires for a bypass request made by root (0.300833ms)
+✔ the CLI refuses the mode before it starts anything (2046.292417ms)
+(node:82462) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ checkpoint tools expose permission metadata and restore confirmation contract (0.708917ms)
+✔ checkpoint snapshots hidden files and .harness, excluding reserved trees and symlink contents (49.622917ms)
+✔ incremental checkpoints survive new tool instances and restore modified/deleted bytes and modes (161.6165ms)
+✔ selected paths scope effects and removal requires explicit diff paths (92.466958ms)
+✔ stale digest catches unrelated changes and permissions before restore effects (36.538ms)
+✔ corrupt manifest and content are checked in full even for a selected good file (42.417917ms)
+✔ structurally invalid rehashed manifests reject traversal and symlink parents (29.13375ms)
+✔ metadata symlinks at .agent, checkpoint directories, manifest and objects are rejected (22.744708ms)
+✔ restore never follows leaf/ancestor symlinks or replaces captured symlink metadata (56.339208ms)
+✔ invalid names and paths produce no workspace effects (116.654583ms)
+✔ pre-aborted tools leave checkpoint storage and workspace untouched (20.198083ms)
+✔ snapshot byte/count caps fail before checkpoint publication (153.686875ms)
+✔ exclusive locks and duplicate checkpoint names preserve existing snapshots (87.796917ms)
+✔ a later filesystem failure rolls back earlier writes and newly created directories (203.372125ms)
+✔ mid-restore cancellation rolls back committed bytes and explicit removals (106.15675ms)
+✔ a target edit during atomic staging survives the conflict and earlier effects roll back (178.636084ms)
+✔ recovery preserves active and invalid lock owners and validates legacy PID locks (54.730667ms)
+✔ mkdir before inode publication preserves an explicit ownership residual (133.039333ms)
+✔ diff/list outputs paginate and cap JSON while retaining digest confirmation (24.435875ms)
+✔ recovery removes this store's staging files and keeps foreign, legacy and linked ones (32.57625ms)
+✔ a pending transaction sweeps staging files from its target directories (78.927042ms)
+✔ recovery sweeps unreferenced objects and intents whose creator died before capture (118.355041ms)
+✔ an unreadable manifest retains every otherwise unreferenced object (27.91325ms)
+(node:82549) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI custom types select literal models and fork paired history; resume pins the catalog (1211.125458ms)
+✔ CLI plugin opt-in installs locally and loads pinned skill bodies on new sessions (1691.527208ms)
+✔ CLI headless interactions return explicit paired callback errors and typed findings (630.922333ms)
+✔ CLI explicit settings disable advanced agent and interaction schemas (548.224291ms)
+(node:82574) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI live loopback run wires tools, settings, hooks and instructions with paired results (608.822292ms)
+✔ CLI api-key loopback run isolates the explicit credential from SDK environment headers (564.904625ms)
+ℹ CLI source: api-key; explicit auth only; environment route absent
+✔ CLI executes WebSocket monitoring without shell access and closes it on exit (591.043125ms)
+✔ CLI api-key mode ignores inherited SDK credentials and routing headers (576.528417ms)
+✔ CLI resume reuses the pinned snapshot over the loopback gateway without persisting the credential (1139.269084ms)
+(node:82580) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI image sampling preserves bytes, pinned resume, shared budget and absent/managed gates (2736.047ms)
+✔ CLI array sampling restores pinned mixed blocks and enforces managed and legacy gates (2686.940292ms)
+✔ CLI annotated sampling metadata stays inert across the reverse and quoted task data (1006.78775ms)
+✔ CLI roots flag overrides false settings and exposes exactly the current workspace URI (515.2195ms)
+✔ CLI legacy MCP config advertises empty capabilities and preserves absent mcpClient (518.315292ms)
+✔ CLI sampling flag uses configured model and effort without host tools or conversation (513.847833ms)
+✔ CLI sampling and parent completions share max-model-calls invocation budget (508.830875ms)
+✔ CLI resume pins MCP capabilities independently of current settings and rotated credentials (1851.93775ms)
+✔ CLI audio sampling stores clips, pins the gate and keeps managed and legacy gates (2589.993292ms)
+(node:82581) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI permission help lists all five accepted modes (479.045167ms)
+✔ CLI effort flag overrides environment/settings and resume retains the pinned level (1557.086416ms)
+✔ CLI interrupt during one-shot background skill wait exits 130 and closes owned child locks (567.029625ms)
+✔ CLI pins conditional rules separately, excludes them at startup and preserves snapshot on resume (1078.25975ms)
+✔ CLI one-shot background skill waits for child end_turn and reports completion status (544.643667ms)
+✔ CLI one-shot background skill waits for child refusal and reports completion status (562.387625ms)
+✔ CLI json emits parseable structured output without raw delta duplication (514.442666ms)
+✔ CLI stream-json emits parseable structured output without raw delta duplication (498.34325ms)
+✔ CLI schema mismatch produces final schema_error and releases session lock (487.103125ms)
+✔ CLI invocation budget counts actual usage and reports overshoot plus zero-call refusal before dispatch (971.346958ms)
+✔ CLI pins configured web search endpoint and advertises poll_agents only for modern idle feature (507.633459ms)
+✔ CLI rejects invalid headless/schema options before opening a session (1361.506209ms)
+(node:82602) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ CLI help works without an API key (484.778084ms)
+✔ CLI rejects incompatible arguments before opening a session (1425.882458ms)
+✔ CLI blocks config-changing flags on resume before opening a session (3208.465417ms)
+✔ CLI fails on a malformed settings field before opening a session (448.254042ms)
+✔ CLI rejects an MCP server that declares environment values (451.742208ms)
+✔ CLI rejects an unknown permission mode before opening a session (457.50425ms)
+✔ CLI demo persists paired results and resumes a saved final response offline (937.718541ms)
+✔ CLI reports its version without a credential or a model call (906.078292ms)
+✔ a bare invocation without a terminal prints the help instead of failing (919.513542ms)
+✔ a bare invocation at a terminal opens the interactive session (512.626041ms)
+✔ explicit line mode and dumb terminals avoid alternate-screen ownership (1401.489208ms)
+✔ a live run takes a missing gateway, credential and model from the client configuration (1662.663708ms)
+✔ an explicit value still outranks the client configuration (2154.953542ms)
+✔ inheritance can be turned off and is off for the offline demo (1034.287875ms)
+✔ a resumed session borrows a credential for its pinned endpoint (2176.800625ms)
+(node:82614) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ explicit clipboard capture selects PNG commands and publishes private readable attachments (285.572167ms)
+✔ clipboard bounds, strict hex, cancellation, cleanup and directory confinement fail closed (6626.660583ms)
+(node:82671) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ real config changes debounce, discover directories, survive replacement and close silently (8947.903833ms)
+✔ a file change gate delays or suppresses the reload fan-out (1448.128667ms)
+✔ watcher reports each relevant file event with its path and kind (234.58425ms)
+✔ watch bounds, symlink confinement, missing roots and optional error reporting (1148.846708ms)
+(node:82682) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ settings merge in user -> project -> local -> explicit order (3.666375ms)
+✔ later scalar or type-changed values replace earlier ones (1.455709ms)
+✔ explicit managed fields override authored settings without merging permission arrays (2.029708ms)
+✔ the OS-managed directory merges its base file and sorted drop-ins (2.973666ms)
+✔ a missing managed directory is absence and a broken document contributes nothing (1.867291ms)
+✔ prototype keys are never merged and cannot pollute Object.prototype (1.015417ms)
+✔ invalid settings JSON raises a ConfigError carrying the file path (1.683208ms)
+✔ a non-object settings document is rejected (0.836333ms)
+✔ an empty settings file is treated as no settings (1.220667ms)
+✔ a missing explicit settings file is an error; a missing default layer is not (0.878166ms)
+✔ settings reads are bounded by CONFIG_LIMITS.settingsBytes (1.37125ms)
+✔ instructions collect ancestor HARNESS.md/AGENTS.md and rules in order (2.905709ms)
+✔ rules load unconditionally even without any ancestor instruction file (1.044958ms)
+✔ nested rules are bounded, deterministic and retain conditional discovery (6.698833ms)
+✔ an oversized rules directory fails loudly instead of silently omitting files (186.639875ms)
+✔ instruction and skill text share one aggregate budget and fail rather than emit partially (118.859833ms)
+✔ instruction text within the aggregate budget loads completely (58.178917ms)
+✔ readBoundedBytes reads a file at the cap and reports its exact original bytes (0.556583ms)
+✔ readBoundedBytes handles empty and zero-cap boundaries (0.610459ms)
+✔ readBoundedBytes flags one byte past the cap without reading further (0.43975ms)
+✔ readBoundedBytes fails a file that grew past the bound (no stat window) (0.434416ms)
+✔ readBoundedBytes surfaces an unreadable file as a ConfigError carrying the path (0.320042ms)
+✔ readBoundedBytes rejects a directory (regular-file check on the opened descriptor) (0.447125ms)
+✔ readBoundedBytes rejects a non-integer, negative, or non-finite cap (0.499042ms)
+✔ an instruction file over the per-file cap is rejected on read (1.436791ms)
+✔ the aggregate budget is charged in original bytes, not decoded/re-encoded size (101.79775ms)
+✔ the aggregate read is bounded by the remaining budget and classified as such (116.670208ms)
+✔ skills load from user and project dirs with frontmatter and project override (4.183042ms)
+✔ symlinked skill directories are de-duplicated by realpath (1.482291ms)
+✔ a skill without a frontmatter name falls back to its directory name (1.169375ms)
+✔ parseFrontmatter reads flat scalars and reports unsupported constructs (0.209666ms)
+✔ parseFrontmatter tolerates absent or unterminated frontmatter (0.054083ms)
+✔ expandSkill substitutes $ARGUMENTS and $1..$9 without re-scanning (0.730583ms)
+✔ full YAML preserves collections, block scalars, aliases and JSON metadata (0.931833ms)
+✔ malformed, tagged, cyclic and excessive-depth YAML preserve the original body explicitly (1.072333ms)
+✔ skills retain optional invocation fields and validated flat command hooks without executing shell (2.24575ms)
+✔ known malformed skill fields fail with the manifest path (14.176959ms)
+✔ skill argument names follow the recovered permissive filter (2.505292ms)
+✔ scalar skill tool grants and quoted booleans remain compatible (1.245417ms)
+✔ instruction imports follow relative and absolute Markdown paths outside code and comments (1.875834ms)
+✔ home imports resolve against the home directory without reading host config (0.907542ms)
+✔ Markdown comment delimiters inside code and fences inside comments retain outside imports (0.886458ms)
+✔ full YAML preserves original CRLF body bytes and strips prototype fields (0.202333ms)
+✔ instruction import cycles deduplicate and depth five fails explicitly (3.091709ms)
+✔ missing imported Markdown raises a path-bearing error (0.790125ms)
+✔ conditional rule globs select workspace paths and omitted paths preserve old behavior (4.835792ms)
+✔ conditional rule catalogs pin source once while empty paths load only baseline instructions (1.616875ms)
+✔ conditional rule source is charged once when both cataloged and selected (225.595334ms)
+✔ conditional imports are pinned in DFS order, deduplicate cycles and inherit root conditions (2.357917ms)
+✔ conditional imports enforce depth even when no baseline target selects their rule (2.8325ms)
+✔ conditional imports are charged once when shared by selected instructions and multiple catalog roots (258.830458ms)
+✔ conditional catalogs obey the same aggregate limit even when baseline excludes rules (89.288791ms)
+✔ conditional rules validate glob types and require complete imported snapshots when paths are supplied (3.765458ms)
+✔ configured plugin skill directories obey project then user then plugin precedence and realpath identity (3.819333ms)
+✔ installed plugin skills are pinned below project and user but above configured directories (110.06475ms)
+✔ installed plugin discovery follows merged enabled settings and rejects edited installed content (54.256541ms)
+✔ settings.plugins validates the full plugin schema even while disabled (4.199292ms)
+✔ installed plugin skill text consumes the existing aggregate budget (111.864458ms)
+✔ pluginDirs must be an explicit array of local paths (1.047084ms)
+✔ local memory catalog loads only Markdown and preserves empty-config compatibility (1.594125ms)
+✔ imported text and local memory share the instruction budget (68.990792ms)
+✔ realpath aliases charge imported instruction bytes once and deduplicate memory catalog (73.028333ms)
+✔ malformed skill YAML preserves the full source with a limitation (1.486667ms)
+✔ agent types load project before the independent user directory and pin their bodies (2.29525ms)
+✔ invalid and reserved agent definitions report diagnostics without running body text (1.5055ms)
+✔ skill plugin directories do not implicitly become agent type catalogs (48.787792ms)
+✔ agent definitions share exactly the remaining instruction, skill and memory budget (167.625666ms)
+✔ invalid and shadowed agent bytes still consume the shared config budget (81.564083ms)
+✔ an empty workspace yields empty settings, instructions and skills (1.105667ms)
+✔ a missing workspace directory is an error (0.387625ms)
+✔ skill paths normalize like the recovered loader and hold the skill out of the catalog (2.47375ms)
+✔ a string paths value and an empty list behave like the source (2.214542ms)
+✔ activation matches gitignore-style patterns against workspace-relative touches (1.153959ms)
+✔ dynamic directory loading skips malformed entries and names already in the catalog (1.908625ms)
+(node:82697) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ 1M context compacts at the exact 512k input boundary (511999) (31.798667ms)
+✔ 1M context compacts at the exact 512k input boundary (512000) (27.53975ms)
+(node:82702) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ every family in the table has a sample, and every sample is recognized (1.815166ms)
+✔ a recognized span is replaced and the text around it survives (0.118333ms)
+✔ ordinary text is left alone (0.370042ms)
+✔ the ambiguous entries are deliberately absent from the table (0.075333ms)
+✔ the table compiles once and matching does not carry state between calls (0.119042ms)
+(node:82703) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ source external editor expands and refolds text with ordered handoff and private cleanup (169.048167ms)
+✔ line external editor restores raw draft, undo, input and pending child cancellation (274.667375ms)
+✔ TUI external editor handoff refolds payload and restores modes through success and failure (192.768833ms)
+(node:82704) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ independent CLI verifies binary, latin1 and UTF16LE with output identity and finite index coverage (267.765959ms)
+✔ CLI rejects source/disk/manifest tampering, malformed pointers and escaping or duplicate paths (1286.456625ms)
+✔ v3 index rejects stale digests, malformed coordinates and incomplete coverage; v2 is explicit failure (1228.196542ms)
+(node:82737) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a client settings file supplies the gateway, the credential and the model (1.068667ms)
+✔ the key variable is an api-key credential unless the token variable is also set (0.226667ms)
+✔ the file answers first and the process environment fills the gaps (0.224167ms)
+✔ a client's own top-level model is read when its environment does not name one (0.227625ms)
+✔ a disabled or empty source yields nothing at all (0.349958ms)
+✔ a settings file that cannot be trusted is ignored rather than fatal (1.504292ms)
+✔ an oversized settings file is not read (0.464ms)
+✔ the directory search follows this harness, then the client, then the home default (0.079584ms)
+✔ only the endpoint a credential was configured for compares equal (0.122167ms)
+✔ a resolved credential is a copy of the file contents, not the document itself (0.275834ms)
+✔ the home default is only consulted when no directory was chosen (0.243959ms)
+(node:82740) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ complete search hook keeps source query, dedup, next, exhaustion, mode, rebase and acceptance contracts (59.613708ms)
+✔ source iterator identity cancels late queries and store readers release before rebind or close (83.853042ms)
+(node:82747) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ mixed matcher groups retain entry and inner positions and execution order (20.076417ms)
+✔ group and inner matchers intersect for exact, regex, wildcard and absent selectors (14.018708ms)
+✔ groups are strict, nonrecursive, nonempty and bounded across events (6.7935ms)
+✔ legacy optional fields remain absent and flattening/once never changes raw fingerprints (6.304125ms)
+✔ once is accepted without defaults for every transport (0.23175ms)
+✔ once claims synchronously before resolver execution and concurrent runs execute once (0.418417ms)
+✔ durable claim callback failure prevents execution and leaves once available (0.277ms)
+✔ lifecycle callback reentrancy cannot claim the same key twice (0.073625ms)
+✔ started failure, malformed output and cancellation consume once (3.118458ms)
+✔ pre-cancellation and mismatch leave once unused (0.33875ms)
+✔ missing model/async resolvers leave once unused, then injection executes once (0.289417ms)
+✔ async registration failure consumes its execution claim (0.085208ms)
+✔ once seed resumes without repeats, identities bind event/coordinates/content and owners separate (0.633125ms)
+✔ lifecycle validates seed and copies it; omitted lifecycle has no global state (0.226375ms)
+✔ input byte cap, serialization and invalid flat prechecks never claim once (3.780125ms)
+✔ real command concurrent starts execute once and launch failure consumes once (43.172666ms)
+✔ cancellation between grouped definitions leaves unstarted hooks claimable (0.283167ms)
+✔ an asynchronous journal callback is rejected before execution and claim commit (0.09675ms)
+✔ HTTP header prechecks leave once available and concurrent loopback starts claim once (13.781958ms)
+(node:82767) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ once claim is durable before execution, shared across Agent wrappers and preserved on resume (392.638583ms)
+✔ an interrupted once claim is skipped on resume, while a new fork owns a fresh lifecycle (211.006ms)
+✔ settings drops unknown events while retaining grouped and legacy hook definitions (0.663417ms)
+✔ grouped skill commands are approved before child journals or hook effects (1.118208ms)
+✔ merged hook count overflow is rejected before skill shell expansion performs effects (2.9995ms)
+(node:82787) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ terminalSequence validates complete bounded OSC/BEL fields and normalizes payloads (1.299084ms)
+✔ hook output preserves sequence order, PreCompact/suppression effects and aggregate bounds (30.64725ms)
+(node:82789) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ transport schemas retain absent fields and script hooks are refused without execution (4.22ms)
+✔ callback and MCP prerequisites, once, cancellation and JSON results share existing translation (3.448ms)
+✔ sixteen actual resolver stages survive timeout across recreated wrappers until settlement (71.154125ms)
+(node:82796) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ HOOK_EVENTS lists every lifecycle event and the shared schemas map each one (2.319833ms)
+✔ HooksConfig accepts every event and an empty config blocks nothing (0.611666ms)
+✔ matcher selects by tool_name with exact, alternation and wildcard forms (20.005541ms)
+✔ watchPaths are collected from matching hookSpecificOutput entries in order (11.1305ms)
+✔ failed hook output is reported for watcher display without leaving context (5.561541ms)
+✔ ConfigChange exit 2 blocks the settings and skill reload gate (5.558458ms)
+✔ transition matchers follow the recovered per-event selector fields (16.928959ms)
+✔ the hook receives the contract JSON on stdin (4.657542ms)
+✔ hook stdin is newline-terminated so a line reader can consume it (4.583958ms)
+✔ UserPromptSubmit payload serializes the prompt field (4.706709ms)
+✔ the hook runs with the payload cwd (2.885125ms)
+✔ new event payload fields serialize onto stdin (26.732042ms)
+✔ PreCompact turns raw stdout into context and PostCompact appends display context (11.426792ms)
+✔ exit code 2 blocks PreToolUse with the stderr reason (2.692417ms)
+✔ exit code 2 blocks UserPromptSubmit (2.666917ms)
+✔ exit code 2 never blocks the display-only feedback events (14.244459ms)
+✔ exit code 2 blocks PreCompact, PostToolBatch and PostToolUseFailure (8.311375ms)
+✔ exit code 2 on Stop requests continuation without requesting a terminal stop (2.853458ms)
+✔ a Stop decision:block JSON requests continuation (2.935333ms)
+✔ a top-level decision:block is ignored for events that do not support it (14.3955ms)
+✔ a decision:block blocks PostToolBatch and PostToolUseFailure (5.66325ms)
+✔ a PreCompact decision:block blocks but continue:false is ignored (5.475792ms)
+✔ PostToolUseFailure carries feedback without blocking on context alone (2.847542ms)
+✔ a non-zero, non-2 exit is a recorded non-blocking error (2.600417ms)
+✔ PreToolUse permissionDecision deny blocks and carries the reason (2.929875ms)
+✔ PreToolUse permissionDecision allow returns updatedInput (3.098458ms)
+✔ hookSpecificOutput is ignored unless hookEventName matches the event (5.969667ms)
+✔ ask and defer are recorded and denied until a UI resolves them (5.812375ms)
+✔ an unknown permissionDecision is ignored and does not carry updatedInput (2.927167ms)
+✔ continue:false blocks and requests a terminal stop (PreCompact excepted) (5.717792ms)
+✔ Stop additionalContext is a continuation request without a terminal stop (3.299458ms)
+✔ additionalContext is appended from top level and hookSpecificOutput (6.150542ms)
+✔ non-object or invalid stdout JSON is ignored (5.686792ms)
+✔ every matching hook runs and a single block wins (9.108209ms)
+✔ a timed-out hook is non-blocking and is killed promptly (1003.042416ms)
+✔ the whole process group is killed on timeout, including background children (1002.303416ms)
+✔ an already-aborted signal prevents the hook from starting (0.221708ms)
+✔ aborting mid-run kills the command group and resolves (103.050375ms)
+✔ command hooks perform only their explicit configured command (3.371583ms)
+✔ hook transport definitions preserve legacy commands and reject ambiguous/credential shapes (0.714833ms)
+✔ flat regex matcher preserves grouped alternation and transition-specific selector fields (6.109667ms)
+✔ HTTP hook posts JSON and consumes structured output with ephemeral environment headers (15.228083ms)
+✔ HTTP hooks reject redirects, errors, malformed JSON and oversized response without interpreting them (6.609542ms)
+✔ HTTP hook cancellation, timeout and missing header variables prevent or end requests (84.055083ms)
+✔ event output translation retains permission, updated result and general specific fields (86.688667ms)
+✔ WorktreeCreate reads worktreePath from hook JSON or command stdout only (16.039208ms)
+✔ Elicitation hooks answer with the last action and admit string or record content (16.279167ms)
+✔ session titles normalize like the recovered ci helper (0.359958ms)
+✔ prompt/agent hooks require explicit injected resolvers and normalize model verdicts (0.354458ms)
+✔ model hook timeout and malformed output remain explicit and bounded (32.537125ms)
+✔ command output caps discard a truncated JSON verdict and report truncation (11.294167ms)
+✔ oversized hook input prevents every transport from starting (0.997042ms)
+✔ PermissionRequest interrupt is adopted only with the denying decision (11.467708ms)
+✔ permission denial survives a later allowing hook and new lifecycle gate exit statuses work (22.035625ms)
+✔ script hooks are refused without executing their command (2.7035ms)
+✔ async command hooks explicitly require an owned registry and return registered task ids (0.205833ms)
+✔ asyncRewake implies the async owner and command results stay observable (2.865083ms)
+(node:82806) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ decorations: a normalized paint answers for its own text and for nothing else (0.778541ms)
+✔ decorations: an edit carries the paint across it, and a replacement drops it (0.237125ms)
+✔ decorations: a row is split into its runs by the source mapping, across wrapped rows too (1.804708ms)
+✔ decorations: a run holding the caret is dropped so the caret cell stays unpainted (0.44075ms)
+✔ decorations: the source row mapping shifts a run onto the rendered value and segments it there (0.153458ms)
+✔ decorations: a module that paints the draft leaves its runs on the composer rows (556.426ms)
+✔ the caret highlight is one grapheme wide (0.191125ms)
+✔ the `/btw` notice is the copied start-anchored pattern (0.152334ms)
+✔ the ultrathink rainbow walks its palette and wraps (0.126416ms)
+✔ slash-command runs are suggestions only for names the host knows (0.123041ms)
+✔ the remaining producers keep the composer's order and shapes (0.5045ms)
+✔ the overlay paints a chain run over the composer spans and leaves the caret cell bare (0.198875ms)
+✔ the rows carry the composer highlights and leave the caret cell unstyled (0.1485ms)
+(node:82881) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ copied iq arms, expires and confirms the shared Ctrl-C/D exit gesture (1748.401666ms)
+✔ source double Escape stores folded raw history while Vim and running cancellation retain their owners (604.231ms)
+✔ confirmation timers reset at modal, configuration and editor handoff, then close without later output (2670.744667ms)
+(node:82950) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ copied history store persists hashes, deduplicates and reads current project/session before other sessions (77.995291ms)
+✔ both terminal owners restore folded raw history across restart, search and double-Escape clear (469.0615ms)
+✔ history append writers serialize, reject symlink targets and filter source sensitive command or paste records (6611.266833ms)
+(node:82954) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ source Return removes the preceding backslash before modifiers and keeps atomic undo and raw paste (52.914167ms)
+✔ framed Return preserves source Vim insertion repeats and plain modal command ownership (323.995ms)
+(node:82955) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interactive question, plan review and findings dispatch through the actual Agent (true) (73.475916ms)
+✔ interactive question, plan review and findings dispatch through the actual Agent (false) (65.487791ms)
+✔ headless question tool returns a paired explicit host callback error (35.777209ms)
+(node:82956) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interaction catalog exposes strict schemas and read-only flags without invoking callbacks (0.774125ms)
+✔ ask delivers full questions and validates single, multiple and Other text answers (1.102292ms)
+✔ question previews are advertised, preserved and bounded before host dispatch (0.942042ms)
+✔ the recovered HTML preview fragment rules report exactly the source messages (0.17275ms)
+✔ the html preview format rejects invalid fragments before host dispatch (0.439083ms)
+✔ extended questions forward text and number kinds with the source defaults (0.348709ms)
+✔ extended questions enforce the recovered per-kind rules with their messages (0.446917ms)
+✔ extended fields and titles stay rejected unless the host enables them (1.082292ms)
+✔ question texts must be unique across a call, as the recovered check requires (0.123959ms)
+✔ context callbacks are used when factory callbacks are absent (0.345667ms)
+✔ submit_plan preserves complete Markdown verbatim and returns host approval or denial (0.1165ms)
+✔ missing required host callbacks produce explicit errors (0.083083ms)
+✔ empty findings report a clean review and notify the observer (0.063667ms)
+✔ report returns typed JSON and optional observer sees all content once (0.088042ms)
+✔ invalid questions and form fields fail before host dispatch (0.409292ms)
+✔ host answers must match question coverage, labels and selection mode (0.517875ms)
+✔ host mutation of request choices does not change answer validation (0.0745ms)
+✔ invalid plan, approval and findings fail explicitly (0.594ms)
+✔ results are complete bounded JSON; oversized reporting fails before observer dispatch (0.171208ms)
+✔ input traversal is bounded and accessor values are never invoked (0.219ms)
+✔ pre-aborted calls invoke no host callbacks (0.079792ms)
+✔ active abort settles once, notifies host once and consumes a late rejection (4.256541ms)
+✔ shared FIFO queue bounds admissions and cancelled waiting calls never invoke the host (0.18875ms)
+✔ timeout aborts once and keeps an ignored host callback from stacking interactions (22.371667ms)
+✔ waiting deadline is bounded and callback failures release the queue (32.410792ms)
+✔ report observers are cancellable and their failures surface (0.151333ms)
+✔ host answer annotations carry a shown preview and bounded notes (0.355ms)
+✔ card answer admission ports the recovered host contract (1.286042ms)
+✔ card field comparison follows the recovered JSON roundtrip and bounds (0.824208ms)
+✔ card hosts answer through the admitted card contract (0.2865ms)
+✔ card previews admit the recovered normalized form within its bounds (1.013375ms)
+✔ invalid queue configuration fails immediately (0.06175ms)
+(node:82957) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interactive tasks, compact, fork and clear keep history and release every lock (74.269041ms)
+✔ context and effort commands count paired history and pin the new request effort (103.599083ms)
+✔ startup SessionStart watch paths register with the config watcher (19.528125ms)
+✔ PreModelSwitch deny and declined ask keep the model; an accepted ask switches it (101.254334ms)
+✔ thinking commands pin new sessions and preserve paired history for subsequent requests (72.955583ms)
+✔ interactive rewind branches at a completed turn and preserves the original log (62.087875ms)
+✔ interactive clear, fork and exit run SessionEnd and release locks (292.663334ms)
+✔ fork blocks an unfinished turn and copies completed history into an independent log (45.074833ms)
+✔ /skills lists skills and /NAME runs a user-invocable skill (62.769875ms)
+✔ expansion hook is raised once before a skill run and its context reaches the fallthrough turn (55.159041ms)
+✔ a SessionStart initial message is queued before typed input (26.894958ms)
+✔ a blocked expansion prevents the skill from running (18.075834ms)
+✔ a suppressed expansion block omits the original prompt (20.997416ms)
+✔ config change sources follow the recovered settings and skill scopes (0.245875ms)
+✔ a pending permission prompt notifies after six seconds and can be cancelled (0.302208ms)
+✔ workspace relocation raises DirectoryAdded as a documented slash_command hook and displays its failure (57.535666ms)
+(node:82958) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ missing user/project files return no overrides and produce no filesystem effects (1.214208ms)
+✔ user bindings are additive and project bindings override individual sequences including null (1.244584ms)
+✔ single user/project layers work and identical paths are read once (1.387958ms)
+✔ JSON decode and schema follow the actual terminal action and sequence contract (0.360875ms)
+✔ invalid user or project configuration fails explicitly rather than silently falling back (2.082167ms)
+✔ schema preserves prototype-named input sequences as ordinary keys (0.595416ms)
+✔ exact byte limit succeeds and larger input/file JSON fails (2.835417ms)
+✔ invalid UTF-8, file directories and hardlinked configuration files are rejected (0.969041ms)
+✔ file, directory, ancestor and dangling symlinks are rejected without reading targets (0.979125ms)
+✔ explicit user roots canonicalize aliases and lexical OS temp paths (0.853708ms)
+✔ workspace aliases canonicalize but invalid workspace/config directories fail (0.6785ms)
+✔ bounded descriptor read detects a file that grows after initial fstat (1.030875ms)
+(node:82959) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ hook inputs and feedback reach the loop without breaking immediate batch pairing (488.399916ms)
+✔ policy denial precedes hooks and prevents both hook commands and tool effects (23.962958ms)
+✔ prompt guard blocks before any model request and leaves a completed turn (17.973917ms)
+✔ prompt block messages carry the original prompt unless suppressed (121.981792ms)
+✔ expansion block messages carry the command unless suppressed (138.836875ms)
+✔ post hook stopping continuation pairs later skipped tools and preserves the first effect (125.114125ms)
+✔ cancelling inside a pre hook prevents tool start and still commits a paired error (31.890125ms)
+✔ resume startup context follows recovered tool results without replaying effects (115.075792ms)
+✔ Stop feedback continues the task and marks the next Stop as active (199.042541ms)
+✔ an explicit Stop termination does not call the model again (105.185875ms)
+✔ repeated Stop continuation respects the task model-call limit (287.470291ms)
+✔ a saved Stop continuation resumes without replaying the command (41.963042ms)
+✔ failed tools and completed batches fire their own hooks after durable results (208.84725ms)
+✔ PostToolBatch blocking ends only after the entire batch is paired (37.9045ms)
+✔ failed-tool hook feedback preserves the error and continues the task (117.05975ms)
+✔ manual compaction consumes pre instructions and displays post output (394.531417ms)
+✔ PreCompact blocking prevents a summary request and preserves completed history (26.104042ms)
+✔ notification and idle hook context shares the bounded display consumer (339.076708ms)
+✔ Stop additional context requests a further turn without an error reason (264.581167ms)
+✔ model errors fire StopFailure and keep the interrupted turn resumable (88.897083ms)
+✔ SessionEnd runs once even after the task signal was cancelled (88.406084ms)
+✔ resuming a final response never replays an interrupted Stop hook (23.936375ms)
+(node:82972) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a link body that enters a directory and climbs back out is caught (0.367625ms)
+✔ a plain file, a simple link and a missing path all pass (1.120583ms)
+✔ a chain past the bound, a loop and a climbing body are each refused by name (11.8695ms)
+✔ a link body that is not valid UTF-8 is refused (0.199ms)
+✔ an instruction file reached through a refused link is not read as instructions (1.531958ms)
+(node:82978) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ configuration is strict, reusable, and construction is lazy (3.689417ms)
+✔ split Content-Length framing, initialization and UTF-16 semantic coordinates (82.371875ms)
+✔ all operations map to LSP methods and call hierarchy retains opaque data (83.225959ms)
+✔ changed documents get increasing versions and replacement ranges for incremental sync (173.398459ms)
+✔ diagnostics cache reports pending, ignores stale versions, and supports pull (340.585292ms)
+✔ absent capabilities return unsupported and do not send method or didOpen (81.179875ms)
+✔ workspace configuration and folders requests receive minimal replies; unknown methods get -32601 (79.615125ms)
+✔ absolute, escaped, reserved, symlink, nonfile and oversize paths fail before spawn (81.930208ms)
+✔ file bound allows didOpen above 1 MiB; frame, header and malformed protocol limits reap (647.531292ms)
+✔ timeouts cancel requests, pre-aborted calls do not spawn, and per-call abort preserves server (4118.94225ms)
+✔ RPC errors are bounded, abnormal exit clears calls and bounded stderr (153.200458ms)
+✔ close is idempotent, graceful shutdown bounded, session abort reaps server and same-group descendants (613.342459ms)
+✔ abnormal leader exit sweeps descendants that inherited stdio (278.471709ms)
+
+Interrupted while running:
+
+⚠ test/lsp.test.ts (test/lsp.test.ts:1:1)
+⚠ test/mcp-approval.test.ts (test/mcp-approval.test.ts:1:1)
+⚠ test/mcp-catalog.test.ts (test/mcp-catalog.test.ts:1:1)
+⚠ test/mcp-client-requests.test.ts (test/mcp-client-requests.test.ts:1:1)
+⚠ test/mcp-form-ownership.test.ts (test/mcp-form-ownership.test.ts:1:1)
+⚠ test/mcp-host.test.ts (test/mcp-host.test.ts:1:1)
+⚠ test/mcp-http.test.ts (test/mcp-http.test.ts:1:1)
+⚠ test/mcp-logging.test.ts (test/mcp-logging.test.ts:1:1)
+⚠ test/mcp-notification-stream.test.ts (test/mcp-notification-stream.test.ts:1:1)
+⚠ test/mcp-output-schema.test.ts (test/mcp-output-schema.test.ts:1:1)
+⚠ test/mcp-progress.test.ts (test/mcp-progress.test.ts:1:1)
+⚠ test/mcp-refresh.test.ts (test/mcp-refresh.test.ts:1:1)
+⚠ test/mcp-runtime-requests.test.ts (test/mcp-runtime-requests.test.ts:1:1)
+⚠ test/mcp-session-subscriptions.test.ts (test/mcp-session-subscriptions.test.ts:1:1)
+⚠ test/mcp-session-tasks.test.ts (test/mcp-session-tasks.test.ts:1:1)
+⚠ test/mcp-standard-task.test.ts (test/mcp-standard-task.test.ts:1:1)
+✖ test/lsp.test.ts (8628.798709ms)
+(node:83000) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a project-declared server is assigned to the project set, not the user layer (5.481416ms)
+✔ the project-local layer also counts as project-owned and wins over the project layer (0.798208ms)
+✔ an explicitly named settings file is the caller's own and is not held (0.518916ms)
+✔ an unapproved project server is held and an approved one is not (0.826541ms)
+✔ a declined server is never connected and never asked about again (0.567ms)
+✔ an answer covers the declaration it was granted for (0.482ms)
+✔ an answer given in one checkout does not admit the same name in another (0.687167ms)
+✔ saving keeps the other workspaces' answers (1.036958ms)
+✔ a missing store answers nothing and is not reported as a failed read (0.332291ms)
+✔ a damaged store answers nothing and says so (0.420291ms)
+✔ a store whose entries are not decisions answers nothing (0.5415ms)
+✔ recording an answer preserves the entries already there (0.653375ms)
+✔ the user's own switch admits every project declaration in that workspace (0.887334ms)
+✔ a checkout cannot approve its own MCP servers (0.808708ms)
+✔ a changed declaration reports itself as changed rather than unapproved (0.492583ms)
+✔ a save that cannot be written reports itself and keeps the old answers (1.377084ms)
+(node:83006) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ catalog is opt-in and default tool schemas remain unchanged (25.990292ms)
+✔ HTTP catalog lists resources/templates/prompts with pagination and retrieves inert content (8.641459ms)
+✔ catalog capability gating omits absent families and validates selected server (2.20725ms)
+✔ resource-only servers connect without an unadvertised tools/list request (2.066292ms)
+✔ catalog rejects invalid parameters without transport calls (1.688084ms)
+✔ catalog cycles and malformed resource/prompt results fail explicitly (5.25475ms)
+✔ catalog output caps stop pagination and closed adapters fail (1.77575ms)
+✔ legacy stdio catalog shares adapters and still negotiates 2024-11-05 (77.878334ms)
+(node:83014) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ sampling block arrays traverse both transports and reject invalid arrays before callbacks (107.797792ms)
+✔ sampling metadata traverses both transports as inert data while tool-enabled requests stay rejected (100.585333ms)
+✔ stdio: actual initialize advertises only supplied callbacks, legacy schemas/limits remain pinned (164.568833ms)
+✔ stdio: roots, form approval/decline/cancel and sampling round-trip with inert context (78.409834ms)
+✔ stdio: URL elicitation round-trips, refuses form content and forwards completion notices (109.742333ms)
+✔ stdio: cancel/deadline isolate pending callbacks and ignore late completion (184.387917ms)
+✔ stdio: duplicate ids, max16 and asynchronous out-of-order replies (180.866541ms)
+✔ stdio: malformed inputs/outputs and thrown errors are bounded without payload echoes (73.285625ms)
+✔ stdio: outer request abort leaves callback independent; close aborts noncooperative callback promptly (109.313083ms)
+✔ http: actual initialize advertises only supplied callbacks, legacy schemas/limits remain pinned (7.409917ms)
+✔ http: roots, form approval/decline/cancel and sampling round-trip with inert context (5.621125ms)
+✔ http: URL elicitation round-trips, refuses form content and forwards completion notices (30.837584ms)
+✔ http: cancel/deadline isolate pending callbacks and ignore late completion (112.440166ms)
+✔ http: duplicate ids, max16 and asynchronous out-of-order replies (105.808166ms)
+✔ http: malformed inputs/outputs and thrown errors are bounded without payload echoes (6.168292ms)
+✔ http: outer request abort leaves callback independent; close aborts noncooperative callback promptly (36.68525ms)
+✔ callback JSON rejects getters, cycles, oversized results, invalid file roots and missing form fields (0.705125ms)
+✔ cancellation notification aborts the exact active callback and keeps the other live (18.824791ms)
+✔ pending ids stay reserved through error delivery; reuse isolates old callback completion (36.28925ms)
+✔ expired noncooperative host promises retain all16 slots and ids until actual settlement (141.238458ms)
+✔ HTTP JSON response server request still produces independent bounded callback POST (9.335958ms)
+✔ HTTP callback survives matching response stream completion and replies through same URL later (8.683791ms)
+(node:83061) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ real runtime release aborts in-flight form callbacks and stale unregister preserves the new owner (39.549084ms)
+✔ interactive early tool completion cancels the pending form before permission takes terminal input (59.62375ms)
+✔ interactive URL elicitation shows the URL, answers with no content and reports the server's completion (50.237084ms)
+✔ Elicitation hooks answer the form without a dialog (62.5035ms)
+✔ ElicitationResult hooks override the person's action and content (51.312167ms)
+(node:83063) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ factory advertises only explicitly supplied callbacks (0.917833ms)
+✔ host callbacks consume frozen transport data and return validated protocol output (2.112792ms)
+✔ roots pin the canonical directory file URL and return independent values (1.250125ms)
+✔ approval precedes provider calls; denial and failed approval make zero calls (0.60825ms)
+✔ sampling pins the model and budgets, quotes server data, excludes host history and tools (0.729666ms)
+✔ annotated sampling metadata reaches no provider request while tool blocks stay refused (1.055334ms)
+✔ request maxTokens and optional effort remain truthful (0.259875ms)
+✔ approval and counting mutations cannot rewrite the pinned sampling request (0.297458ms)
+✔ image sampling pins byte-preserving native content, validates before effects and keeps legacy text behavior (1.182375ms)
+✔ sampling arrays preserve order and attachment mapping with independent gates and aggregate bounds (2.246958ms)
+✔ unsupported and malformed input fails before approval or provider calls (0.6645ms)
+✔ token count bounds reject oversize and invalid counts before completion (0.52025ms)
+✔ provider failures surface fixed errors and do not fabricate successful output (0.201083ms)
+✔ text results preserve actual model and stop reason including partial maxTokens (0.257208ms)
+✔ missing output, incomplete turns and tool or thinking blocks fail explicitly (0.959375ms)
+✔ UTF-8 output fits configured and 64 KiB caps and marks local truncation (1.649084ms)
+✔ pre-aborted sampling enters neither approval nor provider (0.08025ms)
+✔ abort fences a noncooperative approval and ignores its late success (4.718541ms)
+✔ abort fences noncooperative count and completion including late outcomes (0.750542ms)
+✔ abort at count completion prevents the next provider call (0.123959ms)
+✔ elicitation forwards explicit callback arguments and fences abort (0.156917ms)
+✔ timed-out provider work retains all 16 factory slots until actual settlement (54.1405ms)
+✔ physical stage limit covers approval, counting and elicitation across callback families (3.342333ms)
+✔ invalid host model and budgets fail at construction (0.119834ms)
+✔ audio sampling stores bounded clips in the private attachment store and keeps legacy rejection (12.980292ms)
+(node:83066) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ HTTP initialize negotiates 2025-06-18, session headers, tool adaptation and DELETE (40.576542ms)
+✔ HTTP initialize negotiates 2025-03-26, session headers, tool adaptation and DELETE (8.836084ms)
+✔ stateless HTTP servers omit session headers and DELETE (2.3445ms)
+✔ strict persisted config preserves old missing args and stores only env references (1.185917ms)
+✔ URL/header validation rejects credentials, fragments, schemes, pseudoheaders and transport overrides (0.614208ms)
+✔ HTTP request authentication reads env freshly, redacts RPC errors and never follows redirects (3.344917ms)
+✔ RPC errors exclude credentials after rotation during an active request (2.913709ms)
+✔ missing or invalid auth environment fails before any network request without leaking values (0.347958ms)
+✔ JSON response streaming decodes a Unicode codepoint split across reads (14.672917ms)
+✔ SSE parses multiline data, partial UTF-8, comments, empty events and CR/LF boundaries (14.829417ms)
+✔ SSE responds to server requests with method-not-found and ignores notifications (4.053292ms)
+✔ HTTP rejects wrong id (3.561875ms)
+✔ HTTP rejects string id (2.349208ms)
+✔ HTTP rejects wrong jsonrpc (2.887667ms)
+✔ HTTP rejects both result/error (1.783042ms)
+✔ HTTP rejects missing result (1.815792ms)
+✔ HTTP rejects invalid error (1.629292ms)
+✔ HTTP rejects unsupported initialize version 2024-11-05 before initialized (1.347417ms)
+✔ HTTP rejects unsupported initialize version 2026-01-01 before initialized (1.878709ms)
+✔ HTTP rejects unsupported initialize version missing before initialized (1.229625ms)
+✔ HTTP rejects a non-202 initialized acknowledgement and rolls back session (1.490292ms)
+✔ HTTP tools/list uses shared pagination and rejects cursor cycles (3.795125ms)
+✔ HTTP tool isError, structured results, invalid input and output caps retain adapter behavior (3.432292ms)
+✔ HTTP abort tears down a hanging response and bounds cancellation/cleanup (26.447292ms)
+✔ HTTP timeout tears down a hanging response and bounds cancellation/cleanup (215.491875ms)
+✔ HTTP close tears down a hanging response and bounds cancellation/cleanup (14.235459ms)
+✔ HTTP pre-aborted connect makes zero requests (0.383334ms)
+✔ DELETE hanging headers and response bodies are aborted within the cleanup deadline (1007.8305ms)
+✔ HTTP rejects json malformed/oversized response (7.3925ms)
+✔ HTTP rejects json-chunks malformed/oversized response (5.403292ms)
+✔ HTTP rejects sse-line malformed/oversized response (4.762125ms)
+✔ HTTP rejects sse-event malformed/oversized response (37.767709ms)
+✔ HTTP rejects sse-body malformed/oversized response (232.526542ms)
+✔ HTTP rejects sse-count malformed/oversized response (2.344708ms)
+✔ HTTP rejects invalid-json malformed/oversized response (1.759084ms)
+✔ HTTP rejects invalid-utf8 malformed/oversized response (1.615792ms)
+✔ HTTP rejects wrong-content-type malformed/oversized response (1.653ms)
+✔ HTTP rejects truncated-sse malformed/oversized response (1.501417ms)
+✔ HTTP connect collision rolls back all opened sessions (2.110167ms)
+✔ mixed transports report conditional limits and preserve stdio direct env API (75.79ms)
+✔ public HTTP client rejects calls before initialization (0.233ms)
+(node:83072) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ logging preserves inert JSON, validates levels/data/metadata and reports bounded queue loss without draining capped polls (1.961125ms)
+✔ HTTP logging preserves defaults, exact capability gating, POST SSE isolation and bounded setLevel failures/cancellation (2040.59625ms)
+(node:83074) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ owned GET streams preserve schemas, push bounded logs/resources, refresh tools and cancel POST callbacks and dispatch GET client requests to the runtime callbacks (56.23875ms)
+✔ GET unavailable/end/failure/idle paths remain POST usable and never reconnect (461.181583ms)
+✖ test/mcp-notification-stream.test.ts (4822.356125ms)
+(node:83077) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the bounded validator enforces the keywords it documents (1.072875ms)
+✔ a declared output contract decides what a successful result may be (72.948916ms)
+✔ the HTTP transport applies the same contract, including a body carrying the violation (18.448375ms)
+(node:83079) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ progress payloads are bounded to a token, a finite progress and a bounded message (0.675958ms)
+✔ only an open call receives its own token's progress, and settling retires it (0.123084ms)
+✔ a tool call carries a token and stays alive while it reports progress (882.411333ms)
+✔ a call that never reports is still cut off at its idle deadline (377.82475ms)
+✔ the idle deadline never moves past the total deadline (1684.47375ms)
+✖ test/mcp-progress.test.ts (3377.235375ms)
+(node:83080) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ default MCP schemas remain exact and dynamic helpers require configured servers (25.990542ms)
+✔ dynamic refresh adds/removes tools privately without mutating pinned schemas (6.826875ms)
+✔ single-server reconnect deduplicates attempts, keeps published schemas and refreshes private discovery (6.932416ms)
+✔ deferred mode exposes generic discovery/call schemas and bounded valid JSON metadata (2.209166ms)
+✔ HTTP list_changed refetches private tools at once with no discovery call (9.6555ms)
+✔ notifications received during initialize refetch right after startup (6.77525ms)
+✔ a GET stream list_changed burst coalesces into one follow-up refetch (208.429084ms)
+✔ a failed background refetch stays dirty without failing the connection (7.75175ms)
+✔ generic calls retain structured JSON under caps and surface remote tool errors (2.153458ms)
+✔ mutable metadata changes fail pinned read-only calls while generic calls stay mutable (2.558084ms)
+✔ invalid refresh collisions/names preserve pinned schemas and recover atomically (2.353042ms)
+✔ invalid refresh collisions/names preserve pinned schemas and recover atomically (2.326375ms)
+✔ invalid refresh collisions/names preserve pinned schemas and recover atomically (2.217083ms)
+✔ refresh transport failure remains dirty and retries before calls (3.449583ms)
+✔ dynamic search/call validates input before remote requests (1.448708ms)
+✔ tool catalogs cap the total discovered count (2.9875ms)
+✔ stdio list_changed refreshes private tools without spawning replacement clients (70.174917ms)
+✔ recovery startup retains peers, validates candidates, discovers tools and closes in-flight replacements (23.081458ms)
+✔ startup recovery keeps configuration, auth, protocol, catalog, stdio and cancellation failures fatal (88.000291ms)
+✔ accelerated lifecycle runs five fast plus eight slow retries and honors manual/close cancellation (96.504292ms)
+(node:83089) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ runtime callbacks are explicitly advertised and rebound to relocated workspaces without entering config (40.12525ms)
+(node:83094) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ subscription journal retains exact acknowledged intent across restart and isolates new sessions (34.3365ms)
+✔ subscription journal enforces gates, URI bounds and durable append failures (135.769625ms)
+(node:83099) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ saved tasks pin identities, retain resolved payloads and stay isolated from forks and legacy sessions (33.990375ms)
+✔ runtime task journal fsync failure blocks subsequent effects and recovery; owner guards precede calls (34.584916ms)
+✔ explicit recovery retains unknown tasks, preserves remote work on abort and reuses failed cached results (46.854ms)
+(node:83100) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ standard task requestor gates capabilities and validates correlated terminal/result streams (2.739333ms)
+✔ related task reverse RPCs require active ownership and return correlated metadata (0.723542ms)
+✔ GET task inputs enforce ownership, keep cancellation flowing and release callbacks on close (78.9855ms)
+✖ test/mcp-standard-task.test.ts (1087.791375ms)
+✖ test/mcp-subscriptions.test.ts
+✖ test/mcp-task.test.ts
+✖ test/mcp.test.ts
+✖ test/media.test.ts
+✖ test/memory.test.ts
+✖ test/migration-integration.test.ts
+✖ test/module-index-integrity.test.ts
+✖ test/notebooks.test.ts
+✖ test/path-identity.test.ts
+✖ test/permissions.test.ts
+✖ test/picker-entry.test.ts
+✖ test/plugin-chain-atomic.test.ts
+✖ test/plugin-chain-bar-mount.test.ts
+✖ test/plugin-chain-button-windows.test.ts
+✖ test/plugin-chain-button.test.ts
+✖ test/plugin-chain-call-dispatch.test.ts
+✖ test/plugin-chain-classic-batch.test.ts
+✖ test/plugin-chain-classic-raise.test.ts
+✖ test/plugin-chain-classic-sites.test.ts
+✖ test/plugin-chain-classic.test.ts
+✖ test/plugin-chain-client.test.ts
+✖ test/plugin-chain-clock-env.test.ts
+✖ test/plugin-chain-code.test.ts
+✖ test/plugin-chain-cores.test.ts
+✖ test/plugin-chain-fs.test.ts
+✖ test/plugin-chain-host-call.test.ts
+✖ test/plugin-chain-hover.test.ts
+✖ test/plugin-chain-image-component.test.ts
+✖ test/plugin-chain-image-model.test.ts
+✖ test/plugin-chain-image-wire.test.ts
+✖ test/plugin-chain-input-field.test.ts
+✖ test/plugin-chain-invalidate.test.ts
+✖ test/plugin-chain-keys-editor.test.ts
+✖ test/plugin-chain-keys-rows.test.ts
+✖ test/plugin-chain-label-text.test.ts
+✖ test/plugin-chain-leaf-walkers.test.ts
+✖ test/plugin-chain-leaves.test.ts
+✖ test/plugin-chain-loader.test.ts
+✖ test/plugin-chain-local-store.test.ts
+✖ test/plugin-chain-lockfile.test.ts
+✖ test/plugin-chain-markdown.test.ts
+✖ test/plugin-chain-matchers.test.ts
+✖ test/plugin-chain-memoize.test.ts
+✖ test/plugin-chain-notify-clock.test.ts
+✖ test/plugin-chain-notify-fold.test.ts
+✖ test/plugin-chain-notify-queue.test.ts
+✖ test/plugin-chain-notify-stack.test.ts
+✖ test/plugin-chain-notify-store.test.ts
+✖ test/plugin-chain-notify-verbs.test.ts
+✖ test/plugin-chain-notify-write.test.ts
+✖ test/plugin-chain-notify.test.ts
+✖ test/plugin-chain-override-sites.test.ts
+✖ test/plugin-chain-permission.test.ts
+✖ test/plugin-chain-press-button.test.ts
+✖ test/plugin-chain-press-dispatch.test.ts
+✖ test/plugin-chain-press.test.ts
+✖ test/plugin-chain-raster-cells.test.ts
+✖ test/plugin-chain-raster-mount.test.ts
+✖ test/plugin-chain-raster-sites.test.ts
+✖ test/plugin-chain-raster-surface.test.ts
+✖ test/plugin-chain-react-surface.test.ts
+✖ test/plugin-chain-registry-reset.test.ts
+✖ test/plugin-chain-registry-state.test.ts
+✖ test/plugin-chain-relay.test.ts
+✖ test/plugin-chain-render-keys.test.ts
+✖ test/plugin-chain-scroll-focus.test.ts
+✖ test/plugin-chain-select-field.test.ts
+✖ test/plugin-chain-session.test.ts
+✖ test/plugin-chain-settings-merge.test.ts
+✖ test/plugin-chain-settings-source.test.ts
+✖ test/plugin-chain-settings.test.ts
+✖ test/plugin-chain-site-leaves.test.ts
+✖ test/plugin-chain-sources-registry.test.ts
+✖ test/plugin-chain-store-carry.test.ts
+✖ test/plugin-chain-store-path.test.ts
+✖ test/plugin-chain-store.test.ts
+✖ test/plugin-chain-stream-call.test.ts
+✖ test/plugin-chain-style-props.test.ts
+✖ test/plugin-chain-terminal-capabilities.test.ts
+✖ test/plugin-chain-terminal.test.ts
+✖ test/plugin-chain-toast.test.ts
+✖ test/plugin-chain-tool-raise.test.ts
+✖ test/plugin-chain-ui-blit.test.ts
+✖ test/plugin-chain-ui-notify.test.ts
+✖ test/plugin-chain-ui-selection.test.ts
+✖ test/plugin-chain-ui.test.ts
+✖ test/plugin-chain-walker.test.ts
+✖ test/plugin-chain.test.ts
+✖ test/plugin-components.test.ts
+✖ test/plugin-hooks-module.test.ts
+✖ test/plugins.test.ts
+✖ test/policy-helper.test.ts
+✖ test/provider.test.ts
+✖ test/refusal.test.ts
+✖ test/reload.test.ts
+✖ test/rewind.test.ts
+✖ test/runtime-events.test.ts
+✖ test/runtime-mcp-persistence.test.ts
+✖ test/runtime-resources.test.ts
+✖ test/runtime.test.ts
+✖ test/scheduler.test.ts
+✖ test/scope-picker.test.ts
+✖ test/session-storage.test.ts
+✖ test/shell-permissions.test.ts
+✖ test/skill-effects.test.ts
+✖ test/skill-runtime.test.ts
+✖ test/source-undeclared-scan.test.ts
+✖ test/statusline.test.ts
+✖ test/structured-output.test.ts
+✖ test/subagents.test.ts
+✖ test/task-projections.test.ts
+✖ test/tasks.test.ts
+✖ test/terminal-focus.test.ts
+✖ test/terminal.test.ts
+✖ test/tool-output.test.ts
+✖ test/tools.test.ts
+✖ test/tui-custom-theme-reader.test.ts
+✖ test/tui-scope-picker-frame-scoped.test.ts
+✖ test/tui-scope-picker-frame-tui.test.ts
+✖ test/tui-scope-picker-frame.test.ts
+✖ test/tui.test.ts
+✖ test/vim.test.ts
+✖ test/web-search-runtime.test.ts
+✖ test/web-search.test.ts
+✖ test/web.test.ts
+✖ test/websocket-monitor.test.ts
+✖ test/workflow-resume.test.ts
+✖ test/workflow-script.test.ts
+✖ test/workflow.test.ts
+✖ test/workspace-session.test.ts
+✖ test/worktree-session.test.ts
+✖ test/worktrees.test.ts
+ℹ tests 885
+ℹ suites 0
+ℹ pass 749
+ℹ fail 0
+ℹ cancelled 136
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39847.713833
+
+✖ failing tests:
+
+test at test/lsp.test.ts:1:1
+✖ test/lsp.test.ts (8628.798709ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp-notification-stream.test.ts:1:1
+✖ test/mcp-notification-stream.test.ts (4822.356125ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp-progress.test.ts:1:1
+✖ test/mcp-progress.test.ts (3377.235375ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp-standard-task.test.ts:1:1
+✖ test/mcp-standard-task.test.ts (1087.791375ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp-subscriptions.test.ts:1:1
+✖ test/mcp-subscriptions.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp-task.test.ts:1:1
+✖ test/mcp-task.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/mcp.test.ts:1:1
+✖ test/mcp.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/media.test.ts:1:1
+✖ test/media.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/memory.test.ts:1:1
+✖ test/memory.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/migration-integration.test.ts:1:1
+✖ test/migration-integration.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/module-index-integrity.test.ts:1:1
+✖ test/module-index-integrity.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/notebooks.test.ts:1:1
+✖ test/notebooks.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/path-identity.test.ts:1:1
+✖ test/path-identity.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/permissions.test.ts:1:1
+✖ test/permissions.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/picker-entry.test.ts:1:1
+✖ test/picker-entry.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-atomic.test.ts:1:1
+✖ test/plugin-chain-atomic.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-bar-mount.test.ts:1:1
+✖ test/plugin-chain-bar-mount.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-button-windows.test.ts:1:1
+✖ test/plugin-chain-button-windows.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-button.test.ts:1:1
+✖ test/plugin-chain-button.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-call-dispatch.test.ts:1:1
+✖ test/plugin-chain-call-dispatch.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-classic-batch.test.ts:1:1
+✖ test/plugin-chain-classic-batch.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-classic-raise.test.ts:1:1
+✖ test/plugin-chain-classic-raise.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-classic-sites.test.ts:1:1
+✖ test/plugin-chain-classic-sites.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-classic.test.ts:1:1
+✖ test/plugin-chain-classic.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-client.test.ts:1:1
+✖ test/plugin-chain-client.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-clock-env.test.ts:1:1
+✖ test/plugin-chain-clock-env.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-code.test.ts:1:1
+✖ test/plugin-chain-code.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-cores.test.ts:1:1
+✖ test/plugin-chain-cores.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-fs.test.ts:1:1
+✖ test/plugin-chain-fs.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-host-call.test.ts:1:1
+✖ test/plugin-chain-host-call.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-hover.test.ts:1:1
+✖ test/plugin-chain-hover.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-image-component.test.ts:1:1
+✖ test/plugin-chain-image-component.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-image-model.test.ts:1:1
+✖ test/plugin-chain-image-model.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-image-wire.test.ts:1:1
+✖ test/plugin-chain-image-wire.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-input-field.test.ts:1:1
+✖ test/plugin-chain-input-field.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-invalidate.test.ts:1:1
+✖ test/plugin-chain-invalidate.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-keys-editor.test.ts:1:1
+✖ test/plugin-chain-keys-editor.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-keys-rows.test.ts:1:1
+✖ test/plugin-chain-keys-rows.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-label-text.test.ts:1:1
+✖ test/plugin-chain-label-text.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-leaf-walkers.test.ts:1:1
+✖ test/plugin-chain-leaf-walkers.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-leaves.test.ts:1:1
+✖ test/plugin-chain-leaves.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-loader.test.ts:1:1
+✖ test/plugin-chain-loader.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-local-store.test.ts:1:1
+✖ test/plugin-chain-local-store.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-lockfile.test.ts:1:1
+✖ test/plugin-chain-lockfile.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-markdown.test.ts:1:1
+✖ test/plugin-chain-markdown.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-matchers.test.ts:1:1
+✖ test/plugin-chain-matchers.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-memoize.test.ts:1:1
+✖ test/plugin-chain-memoize.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-clock.test.ts:1:1
+✖ test/plugin-chain-notify-clock.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-fold.test.ts:1:1
+✖ test/plugin-chain-notify-fold.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-queue.test.ts:1:1
+✖ test/plugin-chain-notify-queue.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-stack.test.ts:1:1
+✖ test/plugin-chain-notify-stack.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-store.test.ts:1:1
+✖ test/plugin-chain-notify-store.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-verbs.test.ts:1:1
+✖ test/plugin-chain-notify-verbs.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify-write.test.ts:1:1
+✖ test/plugin-chain-notify-write.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-notify.test.ts:1:1
+✖ test/plugin-chain-notify.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-override-sites.test.ts:1:1
+✖ test/plugin-chain-override-sites.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-permission.test.ts:1:1
+✖ test/plugin-chain-permission.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-press-button.test.ts:1:1
+✖ test/plugin-chain-press-button.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-press-dispatch.test.ts:1:1
+✖ test/plugin-chain-press-dispatch.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-press.test.ts:1:1
+✖ test/plugin-chain-press.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-raster-cells.test.ts:1:1
+✖ test/plugin-chain-raster-cells.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-raster-mount.test.ts:1:1
+✖ test/plugin-chain-raster-mount.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-raster-sites.test.ts:1:1
+✖ test/plugin-chain-raster-sites.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-raster-surface.test.ts:1:1
+✖ test/plugin-chain-raster-surface.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-react-surface.test.ts:1:1
+✖ test/plugin-chain-react-surface.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-registry-reset.test.ts:1:1
+✖ test/plugin-chain-registry-reset.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-registry-state.test.ts:1:1
+✖ test/plugin-chain-registry-state.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-relay.test.ts:1:1
+✖ test/plugin-chain-relay.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-render-keys.test.ts:1:1
+✖ test/plugin-chain-render-keys.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-scroll-focus.test.ts:1:1
+✖ test/plugin-chain-scroll-focus.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-select-field.test.ts:1:1
+✖ test/plugin-chain-select-field.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-session.test.ts:1:1
+✖ test/plugin-chain-session.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-settings-merge.test.ts:1:1
+✖ test/plugin-chain-settings-merge.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-settings-source.test.ts:1:1
+✖ test/plugin-chain-settings-source.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-settings.test.ts:1:1
+✖ test/plugin-chain-settings.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-site-leaves.test.ts:1:1
+✖ test/plugin-chain-site-leaves.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-sources-registry.test.ts:1:1
+✖ test/plugin-chain-sources-registry.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-store-carry.test.ts:1:1
+✖ test/plugin-chain-store-carry.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-store-path.test.ts:1:1
+✖ test/plugin-chain-store-path.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-store.test.ts:1:1
+✖ test/plugin-chain-store.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-stream-call.test.ts:1:1
+✖ test/plugin-chain-stream-call.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-style-props.test.ts:1:1
+✖ test/plugin-chain-style-props.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-terminal-capabilities.test.ts:1:1
+✖ test/plugin-chain-terminal-capabilities.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-terminal.test.ts:1:1
+✖ test/plugin-chain-terminal.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-toast.test.ts:1:1
+✖ test/plugin-chain-toast.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-tool-raise.test.ts:1:1
+✖ test/plugin-chain-tool-raise.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-ui-blit.test.ts:1:1
+✖ test/plugin-chain-ui-blit.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-ui-notify.test.ts:1:1
+✖ test/plugin-chain-ui-notify.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-ui-selection.test.ts:1:1
+✖ test/plugin-chain-ui-selection.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-ui.test.ts:1:1
+✖ test/plugin-chain-ui.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain-walker.test.ts:1:1
+✖ test/plugin-chain-walker.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-chain.test.ts:1:1
+✖ test/plugin-chain.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-components.test.ts:1:1
+✖ test/plugin-components.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugin-hooks-module.test.ts:1:1
+✖ test/plugin-hooks-module.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/plugins.test.ts:1:1
+✖ test/plugins.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/policy-helper.test.ts:1:1
+✖ test/policy-helper.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/provider.test.ts:1:1
+✖ test/provider.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/refusal.test.ts:1:1
+✖ test/refusal.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/reload.test.ts:1:1
+✖ test/reload.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/rewind.test.ts:1:1
+✖ test/rewind.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/runtime-events.test.ts:1:1
+✖ test/runtime-events.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/runtime-mcp-persistence.test.ts:1:1
+✖ test/runtime-mcp-persistence.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/runtime-resources.test.ts:1:1
+✖ test/runtime-resources.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/runtime.test.ts:1:1
+✖ test/runtime.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/scheduler.test.ts:1:1
+✖ test/scheduler.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/scope-picker.test.ts:1:1
+✖ test/scope-picker.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/session-storage.test.ts:1:1
+✖ test/session-storage.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/shell-permissions.test.ts:1:1
+✖ test/shell-permissions.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/skill-effects.test.ts:1:1
+✖ test/skill-effects.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/skill-runtime.test.ts:1:1
+✖ test/skill-runtime.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/source-undeclared-scan.test.ts:1:1
+✖ test/source-undeclared-scan.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/statusline.test.ts:1:1
+✖ test/statusline.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/structured-output.test.ts:1:1
+✖ test/structured-output.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/subagents.test.ts:1:1
+✖ test/subagents.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/task-projections.test.ts:1:1
+✖ test/task-projections.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tasks.test.ts:1:1
+✖ test/tasks.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/terminal-focus.test.ts:1:1
+✖ test/terminal-focus.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/terminal.test.ts:1:1
+✖ test/terminal.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tool-output.test.ts:1:1
+✖ test/tool-output.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tools.test.ts:1:1
+✖ test/tools.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tui-custom-theme-reader.test.ts:1:1
+✖ test/tui-custom-theme-reader.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tui-scope-picker-frame-scoped.test.ts:1:1
+✖ test/tui-scope-picker-frame-scoped.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tui-scope-picker-frame-tui.test.ts:1:1
+✖ test/tui-scope-picker-frame-tui.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tui-scope-picker-frame.test.ts:1:1
+✖ test/tui-scope-picker-frame.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/tui.test.ts:1:1
+✖ test/tui.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/vim.test.ts:1:1
+✖ test/vim.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/web-search-runtime.test.ts:1:1
+✖ test/web-search-runtime.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/web-search.test.ts:1:1
+✖ test/web-search.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/web.test.ts:1:1
+✖ test/web.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/websocket-monitor.test.ts:1:1
+✖ test/websocket-monitor.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/workflow-resume.test.ts:1:1
+✖ test/workflow-resume.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/workflow-script.test.ts:1:1
+✖ test/workflow-script.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/workflow.test.ts:1:1
+✖ test/workflow.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/workspace-session.test.ts:1:1
+✖ test/workspace-session.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/worktree-session.test.ts:1:1
+✖ test/worktree-session.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'
+
+test at test/worktrees.test.ts:1:1
+✖ test/worktrees.test.ts
+  'Promise resolution is still pending but the event loop has already resolved'

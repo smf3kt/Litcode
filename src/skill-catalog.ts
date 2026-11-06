@@ -45,7 +45,7 @@ export function refreshPluginComponents(current: SessionConfig): void {
   if (pluginIdentities.get(current) === identity) return;
   const loaded = loadPluginComponents(discoverInstalledPluginComponents(current.workspace, current.plugins),
     new Set((current.skills ?? []).filter(skill => skill.source !== 'plugin').map(skill => skill.path)), undefined,
-    current.features?.pluginSkillNamespaces === true);
+    current.features?.pluginSkillNamespaces === true, current.workspace);
   const skills = current.skills ??= [];
   const retained = skills.filter(skill => skill.plugin === undefined && skill.source !== 'plugin');
   skills.splice(0, skills.length, ...retained, ...loaded.skills);
@@ -178,7 +178,7 @@ function appendDynamicSkills(current: SessionConfig, dirs: readonly string[]): S
     ...current.skills.map(skill => skill.name),
     ...(current.heldSkills ?? []).map(skill => skill.name),
   ]);
-  const loaded = loadSkillsFromDirectories(dirs, existing);
+  const loaded = loadSkillsFromDirectories(dirs, existing, current.workspace);
   if (loaded.length === 0) return [];
   current.skills.push(...loaded);
   current.system = replaceSkillsSection(current.system, current.skills);

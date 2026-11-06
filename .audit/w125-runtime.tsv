@@ -1,0 +1,3 @@
+2026-10-17T16:30:00Z	package	W125-01 工作流脚本运行时	YS 3670（chunk-rk6tjv7j.js）；Lr 15198、qie 16762、lXn 81501、ir 40325、parallel 78944、pipeline 79758、lr 83352、失败71400（chunk-hedqf2m1.js）；q3e 128850、ws 143459、PFe/IFe/Q0（chunk-nyce03br.js）	元数据/变换/包装/硬化VM/拷贝边界；parallel与pipeline失败转null并记录；agent失败记日志返回null；函数结果拒绝	workflow-script新增9；tsc 0；build 0
+2026-10-17T16:40:00Z	decision	W125-01 边界	scriptPath/命名工作流/journal/resume/重新挂接/自动重放/agent({schema})未移植并明确拒绝；进度树/安全分类/限流/stall无对应物	acorn 8.15.0转dependencies并新增acorn-walk 8.3.4；notices重生成	.audit/w125-wrapper.txt（qie包装原文）
+2026-10-17T16:52:00Z	verification	W125-01 验收：工作流家族42/42、tsc 0、build 0、全量2,203/2,203、链768/768	notices --check 0；source index 75 chunks/323,525 units不变；identity 3f771f63…	.audit/w125-full.txt、.audit/w125-chain.txt

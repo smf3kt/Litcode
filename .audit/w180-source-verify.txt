@@ -1,0 +1,7 @@
+diff-panel-source 11 18364
+diff-panel-progress-source 1 1152
+git-diff-collector-source 4 6610
+tui-native-input-source 5 2077
+tui-native-selection-source 2 10311
+diff-selection-source 6 1559
+{"copiedBlocks":29,"copiedUnits":40073,"sourceBytesMatched":true}

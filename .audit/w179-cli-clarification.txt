@@ -1,0 +1,1 @@
+{"tuiClarification":"passed","question":true,"permissionCancelled":true,"fileEffectsAbsent":true,"clarificationFeedback":true,"notesPreserved":true,"nextModelRequestVerified":true,"compiled":true,"installedCLI":false,"defaultTui":true,"lineInput":false,"modesRestored":true,"locksReleased":true,"modelCalls":5,"provider":"owned loopback SSE","paidUpstreamCalls":0}

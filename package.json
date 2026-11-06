@@ -13,7 +13,11 @@
     "bin/",
     "dist/",
     "native/peer-identity/peer.c",
-    "native/peer-identity/peer.node",
+    "native/file-lock/lock.c",
+    "native/shell-supervisor/supervisor.c",
+    "native/directory-read/read.c",
+    "native/directory-write/write.c",
+    "scripts/build-native.mjs",
     "README.md",
     "NOTICE.md",
     "THIRD_PARTY_NOTICES.txt"
@@ -22,6 +26,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "install": "node scripts/build-native.mjs",
     "extract": "node scripts/extract-bun.mjs",
     "identity": "node scripts/identity.mjs",
     "verify:extraction": "node scripts/verify-extraction.mjs",

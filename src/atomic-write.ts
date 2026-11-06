@@ -29,11 +29,16 @@ export type AtomicWriteOptions = {
   mode?: number;
   /** The tool name used in error text. */
   label?: string;
+  /** Require file and containing-directory sync before reporting publication. */
+  durable?: boolean;
 };
 
 export type AtomicWriteResult = {
   /** Bytes on disk, as measured after the write. */
   size: number;
+  /** Modification time of the written file descriptor, before publication. */
+  mtimeMs: number;
+  identity: { dev: string; ino: string };
   /** The temporary file kept when the write failed; absent on success. */
   keptTemporary?: string;
 };
@@ -49,6 +54,16 @@ export type AtomicWriteResult = {
 function isUnsupportedSync(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
   return code === "ENOTSUP" || code === "EINVAL" || code === "ENOSYS" || code === "EOPNOTSUPP";
+}
+
+/** Strict sync for transaction metadata; unsupported filesystems report failure. */
+export function syncDirectory(dir: string): void {
+  const fd = fs.openSync(dir, fs.constants.O_RDONLY);
+  try { fs.fsyncSync(fd); } catch (error) {
+    try { fs.closeSync(fd); } catch { /* preserve the sync error */ }
+    throw error;
+  }
+  fs.closeSync(fd);
 }
 
 /** The device and inode of a directory, as the filesystem currently reports it. */
@@ -80,9 +95,9 @@ export function assertSameDirectory(dir: string, before: DirectoryIdentity): voi
  * Throws, naming the kept temporary file, when the content was written but
  * could not be published or did not survive whole.
  */
-export function atomicWriteFile(real: string, content: string, options: AtomicWriteOptions = {}): AtomicWriteResult {
+export function atomicWriteFile(real: string, content: string | Uint8Array, options: AtomicWriteOptions = {}): AtomicWriteResult {
   const label = options.label ?? "atomicWriteFile";
-  const expected = Buffer.byteLength(content, "utf8");
+  const expected = typeof content === 'string' ? Buffer.byteLength(content, "utf8") : content.byteLength;
   const dir = path.dirname(real);
   fs.mkdirSync(dir, { recursive: true });
   const identity = directoryIdentity(dir);
@@ -90,15 +105,22 @@ export function atomicWriteFile(real: string, content: string, options: AtomicWr
 
   let fd: number | undefined;
   let wrote = false;
+  let published = false;
   try {
     fd = fs.openSync(temporary, "wx", options.mode ?? 0o644);
+    if (options.durable) wrote = true;
     fs.writeFileSync(fd, content, "utf8");
+    wrote = true;
     try {
       fs.fsyncSync(fd);
     } catch (error) {
-      if (!isUnsupportedSync(error)) throw error;
+      if (options.durable || !isUnsupportedSync(error)) throw error;
     }
-    const actual = fs.fstatSync(fd).size;
+    // Host adaptation of uno/sjr, sfn1dbxq [739599,743199)/[4167188,4170788), UTF-16:
+    // bind the observation to the same descriptor that received the bytes.
+    const metadata = fs.fstatSync(fd, { bigint: true });
+    const actual = Number(metadata.size), mtimeMs = Number(metadata.mtimeNs) / 1e6;
+    const landedIdentity = { dev: String(metadata.dev), ino: String(metadata.ino) };
     wrote = true;
     fs.closeSync(fd);
     fd = undefined;
@@ -110,7 +132,9 @@ export function atomicWriteFile(real: string, content: string, options: AtomicWr
     }
     assertSameDirectory(dir, identity);
     fs.renameSync(temporary, real);
-    return { size: actual };
+    published = true;
+    if (options.durable) syncDirectory(dir);
+    return { size: actual, mtimeMs, identity: landedIdentity };
   } catch (error) {
     if (fd !== undefined) {
       try {
@@ -130,6 +154,7 @@ export function atomicWriteFile(real: string, content: string, options: AtomicWr
       throw error;
     }
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`${detail} The new content is kept at ${temporary}.`);
+    if (published) throw new Error(`${detail} The new content is published at ${real}; directory sync failed.`, { cause: error });
+    throw new Error(`${detail} The new content is kept at ${temporary}.`, { cause: error });
   }
 }

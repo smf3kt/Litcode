@@ -1,0 +1,2 @@
+2026-10-18T05:10:00Z	package	W137-01 PostCompact显示消息	按avt生成命令标签成功/失败行；跳过cancelled；仅显示并journal userDisplayMessage	忽略suppressOutput/systemMessage/additionalContext；非命令传输用本地标签映射	聚焦136/136；全量2238/2238；tsc 0
+2026-10-18T05:12:00Z	verification	W137-01 验收：build 0、notices 0、identity 9e503123…	dist重建	.audit/w137-runtime.todo.md

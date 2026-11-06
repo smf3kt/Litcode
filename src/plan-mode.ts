@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { previewSanitized, previewUnstableInput } from './preview-sanitize.js';
+import type { PlanOwnership } from './plan-file.js';
 
 // amn/Aq, ax9zepsq [7009,8595), x2c03s1m [5272,11236), UTF-16.
 export const planModeSchema = z.enum(['default', 'acceptEdits', 'auto', 'bypass']);
@@ -16,6 +17,7 @@ export interface PlanReview {
 }
 export interface PlanModeHost {
   readonly filePath: string;
+  readonly ownership: PlanOwnership;
   readonly isAgent: boolean;
   mode(): string;
   automaticMode(): Exclude<PlanExitMode, 'default'>;

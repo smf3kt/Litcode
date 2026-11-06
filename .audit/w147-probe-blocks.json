@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        442163,
+        443631
+      ],
+      "units": 1468,
+      "bodySha256": "405d1af2952189ce4fa9363bcaf777f492162ba9e7a371f7e9c077149539938a",
+      "note": "digit hint and prompt input"
+    }
+  ],
+  "missing": []
+}

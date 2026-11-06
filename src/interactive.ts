@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
+import { isDeepStrictEqual } from 'node:util';
 import { Agent, type RunResult } from './agent.js';
 import { PromptSuggestionRun, promptPredictionEligible, promptSuggestionBackedOff, promptSuggestionTurnEligible,
   promptSuggestionsInitiallyEnabled } from './prompt-suggestions.js';
@@ -8,11 +9,13 @@ import { publishPromptSuggestion } from './prompt-suggestion-publish.js';
 import { automaticCompactionEnabled } from './compaction-policy.js';
 import { scheduledFire } from './loop-noop-fold.js';
 import { DEFAULT_GATEWAY, type ModelProvider } from './provider.js';
-import { Session, configSchema, type SessionConfig } from './session.js';
-import { createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
+import { Session, configSchema, renderNotificationBatch, type SessionConfig } from './session.js';
+import { commitTerminalOutput, createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
+import { SkillEffectRecoveryError } from './skill-effects.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
+import { issueHumanSkillAuthorization, issueNotificationAuthorization } from './notification-authorization.js';
 import path from 'node:path';
 import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
 import { permissionPolicySchema, bindPermissionOwner } from './permissions.js';
@@ -24,14 +27,15 @@ import type { PermissionUpdate } from './permissions.js';
 import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
 } from './permissions-panel.js';
-import { forkSession, listSessions, readSessionPreview, renameStoredSession } from './sessions.js';
+import { captureReadWitnessTransfers, forkSession, inheritedReadWitnessObservation, listSessions, readSessionPreview, renameStoredSession } from './sessions.js';
 import { startBackgroundSession, backgroundResumeCommand, backgroundSeed } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
 import { askUserQuestionTimeoutMs } from './tui-afk.js';
 import { questionImageBlocks, type QuestionImage } from './question-images.js';
-import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
-import { recoverCheckpoint } from './checkpoints.js';
+import { checkpointConversationWithDirectoryWitness, previewRewind, applyRewindAfterRelease, RewindCommittedWitnessError, type RewindPreview } from './rewind.js';
+import { isReconciledCheckpointTorn } from './directory-checkpoint.js';
+import { CommittedCheckpointTransactionError, recoverCheckpoint, recoverCommittedCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { promptBlockMessage } from './hooks.js';
 import { createLocalPeerTransport, createLocalPeerTools, heldApprovalTimeoutMs, latestPeerHopChain, type AcceptedMessage, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
@@ -134,6 +138,7 @@ import {
   findSkill,
   parseSlashCommand,
   pinToolSchemas,
+  RuntimeHandoffCleanupError,
   type Runtime,
 } from './runtime.js';
 
@@ -237,6 +242,8 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /vim        Open the Editor mode setting
 /clear      Start a new session without changing existing logs (aliases: /reset, /new)
 /exit       Close the interactive session (alias: /quit)
+/notification OWNER DELIVERY_ID processed  Record a manual notification decision
+/skill-effect OWNER EFFECT_ID processed|retry  Record a manual skill effect decision
 Other text is sent as a task.`;
 
 /**
@@ -391,6 +398,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     for (const warning of archives.warnings) options.status.write(`Worktree history recovery: ${warning}\n`);
   } catch (error) { options.status.write(`Worktree history recovery skipped: ${String(error)}\n`); }
   let activeRuntime = runtime;
+  let failedRewindHandoff = false;
+  let stoppedCommittedRewind = false;
+  let rewindHandoffNotice: string | undefined;
   const terminal: TerminalSurface | undefined = options.terminal ??
     ((options.input as Readable & { isTTY?: boolean }).isTTY &&
     (options.output as Writable & { isTTY?: boolean }).isTTY
@@ -468,7 +478,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         event => options.status.write(`MCP server "${event.serverName}" confirmed elicitation ${event.elicitationId} complete\n`));
       return await action(signal);
     } finally {
-      unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false);
+      // Qat/turn completion, chunk-24k7d6mw [1358900,1360200), [1408350,1409200), UTF-16:
+      // release the published controller; only explicit cancellation aborts it.
+      unregister?.(); turnController = undefined; terminal?.setRunning(false);
       syncPeerIdle();
       // Ie idle effect [19175,19294), chunk-appb2dtz.js considers fallback before checkNow.
       if (wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, wakeupId);
@@ -540,18 +552,26 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // enter the transcript, so the panel's history is this list.
   const btwExchanges: SideQuestionExchange[] = [];
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
+    background?: Extract<import('./runtime.js').RuntimeEvent, { kind: 'background' }>;
+    agentEvents?: Extract<import('./runtime.js').RuntimeEvent, { kind: 'agent_events' }>;
+    notificationLease?: () => boolean;
     peer?: PeerEnvelopeMetadata;
     peerIdleConversation?: string;
     wakeupId?: string;
     scheduledId?: string;
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
     meta?: boolean;
+    directInputSession?: Session;
     /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a shell command, not a model prompt. */
     bashMode?: true;
     attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
   // Events that arrived before a credential did. They re-enter the queue once `/login` adopts
   // one, so a startup or peer event is not lost to a session that had nowhere to send it.
   const heldEvents: (typeof queue)[number][] = [];
+  // Host journal receipt adaptation for ns/Si, sfn1dbxq UTF-16 [226694,227794)/[233465,234179).
+  let deferredNotification: { item: (typeof queue)[number]; live: () => boolean } | undefined;
+  let retryNotification = false;
+  let inputGeneration = 0;
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
   // before anything typed or piped at startup.
@@ -608,6 +628,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
+  let approvalOwner = new AbortController();
+  const inputReleased = new Set<() => void>();
+  const signalInputReleased = () => { for (const notify of inputReleased) notify(); };
+  let permissionTail: Promise<void> = Promise.resolve();
   let wake: (() => void) | undefined;
   const awaken = () => { wake?.(); wake = undefined; };
   // pz's V(XVt), 24k7d6mw [740155,740694), UTF-16: repaint the live store without draining it.
@@ -762,6 +786,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection,
     mode?: 'prompt' | 'bash') => {
+    if (stoppedCommittedRewind) return;
     if (approval) { approval(line); return; }
     // A [15225,16520), appb2dtz, UTF-16; queued and immediate human commands end a quiet span.
     if (line.trim() && session.events.some(event => event.kind === 'scheduled_task_fire')) {
@@ -771,6 +796,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // gate runs them while the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of
     // queueing them behind the turn.
     const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('/')) inputGeneration++;
+    if (deferredNotification && trimmed && !trimmed.startsWith('/')) retryNotification = true;
     if (turnController && /^\/effort(?:\s|$)/.test(trimmed)) {
       void applyEffortCommand(trimmed).catch(error => {
         if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
@@ -783,13 +810,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       });
       return;
     }
-    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}),
+    queue.push({ prompt: line, source: 'user', directInputSession: session, ...(attachment ? { attachment } : {}),
       ...(mode === 'bash' ? { bashMode: true as const } : {}) });
     promptQueueChanged(); awaken();
   };
   const onClose = () => {
     cancelPrediction(); terminal?.clearPromptSuggestion?.();
     inputClosed = true;
+    approvalOwner.abort(); signalInputReleased();
     if (terminal) turnController?.abort(new Error('Terminal input closed'));
     approval?.(undefined); awaken();
   };
@@ -898,6 +926,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let openHelpPanelLive: (() => Promise<void>) | undefined;
   let openTasksPanelLive: (() => Promise<void>) | undefined;
   let backgroundDialogWork: Promise<void> | undefined;
+  // Host shutdown notice for onRender, 06azbynj [320841,328782), UTF-16;
+  // the source alternate screen has no committed-workspace recovery message.
+  const stopCommittedRewind = (message: string) => {
+    stoppedCommittedRewind = true; rewindHandoffNotice = message;
+    rewindPreview = undefined; queue.length = 0; heldEvents.length = 0; deferredNotification = undefined; retryNotification = false;
+    output.write(`${message}\n`); onClose();
+  };
+  const reportRewindCleanup = () => {
+    const notice = 'Rewind handoff cleanup is unconfirmed; inspect remaining session locks before resuming.';
+    rewindHandoffNotice += `\n${notice}`; output.write(`${notice}\n`);
+  };
   /** The dialog a live chord can close while it is open (the source's panel toggle). */
   let liveDialog: { kind: 'model' | 'thinking' | 'help' | 'tasks'; controller: AbortController } | undefined;
   const withLiveDialog = (kind: 'model' | 'thinking' | 'help' | 'tasks', signal: AbortSignal) => {
@@ -1002,7 +1041,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // Keep the same owner gate for both the line UI and the modal surface.
     const owner = () => controller.abort();
     const combined = AbortSignal.any([signal, controller.signal]);
-    const release = () => { if (approval === owner) { approval = undefined; syncPeerIdle(); } };
+    const release = () => { if (approval === owner) { approval = undefined; syncPeerIdle(); signalInputReleased(); } };
     approval = owner; syncPeerIdle(); combined.addEventListener('abort', release, { once: true });
     try {
       return await terminal!.prompt!({ ...request, titleOrigin: request.titleOrigin ?? 'local-command' }, combined);
@@ -1019,7 +1058,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     output.write(prompt);
     return new Promise((resolve, reject) => {
       const finish = (value: string | undefined) => {
-        if (approval === finish) { approval = undefined; syncPeerIdle(); }
+        if (approval === finish) { approval = undefined; syncPeerIdle(); signalInputReleased(); }
         signal.removeEventListener('abort', cancelled);
         if (value === undefined) reject(new Error('Interaction cancelled')); else resolve(value);
       };
@@ -1038,6 +1077,32 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return answer?.selected[0] === 'yes';
     }
     return /^(y|yes)$/i.test((await readAnswer(`\n${message}\n${title}? [y/N] `, signal)).trim());
+  };
+  // Ie, 9c5se12s [51135,61514), qDr/h, 8zgs1qmk [1100,3703), UTF-16.
+  // The host has one input slot; serialize only permission dialogs behind its current owner.
+  const confirmPermission = async (message: string, signal: AbortSignal): Promise<boolean> => {
+    if (liveDialog?.kind === 'tasks') liveDialog.controller.abort();
+    formController?.abort();
+    const owner = approvalOwner;
+    const combined = AbortSignal.any([signal, options.signal, owner.signal]);
+    const previous = permissionTail;
+    let release!: () => void;
+    const slot = new Promise<void>(resolve => { release = resolve; });
+    permissionTail = previous.then(() => slot);
+    const wait = (ready: () => boolean) => new Promise<void>((resolve, reject) => {
+      const check = () => {
+        if (combined.aborted || inputClosed || owner !== approvalOwner) { cleanup(); reject(new Error('Interaction input closed')); }
+        else if (ready()) { cleanup(); resolve(); }
+      };
+      const cleanup = () => { inputReleased.delete(check); combined.removeEventListener('abort', check); };
+      inputReleased.add(check); combined.addEventListener('abort', check, { once: true }); check();
+    });
+    try {
+      let previousDone = false;
+      void previous.then(() => { previousDone = true; signalInputReleased(); });
+      await wait(() => previousDone && !approval);
+      return await confirm('Allow once', message, combined);
+    } finally { release(); }
   };
   /**
    * `cie` (chunk-24k7d6mw.js [858783,859961)): the switch confirmation carries its own button
@@ -1091,6 +1156,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return unsubscribe ?? (() => {});
     },
   });
+  let revokeAgentApproval: (() => void) | undefined;
+  let progressEpoch = 0;
   const agent = () => {
     // A plugin catalog change replaces the tool set a later turn can reach; a
     // turn boundary is the only point the session's pinned schemas move.
@@ -1098,12 +1165,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (activeAgent !== undefined && agentGeneration !== generation) activeAgent = undefined;
     if (activeAgent === undefined) agentGeneration = generation;
     const base = activeRuntime.buildTools(session.config, session.id);
+    if (activeAgent === undefined && !options.residentWorker) {
+      revokeAgentApproval?.();
+      const owner = session.id, runtime = activeRuntime;
+      revokeAgentApproval = runtime.bindAgentApproval?.(session.config, owner, async (tool, input, decision, signal) => {
+        if (inputClosed || signal.aborted || session.id !== owner || activeRuntime !== runtime) return { decision: 'deny', reason: 'Input closed' };
+        let allowed = false;
+        try { allowed = await confirmPermission(`${decision.reason ?? 'Skill permission'}\n${tool.schema.name}: ${JSON.stringify(input).slice(0, 2000)}`, signal); }
+        catch { /* Cancellation retains a denied permission result. */ }
+        return { decision: allowed ? 'allow' : 'deny', reason: allowed ? 'Approved once' : 'Permission declined' };
+      });
+    }
     // RTe.kn, 24k7d6mw [1562359,1572850), UTF-16; use the complete mounted extension.
     const tools = [...base, ...peerTools()];
     // The inbox starts after the session pinned its schemas, so the first turn
     // that can reach the peer tools repins them; `Agent` rejects a mismatch.
     const schemas = pinToolSchemas(tools);
     if (JSON.stringify(schemas) !== JSON.stringify(session.config.tools)) session.config.tools = schemas;
+    const progressOwner = session, ownerEpoch = progressEpoch;
     return activeAgent ??= new Agent(session, provider, tools, {
     // Stop/SubagentStop carry the live background jobs and session cron tasks
     // (`Sle`, chunk-sfn1dbxq.js [2946002,2946104)).
@@ -1253,6 +1332,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       },
     },
     progress: event => terminal?.setProgress?.(event),
+    agentProgress: event => {
+      if (session === progressOwner && ownerEpoch === progressEpoch && turnController && !turnController.signal.aborted)
+        terminal?.setAgentProgress?.(event.toolUseId, event.message);
+    },
+    clearAgentProgress: id => { if (session === progressOwner && ownerEpoch === progressEpoch) terminal?.clearAgentProgress?.(id); },
     // jh/Dh/Nh, phg89898 [46726,48473)/[48525,48700), UTF-16.
     toolResult: result => {
       if (terminal?.appendToolResult) terminal.appendToolResult(result);
@@ -1289,7 +1373,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           void deliverNotification({ message: 'Permission needed', notification_type: 'permission_prompt' }, noticeSignal);
         }) : () => {};
       try {
-        return await confirm('Allow once', `${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);
+        return await confirmPermission(`${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);
       } catch { return false; }
       finally { cancelNotification(); cancelLocal(); notice.abort(); }
     },
@@ -1372,39 +1456,64 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // A new session (clear or fork) runs its SessionStart hooks once. A hook
   // message is prepended to the queue like the recovered claim path
   // (chunk-rx2nah4x.js offset 584530).
-  const startAgentSession = async (source: 'clear' | 'fork') => {
+  const startAgentSession = async (source: 'clear' | 'fork' | 'resume') => {
     const started = await agent().startSession(source, options.signal);
     if (started?.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'event' });
     if (started?.watchPaths?.length) addInstructionPaths(started.watchPaths);
   };
   const announce = () => options.status.write(`session: ${session.id}\n`);
-  const bindNext = async (candidate: Runtime, next: Session): Promise<Runtime> => {
+  // Host visibility rewrite: ns/Si, sfn1dbxq UTF-16 [226694,227794)/[233465,234179),
+  // expose no durable human-reconciliation protocol for this Session journal.
+  const announceUnknownNotifications = () => {
+    for (const { deliveryId } of session.notificationCoordination) {
+      const notice = `Notification delivery status unknown: ${deliveryId}. It has not been automatically retried; retain this ID for reconciliation.`;
+      if (terminal?.writeNotice) terminal.writeNotice(notice);
+      else options.status.write(`${notice}\n`);
+    }
+  };
+  const bindNext = async (candidate: Runtime, next: Session, preserveOnFailure = false): Promise<Runtime> => {
     try { return await candidate.bindSession?.(next) ?? candidate; }
     catch (error) {
       if (candidate !== activeRuntime) {
         try { await candidate.close(); } catch (cleanupError) { options.status.write(`New runtime cleanup error: ${String(cleanupError)}\n`); }
       }
-      if (next !== session) next.close();
+      if (next !== session && !preserveOnFailure) next.close();
       throw error;
     }
   };
   // am/OCe, 24k7d6mw [398888,399172)/[1501794,1502367), UTF-16: release the departing view owner.
-  const acceptNext = async (next: Session, nextRuntime: Runtime): Promise<void> => {
+  const acceptNext = async (next: Session, nextRuntime: Runtime, strictHandoff = false): Promise<void> => {
+    progressEpoch++;
+    terminal?.clearAgentProgress?.();
+    approvalOwner.abort(); approvalOwner = new AbortController(); signalInputReleased();
+    revokeAgentApproval?.(); revokeAgentApproval = undefined;
     cancelPrediction(); terminal?.clearPromptSuggestion?.();
     suggestionRun = new PromptSuggestionRun();
     suggestionStore = new PromptSuggestionStore(next.config.configSources?.userDir);
     terminal?.clearAgentView?.();
     unsubscribe?.();
     try {
-      if (nextRuntime !== activeRuntime) await activeRuntime.close();
-      else await activeRuntime.releaseSession?.(session.id);
-    } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
+      if (nextRuntime !== activeRuntime) {
+        if (strictHandoff) {
+          if (!activeRuntime.closeForHandoff) throw new Error('Runtime handoff cleanup is unavailable');
+          await activeRuntime.closeForHandoff();
+        } else await activeRuntime.close();
+      } else if (activeRuntime.sessionLease?.(session)() !== false) {
+        await activeRuntime.releaseSession?.(session.id, strictHandoff ? () => {} : undefined);
+      }
+    } catch (error) {
+      if (strictHandoff) throw error;
+      options.status.write(`Old runtime cleanup error: ${String(error)}\n`);
+    }
     session.close(); session = next; planResume.accept(next.id); activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
     terminal?.resetLoopSpan?.();
+    announceUnknownNotifications();
     terminal?.setSessionColor?.(session.sessionColor);
     bindConfigWatch();
     await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
+    heldEvents.length = 0;
+    deferredNotification = undefined; retryNotification = false;
     unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
     // `x0r.start/stop` [10901,11476), chunk-jrz2zk22.js: the successor starts after old cleanup.
     activeRuntime.buildTools(session.config, session.id);
@@ -1434,10 +1543,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (candidate !== activeRuntime) config.tools = pinToolSchemas(candidate.tools);
       next = Session.open(config.workspace, { config, startedAt: session.startedAt });
       next.carryPermissions(session, config.permissions?.mode === session.config.permissions?.mode);
+      const transferReadWitness = captureReadWitnessTransfers(session, next);
       // Y/pEe, frj2b06g [2565,3111), UTF-16: the denial provider survives a settings refresh.
       for (const denial of [...session.autoModeDenials.denials].reverse()) next.autoModeDenials.record(denial);
       const boundaries = new Map<number, number>([[0, 0]]);
       for (const [index, event] of session.events.entries()) {
+        const readWitness = inheritedReadWitnessObservation(event, transferReadWitness);
+        if (readWitness) next.append(readWitness);
         if (event.kind === 'message') {
           const copied = structuredClone(event);
           if (Array.isArray(copied.message.content)) {
@@ -1455,7 +1567,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
         if (event.kind === 'title' || event.kind === 'session_color' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
       }
-      next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
+      next.appendCheckpointBranch(session, { boundary: session.events.length - 1, reason: 'configuration' });
+      next.inheritCheckpointWitnesses(session);
       if (modeCommand) {
         next.permissionUpdates = transitionPlanMode({ ...next.permissionOwner.state(), mode: session.permissionOwner.state().mode }, modeCommand.mode, planResume.runtime);
         next.append(modeCommand);
@@ -2023,6 +2136,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (terminal?.writeNotice) terminal.writeNotice(options.startupNotice);
       else options.status.write(`${options.startupNotice}\n`);
     }
+    announceUnknownNotifications();
     await startPeer(session.config);
     // Qat, 24k7d6mw [1352278,1359484), UTF-16: await SessionStart after mounting the worker context.
     if (options.sessionStart !== undefined || options.residentWorker) {
@@ -2050,6 +2164,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return true;
     };
     while (!options.signal.aborted) {
+      if (deferredNotification && !deferredNotification.live()) deferredNotification = undefined;
+      if (deferredNotification && retryNotification) {
+        queue.unshift(deferredNotification.item); deferredNotification = undefined; retryNotification = false;
+      }
       // A credential arrived since the last pass: events held for it run before anything else.
       if (heldEvents.length > 0 && blockedReason() === undefined) {
         queue.unshift(...heldEvents.splice(0));
@@ -2064,7 +2182,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       // Drain before the input gate: a scheduled fire or a missed-task catch-up is an event, not
       // typed input, so a closed stdin must not strand it (`ne` fires regardless of the composer).
       if (!session.awaitingResponse) {
-        for (const event of activeRuntime.drainEvents?.(session.id) ?? []) {
+        for (const event of activeRuntime.drainEvents?.(session.id, session) ?? []) {
           if (event.kind === "instruction_paths") { addInstructionPaths(event.paths); continue; }
           if (event.kind === 'memory_status') { options.status.write(`${event.text}\n`); continue; }
           if (event.kind === 'hook_terminal') {
@@ -2082,7 +2200,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const oldest = queue.findIndex(item => item.source === 'event' && item.peer === undefined); queue.splice(oldest, 1);
             options.status.write('Event queue full; dropped the oldest event.\n');
           }
-          queue.push({ prompt: event.prompt, source: 'event',
+          queue.push({ prompt: event.kind === 'background' || event.kind === 'agent_events' ? '' : event.prompt, source: 'event',
+            ...(event.kind === 'background' || event.kind === 'agent_events' ? { notificationLease: activeRuntime.sessionLease?.(session) } : {}),
+            ...(event.kind === 'background' ? { background: event } : {}),
+            ...(event.kind === 'agent_events' ? { agentEvents: event } : {}),
             ...(event.kind === 'scheduled' ? { scheduledId: event.id } : {}),
             ...(event.kind === 'scheduled' && event.dynamic ? { wakeupId: event.id } : {}),
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
@@ -2090,7 +2211,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       // Terminal exit cancels its owner; piped line input still drains queued commands.
       if (inputClosed && terminal) break;
-      const nextIndex = session.awaitingResponse ? queue.findIndex(item => item.source === 'user') : (queue.length ? 0 : -1);
+      const nextIndex = deferredNotification
+        ? queue.findIndex(item => item.source === 'user' && item.prompt.trim().startsWith('/'))
+        : session.awaitingResponse ? queue.findIndex(item => item.source === 'user') : (queue.length ? 0 : -1);
       if (nextIndex < 0) {
         if (inputClosed) break;
         await new Promise<void>(resolve => { wake = resolve; });
@@ -2098,10 +2221,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       const item = queue.splice(nextIndex, 1)[0]!;
       promptQueueChanged();
+      if ((item.background || item.agentEvents) && !item.notificationLease?.()) continue;
       // Source `#s` (chunk-24k7d6mw.js 1495345): once the dispatched prompt is accepted, a stashed
       // draft comes back into the composer the dispatch emptied, with `Draft restored`.
       if (item.source === 'user') terminal?.restoreStashedDraft?.();
       let prompt = item.prompt.trim();
+      const notificationBatch = () => item.background
+        ? { kind: 'background' as const, events: item.background.events, dropped: item.background.dropped,
+          pending: item.background.pending, maxOutputBytes: item.background.maxOutputBytes }
+        : item.agentEvents ? { kind: 'agent_events' as const, events: item.agentEvents.events,
+          dropped: item.agentEvents.dropped, maxOutputBytes: item.agentEvents.maxOutputBytes } : undefined;
+      const renderedBatch = structuredClone(notificationBatch());
+      if (item.background) {
+        if (item.background.owner !== session.id) continue;
+      }
+      if (item.agentEvents) {
+        if (item.agentEvents.owner !== session.id) continue;
+      }
+      if (renderedBatch) prompt = renderNotificationBatch(renderedBatch);
       if (!prompt) continue;
       if (item.source === 'user' && prompt.startsWith('/')) {
         const typed = parseSlashCommand(prompt);
@@ -2142,6 +2279,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         else {
           // Ie [17435,19295), chunk-appb2dtz.js preserves scheduled identity until dispatch.
           if (item.wakeupId !== undefined && activeRuntime.beginLoopWakeup?.(session.id, item.wakeupId) === false) continue;
+          const notification = item.background !== undefined || item.agentEvents !== undefined;
+          const deliveryId = item.background?.deliveryId ?? item.agentEvents?.deliveryId;
+          const deliverySession = session;
+          const deliveryInputGeneration = inputGeneration;
+          const live = item.notificationLease;
+          let committed = false;
+          const retain = () => {
+            if (notification && live?.() && !deliverySession.isJournalFenced && !committed) {
+              deferredNotification = { item, live }; retryNotification = inputGeneration > deliveryInputGeneration;
+            }
+          };
           try {
             modelTurn = true;
             const result = await withTurn(async signal => {
@@ -2156,22 +2304,70 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   teammate_name: item.idle.name ?? item.idle.id }, signal);
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
+              const authorization = deliveryId && renderedBatch && live
+                ? issueNotificationAuthorization(deliverySession, deliveryId, renderedBatch, live, notificationBatch)
+                : undefined;
               return agent().run(prompt, signal, undefined, undefined, [], undefined,
                 item.peer === undefined ? { kind: 'generated', source: item.peerIdleConversation !== undefined ? 'peer-idle' : fire?.cronKind === 'loop' ? `loop-wakeup:${fire.uuid}` : 'interactive-event' }
-                  : { kind: 'peer', source: 'uds', ...item.peer });
+                  : { kind: 'peer', source: 'uds', ...item.peer }, undefined, () => { committed = true; },
+                notification ? () => {
+                  signal.throwIfAborted();
+                  if (!live?.()) throw Object.assign(new Error('Notification owner released'), { name: 'AbortError' });
+                  // Host durable handoff: source ZWr, sfn1dbxq [4262459,4262880), UTF-16,
+                  // has no journal. Do not receipt a changed batch under the original intent.
+                  if (deliveryId) {
+                    const intents = deliverySession.events.filter(row => row.kind === 'notification_intent_v2'
+                      && row.owner === deliverySession.id && row.deliveryId === deliveryId);
+                    const intent = intents[0];
+                    if (intents.length !== 1 || intent?.kind !== 'notification_intent_v2' || !isDeepStrictEqual(intent.batch, renderedBatch)
+                      || !isDeepStrictEqual(notificationBatch(), renderedBatch)) throw new Error('Notification batch differs from durable intent');
+                  }
+                } : undefined,
+                deliveryId ? { owner: deliverySession.id, deliveryId } : undefined, authorization);
             }, item.wakeupId);
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
             options.status.write(`event finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+            retain();
             // A turn boundary is the only safe point to re-evaluate held
             // messages: a mode change during the turn may now accept them.
             if (item.peer === undefined) releasePeerHeld('turn-complete');
-          } catch (error) { options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
+          } catch (error) { retain(); options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
           finally { modelTurn = false; }
         }
         continue;
       }
       try {
+        if (prompt === '/skill-effect' || prompt.startsWith('/skill-effect ')) {
+          if (item.directInputSession !== session) throw new Error('Skill effect decisions require direct input for the current session');
+          const parts = prompt.trim().split(/\s+/);
+          if (parts.length !== 4 || (parts[3] !== 'processed' && parts[3] !== 'retry')) throw new Error('Usage: /skill-effect OWNER EFFECT_ID processed|retry');
+          session.confirmSkillEffect(parts[1]!, parts[2]!, parts[3]);
+          const notice = parts[3] === 'retry'
+            ? `Skill effect ${parts[2]} retry authorized for one matching direct invocation.`
+            : `Skill effect ${parts[2]} ${parts[3]}; retry remains blocked.`;
+          if (terminal?.writeNotice) terminal.writeNotice(notice);
+          else options.status.write(`${notice}\n`);
+          continue;
+        }
+        if (prompt === '/notification' || prompt.startsWith('/notification ')) {
+          const parts = prompt.trim().split(/\s+/);
+          if (parts.length !== 4 || (parts[3] !== 'processed' && parts[3] !== 'retry')) throw new Error('Usage: /notification OWNER DELIVERY_ID processed|retry');
+          if (parts[3] === 'processed') {
+            session.confirmNotification(parts[1]!, parts[2]!);
+            options.status.write(`Notification ${parts[2]} processed.\n`);
+          } else {
+            const retry = session.retryNotification(parts[1]!, parts[2]!);
+            if (retry) {
+              const event = { ...retry.batch, owner: retry.owner, deliveryId: retry.deliveryId };
+              queue.unshift({ prompt: '', source: 'event', notificationLease: activeRuntime.sessionLease?.(session),
+                ...(event.kind === 'background' ? { background: event } : { agentEvents: event }) });
+              promptQueueChanged(); awaken();
+            }
+            options.status.write(`Notification ${parts[2]} retry ${retry ? 'queued' : 'already decided'}.\n`);
+          }
+          continue;
+        }
         if (prompt === '/add-dir' || prompt.startsWith('/add-dir ')) {
           // Source `d` (chunk-dzt2d3te.js 14026) and `lwn` (chunk-340rde3k.js 1608): validate the
           // path, apply `{type:"addDirectories", directories:[abs], destination:"session"}`, then
@@ -2641,11 +2837,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let nextRuntime: Runtime;
           try {
             if (JSON.stringify(next.config.gateway) !== JSON.stringify(session.config.gateway)) throw new Error('Session gateway differs; restart with --resume UUID to recreate the provider');
+            const recovery = await next.reconcileResumedCheckpointInheritance({ source: session });
             const prepared = await activeRuntime.reconfigure(next.config);
             next.carryPermissions(session);
             next.permissionUpdates = planResume.resume(next.id, next.permissionOwner.state(), next.config.permissions?.mode, next.events);
             next.restoreModelPlanMode();
             nextRuntime = await bindNext(prepared, next);
+            if (recovery.kind === 'reconciled') options.status.write('Checkpoint witness reconciled.\n');
           } catch (error) { next.close(); throw error; }
           try { await agent().endSession('session_switch'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
@@ -2874,8 +3072,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             config.tools = nextRuntime.buildTools(config, 'reload').map(tool => ({ ...structuredClone(tool.schema), eager_input_streaming: true }));
             next = Session.open(config.workspace, { config, startedAt: session.startedAt });
             next.carryPermissions(session);
+            const transferReadWitness = captureReadWitnessTransfers(session, next);
             const boundaries = new Map<number, number>([[0, 0]]);
             for (const [index, event] of session.events.entries()) {
+              const readWitness = inheritedReadWitnessObservation(event, transferReadWitness);
+              if (readWitness) next.append(readWitness);
               if (event.kind === 'message') {
                 const copied = structuredClone(event);
                 if (Array.isArray(copied.message.content)) copied.message.content = copied.message.content.filter(block =>
@@ -2895,7 +3096,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
               if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
             }
-            next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
+            next.appendCheckpointBranch(session, { boundary: session.events.length - 1, reason: 'reload' });
+            next.inheritCheckpointWitnesses(session);
             nextRuntime = await bindNext(nextRuntime, next);
           } catch (error) { next?.close(); await nextRuntime.close(); throw error; }
           try { await agent().endSession('config_reload'); }
@@ -3604,7 +3806,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (/^\/checkpoint(?:\s|$)/.test(prompt)) {
           const match = /^\/checkpoint ([A-Za-z0-9][A-Za-z0-9_-]{0,63})$/.exec(prompt);
           if (!match) throw new Error('Use /checkpoint NAME');
-          output.write(JSON.stringify(await withTurn(signal => Promise.resolve(checkpointConversation(session, match[1]!, signal))), null, 2) + '\n');
+          output.write(JSON.stringify(await withTurn(signal => checkpointConversationWithDirectoryWitness(session, match[1]!, signal)), null, 2) + '\n');
           rewindPreview = undefined;
           continue;
         }
@@ -3631,13 +3833,147 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // Quiesce owned workers before the final digest check and file effects.
           try { await agent().endSession('rewind'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
-          await activeRuntime.releaseSession?.(session.id);
-          activeAgent = undefined;
-          const next = await withTurn(signal => Promise.resolve(applyRewind(session, preview, match[2]!, signal)));
-          const nextRuntime = await bindNext(activeRuntime, next);
-          await acceptNext(next, nextRuntime);
+          let next: Session, preboundRuntime: Runtime | undefined, rewindSignal: AbortSignal | undefined;
+          try {
+            next = await withTurn(signal => {
+              rewindSignal = signal;
+              return applyRewindAfterRelease(session, preview, match[2]!, signal, async completed => {
+                await activeRuntime.releaseSession?.(session.id, completed);
+                activeAgent = undefined;
+              }, async recovered => {
+                if (!activeRuntime.reconfigure) throw new Error('Runtime recovery is unavailable');
+                const candidate = await activeRuntime.reconfigure(recovered.config);
+                const nextRuntime = await bindNext(candidate, recovered);
+                await acceptNext(recovered, nextRuntime);
+                announce();
+                try { await startAgentSession('resume'); }
+                catch (error) { options.status.write(`SessionStart hook error: ${String(error)}\n`); }
+                output.write('Rewind was not applied; the session was resumed.\n');
+                const directories = recovered.workingDirectories(false);
+                if ([...recovered.permissionOwner.state().additionalWorkingDirectories.keys()].some(root => !directories.readHandle?.(root)))
+                  output.write('Remove and add unavailable directories again to restore their grants.\n');
+              });
+            });
+          } catch (error) {
+            if (!(error instanceof RewindCommittedWitnessError) && !(error instanceof CommittedCheckpointTransactionError)) throw error;
+            const transactionError = error instanceof CommittedCheckpointTransactionError ? error : undefined;
+            const committedId = error instanceof CommittedCheckpointTransactionError ? error.identity.branch.id : error.sessionId;
+            const issue = transactionError ? 'checkpoint transaction' : 'checkpoint witness';
+            let reopened: Session | undefined, tornReferencesRecovered = false;
+            try {
+              if (rewindSignal?.aborted || options.signal.aborted || inputClosed) throw new Error('Rewind recovery was cancelled');
+              if (error.workspace !== session.config.workspace || !activeRuntime.closeForHandoff || !activeRuntime.reconfigure)
+                throw new Error('Runtime handoff recovery is unavailable');
+              await activeRuntime.closeForHandoff();
+              if (rewindSignal?.aborted || options.signal.aborted || inputClosed) throw new Error('Rewind recovery was cancelled');
+              const pending = path.join(error.workspace, '.agent/checkpoints/transaction.json');
+              const branchFile = path.join(error.workspace, '.agent', `${committedId}.jsonl`);
+              const hasTorn = () => fs.readdirSync(path.dirname(branchFile)).some(name => name.startsWith(`${path.basename(branchFile)}.torn-`));
+              if (hasTorn()) throw new Error('Rewind journal requires reconciliation');
+              if (transactionError && (transactionError.identity.branch.source !== session.id ||
+                  transactionError.identity.branch.boundary !== preview.boundary || transactionError.identity.branch.checkpoint !== preview.checkpoint ||
+                  transactionError.identity.branch.digest !== preview.checkpoint_digest)) throw new Error('Committed rewind transaction changed');
+              const journal = transactionError ? recoverCommittedCheckpoint({ workspace: error.workspace, signal: rewindSignal ?? options.signal,
+                allowShell: false, maxOutputBytes: session.config.maxOutputBytes }, transactionError.identity) : undefined;
+              if (fs.existsSync(pending)) throw new Error('Rewind transaction remains pending');
+              reopened = Session.open(error.workspace, { id: committedId, ...(journal ? { expectedJournal: journal } : {}) });
+              if (hasTorn()) {
+                if (!transactionError) tornReferencesRecovered = reopened.reconcileTornCheckpointInheritance(session).kind === 'reconciled';
+                if (!tornReferencesRecovered || !isReconciledCheckpointTorn(reopened)) throw new Error('Rewind journal requires reconciliation');
+              }
+              if (transactionError) {
+                const expected = transactionError.identity.branch, current = fs.lstatSync(reopened.file);
+                if (!current.isFile() || current.isSymbolicLink() || current.ino !== expected.inode || current.dev !== expected.device ||
+                    !expected.gate || !isDeepStrictEqual(reopened.checkpointGateIdentity(), expected.gate))
+                  throw new Error('Committed rewind Session identity changed');
+              }
+              const branch = reopened.events.findLast(row => row.kind === 'branch'), rewind = reopened.events.findLast(row => row.kind === 'rewind');
+              if (!branch || branch.kind !== 'branch' || branch.reason !== 'rewind' || branch.source !== session.id ||
+                  branch.workspace !== error.workspace || branch.boundary !== preview.boundary || !rewind || rewind.kind !== 'rewind' ||
+                  rewind.source !== session.id || rewind.boundary !== preview.boundary || rewind.checkpoint !== preview.checkpoint ||
+                  rewind.digest !== preview.checkpoint_digest) throw new Error('Committed rewind history changed');
+              reopened.checkpointJournalBytes();
+              if (transactionError) reopened.inheritCheckpointWitnesses(session);
+              if (rewindSignal?.aborted || options.signal.aborted || inputClosed || fs.existsSync(pending))
+                throw new Error('Rewind recovery was interrupted');
+              const candidate = await activeRuntime.reconfigure(reopened.config);
+              preboundRuntime = await bindNext(candidate, reopened, true);
+              next = reopened;
+              output.write(`Rewind committed; ${issue} ${transactionError ? 'was recovered' : tornReferencesRecovered ? 'was reconciled' : 'outcome is uncertain'}. Remove and add additional directories again to restore their grants.\n`);
+            } catch (recoveryError) {
+              const message = `Rewind committed in session ${committedId}; ${issue} and runtime recovery are uncertain. Inspect the retained evidence before resuming.` +
+                (tornReferencesRecovered ? ' Direct checkpoint references were verified; other torn history remains unknown.' : '');
+              stopCommittedRewind(message);
+              const failures: unknown[] = [error, recoveryError];
+              try {
+                if (reopened) {
+                  await reopened.close();
+                  if (fs.existsSync(`${reopened.file}.lock`)) throw new Error('Session lock remains after rewind recovery cleanup');
+                }
+              }
+              catch (failure) { failures.push(failure); reportRewindCleanup(); }
+              throw new AggregateError(failures, message);
+            }
+          }
+          // Host committed-rewind handoff for gft, 24k7d6mw [38766,45161), UTF-16;
+          // the source transcript fork does not own this workspace/runtime transaction.
+          let nextRuntime: Runtime;
+          try { nextRuntime = preboundRuntime ?? await bindNext(activeRuntime, next, true); }
+          catch (firstError) {
+            const committedId = next.id, workspace = next.config.workspace;
+            try {
+              if (firstError instanceof RuntimeHandoffCleanupError) throw firstError;
+              if (!activeRuntime.closeForHandoff || !activeRuntime.reconfigure) throw new Error('Runtime handoff recovery is unavailable');
+              await activeRuntime.closeForHandoff();
+              if (!next.isOpen || next.isJournalFenced || next.isDirectoryAuthorityReleased) {
+                const hadDirectories = next.permissionOwner.state().additionalWorkingDirectories.size > 0;
+                if (next.isOpen) await next.close();
+                next = Session.open(workspace, { id: committedId });
+                if (hadDirectories) output.write('Rewind committed; add additional directories again to restore their grants.\n');
+              }
+              const candidate = await activeRuntime.reconfigure(next.config);
+              nextRuntime = await bindNext(candidate, next, true);
+              output.write('Rewind committed; runtime connection was restored.\n');
+            } catch (recoveryError) {
+              const message = `Rewind committed in session ${committedId}; runtime recovery failed. Resume this session.`;
+              stopCommittedRewind(message);
+              const failures: unknown[] = [firstError, recoveryError];
+              try {
+                await next.close();
+                if (fs.existsSync(`${next.file}.lock`)) throw new Error('Session lock remains after rewind recovery cleanup');
+              }
+              catch (failure) { failures.push(failure); reportRewindCleanup(); }
+              throw new AggregateError(failures, message);
+            }
+          }
+          const previousRuntime = activeRuntime;
+          try { await acceptNext(next, nextRuntime, true); }
+          catch (error) {
+            failedRewindHandoff = true;
+            const message = `Rewind committed in session ${next.id}; session handoff is incomplete. Resume this session after inspecting the error.`;
+            stopCommittedRewind(message);
+            const failures: unknown[] = [error];
+            for (const candidate of new Set([previousRuntime, activeRuntime, nextRuntime])) {
+              try {
+                if (!candidate.closeForHandoff) throw new Error('Runtime handoff cleanup is unavailable');
+                await candidate.closeForHandoff();
+              } catch (failure) { failures.push(failure); }
+            }
+            if (failures.length === 1) {
+              for (const target of new Set([session, next])) {
+                try {
+                  await target.close();
+                  if (fs.existsSync(`${target.file}.lock`)) throw new Error('Session lock remains after handoff cleanup');
+                } catch (failure) { failures.push(failure); }
+              }
+            }
+            if (failures.length > 1) reportRewindCleanup();
+            throw new AggregateError(failures, message);
+          }
           announce(); await startAgentSession('fork');
           output.write(`Rewound files and conversation to turn ${turn}; restored ${preview.operations.length} file operations; preserved ${preview.preserved.length} directory/symlink changes.\n`);
+          if (preview.external.kind === 'unavailable') output.write(`External checkpoint restore is unavailable for ${preview.external.paths.length} tracked file(s); those files were not restored.\n`);
+          else if (preview.external.kind === 'unknown') output.write('External file history is unknown; external files were not restored.\n');
           continue;
         }
         if (prompt === '/branch' || prompt.startsWith('/branch ')) {
@@ -3865,15 +4201,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               continue;
             }
             if (refuseWhenBlocked()) continue;
-            const result = await withTurn(signal => activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
-              async (tool, input, decision) => {
-                if (inputClosed || signal.aborted) return { decision: 'deny', reason: 'Input closed' };
+            const result = await withTurn(signal => {
+              if (item.directInputSession !== session) throw new Error('Human skill invocation requires direct input for the current session');
+              const lease = activeRuntime.sessionLease?.(session);
+              if (!lease) throw new Error('Human skill invocation requires a live session lease');
+              const authorization = issueHumanSkillAuthorization(session, skill.name, parsed.args, signal, lease);
+              return activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
+              async (tool, input, decision, permissionSignal) => {
+                if (inputClosed || permissionSignal.aborted) return { decision: 'deny', reason: 'Input closed' };
                 let allowed = false;
                 try {
-                  allowed = await confirm('Allow once', `${decision.reason ?? 'Skill permission'}\n${tool.schema.name}: ${JSON.stringify(input).slice(0, 2000)}`, signal);
+                  allowed = await confirmPermission(`${decision.reason ?? 'Skill permission'}\n${tool.schema.name}: ${JSON.stringify(input).slice(0, 2000)}`, permissionSignal);
                 } catch { /* Cancellation retains a denied permission result. */ }
                 return { decision: allowed ? 'allow' : 'deny', reason: allowed ? 'Approved once' : 'Permission declined' };
-              }, session.messages));
+              }, session.messages, session, 'user', authorization);
+            });
             if (skill.context === 'fork' || skill.model || skill.effort || skill.background || skill.hooks || skill.allowedTools) {
               output.write(result + '\n'); continue;
             }
@@ -3907,11 +4249,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         output.write('\n');
         options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
       } catch (error) {
-        options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`);
-        if (options.signal.aborted) break;
+        if (error instanceof SkillEffectRecoveryError) {
+          try {
+            const notice = `error: ${error.message}`;
+            if (terminal?.commitNotice) await terminal.commitNotice(notice);
+            else await commitTerminalOutput(options.output, `${notice}\n`);
+            if (options.signal.aborted || inputClosed) throw new Error('Interaction closed during delivery');
+            error.journal.acknowledge(error.pending);
+          } catch (deliveryError) {
+            options.status.write(`error: ${deliveryError instanceof Error ? deliveryError.message : String(deliveryError)}\n`);
+          }
+        } else options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`);
+        if (options.signal.aborted || stoppedCommittedRewind) break;
       }
     }
   } finally {
+    approvalOwner.abort(); signalInputReleased(); approval?.(undefined);
     cancelPrediction(); terminal?.clearPromptSuggestion?.();
     await Promise.all(suggestionWork);
     taskUnsubscribe?.(); taskUnsubscribe = undefined;
@@ -3922,17 +4275,26 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (liveDialog?.kind === 'tasks') liveDialog.controller.abort();
     await backgroundDialogWork;
     rl?.close(); terminal?.close();
+    if (terminal && rewindHandoffNotice) {
+      try { await commitTerminalOutput(options.output, `${rewindHandoffNotice}\n`); }
+      catch (error) { options.status.write(`Rewind notice delivery error: ${String(error)}\n`); }
+    }
     await editorWork;editorWork=undefined;
     await terminal?.flushStatusLine?.();
     await terminal?.flushInputHistory?.();
     await terminal?.flushSpinnerTips?.();
     await stopPeer();
-    try { await (activeAgent ?? agent()).endSession(options.signal.aborted ? 'interrupt' : 'prompt_input_exit'); }
-    catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
-    try { await activeRuntime.releaseSession?.(session.id); }
-    finally {
-      session.close();
-      if (activeRuntime !== runtime) await activeRuntime.close();
+    revokeAgentApproval?.(); revokeAgentApproval = undefined;
+    if (!failedRewindHandoff) {
+      if (!stoppedCommittedRewind) {
+        try { await (activeAgent ?? agent()).endSession(options.signal.aborted ? 'interrupt' : 'prompt_input_exit'); }
+        catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
+      }
+      try { if (activeRuntime.sessionLease?.(session)() !== false) await activeRuntime.releaseSession?.(session.id); }
+      finally {
+        session.close();
+        if (activeRuntime !== runtime) await activeRuntime.close();
+      }
     }
   }
 }

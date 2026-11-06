@@ -53,7 +53,7 @@ const evidence = {
     packages: [
       { package: 'W45-77', bodies: ['Oe', 'Te', 'et', 'tt', 'adn', 'rt', 'st', 'lt', 'j', 'H', 'B', 'nt', 'he', 'Wt', 'Ob', 'K', 'gt', 'uwe', 'ydn', 'DXe', 'dje', 'uu', 'DIe', 'pe', 'ie', '_', 'fe', 'le', 'ue', 'U', 'me', 'oe', 'X', 'I', 'ee', 'H4', 'tq', 'Zoo'], units: unitTotal },
     ],
-    remaining: 'The text/link leaf group next; `Xt` Markdown waits for the ui.press/held-press pipeline (partition 4). Then the interactive elements, the Client host, and last the site-tree walker `je` with the terminal glue.',
+    remaining: '`Xt` Markdown is the last leaf; it needs the ui.press/held-press pipeline, which is partition 4\'s core and becomes the next package. Then the interactive elements, the Client host, and last the site-tree walker `je` with the terminal glue.',
   },
   ledger: { totals, blocks: blockTotal, units: unitTotal, sources: ledgers },
   decisiveFact:
@@ -113,7 +113,7 @@ const evidence = {
     identity: '0baf2436…',
   },
   next:
-    'Partition 3 continues with the text/link leaf group; `Xt` Markdown needs the ui.press/held-press pipeline and waits for partition 4. Then the interactive elements, the Client host, and last the site-tree walker `je` with the terminal glue.',
+    '`Xt` Markdown is the last leaf, and it needs the ui.press/held-press pipeline: the held-press store (`AK`), the press handle walkers (`Yl`, `SFs`), the press site descriptor (`Tf`) and the dispatch (`BPn`/`Xl`). That pipeline is partition 4\'s core and becomes the next package. Then the interactive elements, the Client host, and last the site-tree walker `je` with the terminal glue.',
 };
 
 fs.writeFileSync('research/ports/W45-code-evidence.json', JSON.stringify(evidence, null, 1) + '\n');

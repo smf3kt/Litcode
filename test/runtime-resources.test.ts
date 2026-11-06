@@ -8,6 +8,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import { defaultConfig } from '../src/agent.js';
 import { createRuntime, parseSettings, pinToolSchemas, type Runtime } from '../src/runtime.js';
+import { Session } from '../src/session.js';
 import { LocalScheduler, createSchedulerTools, type SchedulerTimer } from '../src/scheduler.js';
 import { readSchedulerLock, readStoredTasks, writeStoredTasks } from '../src/scheduler-store.js';
 import { BackgroundRegistry, createBackgroundTools } from '../src/background.js';
@@ -172,6 +173,97 @@ test('retained hook starter fails after release without creating listeners or pr
   } finally { await runtime.close(); f.cleanup(); }
 });
 
+test('concurrent runtime releases and root close wait for the same owner cleanup', async () => {
+  for (const mode of ['session', 'runtime', 'replacement'] as const) {
+    const rootClose = mode === 'runtime';
+    const f = fixture(); f.config.allowShell = true;
+    const runtime = await createRuntime(f.config, unused, f.controller.signal);
+    f.config.tools = pinToolSchemas(runtime.tools);
+    const session = Session.open(f.workspace, { config: f.config }), original = BackgroundRegistry.prototype.close;
+    let enter!: () => void, unblock!: () => void;
+    const entered = new Promise<void>(resolve => { enter = resolve; }), gate = new Promise<void>(resolve => { unblock = resolve; });
+    let calls = 0, firstConfirmed = false, secondConfirmed = false, rootConfirmed = false, replacementConfirmed = false;
+    let first: Promise<void> | undefined, second: Promise<void> | undefined, closing: Promise<void> | undefined, replacementClosing: Promise<void> | undefined;
+    let replacement: Session | undefined;
+    try {
+      await runtime.bindSession!(session);
+      const tools = runtime.buildTools(session.config, session.id);
+      await selected(tools, 'run_background').execute({ command: 'printf ready; sleep 30' }, { ...f.context, session, allowShell: true });
+      BackgroundRegistry.prototype.close = async function() { calls++; enter(); await gate; await original.call(this); };
+      first = runtime.releaseSession!(session.id, () => { firstConfirmed = true; });
+      await entered;
+      second = runtime.releaseSession!(session.id, () => { secondConfirmed = true; });
+      if (rootClose) closing = runtime.closeForHandoff!().then(() => { rootConfirmed = true; });
+      await new Promise<void>(resolve => setImmediate(resolve));
+      assert.equal(firstConfirmed, false); assert.equal(secondConfirmed, false, 'second release must await actual cleanup');
+      assert.equal(rootConfirmed, false, 'root close must await an already retiring owner');
+      if (!rootClose) {
+        assert.throws(() => runtime.buildTools(session.config, session.id), /cleanup.*unconfirmed/);
+        await assert.rejects(runtime.bindSession!(session), /cleanup.*unconfirmed/);
+      }
+      if (mode === 'replacement') {
+        await session.close(); replacement = Session.open(f.workspace, { id: session.id });
+        await runtime.bindSession!(replacement);
+        const replacementTools = runtime.buildTools(replacement.config, replacement.id);
+        assert.notEqual(replacementTools, tools);
+        await selected(replacementTools, 'run_background').execute({ command: 'printf replacement' }, { ...f.context, session: replacement, allowShell: true });
+        replacementClosing = runtime.releaseSession!(replacement.id, () => { replacementConfirmed = true; });
+        await new Promise<void>(resolve => setImmediate(resolve));
+        assert.equal(firstConfirmed, false); assert.equal(secondConfirmed, false); assert.equal(replacementConfirmed, false);
+      }
+      unblock(); await Promise.all([first, second, closing, replacementClosing]);
+      assert.equal(firstConfirmed, true); assert.equal(secondConfirmed, true); assert.equal(calls, mode === 'replacement' ? 2 : 1);
+      if (mode === 'replacement') assert.equal(replacementConfirmed, true);
+      if (rootClose) assert.equal(rootConfirmed, true);
+      else {
+        const live = replacement ?? session, fresh = runtime.buildTools(live.config, live.id);
+        assert.notEqual(fresh, tools);
+        await runtime.bindSession!(live); assert.equal(runtime.sessionLease!(live)(), true);
+        await assert.rejects(selected(tools, 'run_background').execute({ command: 'printf stale' }, { ...f.context, session, allowShell: true }), /released|aborted/);
+        await runtime.releaseSession!(session.id);
+      }
+    } finally {
+      unblock(); await Promise.allSettled([first, second, closing, replacementClosing]);
+      BackgroundRegistry.prototype.close = original; await runtime.close(); await session.close(); await replacement?.close(); f.cleanup();
+    }
+  }
+});
+
+test('failed owner cleanup cannot be acknowledged or rebound by a later release', async () => {
+  for (const strictFirst of [false, true]) {
+  for (const failureKind of ['collected', 'thrown'] as const) {
+    const f = fixture(); f.config.allowShell = true;
+    const runtime = await createRuntime(f.config, unused, f.controller.signal);
+    f.config.tools = pinToolSchemas(runtime.tools);
+    const session = Session.open(f.workspace, { config: f.config }), original = BackgroundRegistry.prototype.close;
+    const originalAgents = AgentRegistry.prototype.close;
+    let attempts = 0, acknowledgements = 0;
+    try {
+      await runtime.bindSession!(session);
+      const tools = runtime.buildTools(session.config, session.id);
+      await selected(tools, 'run_background').execute({ command: 'printf cleanup' },
+        { ...f.context, session, allowShell: true });
+      if (failureKind === 'collected') BackgroundRegistry.prototype.close = async function() { attempts++; await original.call(this); throw new Error('injected retained cleanup failure'); };
+      else {
+        await selected(tools, 'list_agents').execute({}, { ...f.context, session });
+        AgentRegistry.prototype.close = async function() { attempts++; await originalAgents.call(this); throw new Error('injected retained agent cleanup'); };
+      }
+      const expected = failureKind === 'collected' ? /Runtime cleanup incomplete/ : /injected retained agent cleanup/;
+      const first = runtime.releaseSession!(session.id, strictFirst ? () => { acknowledgements++; } : undefined);
+      if (strictFirst || failureKind === 'thrown') await assert.rejects(first, expected); else await first;
+      await assert.rejects(runtime.releaseSession!(session.id, () => { acknowledgements++; }), expected);
+      assert.throws(() => runtime.buildTools(session.config, session.id), /cleanup.*unconfirmed/);
+      await assert.rejects(runtime.bindSession!(session), /cleanup.*unconfirmed/);
+      assert.equal(attempts, 1); assert.equal(acknowledgements, 0);
+      await assert.rejects(runtime.closeForHandoff!(), expected);
+    } finally {
+      BackgroundRegistry.prototype.close = original; AgentRegistry.prototype.close = originalAgents;
+      await runtime.close().catch(() => {}); await session.close(); f.cleanup();
+    }
+  }
+  }
+});
+
 test('lazy resource schemas match direct factories including LSP and worktrees', async () => {
   const f = fixture();
   const inert = AbortSignal.abort();
@@ -205,23 +297,61 @@ test('background skills initialize the owner registry before the agent tool is u
     path: 'fixture/SKILL.md', userInvocable: true, disableModelInvocation: false, background: true }];
   const provider: ModelProvider = { count: async () => 1, complete: async () => reply('done') };
   const runtime = await createRuntime(f.config, provider, f.controller.signal, { scheduler: { timer: f.timer } });
+  let first: Session | undefined;
+  let secondSession: Session | undefined;
   try {
     f.config.tools = pinToolSchemas(runtime.tools);
-    const tools = runtime.buildTools(f.config, 'skill-owner');
-    const result = JSON.parse(await selected(tools, 'skill').execute({ name: 'background-fixture' }, f.context));
+    first = Session.open(f.workspace, { config: f.config });
+    secondSession = Session.open(f.workspace, { config: f.config });
+    await runtime.bindSession!(first);
+    await runtime.bindSession!(secondSession);
+    const tools = runtime.buildTools(f.config, first.id);
+    const result = JSON.parse(await selected(tools, 'skill').execute({ name: 'background-fixture' }, { ...f.context, session: first }));
     assert.ok(result.id);
     const child = JSON.parse(await selected(tools, 'get_agent').execute({ id: result.id, wait_ms: 1000 }, f.context));
     assert.equal(child.status, 'completed');
-    const repeated = JSON.parse(await runtime.runSkill!(f.config, 'skill-owner', f.config.skills[0]!, '', f.context.signal));
+    const repeated = JSON.parse(await runtime.runSkill!(f.config, first.id, f.config.skills[0]!, '', f.context.signal));
     assert.ok(repeated.id);
     assert.equal(f.starts(), 0);
-    runtime.buildTools(f.config, 'user-skill-owner');
-    runtime.hookOptions!(f.config, 'user-skill-owner');
-    const second = JSON.parse(await runtime.runSkill!(f.config, 'user-skill-owner', f.config.skills[0]!, '', f.context.signal));
+    runtime.buildTools(f.config, secondSession.id);
+    runtime.hookOptions!(f.config, secondSession.id);
+    const second = JSON.parse(await runtime.runSkill!(f.config, secondSession.id, f.config.skills[0]!, '', f.context.signal));
     assert.ok(second.id);
-    await runtime.releaseSession!('user-skill-owner');
-    await runtime.releaseSession!('skill-owner');
+    await runtime.releaseSession!(secondSession.id);
+    await runtime.releaseSession!(first.id);
     assert.equal(getEventListeners(f.controller.signal, 'abort').length, 1);
+  } finally { await runtime.close(); first?.close(); secondSession?.close(); f.cleanup(); }
+});
+
+test('session release drains its running skill shell and leaves another owner running', async () => {
+  const f = fixture();
+  f.config.allowShell = true;
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  f.config.features = { ...f.config.features, tasks: false, subagents: true, skillInlineCommands: true };
+  const makeSkill = (name: string, body: string) => ({ name, description: 'fixture', body, path: 'fixture/SKILL.md', userInvocable: true, disableModelInvocation: false });
+  const runtime = await createRuntime(f.config, unused, f.controller.signal);
+  const waitFile = async (file: string) => {
+    const deadline = Date.now() + 5000;
+    while (!fs.existsSync(file)) { if (Date.now() > deadline) throw new Error(`Missing ${file}`); await new Promise(resolve => setTimeout(resolve, 10)); }
+  };
+  try {
+    const first = runtime.runSkill!(f.config, 'ad1c0f3a-3333-4333-8333-333333333333', makeSkill('a', '!`sleep 20 & echo $! > child-a; echo ready > ready-a; wait`'), '', f.context.signal);
+    const firstResult = first.then(() => 'completed', error => String(error));
+    const second = runtime.runSkill!(f.config, 'ad1c0f3a-4444-4444-8444-444444444444', makeSkill('b', '!`echo ready > ready-b; sleep 20`'), '', f.context.signal);
+    const secondResult = second.then(() => 'completed', error => String(error));
+    await Promise.all([waitFile(path.join(f.workspace, 'ready-a')), waitFile(path.join(f.workspace, 'ready-b'))]);
+    const child = Number(fs.readFileSync(path.join(f.workspace, 'child-a'), 'utf8'));
+    await runtime.releaseSession!('ad1c0f3a-3333-4333-8333-333333333333');
+    assert.match(await firstResult, /aborted/);
+    assert.throws(() => process.kill(child, 0));
+    let settled = false; void secondResult.then(() => { settled = true; });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(settled, false);
+    await runtime.releaseSession!('ad1c0f3a-4444-4444-8444-444444444444');
+    assert.match(await secondResult, /aborted/);
+    const normal = await runtime.runSkill!(f.config, 'ad1c0f3a-5555-4555-8555-555555555555', makeSkill('c', '!`printf done`'), '', f.context.signal);
+    assert.equal(normal, 'done');
+    await runtime.releaseSession!('ad1c0f3a-5555-4555-8555-555555555555');
   } finally { await runtime.close(); f.cleanup(); }
 });
 
@@ -279,16 +409,16 @@ test('child terminal queue bounds serialized bytes and discards released generat
       return { terminalSequence: '\x07'.repeat(4096) };
     } }) });
   try {
-    for (let index = 0; index < 3; index++) await runtime.runSkill!(f.config, 'effects', skill, '', f.context.signal);
-    const events = runtime.drainEvents!('effects');
+    for (let index = 0; index < 3; index++) await runtime.runSkill!(f.config, 'ad1c0f3a-6666-4666-8666-666666666666', skill, '', f.context.signal);
+    const events = runtime.drainEvents!('ad1c0f3a-6666-4666-8666-666666666666');
     assert.equal(events.filter(event => event.kind === 'hook_terminal').length, 2);
     assert.ok(events.some(event => event.kind === 'notification' && event.prompt.includes('dropped 1 effects')));
     assert.ok(events.filter(event => event.kind === 'hook_terminal').every(event => event.prompt === undefined));
     held = true;
-    const pending = runtime.runSkill!(f.config, 'effects', skill, '', f.context.signal);
-    await waiting; await runtime.releaseSession!('effects'); runtime.buildTools(f.config, 'effects');
+    const pending = runtime.runSkill!(f.config, 'ad1c0f3a-6666-4666-8666-666666666666', skill, '', f.context.signal);
+    await waiting; await runtime.releaseSession!('ad1c0f3a-6666-4666-8666-666666666666'); runtime.buildTools(f.config, 'ad1c0f3a-6666-4666-8666-666666666666');
     release(); await pending;
-    assert.deepEqual(runtime.drainEvents!('effects'), []);
+    assert.deepEqual(runtime.drainEvents!('ad1c0f3a-6666-4666-8666-666666666666'), []);
   } finally { release(); await runtime.close(); f.cleanup(); }
 });
 
@@ -305,17 +435,17 @@ test("child instruction discoveries deduplicate owner events and skip released g
   f.config.tools = pinToolSchemas(runtime.tools);
   const skill = { name: "read", description: "fixture", body: "read", path: "/fixture/SKILL.md", userInvocable: true, disableModelInvocation: false, context: "fork" as const };
   try {
-    await runtime.runSkill!(f.config, "instructions", skill, "", f.context.signal);
-    await runtime.runSkill!(f.config, "instructions", skill, "", f.context.signal);
-    const events = runtime.drainEvents!("instructions");
+    await runtime.runSkill!(f.config, "ad1c0f3a-7777-4777-8777-777777777777", skill, "", f.context.signal);
+    await runtime.runSkill!(f.config, "ad1c0f3a-7777-4777-8777-777777777777", skill, "", f.context.signal);
+    const events = runtime.drainEvents!("ad1c0f3a-7777-4777-8777-777777777777");
     assert.equal(events.length, 1);
     assert.equal(events[0]!.kind, "instruction_paths");
     if (events[0]!.kind === "instruction_paths") assert.deepEqual(events[0]!.paths, [instruction, imported, path.join(f.workspace, "deep/HARNESS.md")]);
     assert.equal(events[0]!.prompt, undefined);
     assert.deepEqual(runtime.drainEvents!("another"), []);
-    await runtime.releaseSession!("instructions");
-    runtime.buildTools(f.config, "instructions");
-    assert.deepEqual(runtime.drainEvents!("instructions"), []);
+    await runtime.releaseSession!("ad1c0f3a-7777-4777-8777-777777777777");
+    runtime.buildTools(f.config, "ad1c0f3a-7777-4777-8777-777777777777");
+    assert.deepEqual(runtime.drainEvents!("ad1c0f3a-7777-4777-8777-777777777777"), []);
   } finally { await runtime.close(); f.cleanup(); }
 });
 
@@ -344,6 +474,34 @@ test('stopState projects running background jobs and session cron tasks', async 
     await selected(tools, 'get_background_task').execute({ id: started.id, wait_ms: 5000 }, { ...f.context, allowShell: true });
     assert.deepEqual(runtime.stopState!(owner).background_tasks, []);
     assert.equal(runtime.stopState!(owner).session_crons.length, 1);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
+test('background task lookup leaves completion events for the first queue consumer', async () => {
+  const f = fixture();
+  const runtime = await createRuntime(f.config, unused, f.controller.signal);
+  try {
+    for (const consumer of ['tool', 'runtime'] as const) {
+      const owner = `completion-${consumer}`;
+      const tools = runtime.buildTools(f.config, owner);
+      const context = { ...f.context, allowShell: true };
+      const job = JSON.parse(await selected(tools, 'run_background').execute(
+        { command: 'printf completion', description: consumer }, context)) as { id: string };
+      const view = JSON.parse(await selected(tools, 'get_background_task').execute(
+        { id: job.id, wait_ms: 5000 }, context)) as { state: string; stdout: string };
+      assert.equal(view.state, 'completed');
+      assert.equal(view.stdout, 'completion');
+      const read = async () => JSON.parse(await selected(tools, 'read_notifications').execute({}, context)) as {
+        events: { job_id: string; kind: string }[];
+      };
+      if (consumer === 'tool') {
+        assert.ok((await read()).events.some(event => event.job_id === job.id && event.kind === 'exit'));
+        assert.deepEqual(runtime.drainEvents!(owner), []);
+      } else {
+        assert.ok(runtime.drainEvents!(owner).some(event => event.kind === 'background' && event.owner === owner && event.events.some(entry => entry.job_id === job.id)));
+        assert.deepEqual((await read()).events, []);
+      }
+    }
   } finally { await runtime.close(); f.cleanup(); }
 });
 
@@ -387,11 +545,14 @@ test('stopBackground aborts a running child agent instead of only counting it', 
       return reply('done');
     } };
   const runtime = await createRuntime(f.config, provider, f.controller.signal);
-  const owner = 'stop-agents';
+  let session: Session | undefined;
   try {
+    session = Session.open(f.workspace, { config: f.config });
+    await runtime.bindSession!(session);
+    const owner = session.id;
     const tools = runtime.buildTools(f.config, owner);
     const launched = JSON.parse(await selected(tools, 'agent').execute(
-      { prompt: 'hold', background: true }, { ...f.context, allowShell: true })) as { id: string };
+      { prompt: 'hold', background: true }, { ...f.context, session, allowShell: true })) as { id: string };
     await started;
     assert.equal(runtime.backgroundWorkCount!(owner), 1);
     assert.equal(runtime.stopBackground!(owner), 1);
@@ -405,7 +566,7 @@ test('stopBackground aborts a running child agent instead of only counting it', 
     assert.equal(status, 'cancelled');
     assert.equal(runtime.backgroundWorkCount!(owner), 0);
     assert.equal(runtime.stopBackground!(owner), 0);
-  } finally { await runtime.close(); f.cleanup(); }
+  } finally { await runtime.close(); session?.close(); f.cleanup(); }
 });
 
 test('backgroundWorkCount excludes completed child agents', async () => {
@@ -423,12 +584,15 @@ test('backgroundWorkCount excludes completed child agents', async () => {
       return reply('done');
     } };
   const runtime = await createRuntime(f.config, provider, f.controller.signal);
-  const owner = 'count-agents';
+  let session: Session | undefined;
   try {
+    session = Session.open(f.workspace, { config: f.config });
+    await runtime.bindSession!(session);
+    const owner = session.id;
     const tools = runtime.buildTools(f.config, owner);
     const agent = selected(tools, 'agent');
     const first = JSON.parse(await agent.execute(
-      { prompt: 'finish', background: true }, { ...f.context, allowShell: true })) as { id: string };
+      { prompt: 'finish', background: true }, { ...f.context, session, allowShell: true })) as { id: string };
     const list = selected(tools, 'list_agents');
     for (let attempt = 0; attempt < 200 && await childStatus(list, first.id, f.context) !== 'completed'; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -437,7 +601,7 @@ test('backgroundWorkCount excludes completed child agents', async () => {
 
     hold = true;
     const second = JSON.parse(await agent.execute(
-      { prompt: 'hold', background: true }, { ...f.context, allowShell: true })) as { id: string };
+      { prompt: 'hold', background: true }, { ...f.context, session, allowShell: true })) as { id: string };
     await started;
     // The completed sibling stays in the registry but does not count as live work.
     assert.equal(runtime.backgroundWorkCount!(owner), 1);
@@ -448,7 +612,7 @@ test('backgroundWorkCount excludes completed child agents', async () => {
     assert.equal(await childStatus(list, second.id, f.context), 'cancelled');
     assert.equal(runtime.backgroundWorkCount!(owner), 0);
     assert.equal(runtime.stopBackground!(owner), 0);
-  } finally { await runtime.close(); f.cleanup(); }
+  } finally { await runtime.close(); session?.close(); f.cleanup(); }
 });
 
 test('effort settings accepts exactly five levels without introducing a default', () => {

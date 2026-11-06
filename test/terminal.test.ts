@@ -6,12 +6,31 @@ import { inputCursor, layoutInput } from '../src/tui-input-navigation.js';
 import { At } from '../src/tui-input-cursor.js';
 import { InputUndo } from '../src/tui-input-undo.js';
 import { InputPaste, expandPastedText } from '../src/tui-input-paste.js';
-import { cellWidth, createEditorState, createTerminalInput, decodeTerminalKeybindings, layoutEditor, MAX_PASTE_BYTES,
+import { cellWidth, commitTerminalOutput, createEditorState, createTerminalInput, decodeTerminalKeybindings, layoutEditor, MAX_PASTE_BYTES,
   questionPreviewText, reduceEditor, TerminalKeyDecoder, type EditorAction, type EditorState } from '../src/terminal.js';
 
 function edit(actions: EditorAction[], initial = createEditorState()): EditorState {
   return actions.reduce((state, action) => reduceEditor(state, action).state, initial);
 }
+
+test('output commit waits for each write and rejects failed or closed streams', async () => {
+  const callbacks: ((error?: Error | null) => void)[] = [];
+  const writes: string[] = [];
+  const stream = new Writable({ write(chunk, _encoding, callback) { writes.push(String(chunk)); callbacks.push(callback); } });
+  let firstDone = false;
+  const first = commitTerminalOutput(stream, 'first\nsecond\n').then(() => { firstDone = true; });
+  const second = commitTerminalOutput(stream, 'third\n');
+  assert.equal(firstDone, false);
+  assert.deepEqual(writes, ['first\nsecond\n']);
+  callbacks.shift()!();
+  await first;
+  assert.deepEqual(writes, ['first\nsecond\n', 'third\n']);
+  callbacks.shift()!(new Error('write failed'));
+  await assert.rejects(second, /write failed/);
+  const closed = new Writable({ write(_chunk, _encoding, callback) { callback(); } });
+  closed.destroy();
+  await assert.rejects(commitTerminalOutput(closed, 'lost'), /closed before delivery/);
+});
 test('question previews use the recovered sanitise pass', () => {
   const withheld = '(preview cannot be shown in full — compare the option labels and descriptions instead)';
   assert.equal(questionPreviewText(undefined), undefined);

@@ -1,0 +1,29 @@
+{
+  "scope": "W183 bounded live permission owner, skill clone, direct/registry child and config branch",
+  "frozen": true,
+  "independentRecheck": {"pass":true,"originalSkillResult":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-skill-clone-after-result.json","liveOwnerResult":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-live-owner-after-result.json","distPeerHash":"6b9c7f91ca1e41d933383bc79d43a535dcdd52a40acef7a8632bc603091d276f","scope":"Original three skill cases, allowedTools replacement/CLI preservation, live parent deny, actual directory revoke, carry API and registry foreground/background"},
+  "coordinatorInteractiveCli": {"pass":true,"base":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-cli-gnovvO","identity":"8539b06cdec4c1776ddb7ac569b678da9c6da49698bf390971c809f56a973e7f","requests":6,"hookCalls":1,"effects":["first","second","third"],"modelBranch":true,"reload":true,"fixtureCorrection":"Original generated hook contained a literal newline inside single quotes; node --check reproduced syntax error. Escaped generated newline, no product change; complete CLI rerun passes."},
+  "identity": "8539b06cdec4c1776ddb7ac569b678da9c6da49698bf390971c809f56a973e7f",
+  "identityFile": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-final-identity.json",
+  "sources": [
+    {"module":"chunk-40cepjpq.js","sha256":"473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2","symbol":"yn","range":[123604,125280],"unit":"utf16","mode":"adapt"},
+    {"module":"chunk-sfn1dbxq.js","sha256":"4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da","symbols":["Bpn","FVt"],"ranges":[[3364776,3365022],[3365082,3365484]],"unit":"utf16","mode":"adapt"},
+    {"module":"chunk-9v9tsk0a.js","sha256":"9432c6916e8b64a43f1221dd00cb5f6cff25f11a4987062165d7c90033138c1c","symbols":["gDr","P"],"ranges":[[2364,3793],[4068,4132]],"unit":"utf16","mode":"adapt"}
+  ],
+  "changedPaths":["src/permissions.ts","src/session.ts","src/agent.ts","src/agent-registry.ts","src/subagents.ts","src/skill-runtime.ts","src/interactive.ts","test/agent-lifecycle.test.ts"],
+  "validation": {
+    "check":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-check-final2.txt",
+    "build":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-build-final.txt",
+    "affected":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-affected-final.txt",
+    "affectedResult":"168 passed, 0 failed",
+    "compiledDriver":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-compiled.mjs",
+    "compiledResult":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-compiled-final.json",
+    "compiledCases":"original three inline marker cases; allow/deny after launch across direct, foreground, background, skill foreground/background; owner isolation; reload carry, managed-only allow clearing, retained alias observations",
+    "interactiveCli":"attempt failed waiting for approval; no passing CLI branch claim",
+    "interactiveCliLog":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-live-cli-error-final.txt"
+  },
+  "remaining":["Local interactive PLAN restoration is unimplemented. H9n/LBs were read, but product submit_plan only returns approval and has no EnterPlanMode/ExitPlanMode or trusted permissionMode attachment producers.","No generic SDK worker metadata restoration or permission JSONL serialization was introduced.","Interactive CLI configbranch/reload acceptance remains pending; compiled public-module effects passed.","Full W183 remains open, including independent original probe acceptance and separate queued work."],
+  "explicitModeReview": {"verdict":"potential regression refuted","result":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-command-mode-independent-result.json","scope":"Actual compiled applyConfig condition passes preserveMode=false on changed config mode; public Session API confirms plan/dontAsk effective gates. No stdin dispatch claim or product fix needed."},
+  "ownership":"Session.permissionOwner supplies live state and vetted directory roots. carryPermissions migrates in-memory buckets/content owner/retained observations only; existing pending writes, drain and persistence result ownership remain unchanged.",
+  "constraints":"No delegation, staging, commit, push, recovered entrypoint execution, paid upstream or external network. Shared CURRENT/FEATURES/ports reserved to coordinator. Existing session.ts.rej preserved."
+}

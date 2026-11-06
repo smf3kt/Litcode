@@ -1,0 +1,5 @@
+
+> litcode@0.1.0 notices
+> node scripts/dependency-notices.mjs
+
+{"installed":38,"missingText":["@esbuild/darwin-arm64","@xterm/headless","emoji-regex","ignore","standardwebhooks"],"sha256":"46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7"}

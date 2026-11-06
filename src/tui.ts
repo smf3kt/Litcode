@@ -28,6 +28,7 @@ import { execFile } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
+import { commitTerminalOutput } from './terminal.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
 import type { PromptPrediction, PromptSuggestion } from './prompt-suggestions.js';
@@ -630,6 +631,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   });
   private progressRenderer: TuiDocumentRenderer | undefined;
   private progressHeight = 0;
+  private readonly agentProgress = new Map<string, import('@anthropic-ai/sdk/resources/messages').ToolUseBlockParam[]>();
   /** Source `showDrainedShellLine`: the live row a running drained command owns. */
   private drainedShell: import('./tools.js').ShellProgress | undefined;
   private shellInteraction: ShellProgressInteraction | undefined;
@@ -1323,7 +1325,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     else if (this.submittedTurns > 0) this.queryCompletionTime = Date.now();
     this.idleNotification?.refresh();
     this.spinnerTips?.setActive(running);
-    if (!running) { this.progress.stop(); this.diffPanel?.refresh(); }
+    if (!running) { this.agentProgress.clear(); this.progress.stop(); this.diffPanel?.refresh(); }
     this.dispatch({ type: 'running', value: running });
   }
 
@@ -1346,6 +1348,19 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.setTerminalProgress(event.kind === 'start' ? 'indeterminate'
       : event.kind === 'finish' ? 'completed' : this.terminalProgressState);
     this.render();
+  }
+
+  // mmt/Y4, phg89898 [240913,242933), 24k7d6mw [1523500,1524900), UTF-16.
+  setAgentProgress(toolUseId: string, message: import('@anthropic-ai/sdk/resources/messages').ToolUseBlockParam): void {
+    if (this.closed || !this.running) return;
+    const messages = this.agentProgress.get(toolUseId) ?? [];
+    messages.push(message); this.agentProgress.set(toolUseId, messages); this.render();
+  }
+
+  clearAgentProgress(toolUseId?: string): void {
+    if (toolUseId === undefined) this.agentProgress.clear();
+    else this.agentProgress.delete(toolUseId);
+    if (!this.closed) this.render();
   }
 
   /** `progressBar`'s live switch: disabling clears any indicator already on screen. */
@@ -2244,6 +2259,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   writeNotice(text: string): void {
     if (!this.isTTY || !this.started || this.closed) { this.options.output.write(text.endsWith('\n') ? text : `${text}\n`); return; }
     if (text) this.append({ kind: 'system', text });
+  }
+
+  // Host journal delivery rewrite; Aje, chunk-06azbynj [320841,328782), UTF-16,
+  // has no complete-notice write acknowledgement. Keep the entry scrollable.
+  async commitNotice(text: string): Promise<void> {
+    if (this.closed || !this.started) throw new Error('Terminal closed before delivery');
+    this.writeNotice(text);
+    const safe = text.replace(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/g, '�');
+    await commitTerminalOutput(this.options.output, `\r\n${safe.replace(/\n/g, '\r\n')}\r\n`);
+    if (this.closed) throw new Error('Terminal closed during delivery');
+    this.renderer?.invalidate();
+    this.render();
   }
 
   /** U [20040,21857), Ip [113052,114313), UTF-16: system display retains the unfitted fields. */
@@ -5016,18 +5043,26 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `Y4` (chunk-24k7d6mw.js 1524370): the progress region holds every entry in the
     // store, so a drained shell's live row shares it with the agent's own progress.
     const drained = this.drainedShell === undefined ? [] : this.renderDrainedShell(columns, rows);
+    const childRows = [...this.agentProgress.values()].flatMap(messages => {
+      if (rows < 16) return [pad(`In progress… · ${messages.length} tool ${messages.length === 1 ? 'use' : 'uses'} · ctrl+o to expand`.slice(0, columns), columns)];
+      // The existing agent transcript adapter owns host tool names and inputs.
+      const shown = messages.slice(-3).map(message => pad(`  ${message.name} ${JSON.stringify(message.input)}`.slice(0, columns), columns));
+      const hidden = messages.length - shown.length;
+      if (hidden) shown.push(pad(`… +${hidden} tool ${hidden === 1 ? 'use' : 'uses'}`.slice(0, columns), columns));
+      return shown;
+    });
     this.shellRows = Math.min(drained.length, maximum);
     const pinned = this.renderMaxEffortTip(columns);
     if (!this.progress.running && !this.progress.hasTasks) {
       this.progressRenderer?.renderElement(null, columns);
-      const visible = [...drained, ...pinned].slice(0, maximum);
+      const visible = [...drained, ...childRows, ...pinned].slice(0, maximum);
       this.progressHeight = visible.length;
       return visible;
     }
     this.progressRenderer ??= new TuiDocumentRenderer();
     const content = this.progressRenderer.renderElement(this.progress.element(columns), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides, terminalRows:rows}).map(row => row.ansi);
-    const visible = [...drained, ...content, ...pinned].slice(0, maximum);
+    const visible = [...drained, ...childRows, ...content, ...pinned].slice(0, maximum);
     this.progressHeight = visible.length;
     return visible;
   }

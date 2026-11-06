@@ -1,0 +1,13 @@
+{
+  "imports": [],
+  "exports": [],
+  "blocks": [
+    {
+      "range": [
+        null,
+        null
+      ],
+      "note": "closure probe"
+    }
+  ]
+}

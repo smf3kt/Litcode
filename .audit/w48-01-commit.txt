@@ -1,0 +1,19 @@
+[work/w43-choice-preview 883940f] Reclaim checkpoint staging left by a crashed writer
+ 23 files changed, 4405 insertions(+), 13 deletions(-)
+ create mode 100644 .audit/w48-01-build.txt
+ create mode 100644 .audit/w48-01-chain.txt
+ create mode 100644 .audit/w48-01-full.txt
+ create mode 100644 .audit/w48-01-identity.txt
+ create mode 100644 .audit/w48-01-index.txt
+ create mode 100644 .audit/w48-01-notices.txt
+ create mode 100644 .audit/w48-01-records.mjs
+ create mode 100644 .audit/w48-01-rewind.txt
+ create mode 100644 .audit/w48-01-smoke-compiled.txt
+ create mode 100644 .audit/w48-01-smoke.txt
+ create mode 100644 .audit/w48-01-test.txt
+ create mode 100644 .audit/w48-01-tsc.txt
+ create mode 100644 .audit/w48-runtime.todo.md
+ create mode 100644 .audit/w48-runtime.tsv
+ create mode 100644 research/ports/W04-crash-recovery.md
+ create mode 100644 research/ports/W48-checkpoint-staging-evidence.json
+ create mode 100644 research/ports/W48-checkpoint-staging.md

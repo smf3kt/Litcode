@@ -1,0 +1,2 @@
+2026-10-18T05:40:00Z	package	W138-01 SessionEnd失败记录显示	按uvt仅对失败且output非空的记录生成`SessionEnd hook [label] failed: output`；abort/timeout为Hook cancelled	显示绕过suppressOutput且无前缀；成功context不再显示；pending集成无来源行	聚焦138/138；全量2240/2240；tsc 0
+2026-10-18T05:42:00Z	verification	W138-01 验收：build 0、notices 0、identity 23bfdb9f…	dist重建	.audit/w138-runtime.todo.md

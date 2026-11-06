@@ -2,14 +2,16 @@ import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Agent, assertPaired } from './agent.js';
+import { Agent, assertPaired, type AgentEvents } from './agent.js';
 import { Session, fingerprint, readSessionJournal, type SessionConfig } from './session.js';
-import { instructionSources, rebaseChildInstructions } from './config.js';
+import { instructionSources, loadProjectConfig, loadSkillsFromDirectories, rebaseChildInstructions, type SkillInfo } from './config.js';
 import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
+import { readSkillScope, readSkillScopeWitness, writeSkillScope, type SkillScope } from './skill-scope.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import type { HookCommandHome } from './hooks.js';
-import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, type LivePermissionOwner } from './permissions.js';
+import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, childPermissionState, bindPermissionOwner, type LivePermissionOwner, type PermissionDecision } from './permissions.js';
+import { prepareSkillHooks, skillToolApproval } from './skill-runtime.js';
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
 import { capChildOutput, childConfig, childPromptSuffix, instructionEndMarkers, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
@@ -38,6 +40,7 @@ export type AgentNotification = { kind: 'agent'; sequence: number; agent: AgentD
   subscription?: { id: string; state: 'idle' | 'expired' } };
 export type AgentPollResult = { revision: number; changed: boolean; agents: { id: string; status: AgentStatus }[] };
 export type AgentIdleSubscription = { id: string; agent_id: string; expires_ms: number };
+export type SessionApproval = (tool: ToolDefinition, input: unknown, decision: PermissionDecision, signal: AbortSignal) => Promise<PermissionDecision>;
 export type AgentRegistryLimits = {
   maxConcurrency: number; maxHistory: number; maxMailboxCount: number; maxMailboxBytes: number;
   maxMessageBytes: number; maxAgentMessages: number; maxJournalEvents: number; maxJournalBytes: number;
@@ -46,6 +49,9 @@ export type AgentRegistryLimits = {
 };
 export type AgentRegistryOptions = ChildHookOptions & AdvancedChildOptions & {
   source: SessionConfig | (() => SessionConfig); provider: ModelProvider; tools: ToolDefinition[];
+  parentSessionId?: string;
+  requireSessionOwner?: boolean;
+  sessionOwner?: () => Session | undefined;
   signal?: AbortSignal; onNotification?: (event: AgentNotification) => void;
   onChange?: () => void;
   limits?: Partial<AgentRegistryLimits>;
@@ -132,7 +138,9 @@ type Child = {
   structured?: StructuredOutputState;
   liveOwner: LivePermissionOwner; adoptionOnly: boolean;
   prompt: string; startedAt: number; endedAt?: number; progress: AgentProgressTracker; streamedChars: number;
-  backgrounded: boolean; history?: AgentHistoryHeader; coldJournal?: { bytes: number; sha256: string }; historyInvalid?: boolean;
+  backgrounded: boolean; history?: AgentHistoryHeader; coldJournal?: { bytes: number; sha256: string }; historyInvalid?: boolean; coldRootVerified?: boolean;
+  skillContinuation?: { scope: SkillScope; path: string; hooks: string; update: (skill: SkillInfo) => void; first: boolean; approvalValid?: () => boolean };
+  coldSkillScope?: SkillScope;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -154,6 +162,8 @@ export class AgentRegistry {
   private closing?: Promise<void>;
   private history?: AgentHistoryStore;
   private historyParent?: string;
+  private historySession?: Session;
+  private approval?: { callback: SessionApproval; controller: AbortController };
   private readonly onAbort = () => { void this.close(); };
 
   constructor(private readonly options: AgentRegistryOptions) {
@@ -168,6 +178,41 @@ export class AgentRegistry {
 
   private source(): SessionConfig {
     return typeof this.options.source === 'function' ? this.options.source() : this.options.source;
+  }
+
+  // Host ownership adaptation for source iye, sfn1dbxq [3368429,3370821), UTF-16.
+  childSkillTools(session: Session, parent: Session): ToolDefinition[] | undefined {
+    const child = this.children.get(session.id);
+    if (this.closed || !parent.isOpen || !session.isOpen || this.historySession !== parent ||
+        this.options.sessionOwner?.() !== parent || child?.session !== session || child.controller.signal.aborted) return undefined;
+    return child.tools;
+  }
+
+  // zyn, 9dhv0d4w [1892,4679), UTF-16: the child receives its caller's live permission callback.
+  bindApproval(callback: SessionApproval): () => void {
+    this.assertOpen();
+    this.approval?.controller.abort();
+    const binding = { callback, controller: new AbortController() };
+    this.approval = binding;
+    return () => { if (this.approval === binding) { this.approval = undefined; binding.controller.abort(); } };
+  }
+
+  captureApprovalGeneration(): () => boolean {
+    const binding = this.approval;
+    return () => !this.closed && this.approval === binding;
+  }
+
+  private requireApprovalGeneration(): () => boolean {
+    if (!this.approval || this.closed) throw new Error('Session approval unavailable');
+    return this.captureApprovalGeneration();
+  }
+
+  async requestApproval(tool: ToolDefinition, input: unknown, decision: PermissionDecision, signal: AbortSignal): Promise<PermissionDecision> {
+    const binding = this.approval;
+    if (this.closed || signal.aborted || !binding) return { decision: 'deny', reason: 'Session approval unavailable' };
+    const result = await binding.callback(tool, input, decision, AbortSignal.any([signal, binding.controller.signal]));
+    return this.closed || signal.aborted || this.approval !== binding
+      ? { decision: 'deny', reason: 'Session approval unavailable' } : result;
   }
 
   private livePermissionOwner(): LivePermissionOwner {
@@ -187,14 +232,17 @@ export class AgentRegistry {
   // fQo/VOe/kn, sfn1dbxq [4234807,4235398), 24k7d6mw [339498,340137), qw2csqy5 [9345,31492), UTF-16.
   bindHistory(parent: Session): string[] {
     this.assertOpen();
+    if (!parent.isOpen || (this.options.requireSessionOwner && this.options.parentSessionId !== parent.id))
+      throw new Error('Child history requires its open owning session');
     if (this.historyParent !== undefined) {
       if (this.historyParent !== parent.id) throw new Error('Child history is already bound to another parent');
+      if (this.historySession !== parent) throw new Error('Child history is already bound to another session instance');
       return [];
     }
     if (parent.config.workspace !== this.source().workspace) throw new Error('Child history parent workspace mismatch');
     const store = new AgentHistoryStore(parent, this.limits.maxJournalBytes, this.limits.maxHistory);
-    const { records, warnings } = store.read();
-    this.history = store; this.historyParent = parent.id;
+    const { records, warnings, candidates } = store.read();
+    this.history = store; this.historyParent = parent.id; this.historySession = parent;
     const existingNames = new Set([...this.children.values()].flatMap(child => child.view.name ? [child.view.name] : []));
     for (const record of records) {
       if (record.state.kind !== 'settled' || this.children.has(record.id) || this.children.size >= this.limits.maxHistory) continue;
@@ -203,7 +251,12 @@ export class AgentRegistry {
           maxBytes: this.limits.maxJournalBytes, maxEvents: this.limits.maxJournalEvents,
         }, record.state.journal);
         const meta = events[0], state = record.state;
+        if (meta?.kind === 'metadata' && meta.config.parentPlanId !== record.parentPlanId) {
+          throw new Error('Child history parent plan witness mismatch');
+        }
         if (meta?.kind !== 'metadata' || meta.fingerprint !== record.fingerprint || meta.config.childMode === undefined
+          || (meta.config.parentSessionId !== undefined && meta.config.parentSessionId !== parent.id)
+          || (candidates.has(record.id) && meta.config.parentSessionId !== parent.id)
           || fingerprint({ ...state.config, skills: meta.config.skills, heldSkills: meta.config.heldSkills,
             dynamicSkillDirs: meta.config.dynamicSkillDirs, system: meta.config.system }) !== meta.fingerprint) {
           throw new Error('Child history configuration mismatch');
@@ -214,9 +267,11 @@ export class AgentRegistry {
         if (events.findLast(event => event.kind === 'turn_end' || event.kind === 'message' || event.kind === 'compact')?.kind !== 'turn_end') {
           throw new Error('Child journal has an unfinished turn');
         }
+        const coldSkillScope = this.validateColdSkillScope(path.join(path.dirname(parent.file), `${record.id}.jsonl`), record.skillName);
         const messages = events.flatMap(event => event.kind === 'message' ? [event.message] : []);
         assertPaired(messages);
         const tools = this.restoredTools(meta.config);
+        if (candidates.has(record.id)) store.commitCandidate(record);
         const controller = new AbortController();
         if (state.status !== 'completed') controller.abort();
         const progress = createAgentProgress();
@@ -237,11 +292,37 @@ export class AgentRegistry {
           liveOwner: this.livePermissionOwner(), adoptionOnly: false,
           prompt: record.prompt, startedAt: record.startedAt, endedAt: state.endedAt, progress, streamedChars: 0,
           backgrounded: record.backgrounded, fork: record.fork, history, coldJournal: state.journal,
+          ...(coldSkillScope ? { coldSkillScope } : {}),
           journalEvents: events.length, journalBytes: events.reduce((sum, event) => sum + Buffer.byteLength(JSON.stringify(event)) + 1, 0),
         });
       } catch (error) { warnings.push(`${record.id}: ${error instanceof Error ? error.message : String(error)}`); }
     }
     return warnings;
+  }
+
+  // kn, qw2csqy5 [11500,19000), UTF-16: retain scoped history before binding its live owner.
+  private validateColdSkillScope(journal: string, skillName?: string): SkillScope | undefined {
+    const result = readSkillScope(journal);
+    if (result.status === 'absent' && skillName === undefined) return;
+    if (result.status !== 'valid') throw new Error('Child skill scope is missing or malformed');
+    if (skillName !== result.scope.skillName) throw new Error('Child skill history identity mismatch');
+    if (readSkillScopeWitness(journal) !== result.scope.skillName) throw new Error('Child skill scope witness mismatch');
+    const skill = this.currentSkill(result.scope.skillName);
+    if (result.scope.skillPath !== skill.path || result.scope.hookIdentity !== JSON.stringify(skill.hooks ?? null)) {
+      throw new Error('Child skill identity or hook approvals changed');
+    }
+    return result.scope;
+  }
+
+  // kn, qw2csqy5 [11500,19000), UTF-16: resolve the current skill at continuation.
+  private currentSkill(name: string): SkillInfo {
+    const current = this.source();
+    const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks: 'preview' });
+    const skills = [...loaded.skills];
+    skills.push(...loadSkillsFromDirectories(current.dynamicSkillDirs ?? [], new Set(skills.map(skill => skill.name)), current.workspace));
+    const skill = skills.find(candidate => candidate.name === name);
+    if (!skill || skill.context !== 'fork' || skill.mode === 'off') throw new Error('Child skill no longer resolves to an enabled fork skill');
+    return skill;
   }
 
   private restoredTools(config: SessionConfig): ToolDefinition[] {
@@ -267,15 +348,25 @@ export class AgentRegistry {
       journal = fs.readFileSync(fd);
     } finally { fs.closeSync(fd); }
     const boundary = journal.lastIndexOf(10) + 1;
+    const witness = { bytes: boundary, sha256: createHash('sha256').update(journal.subarray(0, boundary)).digest('hex') };
     this.history.write({ ...child.history, state: { kind: 'settled', status, summary: child.view.summary,
       error: child.view.error, reason: child.view.reason, modelCalls: child.view.model_calls,
       endedAt: child.endedAt ?? Date.now(), config: child.config,
-      journal: { bytes: boundary, sha256: createHash('sha256').update(journal.subarray(0, boundary)).digest('hex') } } });
+      journal: witness } });
+    child.coldJournal = witness;
   }
 
   private assertOpen(signal?: AbortSignal): void {
     signal?.throwIfAborted();
     if (this.closed || this.options.signal?.aborted) throw new Error('Agent registry is closed');
+  }
+
+  // dne, sfn1dbxq [4233793,4234807), UTF-16: adapt source owner identity to the host's Session instance.
+  assertCaller(session?: Session): void {
+    if (this.options.requireSessionOwner && session !== undefined &&
+        (session !== this.historySession || !session.isOpen || this.options.sessionOwner?.() !== session)) {
+      throw new Error('Agent execution session does not match the tool owner');
+    }
   }
 
   private resolve(selector: string): Child {
@@ -441,10 +532,24 @@ export class AgentRegistry {
   // dne/iCn, sfn1dbxq [4233793,4234807)/[4219665,4219883), UTF-16: retain launch data and progress.
   async launch(raw: AgentLaunch, callerSignal?: AbortSignal, execution?: {
     config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[]; initialPrompt?: string;
-    beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal, workspace: string) => Promise<void>;
-    permissionOwner?: LivePermissionOwner; hookHomes?: ReadonlyMap<string, HookCommandHome>;
-  }, conversation?: readonly Anthropic.MessageParam[]): Promise<AgentDescriptor> {
+    beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal, workspace: string, planOwnership?: import('./plan-file.js').PlanOwnership) => Promise<void>;
+    permissionOwner?: LivePermissionOwner; hookHomes?: ReadonlyMap<string, HookCommandHome>; skillScope?: SkillScope;
+    skillContinuation?: { path: string; hooks: string; update: (skill: SkillInfo) => void; approvalValid?: () => boolean };
+  }, conversation?: readonly Anthropic.MessageParam[], callerSession?: Session,
+    progress?: ToolContext['agentProgress']): Promise<AgentDescriptor> {
     this.assertOpen(callerSignal);
+    // EE, 27et44g8 [14843,14970), UTF-16: child plan identity comes from the current session.
+    // The host's unbound catalog sentinel is not a session and cannot be persisted as one.
+    const assertOwner = () => {
+      if ((this.options.requireSessionOwner && (!this.historySession?.isOpen || this.historySession.id !== this.options.parentSessionId ||
+          this.options.sessionOwner?.() !== this.historySession)) ||
+          (this.options.parentSessionId === 'initial' && this.historyParent === undefined))
+        throw new Error('Agent execution requires session-owned tools: bind a session and use buildTools(config, session.id)');
+    };
+    assertOwner();
+    // dne, sfn1dbxq [4233793,4234807), UTF-16: adapt the invocation owner to the host Session object.
+    if (this.options.requireSessionOwner && callerSession !== undefined && callerSession !== this.historySession)
+      throw new Error('Agent execution session does not match the tool owner');
     const args: AgentLaunch = (this.options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw);
     const structuredState: StructuredOutputState | undefined = args.structured_schema === undefined ? undefined : (() => {
       try { return { compiled: compileStructuredOutputSchema(args.structured_schema), attempts: 0 }; }
@@ -524,7 +629,14 @@ export class AgentRegistry {
       ...(execution.beforeTool ? { permissions: { mode: 'bypass' as const, allow: [], deny: [] } } : {}),
     } : parent;
     let config = childConfig(inherited, selected, launch);
-    if (bashCommandClamp !== undefined) config = { ...config, bashCommandClamp };
+    // EE, chunk-27et44g8.js [14843,14970), UTF-16: source children share a session owner.
+    // EE, chunk-27et44g8.js [14843,14970), UTF-16: source children share a session owner.
+    const parentSessionId = this.historyParent ?? this.options.parentSessionId;
+    if (parentSessionId !== undefined) config.parentSessionId = parentSessionId;
+    if (this.historySession) config.parentPlanId = this.historySession.config.parentPlanId ?? this.historySession.planId;
+    // de, chunk-p46ep603.js UTF-16 [4120,5234): append each invocation layer.
+    if (bashCommandClamp !== undefined) config = { ...config,
+      bashCommandClamp: [...(config.bashCommandClamp ?? []), ...bashCommandClamp] };
     if (stallMs !== undefined) config = { ...config, stallMs };
     if (structuredState !== undefined) config = { ...config, system: config.system + STRUCTURED_OUTPUT_SYSTEM_NOTE };
     const controller = new AbortController();
@@ -563,18 +675,23 @@ export class AgentRegistry {
         selected = environment.tools;
       }
       this.assertOpen(controller.signal);
+      // dne, sfn1dbxq [4233793,4234807), UTF-16: host Session ownership must survive preparation.
+      assertOwner();
       const tools = selected.map(tool => {
         if (!execution) return tool;
         const authorize = async (input: unknown, context: ToolContext): Promise<ToolContext> => {
           context.signal.throwIfAborted();
-          const decision = permissionDecision(execution.permissionOwner ? scopedPolicy() : parentPolicy(), tool, input, undefined, config.workspace);
-          const scopedDecision = permissionDecision(scopedPolicy(), tool, input, undefined, config.workspace);
+          const plan = context.planMode?.ownership;
+          const decision = permissionDecision(execution.permissionOwner ? scopedPolicy() : parentPolicy(), tool, input,
+            { ...liveOwner.state(), planOwnership: plan }, config.workspace);
+          const scopedDecision = permissionDecision(scopedPolicy(), tool, input,
+            { ...liveOwner.state(), planOwnership: plan }, config.workspace);
           if (scopedDecision.decision === 'deny') throw new Error(scopedDecision.reason ?? 'Child permission denied tool');
           if (decision.decision === 'deny') throw new Error(decision.reason ?? 'Parent permission denied child tool');
           if ((decision.decision === 'ask' || scopedDecision.decision === 'ask') && !beforeTool) {
             throw new Error(decision.reason ?? scopedDecision.reason ?? 'Parent permission requires approval');
           }
-          await beforeTool?.(tool, input, context.signal, config.workspace);
+          await beforeTool?.(tool, input, context.signal, config.workspace, plan);
           context.signal.throwIfAborted();
           return { ...context, ...(liveOwner ? { workingDirectories: liveOwner.workingDirectories } : {}), workspace: config.workspace, allowShell: context.allowShell && allowShell };
         };
@@ -594,7 +711,11 @@ export class AgentRegistry {
       const seedBoundary = seededFork && messages.length ? 'fork_seed' : preloads.length ? 'skill_preload' : undefined;
       const seedBoundaryBytes = seedBoundary ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: seedBoundary })) + 1 : 0;
       if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + preloads.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
-      session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
+      const identityParent = !environment && !seededFork && !execution && this.options.requireSessionOwner ? this.historySession : undefined;
+      session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}),
+        ...(identityParent ? { childRoot: { parent: identityParent, isOwner: () => !this.closed &&
+          this.historySession === identityParent && this.options.sessionOwner?.() === identityParent } } : {}) });
+      if (execution?.skillScope) writeSkillScope(session.file, execution.skillScope);
       if (execution?.beforeTool) session.inheritPermissionAdoption(liveOwner);
       else session.inheritPermissions(liveOwner);
       for (const message of messages) session.append({ kind: 'message', message });
@@ -604,6 +725,8 @@ export class AgentRegistry {
       hooks = createChildHookLifecycle(session, this.options, execution?.hookHomes);
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,
+        // Foreground agent progress, wj6fycw8 [38800,42500), UTF-16.
+        toolUse: message => { if (!args.background && !child?.backgrounded && !callerSignal?.aborted) progress?.(childId, message); },
         textStart: () => { if (child) this.beginResponse(child); },
         text: text => { if (child) this.streamResponse(child, text); },
         // A denying PermissionRequest hook with `interrupt:true` aborts this
@@ -623,12 +746,14 @@ export class AgentRegistry {
         accepted: 0, session, agent, hooks, ...(execution?.hookHomes ? { hookHomes: execution.hookHomes } : {}),
         journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
+        ...(execution?.skillScope && execution.skillContinuation ? { skillContinuation: { scope: execution.skillScope, ...execution.skillContinuation, first: true } } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
       };
       // ad, 40cepjpq [120014,120794), UTF-16.
-      if (this.history && !execution && !environment && !structuredState && !disallowedTools && !bashCommandClamp && stallMs === undefined) {
+      if (this.history && (!execution || execution.skillScope) && !environment && !structuredState && !disallowedTools && !bashCommandClamp && stallMs === undefined) {
         child.history = this.history.header(session, { name: child.view.name, prompt: args.prompt, backgrounded: child.backgrounded,
-          fork: seededFork, startedAt: child.startedAt, ...(args.subagent_type ? { subagentType: args.subagent_type } : {}) });
+          fork: seededFork, startedAt: child.startedAt, ...(args.subagent_type ? { subagentType: args.subagent_type } : {}),
+          ...(execution?.skillScope ? { skillName: execution.skillScope.skillName } : {}) });
         this.saveHistory(child, true);
       }
       this.enqueue(child, initialPrompt);
@@ -680,6 +805,12 @@ export class AgentRegistry {
       if (!child.worker) this.capacity();
       if (child.historyInvalid) throw new Error('Child journal continuity requires reconciliation');
       if (child.history) this.restoredTools(child.resumeConfig);
+      if (!child.worker && child.coldJournal && this.history && this.historySession?.isOpen) {
+        const current = this.history.read(), record = current.records.find(item => item.id === child.view.id);
+        child.coldRootVerified = !current.candidates.has(child.view.id) && record?.parent === this.historySession.id &&
+          record.state.kind === 'settled' && record.state.journal.bytes === child.coldJournal.bytes &&
+          record.state.journal.sha256 === child.coldJournal.sha256;
+      }
       const transcriptLength = child.transcript.length;
       this.enqueue(child, message, options.human);
       try { this.saveHistory(child, true); }
@@ -707,6 +838,11 @@ export class AgentRegistry {
   // _k, sfn1dbxq [4228512,4230112), UTF-16: stamp terminal task time through the owned stop path.
   async stop(selector: string): Promise<AgentDescriptor> {
     const child = this.resolve(selector);
+    // _k/Cfr, sfn1dbxq [4228512,4230112), dxp0113e [2037,2191), UTF-16: retain a terminal, unparked record.
+    if (!child.worker && terminal(child.view.status)) {
+      await this.releaseEnvironment(child);
+      return this.snapshot(child);
+    }
     child.controller.abort();
     child.mailbox = []; child.mailboxBytes = 0;
     if (child.worker) await child.worker;
@@ -753,7 +889,8 @@ export class AgentRegistry {
       throw new Error('Child journal limit reached');
     }
     const append = session.append.bind(session);
-    session.append = event => {
+    session.append = (...args: Parameters<Session['append']>) => {
+      const [event] = args;
       const bytes = Buffer.byteLength(JSON.stringify(event)) + 1;
       // Reserve one record and enough bytes to commit a failed turn boundary.
       const boundary = event.kind === 'turn_end';
@@ -761,7 +898,7 @@ export class AgentRegistry {
           child.journalBytes + bytes > this.limits.maxJournalBytes - (boundary ? 0 : 128)) {
         throw new Error('Child journal limit reached');
       }
-      append(event);
+      append(...args);
       child.journalEvents++; child.journalBytes += bytes;
       if (transcriptEvent(event)) {
         let replaced = false;
@@ -787,21 +924,112 @@ export class AgentRegistry {
   // IX, 40cepjpq [104577,115399); iYr/nsr, sfn1dbxq [4232306,4233793), UTF-16: owned run and terminal time.
   private async run(child: Child): Promise<void> {
     const signal = child.controller.signal;
+    let started = false;
+    let coldPermission: AgentEvents['permission'];
+    // kn, chunk-qw2csqy5.js [11500,19000), aNn, chunk-p46ep603.js
+    // [1284,1978), UTF-16: resolve and scope the current skill before hooks.
+    const prepareSkill = () => {
+      const continuation = child.skillContinuation;
+      if (!continuation) return;
+      if (continuation.first) {
+        continuation.first = false;
+        if (continuation.approvalValid && !continuation.approvalValid()) throw new Error('Session approval unavailable');
+        delete continuation.approvalValid;
+        return;
+      }
+      const journal = child.session!.file;
+      const scope = readSkillScope(journal);
+      if (scope.status !== 'valid' || scope.scope.skillName !== continuation.scope.skillName || scope.scope.attributionName !== continuation.scope.attributionName || scope.scope.effort !== continuation.scope.effort || scope.scope.skillPath !== continuation.path || scope.scope.hookIdentity !== continuation.hooks || readSkillScopeWitness(journal) !== continuation.scope.skillName) throw new Error('Child skill scope identity mismatch');
+      const skill = this.currentSkill(continuation.scope.skillName);
+      if (skill.path !== continuation.path || JSON.stringify(skill.hooks ?? null) !== continuation.hooks) throw new Error('Child skill identity or hook approvals changed');
+      continuation.update(skill);
+    };
     try {
       signal.throwIfAborted();
+      // kn, qw2csqy5 [11500,19000), aNn, p46ep603 [1284,1978), UTF-16.
+      if (child.coldSkillScope) {
+        const scope = this.validateColdSkillScope(path.join(this.source().workspace, '.agent', `${child.view.id}.jsonl`), child.coldSkillScope.skillName);
+        if (!scope || JSON.stringify(scope) !== JSON.stringify(child.coldSkillScope)) throw new Error('Child skill scope identity mismatch');
+        let currentSkill = this.currentSkill(scope.skillName);
+        const valid = this.requireApprovalGeneration();
+        const parentOwner = this.livePermissionOwner();
+        const owner: LivePermissionOwner = {
+          prepareAutoMode: () => parentOwner.prepareAutoMode?.(),
+          state: () => childPermissionState(parentOwner.state(), currentSkill.allowedTools),
+          workingDirectories: readOnly => parentOwner.workingDirectories(readOnly),
+          adoptUpdates: parentOwner.adoptUpdates,
+        };
+        const config = structuredClone(this.source());
+        bindPermissionOwner(config.permissions, parentOwner);
+        const options = { config, provider: this.options.provider, tools: this.options.tools, signal, source: 'user' as const,
+          requestPermission: this.requestApproval.bind(this) };
+        const prepared = await prepareSkillHooks(currentSkill, options, valid);
+        if (!valid()) throw new Error('Session approval unavailable');
+        const checkedScope = this.validateColdSkillScope(path.join(this.source().workspace, '.agent', `${child.view.id}.jsonl`), scope.skillName);
+        if (JSON.stringify(checkedScope) !== JSON.stringify(scope)) throw new Error('Child skill scope identity mismatch');
+        currentSkill = this.currentSkill(scope.skillName);
+        const beforeTool = skillToolApproval(() => currentSkill, options);
+        const approvals = new WeakMap<object, { tool: string; input: string; signal: AbortSignal }>();
+        // zyn [1892,4679), kn [22571,27805), UTF-16: retain the live caller approval across child authorization.
+        coldPermission = async request => {
+          if (!valid() || request.authorizationIdentity.signal.aborted || request.signal.aborted) return false;
+          const tool = this.restoredTools(child.resumeConfig).find(item => item.schema.name === request.tool);
+          if (!tool) return false;
+          const snapshot = JSON.stringify(request.input);
+          const result = await this.requestApproval(tool, request.input, { decision: 'ask', reason: request.reason }, request.signal);
+          if (!valid() || request.signal.aborted || request.authorizationIdentity.signal.aborted || JSON.stringify(request.input) !== snapshot || result.decision !== 'allow') return false;
+          approvals.set(request.authorizationIdentity, { tool: request.tool, input: snapshot, signal: request.signal });
+          return true;
+        };
+        const takeApproval = (tool: ToolDefinition, input: unknown, context: ToolContext): boolean => {
+          const identity = context.authorizationIdentity;
+          if (!identity) return false;
+          const approval = approvals.get(identity);
+          approvals.delete(identity);
+          return !!approval && valid() && !identity.signal.aborted && !context.signal.aborted &&
+            approval.signal === context.signal && approval.tool === tool.schema.name && approval.input === JSON.stringify(input);
+        };
+        child.tools = this.restoredTools(child.resumeConfig).map(tool => ({
+          ...tool,
+          async execute(input, context) {
+            if (!valid()) throw new Error('Session approval unavailable');
+            await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership, takeApproval(tool, input, context));
+            if (!valid()) throw new Error('Session approval unavailable');
+            return tool.execute(input, { ...context, workingDirectories: parentOwner.workingDirectories, allowShell: context.allowShell && config.allowShell });
+          },
+          ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
+            if (!valid()) throw new Error('Session approval unavailable');
+            await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership, takeApproval(tool, input, context));
+            if (!valid()) throw new Error('Session approval unavailable');
+            return tool.executeBlocks!(input, { ...context, workingDirectories: parentOwner.workingDirectories, allowShell: context.allowShell && config.allowShell });
+          } } : {}),
+        }));
+        child.liveOwner = owner;
+        child.hookHomes = prepared.hookHomes;
+        child.config.hooks = prepared.hooks;
+        child.skillContinuation = { scope, path: scope.skillPath!, hooks: scope.hookIdentity!, first: true,
+          approvalValid: valid, update: next => { currentSkill = next; } };
+        delete child.coldSkillScope;
+      }
       const resumed = !child.session;
       if (resumed) {
         // kn, qw2csqy5 [22571,24971)/[25405,27805), UTF-16; journal identity and live skill context have separate owners.
-        child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig,
-          ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
-        if (child.coldJournal) {
-          try {
-            readSessionJournal(child.config.workspace, child.view.session_id, {
-              maxBytes: this.limits.maxJournalBytes, maxEvents: this.limits.maxJournalEvents,
-            }, child.coldJournal);
-          } catch (error) { child.historyInvalid = true; throw error; }
-          delete child.coldJournal;
-        }
+        try {
+          const parent = this.historySession, journal = child.coldJournal, history = this.history;
+          const childRoot = parent && journal && history && this.options.requireSessionOwner && !child.fork && !child.history?.skillName
+            ? { parent, isOwner: () => !this.closed && this.historySession === parent && this.options.sessionOwner?.() === parent,
+              verifyHistory: () => {
+                const current = history.read();
+                const record = current.records.find(item => item.id === child.view.id);
+                return child.coldRootVerified === true && !current.candidates.has(child.view.id) &&
+                  record?.parent === parent.id && record.state.kind === 'active';
+              } } : undefined;
+          child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig,
+            ...(child.coldJournal ? { expectedJournal: child.coldJournal } : {}),
+            ...(childRoot ? { childRoot } : {}),
+            ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
+        } catch (error) { if (child.coldJournal) child.historyInvalid = true; throw error; }
+        delete child.coldJournal;
         for (const key of Object.keys(child.session.config)) {
           if (!Object.hasOwn(child.config, key)) Reflect.deleteProperty(child.session.config, key);
         }
@@ -812,6 +1040,7 @@ export class AgentRegistry {
         child.hooks = createChildHookLifecycle(child.session, this.options, child.hookHomes);
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
+          ...(coldPermission ? { permission: coldPermission } : {}),
           textStart: () => this.beginResponse(child), text: text => this.streamResponse(child, text),
           interruptTurn: () => child.controller.abort(new Error('Hook interrupt')),
           ...(child.structured ? { requiredTool: STRUCTURED_OUTPUT_TOOL_NAME } : {}),
@@ -822,9 +1051,14 @@ export class AgentRegistry {
       this.boundJournal(child);
       delete child.endedAt;
       child.view.status = 'running'; this.changed();
+      prepareSkill();
       await child.agent!.startSession(resumed ? 'resume' : child.fork ? 'fork' : 'startup', signal);
+      started = true;
+      let firstPrompt = true;
       while (child.mailbox.length) {
         signal.throwIfAborted();
+        if (!firstPrompt) prepareSkill();
+        firstPrompt = false;
         const prompt = child.mailbox.shift()!;
         child.mailboxBytes -= Buffer.byteLength(prompt.text);
         child.activeInput = prompt.displayId;
@@ -866,7 +1100,7 @@ export class AgentRegistry {
       }
     } finally {
       child.mailbox = []; child.mailboxBytes = 0;
-      try { await child.agent?.endSession(signal.aborted ? 'interrupt' : 'other'); }
+      try { if (started) await child.agent?.endSession(signal.aborted ? 'interrupt' : 'other'); }
       catch (error) {
         if (!signal.aborted) {
           child.view.status = 'failed';
@@ -911,6 +1145,11 @@ export class AgentRegistry {
     catch { /* Observer failures do not replace the child result. */ }
   }
 
+  peekNotifications(limit = 100): { events: AgentNotification[]; dropped: number } {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Invalid agent notification limit');
+    return { events: structuredClone(this.events.slice(0, limit)), dropped: this.dropped };
+  }
+
   drainNotifications(limit = 100): { events: AgentNotification[]; dropped: number } {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000) throw new Error('Invalid agent notification limit');
     const events = this.events.splice(0, limit);
@@ -939,6 +1178,7 @@ export class AgentRegistry {
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
+    this.approval?.controller.abort(); this.approval = undefined;
     this.options.signal?.removeEventListener('abort', this.onAbort);
     for (const subscription of this.subscriptions.values()) clearTimeout(subscription.timer);
     this.subscriptions.clear(); this.changed();
@@ -962,7 +1202,8 @@ export function createAgentRegistryTools(registry: AgentRegistry, options: { idl
   const tool = (name: string, description: string, properties: Record<string, unknown>, required: string[], readOnly: boolean,
     execute: (raw: unknown, context: ToolContext) => Promise<unknown>): ToolDefinition => ({
     schema: { name, description, input_schema: { type: 'object', properties, required, additionalProperties: false } }, readOnly,
-    async execute(raw, context) { context.signal.throwIfAborted(); return encode(await execute(raw, context), context); },
+    ...(name === 'agent' ? { concurrencySafe: (raw: unknown) => (options.enableAdvanced ? advancedLaunchSchema : launchSchema).safeParse(raw).success } : {}),
+    async execute(raw, context) { context.signal.throwIfAborted(); registry.assertCaller(context.session); return encode(await execute(raw, context), context); },
   });
   const tools = [
     tool('agent', 'Launch an isolated child agent. By default wait for completion; background returns child metadata immediately. Explore uses read-only tools. Children omit agent, mailbox, background and scheduler controls.', {
@@ -970,7 +1211,7 @@ export function createAgentRegistryTools(registry: AgentRegistry, options: { idl
       max_turns: { type: 'integer', minimum: 1, maximum: 30 }, name: { type: 'string', minLength: 1, maxLength: 128 },
       background: { type: 'boolean' }, model: { type: 'string', minLength: 1, maxLength: 256 },
       ...(options.enableAdvanced ? advancedChildProperties : {}),
-    }, ['prompt'], false, (raw, context) => registry.launch((options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw), context.signal, undefined, context.conversation)),
+    }, ['prompt'], false, (raw, context) => registry.launch((options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw), context.signal, undefined, context.conversation, context.session, context.agentProgress)),
     tool('list_agents', 'List this session owner\'s children, statuses, session IDs, names, summaries and errors.', {}, [], true,
       async raw => { z.object({}).strict().parse(raw); return registry.list(); }),
     options.idle ? tool('send_message', 'Queue an optional message and/or subscribe once to the child\'s next idle transition. Pure subscriptions leave the child task unchanged. The subscription expires after at most 30 minutes; completion and expiry are owner notifications.', {

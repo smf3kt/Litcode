@@ -1,5 +1,4 @@
-// Builds the peer-identity N-API addon where a compiler and headers exist.
-// Other hosts keep the package loadable and report identity as unverifiable.
+// Build native addons for the current installation host.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -10,9 +9,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "native/peer-identity/peer.c");
 const target = path.join(root, "native/peer-identity/peer.node");
 
-if (process.platform !== "darwin") {
-  console.log(`build-native: skipped (peer identity addon is macOS-only; platform=${process.platform})`);
-  process.exit(0);
+if (process.platform !== "darwin" && process.platform !== "linux") {
+  throw new Error(`build-native: skill effect locking unsupported on ${process.platform}`);
 }
 
 const require = createRequire(import.meta.url);
@@ -25,12 +23,22 @@ const headerCandidates = [
 ].filter(value => typeof value === "string" && value.length > 0);
 const include = headerCandidates.find(directory => fs.existsSync(path.join(directory, "node_api.h")));
 if (include === undefined) {
-  console.log("build-native: skipped (no node_api.h; set LITCODE_NODE_INCLUDE to build the addon)");
-  process.exit(0);
+  throw new Error("build-native: no node_api.h; install Node headers or set LITCODE_NODE_INCLUDE");
 }
 
-execFileSync("clang", ["-dynamiclib", "-undefined", "dynamic_lookup", "-DNAPI_VERSION=8", "-mmacosx-version-min=11.0",
-  "-I", include, "-o", target, source], { stdio: "inherit" });
-const loaded = require(target);
-if (typeof loaded.peer !== "function") throw new Error(`build-native: ${target} does not export peer()`);
-console.log(`build-native: built ${path.relative(root, target)} with headers from ${include}`);
+const flags = process.platform === "darwin"
+  ? ["-dynamiclib", "-undefined", "dynamic_lookup", "-mmacosx-version-min=11.0"]
+  : ["-shared", "-fPIC"];
+function build(input, output, symbol) {
+  execFileSync("cc", [...flags, "-DNAPI_VERSION=8", "-I", include, "-o", output, input], { stdio: "inherit" });
+  if (typeof require(output)[symbol] !== "function") throw new Error(`build-native: ${output} does not export ${symbol}()`);
+  console.log(`build-native: built ${path.relative(root, output)} with headers from ${include}`);
+}
+if (process.platform === "darwin") build(source, target, "peer");
+build(path.join(root, "native/file-lock/lock.c"), path.join(root, "native/file-lock/lock.node"), "lock");
+execFileSync("cc", ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-o",
+  path.join(root, "native/shell-supervisor/supervisor"), path.join(root, "native/shell-supervisor/supervisor.c")], { stdio: "inherit" });
+execFileSync("cc", ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-o",
+  path.join(root, "native/directory-read/read"), path.join(root, "native/directory-read/read.c")], { stdio: "inherit" });
+execFileSync("cc", ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-o",
+  path.join(root, "native/directory-write/write"), path.join(root, "native/directory-write/write.c")], { stdio: "inherit" });

@@ -1,0 +1,3 @@
+2026-10-18T03:05:00Z	package	W134-01 workflow agent({stallMs})停顿看门狗	仅显式正有限值；min(stallMs*0.1,1000)进度重启节流；静默中止当前模型请求；来源tr=5重试共6次；来源失败文案	流看门狗默认/工具在飞暂停/整query重试/replyLost未移植	tsc 0；聚焦87/87；全量2237/2237
+2026-10-18T03:07:00Z	decision	W134-01 适配	重试单次模型请求，不重放已执行工具；stall_ms进入子会话config与journal schema	来源默认AGr依赖未移植的异步代理流看门狗	无依赖变化
+2026-10-18T03:10:00Z	verification	W134-01 验收：tsc 0、build 0、notices 0、两项workflow冒烟	identity 0d0226fa…；dist重建	.audit/w134-runtime.todo.md

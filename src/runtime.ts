@@ -47,7 +47,7 @@ import { createMediaTools } from './media.js';
 import { createPluginTools, discoverInstalledPluginComponents, installedPluginCatalogIdentity, pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { NamedWorkflowCatalog } from './workflow-named.js';
 import { createInteractionTools } from './interaction-tools.js';
-import { executeSkill, skillRequiresExecution } from './skill-runtime.js';
+import { executeSkill, skillRequiresExecution, SkillCommandOwner } from './skill-runtime.js';
 import { SkillEffectJournal } from './skill-effects.js';
 import { WorkflowRegistry, createWorkflowTools } from './workflow.js';
 import { AgentRegistry, createAgentRegistryTools } from './agent-registry.js';
@@ -59,23 +59,25 @@ import { classicEventHooked, classicHookInput, raiseClassicEvent } from './plugi
 import { DEFAULT_PERMISSION_MODE, permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import type { StopRuntimeState } from './agent.js';
-import { configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
+import { Session, configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
 import { disabledMcpServers, saveMcpEnabled } from './mcp-state.js';
-import type { Session, SessionConfig } from './session.js';
+import type { SessionConfig } from './session.js';
 import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
 import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js';
 import { createTaskTools, readTaskRecords, subscribeTaskChanges, type TaskRecord } from './tasks.js';
 import { spinnerVerbsSchema, type SpinnerVerbs } from './tui-progress-settings.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
-import { createTools, type ToolContext, type ToolDefinition } from './tools.js';
+import { bindRuntimeTool, createTools, isRuntimeBuiltinWrite, type ToolContext, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
-import { BackgroundRegistry, createBackgroundTools } from './background.js';
+import { BackgroundRegistry, createBackgroundTools, type BackgroundEvent } from './background.js';
 import { LocalScheduler, createSchedulerTools, loopKeepaliveEnabled, type LocalSchedulerOptions } from './scheduler.js';
 import { isLoopDefaultSentinel, newLoopDeliveryState, readLoopFile, resolveLoopDefaultFire,
   type LoopDeliveryState } from './loop-file.js';
 import { SKILL_TOOL_NAME, skillsSection, refreshPluginComponents } from './skill-catalog.js';
+import { createRuntime, type RegisterRuntimeWrite } from './runtime-write-start.js';
 
 export { SKILL_TOOL_NAME } from './skill-catalog.js';
+export { createRuntime } from './runtime-write-start.js';
 export const AGENT_TOOL_NAME = 'agent';
 
 /**
@@ -101,6 +103,7 @@ export function truncateHookText(text: string, limit = 1000): string {
  * be captured into a session: children inherit the parent process environment.
  */
 export type ParsedRuntimeSettings = {
+  plansDirectory?: string;
   model?: string;
   baseURL?: string;
   auth?: 'bearer' | 'api-key';
@@ -227,6 +230,7 @@ function settingPositiveInt(settings: Record<string, unknown>, key: string): num
 /** Map a settings object onto the harness's known runtime fields. */
 export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeSettings {
   const out: ParsedRuntimeSettings = {};
+  if ('plansDirectory' in settings) out.plansDirectory = z.string().parse(settings.plansDirectory);
   if ('model' in settings) out.model = settingString(settings, 'model');
   if ('baseURL' in settings) out.baseURL = settingString(settings, 'baseURL');
   if ('auth' in settings) out.auth = settingEnum(settings, 'auth', ['bearer', 'api-key'] as const);
@@ -360,10 +364,10 @@ export function parseSlashCommand(prompt: string): { name: string; args: string 
  * session config (never re-reads disk) and refuses a non-model-invocable skill.
  * getPromptForCommand, sfn1dbxq [963598,964251), UTF-16; user/model expansion shares one owner.
  */
-export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInfo, args: string, context: import('./tools.js').ToolContext) => Promise<string>): ToolDefinition {
+export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInfo, args: string, context: import('./tools.js').ToolContext) => Promise<string>, childInvoke?: (skill: SkillInfo, args: string, context: import('./tools.js').ToolContext) => Promise<string>, child = false): ToolDefinition {
   const skills = config.skills ?? [];
   return {
-    ...(invoke ? { forChild: () => createSkillTool(config) } : {}),
+    ...(!child && invoke ? { forChild: () => childInvoke ? createSkillTool(config, childInvoke, undefined, true) : createSkillTool(config) } : {}),
     readOnly: true,
     schema: {
       name: SKILL_TOOL_NAME,
@@ -383,14 +387,20 @@ export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInf
     },
     async execute(input, context) {
       context.signal.throwIfAborted();
+      const activeConfig = child ? context.session?.config : config;
+      if (!activeConfig) throw new Error('Child skill requires its live session');
       const { name, args = '' } = skillInputSchema.parse(input);
-      refreshPluginComponents(config);
-      const skill = findSkill(config.skills, name);
+      refreshPluginComponents(activeConfig);
+      const skill = findSkill(activeConfig.skills, name);
       if (!skill) throw new Error(`Unknown skill: ${name}`);
       if (skill.disableModelInvocation || skill.mode === 'user-invocable-only' || skill.mode === 'off') {
         throw new Error(`Skill "${name}" is not model-invocable; ask the user to run it`);
       }
-      const text = invoke && skillRequiresExecution(skill, config) ? await invoke(skill, args, context) : expandSkill(skill, args, { sourceArguments: config.features?.skillSourceArguments === true, quotedArguments: config.features?.skillQuotedArguments === true, appendUnusedArguments: config.features?.skillSourceArguments === true || config.features?.skillArgumentFallback === true, extendedArguments: config.features?.skillExtendedArguments === true });
+      const text = invoke && skillRequiresExecution(skill, activeConfig) ? await invoke(skill, args, context) : expandSkill(skill, args, { sourceArguments: activeConfig.features?.skillSourceArguments === true, quotedArguments: activeConfig.features?.skillQuotedArguments === true, appendUnusedArguments: activeConfig.features?.skillSourceArguments === true || activeConfig.features?.skillArgumentFallback === true, extendedArguments: activeConfig.features?.skillExtendedArguments === true });
+      // Fe, chunk-ax9zepsq [18500,21100), UTF-16: inline results carry allowed tools separately from text.
+      if (skill.context !== 'fork' && skill.model === undefined && skill.effort === undefined && !skill.background && skill.hooks === undefined && skill.disallowedTools === undefined && skill.allowedTools?.length) {
+        context.contextLayer?.({ kind: 'allowed_tools', allowedTools: [...skill.allowedTools] });
+      }
       const bytes = Buffer.from(text);
       if (bytes.length <= context.maxOutputBytes) return text;
       let end = context.maxOutputBytes;
@@ -440,6 +450,8 @@ export function validateRuntimeConfig(config: SessionConfig): void {
 // ---------------------------------------------------------------------------
 
 export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string; dynamic?: true } |
+  { kind: 'background'; owner: string; deliveryId?: string; events: BackgroundEvent[]; dropped: number; pending: number; maxOutputBytes: number; prompt?: never } |
+  { kind: 'agent_events'; owner: string; deliveryId?: string; events: import('./agent-registry.js').AgentNotification[]; dropped: number; maxOutputBytes: number; prompt?: never } |
   { kind: 'instruction_paths'; paths: string[]; prompt?: never } |
   { kind: 'memory_status'; text: string; prompt?: never } |
   { kind: 'hook_terminal'; id: string; event: string; sequences: string[]; prompt?: never } |
@@ -455,6 +467,10 @@ export type RuntimeOptions = {
   mcpProgress?: (config: SessionConfig) => (event: McpProgressUpdate & { server: string }) => void;
 };
 
+export class RuntimeHandoffCleanupError extends AggregateError {
+  constructor(errors: unknown[]) { super(errors, 'Runtime handoff cleanup is unconfirmed'); }
+}
+
 export type Runtime = {
   mcpServers?: NonNullable<McpConnection["servers"]>;
   /** Catalog mode only: the connected servers' resources and templates, for the composer. */
@@ -467,13 +483,13 @@ export type Runtime = {
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
   listWorkflows?(config: SessionConfig, owner: string): import('./workflow.js').WorkflowView[];
   registerElicitation?(owner: string, callback: NonNullable<McpClientRequests['elicitation']>, onComplete?: NonNullable<McpClientRequests['elicitationComplete']>): () => void;
-  /** Tools pinned for the initial configuration. */
+  /** Tools pinned for the initial configuration; session-owned agents require buildTools with a session owner. */
   readonly tools: ToolDefinition[];
   /** Rebuild the tool set for a configuration (defaults to the initial one). */
   buildTools(config?: SessionConfig, owner?: string): ToolDefinition[];
   bindPeerMessaging?(owner: string, transport: LocalPeerTransport): void;
   /** Drain session-owned events only between completed turns. */
-  drainEvents?(owner: string): RuntimeEvent[];
+  drainEvents?(owner: string, session?: Session): RuntimeEvent[];
   /**
    * Source `me(!0)` before `ne`: the durable scheduler's first read happens before the loop
    * drains, so a restart's missed-task catch-up is in the queue for the first turn.
@@ -512,13 +528,16 @@ export type Runtime = {
   submitAgentInput?(owner: string, id: string, text: string): Promise<void>;
   /** Stop one job, child agent or cron by id; undefined when the id is no longer live. */
   stopTask?(owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined>;
-  releaseSession?(owner: string): Promise<void>;
+  releaseSession?(owner: string, completed?: () => void): Promise<void>;
+  sessionLease?(session: Session): () => boolean;
+  bindAgentApproval?(config: SessionConfig, owner: string, callback: import('./agent-registry.js').SessionApproval): () => void;
   tryMemoryConsolidation?(config: SessionConfig, owner: string): Promise<void>;
   settleMemoryConsolidation?(owner: string): Promise<void>;
   drainMemoryStatus?(owner: string): string[];
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
-    requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
-    conversation?: readonly Anthropic.MessageParam[]): Promise<string>;
+    requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision, signal: AbortSignal) => Promise<PermissionDecision>,
+    conversation?: readonly Anthropic.MessageParam[], session?: Session, source?: 'user' | 'model',
+    humanAuthorization?: import('./notification-authorization.js').HumanSkillAuthorization): Promise<string>;
   /**
    * `/subtask`: seed a fork child with the completed conversation and return at once. Source
    * `Zjt` (chunk-940nvk4p.js 1241) spawns with `forkContextMessages: e.messages` and does not
@@ -529,6 +548,8 @@ export type Runtime = {
   reconfigure?(config: SessionConfig): Promise<Runtime>;
   /** Bind durable MCP subscriptions to one journal; a new owner may return a fresh runtime. */
   bindSession?(session: Session): Promise<Runtime>;
+  /** Close all owned resources and require their cleanup to succeed before handoff. */
+  closeForHandoff?(): Promise<void>;
   hookOptions?(config: SessionConfig, owner: string): HookRunOptions;
   /** Close connections, timers and process groups. Idempotent. */
   close(): Promise<void>;
@@ -545,10 +566,11 @@ export type Runtime = {
  * MCP child this call spawned and must be called in a `finally` so a startup,
  * session or model failure never leaves a child running.
  */
-export async function createRuntime(
+export async function createRuntimeAssembly(
   config: SessionConfig,
   provider: ModelProvider,
   signal: AbortSignal,
+  registerRuntimeWrite: RegisterRuntimeWrite,
   options: RuntimeOptions = {},
 ): Promise<Runtime> {
   const persistsSubscriptions = (current: SessionConfig): boolean => current.features?.mcpPersistence === true &&
@@ -590,6 +612,12 @@ export async function createRuntime(
   const initialConfigDigest = connectionConfigDigest(config);
   const initialLiveDigest = liveConfigDigest(config);
   const base = createTools();
+  const builtinWrite = base.find(tool => tool.schema.name === 'write_file');
+  const sessionPrototype = Session.prototype, sessionOpen = Object.getOwnPropertyDescriptor(sessionPrototype, 'isOpen')?.get;
+  const sessionFenced = Object.getOwnPropertyDescriptor(sessionPrototype, 'isJournalFenced')?.get;
+  const sessionCloseSignal = Object.getOwnPropertyDescriptor(sessionPrototype, 'closeSignal')?.get;
+  const sessionGateIdentity = sessionPrototype.checkpointGateIdentity;
+  const sessionLockCheck = Object.getOwnPropertyDescriptor(sessionPrototype, 'assertDirectoryBackupLock')?.value;
   const journalOwnedMcp = new Set(['mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications', 'mcp_task_recover']);
   const scopedMcpTool = (tool: ToolDefinition): ToolDefinition => persistence && (journalOwnedMcp.has(tool.schema.name) || taskPersistence) ? {
     ...tool, forChild: () => ({ readOnly: tool.readOnly, schema: tool.schema, async execute() {
@@ -652,9 +680,9 @@ export async function createRuntime(
     ...(options.mcpProgress ? { onProgress: options.mcpProgress(structuredClone(config)) } : {}),
     ...(clientRequests ? { clientRequests } : {}) });
 
-  type Resources = { background?: BackgroundRegistry; scheduler?: LocalScheduler; agents?: AgentRegistry; workflows?: WorkflowRegistry; hooks?: AsyncHookRegistry;
+  type Resources = { background?: BackgroundRegistry; scheduler?: LocalScheduler; agents?: AgentRegistry; workflows?: WorkflowRegistry; hooks?: AsyncHookRegistry; skillCommands?: SkillCommandOwner;
     lsp?: ReturnType<typeof createLspTools>; worktrees?: WorktreeManager; memory?: MemoryConsolidation;
-    queued: RuntimeEvent[]; instructionPaths: Set<string>; terminalQueued: Extract<RuntimeEvent, { kind: 'hook_terminal' }>[]; terminalDropped: number;
+    queued: RuntimeEvent[]; handoffQueued: RuntimeEvent[]; instructionPaths: Set<string>; terminalQueued: Extract<RuntimeEvent, { kind: 'hook_terminal' }>[]; terminalDropped: number;
     dropped: number; reportedDropped: number; reportedAgentDrops: number; loopDelivery?: LoopDeliveryState };
   // Headless source digests and zero-based UTF-16 ranges: research/ports/W316-headless-wakeup.md.
   // Hc.resolveLoopDefaultFire [562811,562865), chunk-rx2nah4x.js resolves before notification dispatch.
@@ -665,13 +693,20 @@ export async function createRuntime(
       () => readLoopFile(config.workspace, config.configSources?.userDir ?? defaultUserDir()));
   };
   const owners = new Map<string, Resources>();
+  type OwnerRelease = { scope: object | undefined; session: Session | undefined;
+    phase: 'detaching' | 'pending' | 'failed'; result: Promise<readonly unknown[]> };
+  const ownerReleases = new Map<string, Set<OwnerRelease>>();
   const ownerScopes = new Map<string, object>();
+  const scopeIncarnations = new WeakMap<object, string>();
   const toolSets = new Map<string, { fingerprint: string; tools: ToolDefinition[] }>();
   const refreshMcpTools = new Map<string, () => void>();
   let catalogSession: Session | undefined;
   const agentAccessors = new WeakMap<ToolDefinition[], () => AgentRegistry>();
   const peerBindings = new Map<string, LocalPeerTransport>();
   const messagingSessions = new Map<string, Session>();
+  const standaloneChildren = new Map<Session, { parent: Session; tools: ToolDefinition[]; signal: AbortSignal;
+    stop: () => Promise<void> }>();
+  const standaloneLeases = new Map<string, Set<AbortController>>();
   // `/subtask` reaches the owner's registry and bound tool set whether or not the messaging
   // tool set is built; `Zjt` spawns with the parent's tools and no narrowing.
   const subtaskSeams = new Map<string, { registry: () => AgentRegistry; tools: ToolDefinition[] }>();
@@ -686,7 +721,7 @@ export async function createRuntime(
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
   let closed = false;
-  let closing: Promise<void> | undefined;
+  let closing: Promise<void> | undefined, closingStrict = false;
   let boundSession: Session | undefined;
   let alreadyBound = false;
   let bindPromise: Promise<unknown> = Promise.resolve();
@@ -697,19 +732,37 @@ export async function createRuntime(
   };
   const scopeFor = (owner: string): object => {
     if (closed || signal.aborted) throw new Error('Runtime is closed');
+    // Host release settlement for CXo/FVt/IFt, sfn1dbxq [630243,630565)/[3365082,3365484),
+    // 9v9tsk0a [1392,1975), UTF-16; source has no Session-owned cleanup acknowledgement.
     let scope = ownerScopes.get(owner);
+    const releases = ownerReleases.get(owner);
+    if (releases?.size && (!scope || [...releases].some(release => release.phase === 'failed' || release.scope === scope)))
+      throw new Error('Runtime session cleanup is unconfirmed');
     if (!scope) { scope = {}; ownerScopes.set(owner, scope); }
     return scope;
   };
+  // Host generation fence for FVt/IFt, sfn1dbxq [3365082,3365484), 9v9tsk0a [1392,1975), UTF-16.
   const checkScope = (owner: string, scope: object): void => {
     if (closed || signal.aborted) throw new Error('Runtime is closed');
+    if ([...ownerReleases.get(owner) ?? []].some(release => release.phase === 'failed' || release.scope === scope))
+      throw Object.assign(new Error('Runtime session cleanup is unconfirmed; operation aborted'), { name: 'AbortError' });
     if (ownerScopes.get(owner) !== scope) throw Object.assign(new Error('Runtime session resources were released; operation aborted'), { name: 'AbortError' });
+  };
+  const skillSession = (owner: string, scope: object, requested?: Session): (() => Session | undefined) => {
+    const captured = messagingSessions.get(owner);
+    if (requested && captured && requested !== captured) throw new Error('Skill session owner mismatch');
+    if (!captured) return () => undefined;
+    return () => {
+      checkScope(owner, scope);
+      if (!captured.isOpen || messagingSessions.get(owner) !== captured) throw new Error('Skill session owner released');
+      return captured;
+    };
   };
   const resourcesFor = (owner: string, scope: object): Resources => {
     checkScope(owner, scope);
     let resources = owners.get(owner);
     if (!resources) {
-      resources = { queued: [], instructionPaths: new Set(), terminalQueued: [], terminalDropped: 0, dropped: 0, reportedDropped: 0, reportedAgentDrops: 0 };
+      resources = { queued: [], handoffQueued: [], instructionPaths: new Set(), terminalQueued: [], terminalDropped: 0, dropped: 0, reportedDropped: 0, reportedAgentDrops: 0 };
       owners.set(owner, resources);
     }
     return resources;
@@ -765,6 +818,13 @@ export async function createRuntime(
       await resources.agents!.stop(id);
       return 'agent';
     }
+    const parent = messagingSessions.get(owner);
+    const standalone = [...standaloneChildren].find(([session, entry]) => session.id === id && entry.parent === parent &&
+      parent?.isOpen && !entry.signal.aborted);
+    if (standalone) {
+      await standalone[1].stop();
+      return 'agent';
+    }
     if (await resources.memory?.stop(id)) return 'agent';
     if (resources.scheduler?.delete(id) === true) return 'cron';
     return undefined;
@@ -791,6 +851,7 @@ export async function createRuntime(
     },
   });
   const inertSignal = AbortSignal.abort();
+  let runSkillInvocation: NonNullable<Runtime['runSkill']>;
   const buildTools = (current: SessionConfig = config, owner = 'initial'): ToolDefinition[] => {
     refreshPluginComponents(current);
     let scope = scopeFor(owner);
@@ -928,14 +989,35 @@ export async function createRuntime(
     const tools: ToolDefinition[] = [...base];
     // Ur, tar639dc [151585,152665), UTF-16; the pinned owner selects List visibility.
     if (abilities.tasks) tools.push(...tasksFor(current.workspace, current.features?.taskProjections === true, current.features?.taskSourceVisibility === true));
-    if (abilities.skill) tools.push(createSkillTool(current, (skill, args, context) => executeSkill(skill, args, {
-      config: current, provider, tools, signal: context.signal, source: 'model', conversation: context.conversation,
-      registry: current.features?.agentMessaging && abilities.subagents ? agents() : undefined,
-      hookOptions: () => callbackHooks(),
-      terminalSequence: childTerminal,
-      instructionFiles: childInstructions,
-      effectJournal: new SkillEffectJournal(current.workspace, owner),
-    })));
+    if (abilities.skill) tools.push(createSkillTool(current, (skill, args, context) => {
+      checkScope(owner, scope);
+      return runSkillInvocation(current, owner, skill, args, context.signal, undefined, context.conversation, context.session, 'model');
+    }, (skill, args, context) => {
+      const parent = messagingSessions.get(owner);
+      const child = context.session;
+      const registry = resources().agents;
+      const standalone = child ? standaloneChildren.get(child) : undefined;
+      const resolve = () => {
+        checkScope(owner, scope);
+        if (!parent || !parent.isOpen || messagingSessions.get(owner) !== parent || !child || !child.isOpen ||
+          !(registry?.childSkillTools(child, parent) || standalone && standaloneChildren.get(child) === standalone &&
+            standalone.parent === parent && !standalone.signal.aborted))
+          throw new Error('Child skill session owner released');
+        return child;
+      };
+      resolve();
+      const childTools = registry?.childSkillTools(child!, parent!) ?? standalone!.tools;
+      // Source iye executes against the invocation session; this host gives each
+      // child its own journal while the parent owns cancellation and cleanup.
+      return executeSkill(skill, args, { config: child!.config, parentSessionId: child!.id, session: resolve,
+        parentPlanId: child!.planId, provider, tools: childTools,
+        signal: AbortSignal.any([context.signal, parent!.closeSignal, child!.closeSignal, ...(standalone ? [standalone.signal] : [])]), source: 'model',
+        requestPermission: (tool, input, decision, requestSignal) => agents().requestApproval(tool, input, decision, requestSignal),
+        conversation: context.conversation, hookOptions: () => callbackHooks(),
+        inlineShellAllowed: childTools.some(tool => tool.schema.name === 'run_command'),
+        effectJournal: new SkillEffectJournal(child!.config.workspace, child!.id),
+        commandOwner: resources().skillCommands ??= new SkillCommandOwner() });
+    }));
     if (current.features?.notebooks) tools.push(...createNotebookTools());
     if (current.features?.web) tools.push(...createWebTools());
     tools.push(...createWebSearchTools(current.webSearch));
@@ -1110,7 +1192,9 @@ export async function createRuntime(
         throw error;
       }
     };
-    const agents = () => resources().agents ??= new AgentRegistry({ source: () => current, provider, tools: childTools, signal,
+    const agents = () => resources().agents ??= new AgentRegistry({ source: () => current, parentSessionId: owner,
+      requireSessionOwner: owner !== 'initial', sessionOwner: () => messagingSessions.get(owner),
+      provider, tools: childTools, signal,
       hookOptions: () => callbackHooks(),
       terminalSequence: childTerminal,
       instructionFiles: childInstructions,
@@ -1138,7 +1222,45 @@ export async function createRuntime(
       const pinnedMonitor = current.tools.find(tool => tool.name === 'monitor');
       const properties = pinnedMonitor?.input_schema.properties;
       const websocket = !pinnedMonitor || (properties !== null && typeof properties === 'object' && 'ws' in properties);
-      tools.push(...createBackgroundTools(registry, { websocket }));
+      // GetTask/TaskStop use the caller's agent/session identity (tar639dc [38033,40166),
+      // [92097,94248), UTF-16). Adapt that boundary to the host's Session object.
+      tools.push(...createBackgroundTools(registry, { websocket }).map((tool): ToolDefinition => ({
+        ...tool,
+        async execute(input, context) {
+          const assertSession = () => {
+            if (context.session !== undefined && owner !== 'initial' &&
+                (messagingSessions.get(owner) !== context.session || !context.session.isOpen)) {
+              throw new Error('Background execution session does not match the tool owner');
+            }
+          };
+          assertSession();
+          // FEe/TaskStop, tar639dc [12359,15356)/[38033,40166), UTF-16:
+          // task lookup is independent of the background panel. Preserve the host's
+          // live parent Session boundary when adapting the local-agent stop arm.
+          if (tool.schema.name === 'task_stop' && context.session !== undefined) {
+            const parsed = z.object({ id: z.string().uuid() }).strict().safeParse(input);
+            const parent = messagingSessions.get(owner);
+            const registered = parsed.success && parent === context.session && parent.isOpen
+              ? runningChildren(resources()).find(child => child.id === parsed.data.id) : undefined;
+            if (registered && parsed.success) {
+              await resources().agents!.stop(parsed.data.id);
+              checkScope(owner, scope); assertSession();
+              return JSON.stringify({ message: `Successfully stopped task: ${parsed.data.id}`, task_id: parsed.data.id, task_type: 'local_agent' });
+            }
+            const child = parsed.success && parent === context.session && parent.isOpen
+              ? [...standaloneChildren].find(([session, entry]) => session.id === parsed.data.id && entry.parent === parent && !entry.signal.aborted)
+              : undefined;
+            if (child && parsed.success) {
+              await child[1].stop();
+              checkScope(owner, scope); assertSession();
+              return JSON.stringify({ message: `Successfully stopped task: ${parsed.data.id}`, task_id: parsed.data.id, task_type: 'local_agent' });
+            }
+          }
+          const result = await tool.execute(input, context);
+          if (context.session !== undefined && owner !== 'initial') { checkScope(owner, scope); assertSession(); }
+          return result;
+        },
+      })));
     }
     if (current.features?.scheduler) {
       if (current.features.schedulerDurable === true) schedulerAccessors.set(owner, scheduler);
@@ -1245,35 +1367,72 @@ export async function createRuntime(
         terminalSequence: childTerminal,
         instructionFiles: childInstructions,
         stopState: () => stopStateForOwner(owner),
+        // iye, sfn1dbxq [3368429,3370821), UTF-16: inner calls use the actual child session.
+        // Host-only lease ties this independent factory to the parent's runtime generation.
+        childOwner: parent => {
+          if (!parent && !messagingSessions.has(owner)) return undefined;
+          if (!parent || !parent.isOpen || messagingSessions.get(owner) !== parent) throw new Error('Child session owner mismatch');
+          checkScope(owner, scope);
+          const controller = new AbortController();
+          const stopController = new AbortController();
+          let resolveStopped!: (error: unknown) => void;
+          const stopped = new Promise<unknown>(resolve => { resolveStopped = resolve; });
+          const leases = standaloneLeases.get(owner) ?? new Set<AbortController>();
+          leases.add(controller); standaloneLeases.set(owner, leases);
+          const leaseSignal = AbortSignal.any([controller.signal, parent.closeSignal]);
+          let child: Session | undefined;
+          const isOwner = () => !leaseSignal.aborted && !closed && !signal.aborted && parent.isOpen &&
+            messagingSessions.get(owner) === parent && ownerScopes.get(owner) === scope;
+          return { signal: leaseSignal, stopSignal: stopController.signal, isOwner,
+            register(session, selected) {
+              if (!isOwner()) throw new Error('Child session owner released');
+              child = session; standaloneChildren.set(session, { parent, tools: selected, signal: leaseSignal,
+                async stop() { stopController.abort(); const error = await stopped; if (error) throw error; } });
+            },
+            release(error) { controller.abort(); if (child) standaloneChildren.delete(child); leases.delete(controller);
+              resolveStopped(error);
+              if (!leases.size && standaloneLeases.get(owner) === leases) standaloneLeases.delete(owner); },
+          };
+        },
         enableAdvanced: current.features?.agentTypes === true, agentTypes: current.agentTypes, childEnvironmentFactory,
       }));
     }
     const bind = (tool: ToolDefinition): ToolDefinition => {
-      const checkJournalOwner = (): void => {
+      const wrapped = bindRuntimeTool(tool, {
+      checkScope: () => checkScope(owner, scope),
+      refresh: () => refreshPluginComponents(current),
+      checkJournal: (tool): void => {
         if (!persistence || (!(taskPersistence && tool.schema.name.startsWith('mcp_')) && !journalOwnedMcp.has(tool.schema.name) && tool.schema.name !== 'mcp_reconnect')) return;
         bindingController.signal.throwIfAborted();
         if (taskJournalFailed) throw new Error('MCP task journal requires reconciliation');
         if (!alreadyBound || boundSession?.id !== owner || boundSession.config.workspace !== current.workspace ||
           liveConfigDigest(current) !== initialLiveDigest) throw new Error('MCP operation requires the bound session journal owner');
         if (taskPersistence && (tool.schema.name.startsWith('mcp__') || tool.schema.name === 'mcp_tool_call') && savedMcpTasks(boundSession).length >= 128) throw new Error('Persistent MCP task journal limit reached before tool execution');
-      };
-      let child: ToolDefinition | undefined;
-      return { ...tool,
-        async execute(input, context) {
-          context.signal.throwIfAborted();
-          checkScope(owner, scope);
-          refreshPluginComponents(current);
-          checkJournalOwner();
-          return tool.execute(input, context);
-        },
-        ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: import('./tools.js').ToolContext) {
-          context.signal.throwIfAborted();
-          checkScope(owner, scope);
-          checkJournalOwner();
-          return tool.executeBlocks!(input, context);
-        } } : {}),
-        ...(tool.forChild ? { forChild() { checkScope(owner, scope); return child ??= bind(tool.forChild!()); } } : {}),
-      };
+      },
+      });
+      if (tool === builtinWrite) {
+        let incarnation = scopeIncarnations.get(scope);
+        if (!incarnation) { incarnation = randomUUID(); scopeIncarnations.set(scope, incarnation); }
+        registerRuntimeWrite(wrapped, { owner, incarnation, live: session => {
+          try {
+            if (closed || signal.aborted || ownerScopes.get(owner) !== scope || messagingSessions.get(owner) !== session) return false;
+            const id = Object.getOwnPropertyDescriptor(session, 'id'), settings = Object.getOwnPropertyDescriptor(session, 'config');
+            const closedState = Object.getOwnPropertyDescriptor(session, 'closed'), fencedState = Object.getOwnPropertyDescriptor(session, 'journalFailed');
+            if (!id || !('value' in id) || id.value !== owner || !settings || !('value' in settings) || settings.value !== current ||
+                !closedState || !('value' in closedState) || closedState.value !== false ||
+                !fencedState || !('value' in fencedState) || fencedState.value !== false ||
+                Object.getPrototypeOf(session) !== sessionPrototype || !sessionOpen || sessionOpen.call(session) !== true ||
+                !sessionFenced || sessionFenced.call(session) !== false || !sessionCloseSignal || sessionCloseSignal.call(session).aborted ||
+                Object.getOwnPropertyDescriptor(session, 'assertDirectoryBackupLock') !== undefined ||
+                Object.getOwnPropertyDescriptor(sessionPrototype, 'assertDirectoryBackupLock')?.value !== sessionLockCheck ||
+                Object.getOwnPropertyDescriptor(sessionPrototype, 'checkpointGateIdentity')?.value !== sessionGateIdentity ||
+                !isRuntimeBuiltinWrite(wrapped)) return false;
+            sessionGateIdentity.call(session);
+            return true;
+          } catch { return false; }
+        } });
+      }
+      return wrapped;
     };
     // Preserve object identity across skill subsets and the agent registry's
     // original-tool checks; the shared arrays now hold the same bound tools.
@@ -1285,7 +1444,7 @@ export async function createRuntime(
     }));
     tools.splice(0, tools.length, ...bound);
     const selected = current.childMode === 'explore' ? bound.filter(tool => tool.readOnly) : bound;
-    if (current.features?.agentMessaging && abilities.subagents) agentAccessors.set(selected, agents);
+    if (abilities.subagents) agentAccessors.set(selected, agents);
     // The registry validates an execution against its own child pool, so the seam carries the
     // child-facing tools, not the parent's bound list.
     if (abilities.subagents) subtaskSeams.set(owner, { registry: agents, tools: childTools });
@@ -1308,8 +1467,15 @@ export async function createRuntime(
     toolSets.set(owner, { fingerprint, tools: selected });
     return selected;
   };
-  const releaseSession = async (owner: string): Promise<void> => {
+  // Host release acknowledgement for FVt/IFt, sfn1dbxq [3365082,3365484),
+  // 9v9tsk0a [1392,1975), UTF-16; the source has no Session runtime handoff.
+  const releaseResources = async (owner: string, releasing: OwnerRelease): Promise<readonly unknown[]> => {
+    messagingSessions.get(owner)?.releaseDirectoryAuthority();
+    messagingSessions.delete(owner);
+    for (const lease of standaloneLeases.get(owner) ?? []) lease.abort();
+    standaloneLeases.delete(owner);
     if (boundSession?.id === owner) bindingController.abort();
+    if (boundSession?.id === owner) boundSession.releaseDirectoryAuthority();
     if (boundSession?.id === owner) await boundSession.drainPermissionWrites();
     if (elicitation?.owner === owner) { elicitation.controller.abort(); elicitation = undefined; }
     const resources = owners.get(owner);
@@ -1323,29 +1489,74 @@ export async function createRuntime(
     schedulerLoading.delete(owner);
     headlessSchedulers.delete(owner);
     subtaskSeams.delete(owner);
-    peerBindings.delete(owner); messagingSessions.delete(owner);
+    peerBindings.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
-    if (!resources) return;
+    releasing.phase = 'pending';
+    if (!resources) return [];
+    await resources.skillCommands?.close();
     // OCe, 24k7d6mw [1501794,1502367), UTF-16: removing an owner invalidates a mounted child view.
     notify(owner);
     const schedulerClosing = resources.scheduler?.close();
+    let cleanupFailures: PromiseRejectedResult[] = [];
     // Children may still use LSP/tools; stop them before closing their shared clients.
     try { await resources.workflows?.close(); }
     finally {
       await schedulerClosing;
       try { await Promise.all([resources.agents?.close(), resources.memory?.close()]); }
-      finally { await Promise.allSettled([resources.hooks?.close(), resources.background?.close(), resources.lsp?.close(), resources.worktrees?.close()]); }
+      finally {
+        const results = await Promise.allSettled([resources.hooks?.close(), resources.background?.close(), resources.lsp?.close(), resources.worktrees?.close()]);
+        cleanupFailures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+      }
     }
+    return cleanupFailures.map(result => result.reason);
   };
-  const close = (): Promise<void> => {
-    if (closing) return closing;
+  // Host settlement identity for CXo, sfn1dbxq [630243,630565), UTF-16.
+  const releaseSession = async (owner: string, completed?: () => void): Promise<void> => {
+    let releases = ownerReleases.get(owner);
+    const scope = ownerScopes.get(owner);
+    if (!releases || scope && ![...releases].some(release => release.scope === scope)) {
+      let resolveRelease!: (failures: readonly unknown[]) => void, rejectRelease!: (error: unknown) => void;
+      const owned = new Promise<readonly unknown[]>((resolve, reject) => { resolveRelease = resolve; rejectRelease = reject; });
+      releases ??= new Set(); ownerReleases.set(owner, releases);
+      const releasing: OwnerRelease = { scope, session: messagingSessions.get(owner), phase: 'detaching', result: owned };
+      releases.add(releasing);
+      const held = releases;
+      void releaseResources(owner, releasing).then(failures => {
+        if (failures.length) releasing.phase = 'failed';
+        else {
+          held.delete(releasing);
+          if (!held.size && ownerReleases.get(owner) === held) ownerReleases.delete(owner);
+        }
+        resolveRelease(failures);
+      }, error => { releasing.phase = 'failed'; rejectRelease(error); });
+    }
+    const failures = (await Promise.all([...releases].map(release => release.result))).flat();
+    if (completed && failures.length) throw new AggregateError(failures, 'Runtime cleanup incomplete');
+    completed?.();
+  };
+  // Host closed-Session handoff for FVt/IFt, sfn1dbxq [3365082,3365484), 9v9tsk0a [1392,1975), UTF-16.
+  const admitReplacementSession = (session: Session): void => {
+    const releases = ownerReleases.get(session.id);
+    if (!releases?.size) return;
+    const scope = ownerScopes.get(session.id);
+    if (scope && ![...releases].some(release => release.phase === 'failed' || release.scope === scope)) return;
+    if (closed || signal.aborted || [...releases].some(release => release.phase !== 'pending' ||
+        !release.session || release.session === session || release.session.isOpen))
+      throw new Error('Runtime session cleanup is unconfirmed');
+    session.checkpointGateIdentity();
+    ownerScopes.set(session.id, {});
+  };
+  const close = (strict = false): Promise<void> => {
+    if (closing) return strict && !closingStrict ? Promise.reject(new Error('Runtime cleanup was not confirmed')) : closing;
+    closingStrict = strict;
     closed = true; lifetimeController.abort(); bindingController.abort(); signal.removeEventListener('abort', onAbort);
     listeners.clear();
     for (const stop of taskSubscriptions) stop();
     taskSubscriptions.clear();
     closing = (async () => {
-      try { await Promise.all([...ownerScopes.keys()].map(releaseSession)); }
+      try { await Promise.all([...new Set([...ownerScopes.keys(), ...ownerReleases.keys()])]
+        .map(owner => releaseSession(owner, strict ? () => {} : undefined))); }
       finally { await mcp.close(); }
     })();
     return closing;
@@ -1392,8 +1603,33 @@ export async function createRuntime(
   const onAbort = () => { void close(); };
   signal.addEventListener('abort', onAbort, { once: true });
   try {
+    runSkillInvocation = (current, owner, skill, args, invocationSignal, requestPermission, conversation, session, source = 'model', humanAuthorization) => {
+      const tools = buildTools(current, owner);
+      if (skill.plugin !== undefined) {
+        const live = findSkill(current.skills, skill.name);
+        if (!live) throw new Error(`Unknown skill: ${skill.name}`);
+        skill = live;
+      }
+      const registry = source === 'model' && !(current.features?.agentMessaging && runtimeAbilities(current).subagents)
+        ? undefined : agentAccessors.get(tools)?.();
+      return executeSkill(skill, args, { config: current, parentSessionId: owner, session: skillSession(owner, scopeFor(owner), session), parentPlanId: messagingSessions.get(owner)?.planId, provider, tools, signal: invocationSignal,
+        source, humanAuthorization, registry, requestPermission, conversation, hookOptions: () => callbackHooks(),
+        terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
+        stopState: () => stopStateForOwner(owner), effectJournal: new SkillEffectJournal(current.workspace, owner),
+        commandOwner: resourcesFor(owner, scopeFor(owner)).skillCommands ??= new SkillCommandOwner() });
+    };
     const runtime: Runtime = {
       tools: buildTools(config), buildTools, releaseSession,
+      sessionLease(session) {
+        const scope = ownerScopes.get(session.id);
+        return () => !closed && !signal.aborted && session.isOpen && scope !== undefined &&
+          ownerScopes.get(session.id) === scope && messagingSessions.get(session.id) === session;
+      },
+      bindAgentApproval(current, owner, callback) {
+        buildTools(current, owner);
+        const registry = subtaskSeams.get(owner)?.registry();
+        return registry?.bindApproval(callback) ?? (() => {});
+      },
       bindPeerMessaging(owner, transport) { scopeFor(owner); peerBindings.set(owner, transport); },
       bindSession(session) {
         const bind = async (): Promise<Runtime> => {
@@ -1423,7 +1659,15 @@ export async function createRuntime(
               if (closed) throw new Error('Runtime closed while binding a new session');
               // Accepted replacements outlive the old owner; only pending setup follows its release.
               return bound;
-            } catch (error) { await fresh?.close(); throw error; }
+            } catch (error) {
+              if (fresh) {
+                try {
+                  if (!fresh.closeForHandoff) throw new Error('Runtime handoff cleanup is unavailable');
+                  await fresh.closeForHandoff();
+                } catch (cleanupError) { throw new RuntimeHandoffCleanupError([error, cleanupError]); }
+              }
+              throw error;
+            }
             finally {
               lifetimeController.signal.removeEventListener('abort', abortPending);
               bindingController.signal.removeEventListener('abort', abortPending);
@@ -1510,18 +1754,7 @@ export async function createRuntime(
           return resources.hooks.start(request);
         } };
       },
-      runSkill(current, owner, skill, args, invocationSignal, requestPermission, conversation) {
-        const tools = buildTools(current, owner);
-        if (skill.plugin !== undefined) {
-          const live = findSkill(current.skills, skill.name);
-          if (!live) throw new Error(`Unknown skill: ${skill.name}`);
-          skill = live;
-        }
-        return executeSkill(skill, args, { config: current, provider, tools, signal: invocationSignal,
-          source: 'user', registry: agentAccessors.get(tools)?.(), requestPermission, conversation, hookOptions: () => callbackHooks(),
-          terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
-          stopState: () => stopStateForOwner(owner), effectJournal: new SkillEffectJournal(current.workspace, owner) });
-      },
+      runSkill: runSkillInvocation,
       // Zjt, 940nvk4p [1235,3817), UTF-16; the host keeps its existing empty-conversation gate.
       async launchSubtask(current, owner, task, launchSignal, conversation, extraMessages = []): Promise<SubtaskLaunch> {
         if (current.features?.subagents === false) return { kind: 'unavailable', reason: 'disabled' };
@@ -1659,11 +1892,38 @@ export async function createRuntime(
         for (const event of events) resolveScheduledPrompt(resources, event);
         return events;
       },
-      drainEvents(owner) {
+      drainEvents(owner, session) {
         const resources = owners.get(owner);
         if (!resources) return [];
+        const bound = messagingSessions.get(owner);
+        if (session && (bound !== session || !session.isOpen)) return [];
+        // A fenced journal cannot accept the delivery; keep its confirmed handoff with this owner.
+        if (resources.handoffQueued.length) {
+          if (bound?.isJournalFenced) throw new Error('Session journal write failed; close and reopen before appending');
+          return resources.handoffQueued.splice(0);
+        }
+        const backgroundPreview = resources.background?.peekNotifications(100);
+        const agentPreview = resources.agents?.peekNotifications(100);
+        const backgroundReady = backgroundPreview && (backgroundPreview.events.length > 0 || backgroundPreview.dropped > resources.reportedDropped);
+        const agentReady = agentPreview && (agentPreview.events.length > 0 || agentPreview.dropped > resources.reportedAgentDrops);
+        const backgroundDeliveryId = backgroundReady && bound ? randomUUID() : undefined;
+        const agentDeliveryId = agentReady && bound ? randomUUID() : undefined;
+        if (bound && (backgroundDeliveryId || agentDeliveryId)) {
+          if (!bound.isOpen || messagingSessions.get(owner) !== bound) return [];
+          // Host journal rewrite: ns/Si, sfn1dbxq [226694,227794)/[233465,234179), UTF-16.
+          if (backgroundDeliveryId && backgroundPreview) {
+            bound.append({ kind: 'notification_intent_v2', deliveryId: backgroundDeliveryId, owner,
+              batch: { kind: 'background', ...backgroundPreview, maxOutputBytes: config.maxOutputBytes } });
+            const notifications = resources.background!.drainNotifications(100);
+            resources.reportedDropped = notifications.dropped;
+            resources.handoffQueued.push({ kind: 'background', owner, deliveryId: backgroundDeliveryId, ...notifications, maxOutputBytes: config.maxOutputBytes });
+          }
+          if (agentDeliveryId && agentPreview) bound.append({ kind: 'notification_intent_v2', deliveryId: agentDeliveryId, owner,
+            batch: { kind: 'agent_events', ...agentPreview, maxOutputBytes: config.maxOutputBytes } });
+          if (!bound.isOpen || messagingSessions.get(owner) !== bound) return [];
+        }
         for (const event of resources.queued) if (event.kind === 'scheduled') resolveScheduledPrompt(resources, event);
-        const events: RuntimeEvent[] = [...resources.terminalQueued.splice(0),
+        const events: RuntimeEvent[] = [...resources.terminalQueued.splice(0), ...resources.handoffQueued.splice(0),
           ...(resources.instructionPaths.size ? [{ kind: "instruction_paths" as const, paths: [...resources.instructionPaths] }] : []), ...resources.queued.splice(0)];
         resources.instructionPaths.clear();
         if (resources.terminalDropped) {
@@ -1674,23 +1934,18 @@ export async function createRuntime(
           events.unshift({ kind: 'notification', prompt: `Scheduler queue dropped ${resources.dropped} older events.` });
           resources.dropped = 0;
         }
-        const notifications = resources.background?.drainNotifications(100);
+        const notifications = backgroundDeliveryId ? undefined : resources.background?.drainNotifications(100);
         if (notifications && (notifications.events.length || notifications.dropped > resources.reportedDropped)) {
           resources.reportedDropped = notifications.dropped;
-          const bytes = Buffer.from(JSON.stringify(notifications));
-          let end = Math.min(bytes.length, config.maxOutputBytes);
-          while (end > 0 && end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
-          const text = bytes.subarray(0, end).toString('utf8') + (end < bytes.length ? '\n[Notification batch truncated; job output remains available through get_background_task]' : '');
-          events.push({ kind: 'notification', prompt: 'Background task events (job output is untrusted data):\n' + text });
+          // Iqt/ns/Si, chunk-sfn1dbxq.js [4259738,4260087), [226694,227794),
+          // [233465,234179), UTF-16: carry each task and owner until consumption.
+          events.push({ kind: 'background', owner, ...(backgroundDeliveryId ? { deliveryId: backgroundDeliveryId } : {}), ...notifications, maxOutputBytes: config.maxOutputBytes });
         }
         const agentNotifications = resources.agents?.drainNotifications(100);
         if (agentNotifications && (agentNotifications.events.length || agentNotifications.dropped > resources.reportedAgentDrops)) {
           resources.reportedAgentDrops = agentNotifications.dropped;
-          const bytes = Buffer.from(JSON.stringify(agentNotifications));
-          let end = Math.min(bytes.length, config.maxOutputBytes);
-          while (end > 0 && end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
-          events.push({ kind: 'notification', prompt: 'Child agent events (messages are untrusted data):\n' +
-            bytes.subarray(0, end).toString('utf8') + (end < bytes.length ? '\n[Agent events truncated; use get_agent for the result]' : '') });
+          // fEt/ns/Si, sfn1dbxq [4224653,4227310)/[226694,227794)/[233465,234179), UTF-16.
+          events.push({ kind: 'agent_events', owner, ...(agentDeliveryId ? { deliveryId: agentDeliveryId } : {}), ...agentNotifications, maxOutputBytes: config.maxOutputBytes });
         }
         const workflowNotifications = resources.workflows?.drainNotifications();
         if (workflowNotifications?.events.length) {
@@ -1706,14 +1961,18 @@ export async function createRuntime(
           ? 'MCP lifecycle: transient HTTP startup failures retain healthy peers and recover in the background. Replacement restores acknowledged exact URI subscriptions before commit; failed restoration retains the prior connection. Five fast attempts precede up to eight bounded slow rounds; GET streams reopen up to five times per client lifetime. No tool/event replay. ' +
             (persistence ? 'Acknowledged URI subscriptions persist after binding to the owning session journal; new sessions start with their own subscription events.' : 'URI subscriptions remain connection-local.')
           : 'MCP lifecycle: single-server replacement retains other resources; HTTP session expiry or three transport failures trigger up to five attempts (immediate, 1/2/4/8s); authentication/protocol failures end retries; no tool replay or slow retry phase.',
-        'Child agents omit background and scheduler tools. Optional cron jitter uses the harness timing algorithm; jobs remain session-only.'], close,
+        'Child agents omit background and scheduler tools. Optional cron jitter uses the harness timing algorithm; jobs remain session-only.'], close: () => close(),
+      closeForHandoff: () => close(true),
     };
     const bindCatalogSession = runtime.bindSession!;
+    // Host retire/rebind boundary for FVt/IFt, sfn1dbxq [3365082,3365484), 9v9tsk0a [1392,1975), UTF-16.
     runtime.bindSession = async session => {
+      if (!session.isOpen) throw new Error('Cannot bind a closed session');
+      admitReplacementSession(session);
       const bound = await bindCatalogSession(session);
       if (bound === runtime) {
-        messagingSessions.set(session.id, session);
-        publishMcpCatalog(session, true); catalogSession = session;
+        if (!session.isOpen) throw new Error('Cannot bind a closed session');
+        admitReplacementSession(session);
         // VOe/fQo/kn, 24k7d6mw [339498,340137), sfn1dbxq [4234807,4235398), qw2csqy5 [9345,31492), UTF-16.
         const tools = buildTools(session.config, session.id), accessor = agentAccessors.get(tools);
         if (accessor) {
@@ -1724,6 +1983,8 @@ export async function createRuntime(
               boundToolContent(JSON.stringify(warnings), session.config.maxOutputBytes) });
           }
         }
+        messagingSessions.set(session.id, session);
+        publishMcpCatalog(session, true); catalogSession = session;
       }
       return bound;
     };

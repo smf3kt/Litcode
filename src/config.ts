@@ -29,7 +29,7 @@ import ignore from "ignore";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type InstalledPluginComponents, type PluginConfig } from "./plugins.js";
-import { loadPluginComponents, type ComponentDiagnostic } from './plugin-components.js';
+import { loadPluginComponents, parseToolNames, type ComponentDiagnostic } from './plugin-components.js';
 import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
 import { permissionLayerSchema, type PermissionPolicy } from './permissions.js';
@@ -1143,7 +1143,7 @@ function skillPathPatterns(data: Record<string, unknown>, file: string): string[
   return patterns;
 }
 
-function loadSkill(skillDir: string, skillManifest: string, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string): void {
+function loadSkill(skillDir: string, skillManifest: string, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, workspace: string, namespace?: string): void {
   const text = readTextFile(skillManifest, budget);
   const frontmatter = parseFrontmatter(text, { full: true });
   const data = frontmatter.data;
@@ -1191,11 +1191,15 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
   if (data.arguments !== undefined) skill.argumentNames = argumentNamesFrom(data.arguments);
   if (data["allowed-tools"] !== undefined) {
     const raw = data["allowed-tools"];
-    const values = typeof raw === "string" ? raw.split(",").map(value => value.trim()).filter(Boolean) : raw;
+    const values = typeof raw === "string" ? [raw] : raw;
     if (!Array.isArray(values) || values.some(value => typeof value !== "string" || value.trim() === "")) {
       throw new ConfigError("skill allowed-tools must be a string or array of non-empty strings", skillManifest);
     }
-    skill.allowedTools = [...new Set(values as string[])];
+    // eve/ib/w3t, sfn1dbxq [3374614,3375652), [3377184,3378660), UTF-16.
+    // Parsing precedes skill-directory expansion, which precedes project expansion.
+    skill.allowedTools = [...new Set((parseToolNames(values) ?? []).map(value => value
+      .replaceAll('${CLAUDE_SKILL_DIR}', () => skillDir)
+      .replaceAll('${CLAUDE_PROJECT_DIR}', () => workspace)))];
   }
   if (data.metadata !== undefined) {
     if (!isPlainObject(data.metadata)) throw new ConfigError("skill metadata must be a JSON object", skillManifest);
@@ -1227,7 +1231,7 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
  * realpaths de-duplicates symlinked or repeated entries across directories.
  * Every loaded SKILL.md draws from the shared aggregate byte budget.
  */
-function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string, tolerant = false): void {
+function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, workspace: string, namespace?: string, tolerant = false): void {
   if (!isDirectory(baseDir)) return;
   let entries: fs.Dirent[];
   try {
@@ -1252,7 +1256,7 @@ function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillI
     seen.add(real);
     seen.add(manifestReal);
     try {
-      loadSkill(skillDir, skillManifest, into, budget, source, namespace);
+      loadSkill(skillDir, skillManifest, into, budget, source, workspace, namespace);
     } catch (error) {
       // The recovered directory scanner logs a failed entry and keeps the rest
       // of the directory (`mO`, chunk-sfn1dbxq.js offset 3384052); the initial
@@ -1271,11 +1275,11 @@ function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillI
  * including any `paths` they declare: the recovered `E3t` stores them in
  * `dynamicSkills` without the load-time conditional split.
  */
-export function loadSkillsFromDirectories(dirs: readonly string[], existing: ReadonlySet<string>): SkillInfo[] {
+export function loadSkillsFromDirectories(dirs: readonly string[], existing: ReadonlySet<string>, workspace: string): SkillInfo[] {
   const budget: ByteBudget = { remaining: CONFIG_LIMITS.textBytesTotal, text: new Map() };
   const seen = new Set<string>();
   const into = new Map<string, SkillInfo>();
-  for (const dir of dirs) scanSkills(dir, seen, into, budget, "projectSettings", undefined, true);
+  for (const dir of dirs) scanSkills(dir, seen, into, budget, "projectSettings", workspace, undefined, true);
   return [...into.values()].filter(skill => !existing.has(skill.name));
 }
 
@@ -1606,8 +1610,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const skills = new Map<string, SkillInfo>();
   const seen = new Set<string>();
   // Scan highest precedence first so a shared realpath cannot demote a project skill.
-  scanSkills(path.join(harnessDir, "skills"), seen, skills, budget, "projectSettings");
-  scanSkills(path.join(userDir, "skills"), seen, skills, budget, "userSettings");
+  scanSkills(path.join(harnessDir, "skills"), seen, skills, budget, "projectSettings", workspaceRoot);
+  scanSkills(path.join(userDir, "skills"), seen, skills, budget, "userSettings", workspaceRoot);
   let installedComponents: ReturnType<typeof discoverInstalledPluginComponents>;
   try {
     installedComponents = discoverInstalledPluginComponents(workspaceReal, plugins);
@@ -1646,7 +1650,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   }
   const pluginCatalog = loadPluginComponents(installedComponents,
     new Set([...skills.values()].map(skill => tryRealpath(skill.path) ?? skill.path)), budget,
-    isPlainObject(settings.features) && settings.features.pluginSkillNamespaces === true);
+    isPlainObject(settings.features) && settings.features.pluginSkillNamespaces === true, workspaceRoot);
   for (const skill of pluginCatalog.skills) if (!skills.has(skill.name)) skills.set(skill.name, skill);
   const pluginDirs = settings.pluginDirs;
   if (pluginDirs !== undefined) {
@@ -1655,7 +1659,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     }
     if (pluginDirs.length > CONFIG_LIMITS.dirEntries) throw new ConfigError("settings pluginDirs exceeds directory count limit");
     for (const dir of pluginDirs as string[]) {
-      scanSkills(path.resolve(workspaceRoot, dir), seen, skills, budget, "plugin");
+      scanSkills(path.resolve(workspaceRoot, dir), seen, skills, budget, "plugin", workspaceRoot);
     }
   }
   // `$C` (`chunk-sfn1dbxq.js` 401991): the effective mode is the lock, else the

@@ -20,7 +20,8 @@ const add = relative => {
   files.push({ path: relative, bytes: bytes.length, sha256: hash(bytes), mode: stat.mode & 0o777, data: bytes });
 };
 for (const name of ['src', 'bin', 'scripts', 'test', 'package.json', 'package-lock.json', 'tsconfig.json',
-  'tsconfig.build.json', 'README.md', 'LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.txt', 'research/ports/dependency-notices.json']) add(name);
+  'tsconfig.build.json', 'README.md', 'LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.txt', 'research/ports/dependency-notices.json',
+  'native/peer-identity/peer.c', 'native/file-lock/lock.c', 'native/shell-supervisor/supervisor.c', 'native/directory-read/read.c', 'native/directory-write/write.c']) add(name);
 files.sort((a, b) => a.path.localeCompare(b.path));
 fs.mkdirSync(out, { mode: 0o700 });
 try {

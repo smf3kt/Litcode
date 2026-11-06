@@ -1,0 +1,50 @@
+{
+  "schema": "AsyncHookDraftCheckpoint.v1",
+  "status": "source_mapping_incomplete",
+  "baselineIdentity": "9e07355d801a851056af0f23365d609c58d03f38264ecb6a17bd18b5f77921d3",
+  "patch": ".audit/w385-async-journal-draft.patch",
+  "patchSha256": "eb700ba5cb2cffa8b6682a23af1385ced5f0e8e4fc84dadced012802560ac07f",
+  "files": [
+    {
+      "path": "src/hooks.ts",
+      "before": "c232cff64ef8799d1a093e91beda69b5d968d2ca304c37dfae75b11637ddfec2",
+      "after": "050a9763292924ab027f70c61520bcbd452123a9473c638b0666ae6bae6ccc57"
+    },
+    {
+      "path": "src/async-hooks.ts",
+      "before": "dc275aca07e47bbbe6a0f01ea06813c6ad0f4c7abe4a46fd5334449c9c031bfc",
+      "after": "62a47ad426af427ad5e35c19001e00b10c775eb5543537d3ac49831f80ae53a0"
+    },
+    {
+      "path": "src/agent.ts",
+      "before": "feccd358c17a7b206d087396cbd0038140593d14d3e4e48defc2bc66a1b4be38",
+      "after": "55aa1573feb8583fa4a6c15af835730e588f106d4570998e564b05761e82b4ad"
+    },
+    {
+      "path": "src/session.ts",
+      "before": "1d845cf96b9b42c26698f3eed12f613f26dd7ab0c56fa34b9a2f8d9f93da710f",
+      "after": "eba40416e2cddc14bcb78b345c0e379107a67d9988bed630b3563832c56d803c"
+    },
+    {
+      "path": "src/agent-registry.ts",
+      "before": "57a6b7957df802b6dda016344dca60d45af7cf2031605b29d0570ea716db574a",
+      "after": "3fd0f7aa3b39ed9df91060852ce9a9cecb0dcd71f39a5abafd0467b62336aa66"
+    },
+    {
+      "path": "test/async-hooks.test.ts",
+      "before": "a30c324a57f0d72b64d5f4f5237d527e7ab9fbf6884e7896d8bdff1582b33607",
+      "after": "05ada042f391a2e29eb92c2c865867aa097c5b10f8d3e04da9243e4538ff4613"
+    },
+    {
+      "path": "src/async-hook-journal.ts",
+      "before": null,
+      "after": "f8d248517118bc48858c3104aa2a59686dafb31520996f4e9eab7825fbd0593a"
+    },
+    {
+      "path": "test/async-hook-journal.test.ts",
+      "before": null,
+      "after": "b0d46f8ceb34d4e228c96b5460709c76c922eb9870c2c730ee17ae7a9c8079f9"
+    }
+  ],
+  "activation": "Do not apply automatically. Finish source-contract mapping and resolve the recorded gaps first."
+}

@@ -1,0 +1,13 @@
+{
+  "schema":"W182LifecycleReview.v1",
+  "date":"2026-10-18",
+  "workflow":"wf_1038f7f0-9b2",
+  "reviewedIdentity":"4ee7b8a4d84be66dd6339514df334a27c1d6f667cf49442e4075f1ef82b21a8a",
+  "verdict":"changes_required",
+  "finding":{"severity":"P2","file":"src/external-editor.ts","line":84,"scenario":"VISUAL wrapper spawns an unref background child inheriting stdio and exits normally","observed":{"result":{"content":"fresh external"},"resumed":true,"descendantAlive":true},"required":"Owned descendant settles before terminal resume on normal exit as well as cancellation","probe":"/tmp/w182-review-probe.mjs","fixture":"/tmp/w182-review-editor.mjs"},
+  "otherReviewedScenarios":"No confirmed new W182 behavior regression; three focused groups passed; 62-test totals and final compiled CLI logs read; 1417 identity files matched",
+  "refutedCandidates":["double keymap parsing","ordinary render while editor suspended","question sanitation differs from root","single Other live clarification follows recovered source semantics"],
+  "fixWorkflow":"wf_f2fd0e55-d21",
+  "status":"fix and independent original-scenario recheck running",
+  "commitGate":"closed until fix verified"
+}
