@@ -117,6 +117,32 @@ try {
   assert.notEqual(r.code, 0); assert.match(r.text, /error not_renamed/);
   assert.equal(fs.existsSync(path.join(work, 'moved/cancel')), false);
   assert.deepEqual(fs.readdirSync(path.join(work, 'moved')).filter(x => x.startsWith('.litcode-tmp-')), []);
+  // Exercise both dispositions of a live stage whose name was reused.
+  for (const [point, decision] of [['before_rename', 'f'], ['after_recheck', 'c']]) {
+    p = start('stage-substitution', { test: true, point });
+    p.child.stdin.end('new'); await p.wait(`test ${point}\n`);
+    const parent = path.join(work, 'moved');
+    const stage = path.join(parent, fs.readdirSync(parent).find(name => name.startsWith('.litcode-tmp-')));
+    const saved = stage + '-original';
+    fs.renameSync(stage, saved); fs.writeFileSync(stage, 'new', { flag: 'wx' });
+    const replacement = fs.statSync(stage).ino;
+    p.child.stdio[5].end(decision); r = await p.end();
+    assert.notEqual(r.code, 0);
+    assert.match(r.text, /cleanup_failed \d+\nerror not_renamed/);
+    assert.equal(fs.existsSync(path.join(parent, 'stage-substitution')), false);
+    assert.equal(fs.statSync(stage).ino, replacement);
+    assert.equal(fs.readFileSync(saved, 'utf8'), 'new');
+    fs.unlinkSync(saved); fs.unlinkSync(stage);
+  }
+  p = start('landed-substitution', { test: true, point: 'after_rename' }); p.child.stdin.end('new');
+  await p.wait('test after_rename\n');
+  const landed = path.join(work, 'moved', 'landed-substitution');
+  fs.renameSync(landed, landed + '-original'); fs.writeFileSync(landed, 'new', { flag: 'wx' });
+  const replacement = fs.statSync(landed).ino;
+  p.child.stdio[5].end('c'); r = await p.end();
+  assert.notEqual(r.code, 0); assert.match(r.text, /error renamed/); assert.doesNotMatch(r.text, /landed v2:|durable/);
+  assert.equal(fs.statSync(landed).ino, replacement);
+  assert.equal(fs.readFileSync(landed + '-original', 'utf8'), 'new');
   p = start('unknown', { test: true, point: 'before_rename' }); p.child.stdin.end('new');
   await p.wait('test before_rename\n'); p.child.kill('SIGKILL'); r = await p.end();
   assert.equal(r.signal, 'SIGKILL'); assert.match(r.text, /publishing\n/); assert.doesNotMatch(r.text, /error |renamed\n/);
@@ -124,12 +150,12 @@ try {
   await p.wait('test after_rename\n'); p.child.kill('SIGKILL'); r = await p.end();
   assert.equal(r.signal, 'SIGKILL'); assert.match(r.text, /renamed\n/);
   assert.equal(fs.readFileSync(path.join(work, 'moved/kill'), 'utf8'), 'published');
-  p = start('kill-after-link', { test: true, point: 'after_link' }); p.child.stdin.end('new');
-  await p.wait('test after_link\n'); p.child.kill('SIGKILL'); r = await p.end();
+  p = start('kill-after-publish', { test: true, point: 'after_publish' }); p.child.stdin.end('new');
+  await p.wait('test after_publish\n'); p.child.kill('SIGKILL'); r = await p.end();
   assert.equal(r.signal, 'SIGKILL'); assert.match(r.text, /committing\n/); assert.doesNotMatch(r.text, /renamed\n|durable\n/);
-  const linked = path.join(work, 'moved/kill-after-link'), linkedStat = fs.statSync(linked, { bigint: true });
-  assert.equal(fs.readFileSync(linked, 'utf8'), 'new'); assert.equal(linkedStat.nlink, 2n);
-  assert.ok(fs.readdirSync(path.join(work, 'moved')).filter(x => x.startsWith('.litcode-tmp-'))
+  const linked = path.join(work, 'moved/kill-after-publish'), linkedStat = fs.statSync(linked, { bigint: true });
+  assert.equal(fs.readFileSync(linked, 'utf8'), 'new'); assert.equal(linkedStat.nlink, 1n);
+  assert.ok(!fs.readdirSync(path.join(work, 'moved')).filter(x => x.startsWith('.litcode-tmp-'))
     .some(name => fs.statSync(path.join(work, 'moved', name), { bigint: true }).ino === linkedStat.ino));
   const removable = path.join(work, 'moved/remove-file');
   const flagName = path.join(work, 'moved/--remove'); fs.writeFileSync(flagName, 'OLD');

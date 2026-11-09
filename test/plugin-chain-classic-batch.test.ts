@@ -144,6 +144,8 @@ test('classic PostToolBatch: the agent raises it once per batch, with every call
     const agent = new Agent(session, new FakeProvider(batchTurn(tools)), tools);
     const outcome = await agent.run('go');
     assert.equal(outcome.reason, 'end_turn');
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PostToolBatch', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PostToolBatch', 'fulfilled']]);
     const messages = session.messages as unknown as { role: string; content: { type: string; text?: string }[] | string }[];
     const context = messages.filter((message) => Array.isArray(message.content) &&
       message.content.some((block) => block.type === 'text' && block.text?.startsWith('Hook context:')));

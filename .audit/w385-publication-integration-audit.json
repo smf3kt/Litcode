@@ -1,0 +1,13 @@
+{
+  "identity": "1413fe9b282aef6d05e2d0f079d604252eff3e049f45ffd1b7413f19848b7fba",
+  "productChanged": false,
+  "source": [
+    { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "uno", "range": [739599,743280], "coordinates": "zero-based half-open UTF-16" },
+    { "module": "chunk-f606a53w.js", "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033", "symbol": "sC", "range": [12501,15618], "coordinates": "zero-based half-open UTF-16" }
+  ],
+  "defaultProbe": { "exit": 1, "expectedUnfinished": true, "log": "/private/tmp/w385-publication-current-red.log" },
+  "transactionControls": { "exit": 0, "passed": 4, "log": "/private/tmp/w385-publication-current-controls.log" },
+  "upstreamCalls": 0,
+  "complete": false,
+  "next": "Integrate default source-backed Write flow with owned transactions and migrate refusal-dependent recovery fixtures without relaxing effect or rewind contracts"
+}

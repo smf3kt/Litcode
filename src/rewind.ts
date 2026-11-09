@@ -8,6 +8,9 @@ import { captureCheckpoint, clearCheckpointAssociation, previewCheckpoint, resto
 import { beginDirectoryCheckpoint } from './directory-checkpoint.js';
 export { inspectDirectoryCheckpointWitness, readDirectoryCheckpointBackup } from './directory-checkpoint.js';
 import type { ToolContext } from "./tools.js";
+import { planDirectoryRewind } from './directory-rewind-plan.js';
+import { directoryRewindTargetDigest } from './directory-rewind-evidence.js';
+import { DirectoryRewindExecution } from './directory-rewind-execution.js';
 
 function context(session: Session, signal: AbortSignal): ToolContext {
   return { workspace: session.config.workspace, signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes };
@@ -75,7 +78,7 @@ export async function automaticCheckpointWithDirectoryWitness(session: Session, 
   if (name) await checkpointConversationWithDirectoryWitness(session, name, signal);
 }
 
-export function previewRewind(session: Session, turn: number, signal: AbortSignal) {
+export function previewRewind(session: Session, turn: number, signal: AbortSignal, authority: Session = session) {
   if (session.config.features?.checkpoints === false) throw new Error("Checkpoints are disabled in this session");
   const boundary = boundaryFor(session, turn);
   const saved = session.events.findLast(event => event.kind === "checkpoint" && event.boundary === boundary);
@@ -86,11 +89,17 @@ export function previewRewind(session: Session, turn: number, signal: AbortSigna
   const operations = restorable.map(change => ({ path: change.path, action: change.before ? "write" : "remove" }));
   const preserved = preview.changes.filter(change => !restorable.includes(change)).map(change => ({ path: change.path, kind: change.current?.kind ?? change.before?.kind }));
   const external = session.rewindExternalState;
+  const plan = external.kind === 'none' ? undefined : planDirectoryRewind(session, saved.name, signal, authority);
+  const directory = plan?.kind === 'available' && plan.entries.some(entry => entry.action !== 'unchanged')
+    ? { digest: directoryRewindTargetDigest(plan), authority: plan.digest } : undefined;
+  if (directory && plan?.kind === 'available') for (const entry of plan.entries)
+    if (entry.action !== 'unchanged') operations.push({ path: entry.path, action: entry.action });
   const state = historyDigest(session);
   const token = crypto.createHash("sha256").update(JSON.stringify({ session: session.id, boundary, state,
-    checkpoint: saved.name, digest: saved.digest, current: preview.current_digest, operations, preserved, external })).digest("hex");
+    checkpoint: saved.name, digest: saved.digest, current: preview.current_digest, operations, preserved, external,
+    ...(directory ? { directory: directory.digest } : {}) })).digest("hex");
   return { turn, boundary, checkpoint: saved.name, checkpoint_digest: saved.digest,
-    current_digest: preview.current_digest, history_digest: state, token, operations, preserved, external };
+    current_digest: preview.current_digest, history_digest: state, token, operations, preserved, external, ...(directory ? { directory } : {}) };
 }
 export type RewindPreview = ReturnType<typeof previewRewind>;
 
@@ -102,15 +111,16 @@ export class RewindCommittedWitnessError extends Error {
   }
 }
 
-function validateRewind(session: Session, preview: RewindPreview, token: string, signal: AbortSignal): RewindPreview {
+function validateRewind(session: Session, preview: RewindPreview, token: string, signal: AbortSignal, authority: Session = session): RewindPreview {
   signal.throwIfAborted();
   if (!session.isOpen) throw new Error('Rewind session is closed');
-  const fresh = previewRewind(session, preview.turn, signal);
+  const fresh = previewRewind(session, preview.turn, signal, authority);
   if (token !== preview.token || fresh.token !== preview.token) throw new Error("Rewind preview is stale; preview again before applying");
+  if (authority === session && fresh.directory?.authority !== preview.directory?.authority) throw new Error('Rewind directory authority changed; preview again before applying');
   return fresh;
 }
 
-type RewindBranch = { next: Session; identity: fs.Stats; transferReadWitness: ReturnType<typeof captureReadWitnessTransfers> };
+type RewindBranch = { next: Session; identity: fs.Stats; grantSignals: AbortSignal[]; transferReadWitness: ReturnType<typeof captureReadWitnessTransfers> };
 
 function discardRewindBranch(session: Session, branch: RewindBranch, preview: RewindPreview): void {
   const { next, identity } = branch;
@@ -128,17 +138,20 @@ function prepareRewindBranch(session: Session, preview: RewindPreview): RewindBr
   let identity: fs.Stats;
   try { identity = fs.lstatSync(next.file); }
   catch (error) { next.close(); throw error; }
-  const branch: RewindBranch = { next, identity, transferReadWitness: witness => witness };
+  const branch: RewindBranch = { next, identity, grantSignals: [], transferReadWitness: witness => witness };
   try {
     const source = session.workingDirectories(false);
     const original = new Map([...source].map(root => [root, source.readHandle?.(root)]));
     next.carryPermissions(session);
     const successor = next.workingDirectories(false);
-    for (const root of next.permissionOwner.state().additionalWorkingDirectories.keys()) {
+    // Rir [2539631,2543941), sfn1dbxq, UTF-16: a child may consult its
+    // parent's live directory scope independently of its local permission rules.
+    for (const root of new Set([...source, ...successor])) {
       const before = original.get(root), after = successor.readHandle?.(root);
       if ((!before && after) || (before && (!after || before.signal.aborted || after.signal.aborted || after.owner !== next.id ||
           before.dev !== after.dev || before.ino !== after.ino || before.fd === after.fd || before.incarnation === after.incarnation)))
         throw new Error('Rewind directory grant handoff failed');
+      if (after) branch.grantSignals.push(after.signal);
     }
     branch.transferReadWitness = captureReadWitnessTransfers(session, next);
     return branch;
@@ -152,9 +165,11 @@ function restoreRewindBranch(session: Session, preview: RewindPreview, signal: A
   keepForRecovery = false): Session {
   const { next, identity, transferReadWitness } = branch;
   try {
+    const directory = preview.directory ? new DirectoryRewindExecution(session, next, preview.checkpoint, preview.directory.digest, signal) : undefined;
     const checkpointPaths = session.directoryCheckpointPathsAt(session.events.length);
     for (const event of session.events.slice(1, preview.boundary + 1)) {
-      if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
+      if (event.kind === 'message') { const copied = session.branchMessage(event); if (copied) next.append(copied); }
+      else if (event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event.kind === 'compact' ? next.rebaseCompaction(event) : event);
       if (event.kind === 'read_observation') next.append({ ...event,
         ...(event.readGrantWitness ? { readGrantWitness: transferReadWitness(event.readGrantWitness) } : {}) });
       if (event.kind === 'write_observation' || event.kind === 'read_invalidate') next.append(event);
@@ -182,7 +197,7 @@ function restoreRewindBranch(session: Session, preview: RewindPreview, signal: A
     if (preview.operations.length) next.fileReadCache.clear();
     const prefix = fs.readFileSync(next.file);
     restoreCheckpoint({ name: preview.checkpoint, expected_current_digest: preview.current_digest,
-      paths: preview.operations.map(operation => operation.path), remove_new: true, dry_run: false },
+      paths: preview.operations.filter(operation => !path.isAbsolute(operation.path)).map(operation => operation.path), remove_new: true, dry_run: false },
     context(session, signal), () => {
       signal.throwIfAborted();
       next.append({ kind: "rewind", source: session.id, boundary: preview.boundary,
@@ -190,7 +205,7 @@ function restoreRewindBranch(session: Session, preview: RewindPreview, signal: A
       next.appendCheckpointBranch(session, { boundary: preview.boundary, reason: "rewind", expected: { external: preview.external, checkpointPaths } });
     }, { id: next.id, source: session.id, boundary: preview.boundary, checkpoint: preview.checkpoint, digest: preview.checkpoint_digest,
       inode: identity.ino, device: identity.dev, gate: next.checkpointGateIdentity(), external: preview.external, checkpointPaths, prefixBytes: prefix.length,
-      prefixSha256: crypto.createHash("sha256").update(prefix).digest("hex") });
+      prefixSha256: crypto.createHash("sha256").update(prefix).digest("hex") }, directory);
     try { next.inheritCheckpointWitnesses(session); }
     catch (error) { throw new RewindCommittedWitnessError(next.id, next.config.workspace, error); }
     return next;
@@ -221,10 +236,12 @@ export async function applyRewindAfterRelease(session: Session, preview: RewindP
     if (recover) recovery = session.prepareRewindRecovery(branch.next);
     await release(() => { released = true; });
     released = true;
+    // Regranting the same inode can preserve the preview but retires the held lease.
+    if (branch.grantSignals.some(grant => grant.aborted)) throw new Error('Rewind directory authority changed; preview again before applying');
     const { contentRuleOwner: currentOwner, startupModeDecidedByProactivityLevel: currentStartup, ...current } = session.permissionOwner.state();
     if (changed || currentOwner !== contentRuleOwner || !isDeepStrictEqual(currentStartup, startupModeDecidedByProactivityLevel) ||
         !isDeepStrictEqual(current, permissions)) throw new Error('Rewind permission state changed; preview again before applying');
-    const fresh = validateRewind(session, initial, token, signal);
+    const fresh = validateRewind(session, initial, token, signal, branch.next);
     const ready = branch, keepForRecovery = !!recovery && !!recover;
     if (!keepForRecovery) branch = undefined;
     const next = restoreRewindBranch(session, fresh, signal, ready, keepForRecovery);

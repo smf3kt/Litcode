@@ -1,0 +1,54 @@
+{
+  "unit": "W385 #43 mixed live plugin catalogs",
+  "identity": "d42456aa522127c404f96abb7347d6996c70aa7e8f80a86921de60f25cc41b15",
+  "inputs": "cd55420d77d0fcb00b6b511c0c71190e8729256a36b83b9dea66c200981d1134",
+  "validation": "c89d53ca1cf560cf17b341bc6166a5d9a7341f7a224bf4b3b513d628c73287a3",
+  "build": "45b8e2e28790136edc5c85b7ffc3a50ba3d6eaeb9aecad51c34b123a83ffe57a",
+  "source": [
+    {
+      "module": "chunk-9yh2xzb7.js",
+      "sha256": "a023ef8c88f31649cea4bd4c015b41bfc997756ed0296c6f31e8ee44f06749f4",
+      "symbol": "oL",
+      "range": [
+        1781,
+        3332
+      ]
+    },
+    {
+      "module": "chunk-x876fw6t.js",
+      "sha256": "82f072d959103651ec4007a02691e4b1883602213581c89d88809dca574beef2",
+      "symbol": "Yr",
+      "range": [
+        16694,
+        19097
+      ]
+    },
+    {
+      "module": "chunk-70zd5em8.js",
+      "sha256": "47281b06c46ad309c7fd0571114ba9b2090b5ac718c4b2009a3a31f2fbc62f8b",
+      "symbol": "bq",
+      "range": [
+        1378,
+        3258
+      ]
+    }
+  ],
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "check": 0,
+    "build": 0,
+    "runtimeCases": 22,
+    "otherAffectedCases": 142,
+    "cli": "node .audit/w385-live-hooks-cli.mjs --mixed",
+    "before": "second turn rejects Runtime owner configuration changed",
+    "after": "three turns, old/new/removed skill and agent prompt catalogs, hookTrace aebee, locks released",
+    "retainedTools": "same skill/agent tool objects execute new body and spawn new agent, removal rejects",
+    "resources": "same scheduler timer and existing job survive; structural maxOutputBytes change still rejects",
+    "modelUpstreamRequests": 0
+  },
+  "remaining": [
+    "legacy untagged hook origin compatibility",
+    "notification-bearing branch ownership",
+    "durable process/callback provenance"
+  ]
+}

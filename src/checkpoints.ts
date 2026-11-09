@@ -6,6 +6,13 @@ import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { sessionGateIdentitySchema, sessionLockSchema, type SessionGateIdentity } from "./session-lock-record.js";
 import { directoryCheckpointPathsSchema, directoryRewindExternalSchema } from "./directory-file-history.js";
+import { DIRECTORY_REWIND_BYTE_CAP, directoryRewindEvidenceSchema, linkedNormalizationSchema } from './directory-rewind-evidence.js';
+import { assertDirectoryRewindExecution, verifyDirectoryRewindExecution, type DirectoryRewindExecution } from './directory-rewind-execution.js';
+import { directoryRewindRecoveryVerifier } from './directory-rewind-recovery.js';
+import { compensateDirectoryRewind } from './directory-rewind-compensation.js';
+import { createDirectoryReceipt, reconcileDirectoryReceipts } from './directory-rewind-receipt.js';
+import type { Session } from './session.js';
+import { observeRetainedDirectoryFile } from './directory-file-state.js';
 import { lock as flock } from "./skill-effects.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
 
@@ -48,7 +55,7 @@ export type CheckpointCommit = z.infer<typeof branchSchema>;
 const transactionSchema = z.object({ version: z.literal(1), id: z.string().uuid(), workspace: z.string(), state: z.enum(["pending", "committed"]),
   operations: z.array(z.object({ path: z.string(), before: fileStateSchema.nullable(), after: fileStateSchema.nullable() }).strict()).max(ENTRY_CAP),
   directories: z.array(z.object({ path: z.string(), mode: z.number().int().min(0).max(0o7777), inode: z.number().int().nonnegative().nullable(), device: z.number().int().nonnegative().nullable() }).strict()).max(ENTRY_CAP),
-  branch: branchSchema.optional() }).strict();
+  branch: branchSchema.optional(), directory: directoryRewindEvidenceSchema.optional() }).strict();
 type Transaction = z.infer<typeof transactionSchema>;
 type CommittedTransactionIdentity = { id: string; branch: CheckpointCommit; digest: string };
 type FileState = z.infer<typeof fileStateSchema> | null;
@@ -87,6 +94,14 @@ export class CommittedCheckpointTransactionError extends Error {
     super(`Checkpoint history committed; transaction retained for recovery. ${String(cause)}`, { cause });
     if (!transaction.branch) throw new Error("Committed checkpoint branch is missing.");
     this.identity = { id: transaction.id, branch: structuredClone(transaction.branch), digest: transactionDigest(transaction) };
+  }
+}
+// gft, 24k7d6mw [38766,45161), UTF-16. Rollback removes the successor
+// journal, so the interactive owner must switch before recovery can proceed.
+export class PendingRewindHandoff extends Error {
+  constructor(readonly source: string, readonly transactionHash: string, readonly journalHash: string,
+    readonly verifySource: (source: Session) => void, readonly verifyTransfer: (source: Session) => () => void) {
+    super(`External rewind must resume source session ${source} to roll back the interrupted branch`);
   }
 }
 function fingerprint(entries: Entry[]): string { return hash(JSON.stringify(entries)); }
@@ -142,11 +157,11 @@ function storeFor(root: string, create = false): string {
   directory(path.join(store, "manifests"), create);
   return store;
 }
-function readBounded(target: string, cap: number, context: ToolContext, durable = false): Buffer {
+function readBounded(target: string, cap: number, context: ToolContext, durable = false, pinnedFd?: number): Buffer {
   aborted(context);
   const before = fs.lstatSync(target);
   if (!before.isFile() || before.isSymbolicLink() || before.size > cap) throw new Error(`Checkpoint file exceeds cap or is not regular: ${target}`);
-  const fd = fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  const fd = pinnedFd ?? fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {
     const initial = fs.fstatSync(fd);
     if (!initial.isFile() || initial.dev !== before.dev || initial.ino !== before.ino || initial.size > cap) throw new Error(`Checkpoint file changed during read: ${target}`);
@@ -163,7 +178,7 @@ function readBounded(target: string, cap: number, context: ToolContext, durable 
     const after = fs.fstatSync(fd);
     if (fs.readSync(fd, extra, 0, 1, offset) || after.size !== initial.size || after.mtimeMs !== initial.mtimeMs || after.ctimeMs !== initial.ctimeMs || fs.lstatSync(target).ino !== initial.ino) throw new Error(`Checkpoint file changed during read: ${target}`);
     return bytes;
-  } finally { fs.closeSync(fd); }
+  } finally { if (pinnedFd === undefined) fs.closeSync(fd); }
 }
 function snapshot(root: string, context: ToolContext): Snapshot {
   const entries: Entry[] = [];
@@ -332,9 +347,9 @@ function saveTransaction(store: string, transaction: Transaction): void {
   if (bytes.length > MANIFEST_CAP) throw new Error("Checkpoint transaction exceeds metadata cap.");
   atomicWrite(store, transactionPath(store), bytes, 0o600);
 }
-function saveObject(store: string, bytes: Buffer, context: ToolContext): void {
+function saveObject(store: string, bytes: Buffer, context: ToolContext, cap = FILE_CAP): void {
   const digest = hash(bytes), target = path.join(store, "objects", digest);
-  if (exists(target)) { if (hash(readBounded(target, FILE_CAP, context)) !== digest) throw new Error("Checkpoint rollback object digest mismatch."); }
+  if (exists(target)) { if (hash(readBounded(target, cap, context)) !== digest) throw new Error("Checkpoint rollback object digest mismatch."); }
   else atomicWrite(store, target, bytes, 0o600);
 }
 /** Records the session association a capture is about to publish. Callers clear the returned file
@@ -454,6 +469,21 @@ function sweepStore(root: string, store: string): void {
   try { names = fs.readdirSync(manifests).sort(); } catch { return; }
   if (names.length > ENTRY_CAP) return;
   const referenced = new Set<string>();
+  // Archived mixed transactions retain before/after objects needed to inspect
+  // native held objects. An unreadable receipt conservatively prevents sweeping.
+  if (entries.length > OBJECT_SCAN_CAP) return;
+  for (const name of entries) {
+    const match = /^directory-(?:rewind|rollback)-([0-9a-f-]{36})\.json$/.exec(name);
+    if (!match) continue;
+    try {
+      const receipt = transactionSchema.parse(JSON.parse(readBounded(path.join(store, name), MANIFEST_CAP,
+        { workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: MANIFEST_CAP }).toString('utf8')));
+      if (receipt.workspace !== root || receipt.id !== match[1] || !receipt.directory) return;
+      for (const operation of receipt.operations) for (const state of [operation.before, operation.after]) if (state) referenced.add(state.sha256);
+      for (const operation of receipt.directory.operations) for (const state of [operation.before, operation.after])
+        if (state.kind === 'present') referenced.add(state.content.sha256);
+    } catch { return; }
+  }
   for (const file of names) {
     const name = file.endsWith(".json") ? file.slice(0, -5) : "";
     if (!NAME.test(name)) return;
@@ -480,11 +510,19 @@ function sweepStore(root: string, store: string): void {
   }
   if (removed) syncDir(objects);
 }
-function branchProof(root: string, branch: CheckpointCommit, context: ToolContext, durable = false): { committed: boolean; file?: string; stat?: fs.Stats; bytes?: Buffer } {
-  const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);
+function branchProof(root: string, branch: CheckpointCommit, context: ToolContext, durable = false,
+  rollbackArchive?: string, activeSuccessorJournal?: Buffer): { committed: boolean; file?: string; stat?: fs.Stats; bytes?: Buffer } {
+  const original = path.join(root, ".agent", `${branch.id}.jsonl`);
+  const file = exists(original) ? original : rollbackArchive ?? original, stat = exists(file);
   if (!stat) return { committed: false };
   if (stat.ino !== branch.inode || stat.dev !== branch.device) throw new Error("Checkpoint recovery branch identity changed.");
   const bytes = readBounded(file, 64 * 1024 * 1024, context, durable);
+  if (rollbackArchive && exists(rollbackArchive)) {
+    const retained = fs.lstatSync(rollbackArchive);
+    if (!retained.isFile() || retained.isSymbolicLink() || retained.ino !== branch.inode || retained.dev !== branch.device ||
+        !readBounded(rollbackArchive, 64 * 1024 * 1024, context, durable).equals(bytes))
+      throw new Error('Checkpoint rollback branch archive changed; transaction retained');
+  }
   if (bytes.length < branch.prefixBytes || hash(bytes.subarray(0, branch.prefixBytes)) !== branch.prefixSha256) throw new Error("Checkpoint recovery branch prefix changed.");
   const tail = bytes.subarray(branch.prefixBytes).toString("utf8");
   const expected = [
@@ -492,13 +530,166 @@ function branchProof(root: string, branch: CheckpointCommit, context: ToolContex
     { kind: "branch", source: branch.source, workspace: root, boundary: branch.boundary, reason: "rewind", ...(branch.external ? { external: branch.external } : {}),
       ...(branch.checkpointPaths ? { checkpointPaths: branch.checkpointPaths } : {}) },
   ].map(event => JSON.stringify(event) + "\n").join("");
-  if (tail === expected) return { committed: true, file, stat, bytes };
+  if (tail === expected || (activeSuccessorJournal?.equals(bytes) && tail.startsWith(expected))) {
+    if (file === rollbackArchive) throw new Error('Checkpoint rollback archive cannot prove commitment');
+    return { committed: true, file, stat, bytes };
+  }
   if (!expected.startsWith(tail)) throw new Error("Checkpoint recovery branch has unrelated history; retained for inspection.");
-  return { committed: false, file, stat };
+  return { committed: false, file, stat, bytes };
+}
+
+// EVr/RVr, sfn1dbxq [4739632,4743506), UTF-16. Mixed receipts are host
+// evidence. This inventory reports recorded outcomes and grants no authority.
+export function listRecordedRewindHolds(session: Session) {
+  const root = session.config.workspace;
+  if (!exists(path.join(root, '.agent', 'checkpoints'))) return [];
+  const store = storeFor(root);
+  const context = { workspace: root, signal: session.closeSignal, allowShell: false, maxOutputBytes: MANIFEST_CAP };
+  const names = fs.readdirSync(store);
+  if (names.length > OBJECT_SCAN_CAP) throw new Error('Checkpoint archive scan exceeds file limit');
+  const holds = [];
+  for (const name of names.sort()) {
+    const match = /^directory-(rewind|rollback)-([0-9a-f-]{36})\.json$/.exec(name);
+    if (!match) continue;
+    const saved = transactionSchema.parse(JSON.parse(readBounded(path.join(store, name), MANIFEST_CAP, context).toString('utf8')));
+    const { branch, directory } = saved;
+    if (!branch || !directory || saved.workspace !== root || saved.id !== match[2] ||
+        branch.source !== directory.checkpoint.owner || branch.id !== directory.owner ||
+        branch.digest !== directory.checkpoint.digest || branch.checkpoint !== directory.checkpoint.name ||
+        (session.id !== branch.id && session.id !== branch.source)) continue;
+    const committed = match[1] === 'rewind';
+    if (!committed && saved.state !== 'pending') continue;
+    for (const operation of directory.operations) {
+      for (const [phase, stage] of [['forward', operation.stage], ['rollback', operation.rollback]] as const) {
+        if (stage?.kind !== 'completed') continue;
+        const held = stage.result.kind === 'quarantined' ? stage.result.observation : stage.result.held;
+        if (held) holds.push({ transaction: saved.id, attempt: stage.id, phase,
+          disposition: committed ? 'committed' : 'rolled_back', operation: stage.result.kind === 'quarantined' ? 'remove' : 'replace' });
+      }
+    }
+  }
+  return holds;
+}
+
+// Host mixed receipt adaptation of EVr/RVr, sfn1dbxq [4739632,4743506),
+// and sC, f606a53w [12501,15618), half-open UTF-16.
+export function archiveRewindHolds(session: Session, id: string, signal: AbortSignal): number {
+  z.string().uuid().parse(id);
+  const root = session.config.workspace, store = storeFor(root);
+  const context = { workspace: root, signal, allowShell: false, maxOutputBytes: MANIFEST_CAP };
+  return lock(store, () => {
+    if (exists(transactionPath(store))) throw new Error('Resolve the pending checkpoint transaction before archiving');
+    const paths = ['rewind', 'rollback'].map(kind => path.join(store, `directory-${kind}-${id}.json`));
+    const matches = paths.filter(file => exists(file));
+    if (matches.length !== 1) throw new Error('Terminal rewind receipt unavailable or ambiguous');
+    const receiptFile = matches[0]!, committed = receiptFile === paths[0];
+    const bytes = readBounded(receiptFile, MANIFEST_CAP, context, true);
+    const tx = transactionSchema.parse(JSON.parse(bytes.toString('utf8'))), { branch, directory } = tx;
+    if (!branch?.gate || !directory || tx.id !== id || tx.workspace !== root || (!committed && tx.state !== 'pending') ||
+        branch.source !== directory.checkpoint.owner || branch.id !== directory.owner ||
+        branch.checkpoint !== directory.checkpoint.name || branch.digest !== directory.checkpoint.digest ||
+        session.id !== (committed ? branch.id : branch.source))
+      throw new Error('Open the terminal rewind session to archive its held files');
+    const rollbackFile = committed ? undefined : path.join(store, `rollback-branch-${id}.jsonl`);
+    const assertOwner = () => {
+      const journal = session.checkpointJournalBytes();
+      const proof = branchProof(root, branch, context, true, rollbackFile, committed ? journal : undefined);
+      if (proof.committed !== committed || proof.file !== (committed ? session.file : rollbackFile) ||
+          (committed && (!proof.bytes?.equals(journal) || !isDeepStrictEqual(branch.gate, session.checkpointGateIdentity()))) ||
+          !readBounded(receiptFile, MANIFEST_CAP, context).equals(bytes))
+        throw new Error('Terminal rewind branch or receipt changed');
+    };
+    const gate = acquireBranchGate(root, { id: session.id, gate: session.checkpointGateIdentity() }, assertOwner);
+    let source: Session | undefined, archiveFd: number | undefined;
+    try {
+      source = committed ? session.openCommittedRewindSource(branch.source) : session;
+      for (const op of directory.operations) {
+        if ((op.stage.kind === 'completed' && !op.receipt) || (op.rollback?.kind === 'completed' && !op.rollbackReceipt))
+          throw new Error('Terminal rewind lacks a native receipt');
+      }
+      const receipts = reconcileDirectoryReceipts(store, directory, session, signal, source);
+      const archive = path.join(store, `held-archive-${id}`);
+      try { fs.mkdirSync(archive, { mode: 0o700 }); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e; }
+      syncDir(store);
+      const fd = archiveFd = fs.openSync(archive, fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+      const opened = fs.fstatSync(fd, { bigint: true });
+      const assertArchive = () => {
+        const named = fs.lstatSync(archive, { bigint: true });
+        if (!named.isDirectory() || named.dev !== opened.dev || named.ino !== opened.ino ||
+            named.uid !== BigInt(process.geteuid!()) || (named.mode & 0o7777n) !== 0o700n)
+          throw new Error('Private rewind archive changed');
+      };
+      let move = false, count = 0;
+      const verify = directoryRewindRecoveryVerifier(source, receipts.record,
+        digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context), signal,
+        committed ? 'committed' : 'rolled_back', undefined, session, (op, attemptId, kind, expected, digest) => {
+          const grant = session.workingDirectories(false).readHandle?.(op.grant.root);
+          if (!grant) throw new Error('Regrant the original directory before archiving');
+          const relative = path.relative(grant.root, op.path);
+          const from = op.rollback?.id === attemptId ? op.after : op.before;
+          if (from.kind !== 'present') throw new Error('Rewind hold lacks original parent');
+          if (move) { gate.assert(); receipts.verify(); }
+          assertArchive();
+          const object = path.join(store, 'objects', digest);
+          const witness = fs.openSync(object, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+          try {
+            const identity = fs.fstatSync(witness, { bigint: true }), named = fs.lstatSync(object, { bigint: true });
+            if (!identity.isFile() || identity.size !== BigInt(from.content.bytes) || identity.ino !== named.ino ||
+                identity.dev !== named.dev || hash(readBounded(object, from.content.bytes, context, false, witness)) !== digest) throw new Error('Rewind backup changed');
+            const rootStat = fs.lstatSync(grant.root, { bigint: true });
+            if (!rootStat.isDirectory() || rootStat.dev !== grant.dev || rootStat.ino !== grant.ino || grant.signal.aborted ||
+                observeRetainedDirectoryFile({ fd: grant.fd, relative, expected, expectedFd: witness, leaseFd: gate.fd,
+                  transactionId: attemptId, archive: { fd, parent: from.observation.parent, move, kind } }).kind !== 'observed')
+              throw new Error('Rewind hold archive unconfirmed');
+            const after = fs.fstatSync(witness, { bigint: true });
+            if (after.ctimeNs !== identity.ctimeNs || after.mtimeNs !== identity.mtimeNs) throw new Error('Rewind backup changed');
+            assertArchive();
+          } finally { fs.closeSync(witness); }
+          if (move) count++;
+        });
+      receipts.verify(); receipts.verifyCandidates();
+      move = true;
+      verify();
+      if (!count) throw new Error('Transaction has no completed holds');
+      move = false;
+      verify(); receipts.verify(); gate.assert();
+      return count;
+    } finally {
+      if (archiveFd !== undefined) fs.closeSync(archiveFd);
+      if (source && source !== session) void source.close();
+      gate.release();
+    }
+  });
+}
+
+// Host restart adaptation of kHs, 24k7d6mw [45367,46476), UTF-16. A
+// committed mixed transaction archives its branch identity before unlink.
+export function hasArchivedRewindCommit(session: Session): boolean {
+  const root = session.config.workspace, store = storeFor(root);
+  const context = { workspace: root, signal: session.closeSignal, allowShell: false, maxOutputBytes: MANIFEST_CAP };
+  const names = fs.readdirSync(store);
+  if (names.length > OBJECT_SCAN_CAP || exists(transactionPath(store))) return false;
+  let found = false;
+  for (const name of names) {
+    const match = /^directory-rewind-([0-9a-f-]{36})\.json$/.exec(name);
+    if (!match) continue;
+    const saved = transactionSchema.parse(JSON.parse(readBounded(path.join(store, name), MANIFEST_CAP, context).toString('utf8')));
+    const branch = saved.branch;
+    if (branch?.id !== session.id) continue;
+    if (found || saved.workspace !== root || saved.id !== match[1] || !saved.directory ||
+        saved.directory.owner !== session.id || saved.directory.operations.some(op => op.stage.kind !== 'completed' || op.rollback) ||
+        saved.directory.checkpoint.owner !== branch.source ||
+        saved.directory.checkpoint.name !== branch.checkpoint || saved.directory.checkpoint.digest !== branch.digest ||
+        !isDeepStrictEqual(branch.gate, session.checkpointGateIdentity())) return false;
+    const proof = branchProof(root, branch, context, true);
+    if (!proof.committed || proof.file !== session.file || !proof.bytes?.equals(session.checkpointJournalBytes())) return false;
+    found = true;
+  }
+  return found;
 }
 
 // Host transaction/gate adaptation for kVr/EVr/RVr, sfn1dbxq [4735645,4737243)/[4739632,4743506), UTF-16.
-function acquireBranchGate(root: string, branch: CheckpointCommit): { assert: () => void; release: () => void } {
+function acquireBranchGate(root: string, branch: Pick<CheckpointCommit, 'id' | 'gate'>, assertOwner?: () => void): { fd: number; assert: () => void; release: () => void } {
   const lockPath = path.join(root, ".agent", `${branch.id}.jsonl.lock`), gatePath = `${lockPath}.gate`;
   let fd: number;
   try { fd = fs.openSync(gatePath, fs.constants.O_RDWR | fs.constants.O_NOFOLLOW); }
@@ -515,18 +706,20 @@ function acquireBranchGate(root: string, branch: CheckpointCommit): { assert: ()
         const owner = readLock(lockPath, true);
         if (owner.gate && (owner.gate.dev !== String(opened.dev) || owner.gate.ino !== String(opened.ino)))
           throw new Error("Checkpoint recovery branch gate changed.");
-        if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
+        if (!assertOwner && alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
       }
+      assertOwner?.();
     };
     assert();
     if (!flock(fd, false)) throw new Error("Checkpoint recovery branch gate is busy.");
     assert();
-    return { assert, release: () => fs.closeSync(fd) };
+    return { fd, assert, release: () => fs.closeSync(fd) };
   } catch (error) { fs.closeSync(fd); throw error; }
 }
 
 function recoverTransaction(root: string, store: string, context: ToolContext, forceRollback = false, ownBranch = false,
-  applied?: ReadonlySet<string>, after?: () => void, expectedCommitted?: CommittedTransactionIdentity): "none" | "rolled_back" | "committed" {
+  applied?: ReadonlySet<string>, after?: () => void, expectedCommitted?: CommittedTransactionIdentity,
+  directory?: DirectoryRewindExecution, coldAuthority?: Session): "none" | "rolled_back" | "committed" {
   const target = transactionPath(store);
   if (!exists(target)) {
     if (expectedCommitted) throw new Error("Expected checkpoint transaction is missing.");
@@ -534,6 +727,89 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
   }
   const transaction = transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString("utf8")));
   if (transaction.workspace !== root) throw new Error("Checkpoint transaction workspace mismatch.");
+  const rollbackArchive = transaction.directory && coldAuthority && !forceRollback && !ownBranch
+    ? path.join(store, `rollback-branch-${transaction.id}.jsonl`) : undefined;
+  // kVr/RVr, sfn1dbxq [4735645,4737243)/[4740702,4743506), UTF-16.
+  // Host mixed effects need current directory authority. Prepared or matching
+  // file bytes alone cannot authorize rollback or branch/receipt cleanup.
+  let verifyColdDirectory: ReturnType<typeof directoryRewindRecoveryVerifier> | undefined;
+  let verifyColdBranch: (() => void) | undefined;
+  let coldReceipts: ReturnType<typeof reconcileDirectoryReceipts> | undefined;
+  let checkpointSource: Session | undefined;
+  try {
+  if (transaction.directory) {
+    if (directory) verifyDirectoryRewindExecution(directory, transaction.directory, forceRollback);
+    else if (coldAuthority && !forceRollback && !ownBranch) {
+      const branch = transaction.branch;
+      if (coldAuthority.config.workspace !== root || !branch || branch.id !== transaction.directory.owner ||
+          branch.source !== transaction.directory.checkpoint.owner || branch.checkpoint !== transaction.directory.checkpoint.name ||
+          branch.digest !== transaction.directory.checkpoint.digest)
+        throw new Error('External rewind branch proof unavailable; transaction retained');
+      const proof = branchProof(root, branch, context, true, rollbackArchive);
+      if (!proof.file || (!proof.committed && transaction.state !== 'pending'))
+        throw new Error('External rewind branch disposition unavailable; transaction retained');
+      const successor = coldAuthority.id === branch.id;
+      const assertSuccessor = () => {
+        if (!proof.bytes || !branch.gate ||
+            !isDeepStrictEqual(coldAuthority.checkpointGateIdentity(), branch.gate) ||
+            coldAuthority.file !== proof.file || !coldAuthority.checkpointJournalBytes().equals(proof.bytes))
+          throw new Error('External rewind requires the original successor journal and gate');
+      };
+      if (successor) {
+        assertSuccessor();
+        const record = transaction.directory;
+        const grants = record.operations.map(operation => {
+          const grant = coldAuthority.workingDirectories(false).readHandle?.(operation.grant.root);
+          if (!grant || grant.owner !== branch.id || String(grant.dev) !== operation.grant.dev || String(grant.ino) !== operation.grant.ino)
+            throw new Error('External rewind requires an explicit grant for the original directory');
+          return grant;
+        });
+        if (!proof.committed) {
+          if (branch.source === branch.id) throw new Error('External rewind source identity is ambiguous');
+          const verifyTransfer = (source: Session) => {
+            context.signal.throwIfAborted();
+            assertSuccessor();
+            source.checkpointGateIdentity();
+            const copies = grants.map(grant => {
+              const copied = source.workingDirectories(false).readHandle?.(grant.root);
+              if (grant.signal.aborted || !copied || copied.signal.aborted || copied.owner !== branch.source ||
+                  copied.dev !== grant.dev || copied.ino !== grant.ino || copied.incarnation === grant.incarnation || copied.fd === grant.fd)
+                throw new Error('External rewind directory grant changed during handoff');
+              return copied;
+            });
+            return () => {
+              context.signal.throwIfAborted();
+              source.checkpointGateIdentity();
+              for (const copy of copies) {
+                if (copy.signal.aborted || source.workingDirectories(false).readHandle?.(copy.root)?.incarnation !== copy.incarnation)
+                  throw new Error('External rewind source grant changed during handoff');
+              }
+            };
+          };
+          const verifySource = (source: Session) => {
+            verifyTransfer(source);
+            const receipts = reconcileDirectoryReceipts(store, record, source, context.signal);
+            directoryRewindRecoveryVerifier(source, receipts.record,
+              digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context),
+              context.signal, 'uncommitted', receipts.intermediates);
+            receipts.verify(); receipts.verifyCandidates();
+          };
+          throw new PendingRewindHandoff(branch.source, hash(JSON.stringify(transaction)), hash(coldAuthority.checkpointJournalBytes()),
+            verifySource, verifyTransfer);
+        }
+        checkpointSource = coldAuthority.openCommittedRewindSource();
+      }
+      coldReceipts = reconcileDirectoryReceipts(store, transaction.directory, coldAuthority, context.signal, checkpointSource);
+      verifyColdDirectory = directoryRewindRecoveryVerifier(checkpointSource ?? coldAuthority, coldReceipts.record,
+        digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context), context.signal,
+        proof.committed ? 'committed' : 'uncommitted', coldReceipts.intermediates, coldAuthority);
+      verifyColdBranch = () => {
+        if (successor) assertSuccessor();
+        const current = branchProof(root, branch, context, true, rollbackArchive);
+        if (!current.bytes?.equals(proof.bytes!)) throw new Error('External rewind branch proof changed; transaction retained');
+      };
+    } else throw new Error('Checkpoint external rewind requires live directory reconciliation; transaction retained.');
+  }
   if (expectedCommitted && (transaction.id !== expectedCommitted.id || transactionDigest(transaction) !== expectedCommitted.digest ||
       !isDeepStrictEqual(transaction.branch, expectedCommitted.branch))) throw new Error("Checkpoint transaction identity changed; retained for inspection.");
   const seen = new Set<string>(), buffers = new Map<string, Buffer>();
@@ -550,9 +826,14 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
     }
   }
   if (beforeTotal > TOTAL_CAP || afterTotal > TOTAL_CAP) throw new Error("Checkpoint transaction exceeds total byte cap.");
-  const gate = !forceRollback && !ownBranch && transaction.branch ? acquireBranchGate(root, transaction.branch) : undefined;
+  const gate = !forceRollback && !ownBranch && transaction.branch
+    ? acquireBranchGate(root, transaction.branch, checkpointSource ? verifyColdBranch : undefined) : undefined;
   try {
   gate?.assert();
+  verifyColdBranch?.();
+  coldReceipts?.verify();
+  coldReceipts?.verifyCandidates();
+  verifyColdDirectory?.();
   if (expectedCommitted && (!transaction.branch || !gate || !branchProof(root, transaction.branch, context, true).committed))
     throw new Error("Checkpoint committed branch proof is missing; transaction retained.");
   // The crashed writer held the store lock, so its staging files in the target directories are
@@ -567,17 +848,19 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
     }
   };
   if (!expectedCommitted) sweepTargets();
-  const branch = transaction.branch ? branchProof(root, transaction.branch, context) : undefined;
+  const branch = transaction.branch ? branchProof(root, transaction.branch, context, false, rollbackArchive) : undefined;
   if (expectedCommitted && !branch?.committed) throw new Error("Checkpoint committed branch proof changed; transaction retained.");
   // History proof remains authoritative when publishing the commit marker fails.
   const committed = branch?.committed === true || (!forceRollback && transaction.state === "committed");
   if (committed && branch && !branch.committed) throw new Error("Checkpoint commit marker lacks its history proof; transaction retained.");
   const conflicts: string[] = [];
   const branchLock = transaction.branch ? path.join(root, ".agent", `${transaction.branch.id}.jsonl.lock`) : undefined;
-  if (!forceRollback && !ownBranch && branchLock && exists(branchLock)) {
+  if (checkpointSource && !branch?.committed) throw new Error('External rewind successor commitment changed');
+  if (!forceRollback && !ownBranch && !checkpointSource && branchLock && exists(branchLock)) {
     const owner = readLock(branchLock, true);
     if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
   }
+  const verifyWorkspaceRecovery = () => {
   for (const saved of transaction.directories) {
     gate?.assert();
     relativePath(saved.path);
@@ -597,7 +880,122 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
       conflicts.push(operation.path);
     }
   }
+  };
+  verifyWorkspaceRecovery();
+  // Host linked normalization: bind its separate receipt before effects, keep
+  // the original create receipt, and preflight the complete mixed transaction.
+  while (coldReceipts?.linked.size) {
+    if (committed || !coldAuthority || !gate || !verifyColdDirectory || !verifyColdBranch)
+      throw new Error('External rewind linked normalization requires an uncommitted recovery gate');
+    const [entryPath, continuation] = coldReceipts.linked.entries().next().value!;
+    gate.assert(); verifyColdBranch(); coldReceipts.verify(); coldReceipts.verifyCandidates(); verifyColdDirectory(); verifyWorkspaceRecovery();
+    const assertTransaction = () => {
+      if (!isDeepStrictEqual(transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString('utf8'))), transaction))
+        throw new Error('External rewind transaction changed during linked normalization');
+    };
+    assertTransaction();
+    const record = coldReceipts.record, operation = record.operations.find(item => item.path === entryPath)!;
+    const remaining = coldReceipts.linked.size;
+    let receipt: ReturnType<typeof createDirectoryReceipt> | undefined;
+    let normalizationId: string | undefined;
+    try {
+      if (continuation.kind === 'initial') {
+        normalizationId = crypto.randomUUID(); receipt = createDirectoryReceipt(store, normalizationId);
+        const evidence = linkedNormalizationSchema.parse({ id: normalizationId, receipt: receipt.identity,
+          originalReceiptDigest: continuation.evidence.receiptDigest, alias: continuation.evidence.alias, pair: continuation.evidence.observation });
+        if (continuation.reverse) operation.rollbackNormalization = evidence;
+        else operation.normalization = evidence;
+      } else {
+        const evidence = continuation.reverse ? operation.rollbackNormalization : operation.normalization;
+        if (!evidence) throw new Error('External rewind normalization evidence missing');
+        evidence.captured = continuation.evidence;
+      }
+      if (!isDeepStrictEqual(record, transaction.directory)) {
+        transaction.directory = record; saveTransaction(store, transaction);
+      }
+      gate.assert(); verifyColdBranch(); coldReceipts.verify(); coldReceipts.verifyCandidates(); verifyColdDirectory(); verifyWorkspaceRecovery(); assertTransaction();
+      if (continuation.kind === 'initial') {
+        if (!receipt || !normalizationId) throw new Error('External rewind normalization receipt missing');
+        continuation.normalize(normalizationId, receipt.fd, gate.fd, digest => path.join(store, 'objects', digest));
+      } else continuation.publish(gate.fd);
+    } finally { receipt?.close(); }
+    gate.assert(); verifyColdBranch(); coldReceipts.verify(); verifyColdDirectory.authority(); assertTransaction();
+    coldReceipts = reconcileDirectoryReceipts(store, record, coldAuthority, context.signal);
+    verifyColdDirectory = directoryRewindRecoveryVerifier(coldAuthority, coldReceipts.record,
+      digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context), context.signal, 'uncommitted', coldReceipts.intermediates);
+    coldReceipts.verifyCandidates(); verifyWorkspaceRecovery();
+    if (coldReceipts.linked.size >= remaining) throw new Error('External rewind linked normalization did not settle');
+  }
+  // RVr host continuation: every operation is preflighted before publishing
+  // an already-captured staged inode. The original receipt stays immutable.
+  while (coldReceipts?.captured.size) {
+    if (committed || !coldAuthority || !gate || !verifyColdDirectory || !verifyColdBranch)
+      throw new Error('External rewind captured continuation requires an uncommitted recovery gate');
+    const [entryPath, continuation] = coldReceipts.captured.entries().next().value!;
+    gate.assert(); verifyColdBranch(); coldReceipts.verify(); coldReceipts.verifyCandidates(); verifyColdDirectory(); verifyWorkspaceRecovery();
+    const assertTransaction = () => {
+      if (!isDeepStrictEqual(transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString('utf8'))), transaction))
+        throw new Error('External rewind transaction changed during captured continuation');
+    };
+    assertTransaction();
+    const record = coldReceipts.record, operation = record.operations.find(item => item.path === entryPath)!;
+    if (continuation.reverse) operation.rollbackContinuation = continuation.evidence;
+    else operation.continuation = continuation.evidence;
+    if (!isDeepStrictEqual(record, transaction.directory)) {
+      transaction.directory = record; saveTransaction(store, transaction);
+    }
+    gate.assert(); verifyColdBranch(); coldReceipts.verify(); coldReceipts.verifyCandidates(); verifyColdDirectory(); verifyWorkspaceRecovery(); assertTransaction();
+    const remaining = coldReceipts.captured.size;
+    continuation.publish(gate.fd, digest => path.join(store, 'objects', digest));
+    gate.assert(); verifyColdBranch(); coldReceipts.verify(); verifyColdDirectory.authority(); assertTransaction();
+    coldReceipts = reconcileDirectoryReceipts(store, record, coldAuthority, context.signal);
+    verifyColdDirectory = directoryRewindRecoveryVerifier(coldAuthority, coldReceipts.record,
+      digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context), context.signal, 'uncommitted', coldReceipts.intermediates);
+    coldReceipts.verifyCandidates(); verifyWorkspaceRecovery();
+    if (coldReceipts.captured.size >= remaining) throw new Error('External rewind captured continuation did not settle');
+  }
+  if (coldReceipts && !isDeepStrictEqual(coldReceipts.record, transaction.directory)) {
+    gate?.assert(); verifyColdBranch?.(); coldReceipts.verify(); coldReceipts.verifyCandidates(); verifyColdDirectory?.();
+    if (!isDeepStrictEqual(transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString('utf8'))), transaction))
+      throw new Error('External rewind transaction changed before receipt reconciliation');
+    transaction.directory = coldReceipts.record; saveTransaction(store, transaction);
+  }
   if (!committed) {
+    if (coldAuthority && transaction.directory && !directory) {
+      if (!gate || !verifyColdDirectory || !verifyColdBranch) throw new Error('External rewind recovery gate unavailable');
+      verifyColdBranch(); verifyColdDirectory();
+      const authority = coldAuthority, evidence = transaction.directory, journal = authority.checkpointJournalBytes();
+      const grants = new Map(evidence.operations.map(operation => {
+        const grant = authority.workingDirectories(false).readHandle?.(operation.grant.root);
+        if (!grant) throw new Error('External rewind grant unavailable');
+        return [operation.grant.root, grant] as const;
+      }));
+      const assertAuthority = () => {
+        aborted(context); gate.assert(); verifyColdBranch?.(); authority.checkpointGateIdentity();
+        if (!authority.isOpen || authority.isJournalFenced || authority.isDirectoryAuthorityReleased ||
+            !authority.checkpointJournalBytes().equals(journal)) throw new Error('External rewind recovery authority changed');
+        for (const [root, held] of grants) {
+          const current = authority.workingDirectories(false).readHandle?.(root);
+          if (!current || held.signal.aborted || current.signal.aborted || current.fd !== held.fd ||
+              current.owner !== authority.id || current.incarnation !== held.incarnation || current.dev !== held.dev || current.ino !== held.ino)
+            throw new Error('External rewind recovery grant changed');
+        }
+      };
+      const readObject = (digest: string) => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context);
+      let persisted = transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString('utf8')));
+      if (!isDeepStrictEqual(persisted, transaction)) throw new Error('External rewind transaction changed before compensation');
+      compensateDirectoryRewind(evidence, record => {
+        assertAuthority();
+        if (!isDeepStrictEqual(transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString('utf8'))), persisted))
+          throw new Error('External rewind transaction changed during compensation');
+        transaction.directory = record; saveTransaction(store, transaction); persisted = structuredClone(transaction);
+      }, readObject, digest => path.join(store, 'objects', digest), {
+        assert: assertAuthority, leaseFd: gate.fd, createReceipt: id => createDirectoryReceipt(store, id),
+        grant: operation => { const grant = grants.get(operation.grant.root); if (!grant) throw new Error('External rewind grant missing'); return grant; },
+      });
+      assertAuthority();
+      verifyColdDirectory = directoryRewindRecoveryVerifier(authority, transaction.directory, readObject, context.signal, 'rolled_back');
+    }
     for (const operation of [...transaction.operations].reverse()) {
       gate?.assert();
       if (conflicts.includes(operation.path) || (applied !== undefined && !applied.has(operation.path))) continue;
@@ -619,25 +1017,63 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
     }
     if (!forceRollback && branch?.file && branch.stat) {
       gate?.assert();
+      verifyColdBranch?.(); verifyColdDirectory?.();
       const current = fs.lstatSync(branch.file);
       if (current.ino !== branch.stat.ino || current.dev !== branch.stat.dev || current.mtimeMs !== branch.stat.mtimeMs || current.ctimeMs !== branch.stat.ctimeMs) throw new Error("Checkpoint recovery branch changed before cleanup.");
-      const branchLock = `${branch.file}.lock`;
-      if (exists(branchLock)) { const owner = readLock(branchLock, true); if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner."); reclaimDeadLock(branchLock, true); }
-      fs.unlinkSync(branch.file); syncDir(path.dirname(branch.file));
+      if (branchLock && exists(branchLock)) { const owner = readLock(branchLock, true); if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner."); reclaimDeadLock(branchLock, true); }
+      if (rollbackArchive && branch.file !== rollbackArchive) {
+        // gft, 24k7d6mw [38766,45161), UTF-16: persist before handoff.
+        // Host rollback retains the same inode under an exclusive store name,
+        // so another crash never replaces journal proof with matching JSON alone.
+        try { fs.linkSync(branch.file, rollbackArchive); }
+        catch (error) { if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) throw error; }
+        syncDir(store);
+        verifyColdBranch?.(); verifyColdDirectory?.();
+      }
+      if (branch.file !== rollbackArchive) { fs.unlinkSync(branch.file); syncDir(path.dirname(branch.file)); }
     }
   }
-  if (committed && branchLock && exists(branchLock)) {
+  if (committed && !checkpointSource && branchLock && exists(branchLock)) {
     gate?.assert();
     const owner = readLock(branchLock, true);
     if (!alive(owner.pid)) reclaimDeadLock(branchLock, true);
   }
   gate?.assert();
   if (expectedCommitted) { after?.(); gate?.assert(); }
+  if (transaction.directory && (committed || transaction.directory.operations.some(operation => operation.rollback || operation.noEffectAttempts?.length))) {
+    // Keep native held-object identities after the active transaction is cleared.
+    // This receipt is evidence only; it does not authorize later cleanup/replay.
+    const receipt = path.join(store, `directory-${committed ? 'rewind' : 'rollback'}-${transaction.id}.json`), bytes = Buffer.from(JSON.stringify(transaction));
+    // Live compensation still owns the successor. Preserve its verified inode
+    // before discardRewindBranch removes the live name after this transaction.
+    if (!committed && forceRollback && directory && transaction.branch) {
+      verifyDirectoryRewindExecution(directory, transaction.directory, true);
+      const archive = path.join(store, `rollback-branch-${transaction.id}.jsonl`);
+      const proof = branchProof(root, transaction.branch, context, true, archive);
+      if (proof.committed || !proof.file || !proof.bytes) throw new Error('Compensated rewind branch unavailable');
+      if (!exists(archive)) fs.linkSync(proof.file, archive);
+      syncDir(store);
+      const saved = branchProof(root, transaction.branch, context, true, archive);
+      if (saved.committed || !saved.bytes?.equals(proof.bytes)) throw new Error('Compensated rewind branch changed');
+    }
+    if (exists(receipt)) {
+      if (!readBounded(receipt, MANIFEST_CAP, context).equals(bytes)) throw new Error('External rewind receipt differs; transaction retained');
+    } else {
+      const fd = fs.openSync(receipt, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+      try { fs.writeFileSync(fd, bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      syncDir(store);
+    }
+  }
+  if (committed) verifyColdBranch?.();
+  coldReceipts?.verify();
+  verifyColdDirectory?.();
   fs.unlinkSync(target); syncDir(store);
   if (!expectedCommitted) after?.();
   gate?.assert();
+  if (checkpointSource && coldAuthority?.hasCleanRewindBranch()) coldAuthority.inheritCheckpointWitnesses(checkpointSource);
   return committed ? "committed" : "rolled_back";
   } finally { gate?.release(); }
+  } finally { void checkpointSource?.close(); }
 }
 
 export function recoverCommittedCheckpoint(context: ToolContext, identity: CommittedTransactionIdentity): { bytes: number; sha256: string } {
@@ -653,17 +1089,29 @@ export function recoverCommittedCheckpoint(context: ToolContext, identity: Commi
     return journal;
   });
 }
-export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "rolled_back" | "committed" } {
+export function recoverCheckpoint(context: ToolContext, externalAuthority?: Session, handoff?: PendingRewindHandoff): { recovery: "none" | "rolled_back" | "committed" } {
   const root = rootFor(context), agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
-  if (!exists(agent) || !exists(store)) return { recovery: "none" };
+  if (!exists(agent) || !exists(store)) {
+    if (handoff) throw new Error('External rewind transaction missing after handoff');
+    return { recovery: "none" };
+  }
   storeFor(root);
   return lock(store, () => {
+    if (handoff) {
+      const saved = transactionSchema.parse(JSON.parse(readBounded(transactionPath(store), MANIFEST_CAP, context).toString('utf8')));
+      if (!saved.branch || saved.state !== 'pending' || handoff.source !== externalAuthority?.id ||
+          saved.branch.source !== handoff.source || hash(JSON.stringify(saved)) !== handoff.transactionHash)
+        throw new Error('External rewind transaction changed during handoff');
+      const proof = branchProof(root, saved.branch, context, true);
+      if (proof.committed || !proof.bytes || hash(proof.bytes) !== handoff.journalHash)
+        throw new Error('External rewind branch changed during handoff');
+    }
     const tag = hash(store).slice(0, 12);
     const cleanup = () => {
       for (const directory of [store, path.join(store, "objects"), path.join(store, "manifests")]) sweepStaging(directory, tag);
       sweepStore(root, store);
     };
-    const recovery = recoverTransaction(root, store, context, false, false, undefined, cleanup);
+    const recovery = recoverTransaction(root, store, context, false, false, undefined, cleanup, undefined, undefined, externalAuthority);
     if (recovery === "none") cleanup();
     return { recovery };
   });
@@ -733,7 +1181,9 @@ function schema(properties: Record<string, unknown>, required: string[]): ToolDe
 const nameProperty = { type: "string", pattern: NAME.source, description: "Checkpoint name (1-64 ASCII letters, digits, underscores or hyphens)." };
 const pageProperties = { offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 200 } };
 
-export function restoreCheckpoint(input: unknown, context: ToolContext, commit?: () => void, branch?: CheckpointCommit): string {
+export function restoreCheckpoint(input: unknown, context: ToolContext, commit?: () => void, branch?: CheckpointCommit,
+  directory?: DirectoryRewindExecution): string {
+  if (directory) assertDirectoryRewindExecution(directory);
   const args = z.object({ name: nameSchema, expected_current_digest: z.string().regex(HASH), paths: z.array(z.string()).min(commit ? 0 : 1).max(ENTRY_CAP).optional(), remove_new: z.boolean().default(false), dry_run: z.boolean().default(true) }).strict().parse(input);
   const root = rootFor(context);
   if (!args.dry_run) recoverCheckpoint(context);
@@ -765,17 +1215,20 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
   const result = { name: args.name, behavior: "filesystem_rewind", dry_run: args.dry_run, checkpoint_digest: manifest.digest, current_digest: current.digest, operations: operations.map(({ path: relative, action }) => ({ path: relative, action })) };
   if (args.dry_run) return output(result, context);
   return lock(store, () => {
+    directory?.acquire();
+    try {
     storeFor(root);
     aborted(context);
     if (snapshot(root, context).digest !== current.digest) throw new Error("Checkpoint conflict: workspace changed before restore.");
     const state = (entry: FileEntry | undefined): FileState => entry ? { mode: entry.mode, size: entry.size, sha256: entry.sha256 } : null;
     const transaction: Transaction = { version: 1, id: crypto.randomUUID(), workspace: root, state: "pending",
       operations: operations.map(operation => ({ path: operation.path, before: state(now.get(operation.path) as FileEntry | undefined), after: state(operation.entry) })),
-      directories: [], ...(branch ? { branch: branchSchema.parse(branch) } : {}) };
+      directories: [], ...(branch ? { branch: branchSchema.parse(branch) } : {}), ...(directory ? { directory: directory.record } : {}) };
     for (const operation of operations) {
       const old = now.get(operation.path);
       if (old?.kind === "file") saveObject(store, current.contents.get(old.sha256)!, context);
     }
+    if (directory) for (const bytes of directory.objects.values()) saveObject(store, bytes, context, DIRECTORY_REWIND_BYTE_CAP);
     aborted(context);
     saveTransaction(store, transaction);
 
@@ -819,6 +1272,9 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
           syncDir(path.dirname(target));
         } else atomicWrite(store, target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.add(operation.path));
       }
+      directory?.apply(record => { transaction.directory = record; saveTransaction(store, transaction); },
+        digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, context),
+        digest => path.join(store, 'objects', digest), id => createDirectoryReceipt(store, id));
       commit?.();
       transaction.state = "committed";
       saveTransaction(store, transaction);
@@ -826,12 +1282,23 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
       if (branch && branchProof(root, branch, { ...context, signal: new AbortController().signal }).committed) {
         throw new CommittedCheckpointTransactionError(root, transaction, error);
       }
-      try { recoverTransaction(root, store, { ...context, signal: new AbortController().signal }, true, false, applied); }
+      try {
+        const recoveryContext = { ...context, signal: new AbortController().signal };
+        if (directory) {
+          const persisted = transactionSchema.parse(JSON.parse(readBounded(transactionPath(store), MANIFEST_CAP, recoveryContext).toString('utf8')));
+          if (persisted.id !== transaction.id || !persisted.directory) throw new Error('External rewind transaction changed');
+          directory.rollback(persisted.directory, record => { transaction.directory = record; saveTransaction(store, transaction); },
+            digest => readBounded(path.join(store, 'objects', digest), DIRECTORY_REWIND_BYTE_CAP, recoveryContext),
+            digest => path.join(store, 'objects', digest), id => createDirectoryReceipt(store, id));
+        }
+        recoverTransaction(root, store, recoveryContext, true, false, applied, undefined, undefined, directory);
+      }
       catch (rollback) { throw new Error(`Checkpoint restore failed; rollback incomplete. ${String(rollback)} Original error: ${String(error)}`); }
       throw error;
     }
-    recoverTransaction(root, store, context, false, true);
+    recoverTransaction(root, store, context, false, true, undefined, undefined, undefined, directory);
     return output({ ...result, restored: true }, context);
+    } finally { directory?.close(); }
   });
 }
 

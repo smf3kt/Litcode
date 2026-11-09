@@ -1,0 +1,19 @@
+{
+  "identity": "2e884385613af126098f304cb36a07df25aecfc9f3129eb7144fdd85affa3281",
+  "actualCli": true,
+  "sameAgent": true,
+  "records": [
+    {
+      "attempt": 1,
+      "busy": false
+    },
+    {
+      "provider": true
+    },
+    {
+      "attempt": 2,
+      "busy": false
+    }
+  ],
+  "upstreamCalls": 0
+}

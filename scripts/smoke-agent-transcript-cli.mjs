@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { spawn, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -56,13 +57,48 @@ const directorySelection = process.argv.includes('--directory-selection') || dir
 const directoryRetainedPublication = process.argv.includes('--directory-retained-publication');
 const directoryCheckpointBracket = process.argv.includes('--directory-checkpoint-bracket');
 const directoryBackup = process.argv.includes('--directory-backup') || directoryRecovery || directoryHistoryDisabled || directorySelection || directoryRetainedPublication;
-const directoryEditTool = process.argv.includes('--directory-edit') ? 'edit_file'
-  : process.argv.includes('--directory-notebook-edit') ? 'notebook_edit' : undefined;
-const directoryWrite = process.argv.includes('--directory-write') || directoryBackup;
-const directoryGrant = process.argv.includes('--directory-grant') || directoryReplacement || directorySwitch || directoryWrite || directoryRewindAuthority || directoryCheckpointBracket || !!directoryEditTool || !!directoryBranchHistory;
+const directoryEditBackup = process.argv.includes('--directory-edit-backup');
+const notebookPublication = process.argv.includes('--directory-notebook-publication');
+const directoryEditTool = directoryEditBackup || process.argv.includes('--directory-edit') ? 'edit_file'
+  : notebookPublication || process.argv.includes('--directory-notebook-edit') ? 'notebook_edit' : undefined;
+const directoryMixedCleanupCrash = process.argv.includes('--directory-mixed-cleanup-crash');
+const linkedError = process.argv.find(arg => arg.startsWith('--directory-linked-error='))?.split('=')[1];
+if (linkedError) assert.ok(['complete', 'partial'].includes(linkedError));
+const directoryLinkedPreparation = process.argv.includes('--directory-linked-preparation') || !!linkedError;
+const directoryEarlyTorn = process.argv.includes('--directory-early-torn');
+const directoryEarlyPreparation = process.argv.includes('--directory-early-preparation') || directoryEarlyTorn;
+const linkedPreparationPoints = linkedError ? ['replace_before_quarantine', 'replace_quarantine', 'replace_writing', 'replace_before_intent', 'replace_after_recheck'] :
+  ['replace_after_recheck', 'replace_after_recheck', 'replace_before_quarantine', 'replace_quarantine', 'replace_staging', 'replace_writing', 'replace_before_intent',
+  ...Array.from({ length: 13 }, (_, field) => `receipt-partial:${field}`)];
+const linkedFaultPoints = linkedError ? [...linkedPreparationPoints, linkedError === 'complete' ? 'replace_after_publish' : 'replace_after_capture'] : linkedPreparationPoints;
+const directoryMixedReceipt = process.argv.find(arg => arg.startsWith('--directory-mixed-receipt='))?.split('=')[1];
+const directoryPublishedError = process.argv.find(arg => arg.startsWith('--directory-published-error='))?.split('=')[1];
+if (directoryPublishedError) assert.ok(['complete', 'partial'].includes(directoryPublishedError) && directoryMixedReceipt?.endsWith('-native'));
+const directoryCapturedError = process.argv.find(arg => arg.startsWith('--directory-captured-error='))?.split('=')[1];
+if (directoryCapturedError) assert.ok(['complete', 'partial'].includes(directoryCapturedError) && directoryMixedReceipt?.endsWith('-captured'));
+const directoryUntouchedError = process.argv.find(arg => arg.startsWith('--directory-untouched-error='))?.split('=')[1];
+if (directoryUntouchedError) assert.ok(['complete', 'partial'].includes(directoryUntouchedError) && directoryMixedReceipt?.endsWith('-untouched'));
+const directoryCreateCut = process.argv.find(arg => arg.startsWith('--directory-create-cut='))?.split('=')[1];
+const zeroPublished = directoryCreateCut === 'zero:create_after_publish';
+const directoryRetainedCreate = process.argv.includes('--directory-retained-create') || !!directoryCreateCut;
+const mixedRemove = process.argv.includes('--directory-mixed-remove');
+const mixedMarkerCrash = process.argv.includes('--directory-mixed-marker-crash');
+if (directoryLinkedPreparation) assert.ok(directoryMixedReceipt?.endsWith('-linked') && !directoryMixedCleanupCrash);
+if (directoryEarlyPreparation) assert.ok(directoryMixedReceipt?.endsWith('-untouched') && !directoryMixedCleanupCrash);
+if (directoryMixedReceipt) assert.ok(['forward', 'reverse', 'forward-native', 'reverse-native', 'forward-captured', 'reverse-captured', 'forward-untouched', 'reverse-untouched', 'forward-linked', 'reverse-linked'].includes(directoryMixedReceipt));
+const directoryMixedColdCompensate = process.argv.includes('--directory-mixed-cold-compensate');
+const directoryMixedColdRollback = process.argv.includes('--directory-mixed-cold-rollback') || directoryMixedCleanupCrash || directoryMixedColdCompensate || !!directoryMixedReceipt;
+const directoryMixedRollback = process.argv.includes('--directory-mixed-rollback') || directoryMixedColdRollback;
+const successorInheritanceCrash = process.argv.includes('--directory-successor-inheritance-crash');
+const directoryMixedSuccessor = process.argv.includes('--directory-mixed-successor') || successorInheritanceCrash || mixedMarkerCrash;
+const directoryMixedCold = process.argv.includes('--directory-mixed-cold') || directoryMixedColdRollback || directoryMixedSuccessor;
+const directoryMixedRewind = process.argv.includes('--directory-mixed-rewind') || directoryMixedRollback || directoryMixedCold;
+const directoryWrite = process.argv.includes('--directory-write') || directoryBackup || directoryMixedRewind;
+const panelPriorError = process.argv.includes('--permission-panel-prior-error');
+const directoryGrant = panelPriorError || process.argv.includes('--directory-grant') || directoryReplacement || directorySwitch || directoryWrite || directoryRewindAuthority || directoryCheckpointBracket || !!directoryEditTool || !!directoryBranchHistory;
 const outside = path.join(temporary, 'outside');
 const directorySecret = 'OWNED_DIRECTORY_GRANT_SECRET';
-const directoryBackupBytes = Buffer.from([0, 255, 65, 10, 66, 128]);
+const directoryBackupBytes = directoryRetainedPublication ? Buffer.from('original text\n第二行\n') : Buffer.from([0, 255, 65, 10, 66, 128]);
 const directorySnapshotBytes = Buffer.from([4, 5, 0, 255, 90]);
 const directoryEditFile = directoryEditTool === 'notebook_edit' ? 'value.ipynb' : 'value.txt';
 const directoryEditSource = directoryEditTool === 'notebook_edit'
@@ -77,15 +113,18 @@ if (directoryGrant) {
 }
 if (directoryBackup || directoryCheckpointBracket) fs.chmodSync(path.join(outside, 'value.txt'), 0o751);
 if (directoryEditTool) {
-  fs.writeFileSync(path.join(outside, directoryEditFile), directoryEditSource);
+  fs.writeFileSync(path.join(outside, directoryEditFile), directoryEditBackup ? directoryEditBytes() : directoryEditSource);
   fs.writeFileSync(path.join(workspace, directoryEditFile), directoryEditSource);
   fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ model: 'fixture-parent', thinking: false,
-    prefersReducedMotion: true, preferredNotifChannel: 'notifications_disabled', permissions: { allow: [directoryEditTool, 'read_file'] } }));
+    prefersReducedMotion: true, preferredNotifChannel: 'notifications_disabled', permissions: { allow: [directoryEditTool, 'read_file', 'notebook_read'] } }));
+}
+function directoryEditBytes() {
+  return Buffer.from('\uFEFFfirst\r\nsecond\r\nfirst\r\nsecond', 'utf16le');
 }
 if (directoryRule) fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ model: 'fixture-parent', thinking: false,
   prefersReducedMotion: true, preferredNotifChannel: 'notifications_disabled', permissions: { [directoryRule]: ['read_file'] } }));
 if (directoryWrite) fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ model: 'fixture-parent', thinking: false,
-  prefersReducedMotion: true, preferredNotifChannel: 'notifications_disabled', permissions: { allow: directoryWitnessTorn ? ['write_file', 'read_file'] : ['write_file'] },
+  prefersReducedMotion: true, preferredNotifChannel: 'notifications_disabled', permissions: { allow: directoryWitnessTorn || directoryRetainedPublication ? ['write_file', 'read_file'] : ['write_file'] },
   ...(directoryHistoryDisabled ? { features: { checkpoints: false } } : {}) }));
 const postHookCrash = process.argv.includes('--post-hook-crash');
 const postHook = process.argv.includes('--post-hook') || postHookCrash;
@@ -119,11 +158,22 @@ const coldHistory = process.argv.includes('--cold-history');
 const crashIntent = process.argv.find(arg => arg.startsWith('--crash-intent='))?.split('=')[1];
 if (crashIntent) assert.ok(coldHistory && ['valid', 'corrupt', 'unauthorized', 'torn'].includes(crashIntent));
 const coldSkill = process.argv.includes('--cold-skill');
+const coldWriteRedirect = process.argv.includes('--cold-write-redirect');
+if (coldWriteRedirect) assert.ok(coldSkill && !process.argv.includes('--cold-skill-plan'));
 const switchOrder = process.argv.find(arg => arg.startsWith('--resume-race='))?.split('=')[1];
 if (switchOrder) assert.ok(['during', 'before'].includes(switchOrder));
 const switchRace = process.argv.includes('--switch-race') || !!switchOrder;
 const coldApproval = process.argv.find(arg => arg.startsWith('--cold-approval='))?.split('=')[1];
 const coldPlan = process.argv.includes('--cold-skill-plan');
+const coldExternalOverwrite = process.argv.includes('--cold-external-overwrite');
+const coldExternalWrite = process.argv.includes('--cold-external-write') || coldExternalOverwrite;
+const coldOriginal = Buffer.from('\uFEFFCHILD_ORIGINAL\r\n第二行\r\n');
+const coldEffectFile = path.join(coldExternalWrite ? outside : workspace, 'cold-effect.txt');
+if (coldExternalWrite) {
+  assert.ok(coldSkill && !coldPlan && !coldWriteRedirect && (!coldApproval || coldApproval === 'allow'));
+  fs.mkdirSync(outside);
+  if (coldExternalOverwrite) fs.writeFileSync(coldEffectFile, coldOriginal, { mode: 0o751 });
+}
 const planAuto = process.argv.includes('--plan-auto');
 if (coldPlan) {
   assert.ok(coldSkill && ['allow', 'deny', 'interrupt'].includes(coldApproval));
@@ -187,7 +237,11 @@ run: try {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
       const index = requests.length, latest = body.messages.at(-1)?.content;
       if (directoryGrant) {
-        const directoryIndex = index - (directorySelection ? 1 : 0);
+        const directoryIndex = index - (directorySelection || directoryRetainedPublication ? 1 : 0);
+        if (directoryRetainedPublication && index === 1) {
+          respond(res, body, { type: 'tool_use', id: 'read-before-write', name: 'read_file', input: { path: path.join(outside, 'value.txt') } }, index);
+          return;
+        }
         if (directoryWitnessTorn && (latest === 'read after recovered rewind' ||
             (Array.isArray(latest) && latest.some(block => block.type === 'text' && block.text === 'read after recovered rewind')))) {
           respond(res, body, { type: 'tool_use', id: 'after-torn-read', name: 'read_file', input: { path: path.join(outside, 'after.txt') } }, index);
@@ -196,9 +250,9 @@ run: try {
           assert.notEqual(result.is_error, true, JSON.stringify(result)); assert.match(JSON.stringify(result.content), /DIRECTORY_AFTER_RECOVERY/);
           respond(res, body, { type: 'text', text: 'TORN_RECOVERY_READ_COMPLETE' }, index);
         } else if (directoryEditTool && index === 1) {
-          respond(res, body, { type: 'tool_use', id: 'workspace-edit-read', name: 'read_file', input: { path: directoryEditFile } }, index);
+          respond(res, body, { type: 'tool_use', id: 'workspace-edit-read', name: directoryEditTool === 'notebook_edit' ? 'notebook_read' : 'read_file', input: { path: directoryEditFile } }, index);
         } else if (directoryEditTool && index <= 3) {
-          if (index === 2) {
+          if (index === 2 && !directoryEditBackup && !notebookPublication) {
             fs.renameSync(outside, `${outside}-original`); fs.mkdirSync(outside);
             fs.writeFileSync(path.join(outside, directoryEditFile), directoryEditSource);
           }
@@ -206,6 +260,22 @@ run: try {
             input: { path: index === 2 ? path.join(outside, directoryEditFile) : directoryEditFile,
               ...(directoryEditTool === 'edit_file' ? { old_string: directorySecret, new_string: 'CLI_EDIT_MARKER' }
                 : { cell_id: 'fixture', new_source: 'CLI_EDIT_MARKER' }) } }, index);
+        } else if ((directoryEditBackup && index === 4) || (notebookPublication && index === 5)) {
+          respond(res, body, {type:'tool_use', id:'external-edit-read', name:notebookPublication ? 'notebook_read' : 'read_file', input:{path:path.join(outside,directoryEditFile)}}, index);
+        } else if (notebookPublication && index === 6) {
+          respond(res, body, {type:'tool_use', id:'external-insert', name:'notebook_edit', input:{path:path.join(outside,directoryEditFile),
+            cell_id:'fixture', cell_type:'markdown', edit_mode:'insert', new_source:'inserted text'}}, index);
+        } else if (notebookPublication && (index === 7 || index === 8)) {
+          const target = path.join(outside,directoryEditFile);
+          const nb = JSON.parse(fs.readFileSync(target,'utf8'));
+          assert.equal(nb.cells[1].source,index === 7 ? 'inserted text' : 'edited text');
+          const replace = index === 7;
+          respond(res,body,{type:'tool_use',id:replace ? 'external-replace' : 'external-delete',name:'notebook_edit',input:{
+            path:target,cell_id:replace ? nb.cells[1].id : 'fixture',edit_mode:replace ? 'replace' : 'delete',
+            new_source:replace ? 'edited text' : ''}},index);
+        } else if (directoryEditBackup && (index === 5 || index === 7)) {
+          respond(res, body, {type:'tool_use', id:index === 5 ? 'external-edit-ambiguous' : 'external-edit-all', name:'edit_file', input:{
+            path:path.join(outside,directoryEditFile), old_string:'first\nsecond', new_string:'updated', replace_all:index === 7}}, index);
         } else if (directorySelection && index === 1) respond(res, body, { type: 'text', text: 'DIRECTORY_SELECTION_READY' }, index);
         else if (directoryWrite && directoryIndex <= 2) respond(res, body, { type: 'tool_use', id: directoryIndex === 1 ? 'external-write' : 'workspace-write', name: 'write_file', input: { path: directoryIndex === 1 ? path.join(outside, directoryBackup ? 'value.txt' : 'written.txt') : 'written.txt', content: 'CLI_WRITE_MARKER', ...(directoryBackup && directoryIndex === 1 ? { overwrite: true } : {}) } }, index);
         else if (!directoryWrite && !directoryEditTool && (index === 1 || (directoryReplacement && index === 3) || (directoryRewindAuthority && index === 3) || (directoryRewindPermission && index === 5) || (directorySymlink && index === 7))) respond(res, body, { type: 'tool_use', id: index === 1 ? 'directory-read' : directoryRewindPermission && index === 5 ? 'regrant-read' : directoryRewindAuthority ? 'rewind-read' : index === 3 ? 'replacement-read' : 'regrant-read', name: 'read_file', input: { path: path.join(outside, 'value.txt') } }, index);
@@ -284,9 +354,15 @@ run: try {
         }
       } else if (body.model === 'fixture-child') {
         const name = body.messages.some(message => message.content === 'AGENT_VIEW_SECOND') ? 'second' : 'first';
-        if (typeof latest === 'string' && latest === 'CHILD_FOLLOWUP_QUEUED')
+        if (coldExternalOverwrite && latest === 'CHILD_FOLLOWUP_QUEUED')
+          respond(res, body, { type: 'tool_use', id: 'cold-existing-read', name: 'read_file', input: { path: coldEffectFile } }, index);
+        else if (coldExternalOverwrite && Array.isArray(latest) && latest.some(block => block.tool_use_id === 'cold-existing-read')) {
+          assert.match(JSON.stringify(latest), /CHILD_ORIGINAL/);
+          respond(res, body, { type: 'tool_use', id: `cold-write-${index}`, name: 'write_file',
+            input: { path: coldEffectFile, content: 'OWNED_COLD_EFFECT', overwrite: true } }, index);
+        } else if (typeof latest === 'string' && latest === 'CHILD_FOLLOWUP_QUEUED')
           respond(res, body, coldHistory || coldSkill
-            ? { type: 'tool_use', id: `cold-write-${index}`, name: 'write_file', input: { path: coldPlan ? planTarget : 'cold-effect.txt', content: 'OWNED_COLD_EFFECT' } }
+            ? { type: 'tool_use', id: `cold-write-${index}`, name: 'write_file', input: { path: coldPlan ? planTarget : coldExternalWrite ? coldEffectFile : 'cold-effect.txt', content: 'OWNED_COLD_EFFECT' } }
             : { type: 'text', text: 'CHILD_FOLLOWUP_COMPLETE' }, index);
         else if (Array.isArray(latest) && latest.some(block => block.type === 'tool_result' && (block.tool_use_id.startsWith('cold-write-') || (switchRace && block.tool_use_id === 'race-write'))))
           respond(res, body, { type: 'text', text: 'CHILD_FOLLOWUP_COMPLETE' }, index);
@@ -329,6 +405,26 @@ run: try {
   Object.assign(env, { LLM_API_KEY: 'owned-fixture', LLM_MODEL: 'fixture-parent', LLM_AUTH: 'bearer',
     LLM_TOKEN_COUNTING: 'estimate', LLM_BASE_URL: `http://127.0.0.1:${server.address().port}` });
   env.HOME = temporary;
+  if (panelPriorError) {
+    const preload = path.join(temporary,'panel-prior-error.mjs');
+    fs.writeFileSync(preload,`import fs from 'node:fs';
+import {Session} from ${JSON.stringify(new URL('../dist/session.js', import.meta.url).href)};
+const adopt = Session.prototype.adoptPermissionUpdates;
+let injected = false;
+Session.prototype.adoptPermissionUpdates = function(updates,...args) {
+  if (!injected && updates.some(update => update.type === 'addDirectories')) {
+    injected = true;
+    fs.mkdirSync(${JSON.stringify(path.join(workspace,'.harness'))},{recursive:true});
+    fs.writeFileSync(${JSON.stringify(path.join(workspace,'.harness/settings.local.json'))},'{broken');
+    adopt.call(this,[{type:'addRules',behavior:'deny',destination:'localSettings',rules:[{toolName:'fixture_rule'}]}]);
+    this.drainPermissionWrites().then(results => {
+      if (results.some(result => result.outcome === 'error')) fs.writeFileSync(${JSON.stringify(path.join(temporary,'prior-error'))},'observed');
+    });
+  }
+  return adopt.call(this,updates,...args);
+};`);
+    env.NODE_OPTIONS = `--import=${preload}`;
+  }
   if (directoryRewindStale) {
     const preload = path.join(temporary, 'directory-rewind-stale.cjs'), arm = path.join(temporary, 'rewind-stale-arm'), marker = path.join(temporary, 'rewind-stale-barrier');
     fs.writeFileSync(preload, `const fs=require('node:fs'),dir=fs.statSync(${JSON.stringify(outside)}),close=fs.closeSync;let stopped=false;
@@ -345,6 +441,71 @@ const release=Session.prototype.releaseDirectoryAuthority;let changed=false;
 Session.prototype.releaseDirectoryAuthority=function(...args){if(!changed&&fs.existsSync(${JSON.stringify(arm)})){
   changed=true;this.adoptPermissionUpdates([{type:'removeDirectories',directories:[${JSON.stringify(outside)}],destination:'session'},
     {type:'addDirectories',directories:[${JSON.stringify(outside)}],destination:'session'}]);}return release.apply(this,args)};`);
+    env.NODE_OPTIONS = `--import=${preload}`;
+  }
+  if (directoryMixedCold) {
+    const preload = path.join(temporary, 'mixed-cold.mjs');
+    const helper = path.join(temporary, 'directory-write-test');
+    if (directoryMixedReceipt?.endsWith('-native') || directoryMixedReceipt?.endsWith('-captured') || directoryMixedReceipt?.endsWith('-untouched') || directoryMixedReceipt?.endsWith('-linked')) {
+      const source = fs.readFileSync(path.join(root, 'native/directory-write/write.c'), 'utf8'), claim = 'if (rename_exclusive(dir, name, dir, part)) goto done;';
+      assert.equal(source.split(claim).length, 2);
+      fs.writeFileSync(`${helper}.c`, source.replace(claim, `if (getenv("DIRECTORY_WRITE_TEST_LEGACY_LINK")) {
+        if (linkat(dir, name, dir, part, 0) || test_point("legacy_after_link") || unlinkat(dir, name, 0)) goto done;
+      } else ${claim}`));
+      execFileSync('cc', ['-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-DDIRECTORY_WRITE_TEST', '-o', helper, `${helper}.c`]);
+    }
+    fs.writeFileSync(preload, `import fs from 'node:fs';import childProcess from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';
+const unlink=fs.unlinkSync,rename=fs.renameSync,receiptMode=${JSON.stringify(directoryMixedReceipt ?? '')},early=${directoryEarlyPreparation},torn=${directoryEarlyTorn},createCut=${JSON.stringify(directoryCreateCut ?? '')};
+const createKind=createCut.replace(/^zero:/,''),tornMode=createKind.startsWith('torn:'),partialError=createKind.startsWith('partial:'),nativePoint=tornMode?'receipt_partial_intent':createKind.replace(/^error:|^partial:[0-9]+:/,''),nativeFailure=partialError||createKind.startsWith('error:'),publicationCut=tornMode||['create_before_mode','create_after_mode','create_after_recheck','create_after_publish'].includes(nativePoint);
+if(receiptMode){const native=childProcess.spawnSync;let calls=0;childProcess.spawnSync=function(...args){
+  if(Array.isArray(args[1])&&args[1].includes('--prepare-create')&&receiptMode.endsWith('-linked')){
+    const transaction=JSON.parse(fs.readFileSync(pending,'utf8')),op=transaction.directory.operations[0],reverse=receiptMode.startsWith('reverse');
+    const attempt=reverse?op.rollback:op.stage;
+    delete op[reverse?'rollbackCreation':'creation'];fs.writeFileSync(pending,JSON.stringify(transaction));
+    const receipt=fs.openSync(pending.replace('transaction.json','native-attempt-'+attempt.id+'.receipt'),'r+');
+    args[2]={...args[2],stdio:args[2].stdio.map((fd,index)=>index===8?receipt:fd)};
+    args[1]=['--receipt',args[1][2],String(args[2].input.length),args[1][3],args[1][6]];
+  }
+  const selected=!createCut.endsWith('_persisted')&&Array.isArray(args[1])&&args[1].includes('--receipt')&&((createCut&&!publicationCut)||!args[1].includes('--prepare-create'))&&++calls===(receiptMode.startsWith('forward')?1:2);
+  const killNative=receiptMode.endsWith('-native')||receiptMode.endsWith('-captured')||receiptMode.endsWith('-untouched')||receiptMode.endsWith('-linked');
+  if(selected&&killNative){args[0]=${JSON.stringify(helper)};args[2]={...args[2],env:{...process.env,
+    DIRECTORY_WRITE_TEST_SELF_KILL:nativeFailure?undefined:'1',DIRECTORY_WRITE_TEST_FAIL:nativeFailure?'1':undefined,DIRECTORY_WRITE_TEST_SHORT_READ:'1',
+    ...(receiptMode.endsWith('-linked')?{DIRECTORY_WRITE_TEST_LEGACY_LINK:'1'}:{}),
+    DIRECTORY_WRITE_TEST_RECEIPT_CUT:tornMode?createKind.split(':')[1]:torn?'12':undefined,
+    DIRECTORY_WRITE_TEST_ERROR_CUT:partialError?createKind.split(':')[1]:undefined,
+    DIRECTORY_WRITE_TEST_POINT:nativePoint||(torn?'receipt_partial_intent':early?(args[1].includes('--remove')?'remove_quarantine':'replace_staging'):receiptMode.endsWith('-linked')?'legacy_after_link':receiptMode.endsWith('-untouched')?(args[1].includes('--remove')?'remove_after_recheck':args[1].includes('--restore-retained')?'replace_after_recheck':args[1].includes('--publish-prepared-create')?'create_before_mode':'after_recheck'):
+      receiptMode.endsWith('-captured')?'replace_after_capture':args[1].includes('--remove')?'remove_after_capture':args[1].includes('--restore-retained')?'replace_after_publish':args[1].includes('--publish-prepared-create')?'create_after_publish':'after_rename')}};}
+  const untouchedError=${JSON.stringify(directoryUntouchedError ?? '')};
+  const terminalError=${JSON.stringify(directoryPublishedError ?? directoryCapturedError ?? directoryUntouchedError ?? '')};
+  if(selected&&untouchedError) args[2].env.DIRECTORY_WRITE_TEST_POINT=untouchedError==='complete'?'replace_before_quarantine':'replace_writing';
+  if(selected&&terminalError) Object.assign(args[2].env,{DIRECTORY_WRITE_TEST_FAIL:'1',DIRECTORY_WRITE_TEST_SELF_KILL:undefined,
+    DIRECTORY_WRITE_TEST_ERROR_CUT:terminalError==='partial'?'17':undefined});
+  const result=native.apply(this,args);
+  const fullError=(nativeFailure&&!partialError)||terminalError==='complete';
+  if(selected){if(killNative&&(fullError?result.status!==1:result.signal!=='SIGKILL'))throw Error('native fixture did not fail as selected');process.exit(73);}return result;};syncBuiltinESMExports();}
+const pending=${JSON.stringify(path.join(workspace, '.agent/checkpoints/transaction.json'))},rollback=${directoryMixedColdRollback},compensate=${directoryMixedColdCompensate};
+fs.unlinkSync=function(file){if(!rollback&&file===pending)process.exit(73);return unlink.apply(this,arguments)};
+if(${mixedMarkerCrash})fs.renameSync=function(from,to){if(to===pending&&JSON.parse(fs.readFileSync(from,'utf8')).state==='committed')process.exit(73);return rename.apply(this,arguments)};
+if(rollback){const {Session}=await import(${JSON.stringify(new URL('../dist/session.js', import.meta.url).href)}),append=Session.prototype.append;
+  Session.prototype.append=function(event,...args){if(event.kind==='rewind'){if(compensate)process.exit(73);throw Error('fixture cold compensation');}return append.call(this,event,...args)};
+  fs.renameSync=function(from,to){const result=rename.apply(this,arguments);
+    if(to===pending){const directory=JSON.parse(fs.readFileSync(pending,'utf8')).directory;
+      if(createCut.endsWith('_persisted')){
+        const op=directory?.operations[0],reverse=receiptMode.startsWith('reverse'),attempt=reverse?op?.rollback:op?.stage,creation=reverse?op?.rollbackCreation:op?.creation;
+        if(attempt?.kind==='attempting'){
+          if(!creation)throw Error('unbound create attempt persisted');
+          if(creation.phase===(createCut==='create_attempt_persisted'?'preparing':'publishing'))process.exit(73);
+        }
+      }
+      if(directory?.operations.every(op=>op.rollback?.kind==='completed'))process.exit(73);
+    }return result;};}`);
+    env.NODE_OPTIONS = `--import=${preload}`;
+  }
+  if (directoryMixedRollback && !directoryMixedCold) {
+    const preload = path.join(temporary, 'mixed-rollback.mjs');
+    fs.writeFileSync(preload, `const {Session}=await import(${JSON.stringify(new URL('../dist/session.js', import.meta.url).href)});
+const append=Session.prototype.append;let injected=false;
+Session.prototype.append=function(event,...args){if(!injected&&event.kind==='rewind'){injected=true;throw Error('fixture mixed commit failure');}return append.call(this,event,...args)};`);
     env.NODE_OPTIONS = `--import=${preload}`;
   }
   if (directoryRewindRollback) {
@@ -399,25 +560,6 @@ const target=${JSON.stringify(target)},needle='await activeRuntime.settleSchedul
 registerHooks({load(url,context,next){const result=next(url,context);if(url!==target)return result;
   const text=String(result.source);if(text.split(needle).length!==2)throw Error('accept injection target changed');
   return {...result,source:text.replace(needle,${JSON.stringify(injected)}+needle)};}});`);
-    env.NODE_OPTIONS = `--import=${preload}`;
-  }
-  if (directoryRetainedPublication) {
-    const preload = path.join(temporary, 'directory-retained-publication.mjs');
-    fs.writeFileSync(preload, `const {Agent}=await import(${JSON.stringify(new URL('../dist/agent.js', import.meta.url).href)});
-const run=Agent.prototype.run,wrapped=new WeakSet();Agent.prototype.run=function(...args){const tool=this.tools.get('write_file');
-  if(tool&&!wrapped.has(tool)){wrapped.add(tool);const execute=tool.execute;tool.execute=async(input,context)=>{try{return await execute(input,context)}catch(error){
-    if(!String(error).includes('writes through additional directory grants are not implemented'))throw error;
-    const backup=context.session.directoryBackups.at(-1),grant=context.session.workingDirectories(false).readHandle(${JSON.stringify(outside)});
-    if(!backup||backup.kind!=='valid'||!grant)throw Error('retained fixture backup unavailable');
-    const result=context.session.publishDirectoryFileTransaction({toolUseId:context.toolUseId,backupId:backup.id,grant,
-      lexicalPath:${JSON.stringify(path.join(outside, 'value.txt'))},content:Buffer.from(input.content),signal:context.signal,
-      authorizationSignal:context.authorizationIdentity.signal,approvalCall:context.pathApprovalCall,
-      authorization:context.directoryPublicationAuthorization,strategy:'retained'});
-    if(result.kind!=='durable')throw Error('retained publication '+result.kind);
-    const observed=context.session.observeRetainedDirectoryPublication({id:result.transactionId,grant,signal:context.signal});
-    if(observed.kind!=='observed')throw Error('retained observation '+observed.kind);
-    return JSON.stringify({kind:result.kind,id:result.transactionId,observed:observed.kind});}}}
-  return run.apply(this,args)};`);
     env.NODE_OPTIONS = `--import=${preload}`;
   }
   if (directoryCheckpointBracket) {
@@ -629,63 +771,478 @@ fs.renameSync = function(from, to) {
     }
     if (directoryEditTool) {
       send('edit external and workspace fixtures\r');
-      await until(() => frame().includes('DIRECTORY_TURN_4_COMPLETE') && ready(), 'directory edit turn', 15000);
-      const results = requests[3].messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(block => block.type === 'tool_result');
+      if (directoryEditBackup || notebookPublication) {
+        await until(() => frame().includes(notebookPublication ? 'DIRECTORY_TURN_4_COMPLETE' : 'DIRECTORY_TURN_6_COMPLETE') && ready(), 'external edit baseline', 15000);
+        send('/checkpoint edit-original\r');
+        await until(() => frame().includes('"external_witness": "available"') && ready(), 'external edit checkpoint', 15000);
+        send('replace both occurrences\r');
+      }
+      const last = directoryEditBackup ? 8 : notebookPublication ? 9 : 4;
+      await until(() => frame().includes(`DIRECTORY_TURN_${last}_COMPLETE`) && ready(), 'directory edit turn', 15000);
+      const results = requests[last-1].messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(block => block.type === 'tool_result');
       const external = results.find(result => result.tool_use_id === 'external-edit'), local = results.find(result => result.tool_use_id === 'workspace-edit');
       assert.equal(external?.is_error, true, JSON.stringify(results));
-      assert.match(JSON.stringify(external), /edits through additional directory grants are not implemented/);
+      assert.match(JSON.stringify(external), directoryEditBackup ? /old_string not found/ :
+        notebookPublication ? /has not been read/ : /directory grant changed/);
+      if (directoryEditBackup) {
+        const read = results.find(row => row.tool_use_id === 'external-edit-read');
+        assert.ok(read && !read.is_error, JSON.stringify(read));
+        assert.match(JSON.stringify(results.find(row => row.tool_use_id === 'external-edit-ambiguous')), /2 matches/);
+        const edit = results.find(row => row.tool_use_id === 'external-edit-all');
+        assert.ok(edit && !edit.is_error, JSON.stringify(edit));
+        assert.match(JSON.stringify(edit), /2 replacement/);
+      }
       assert.notEqual(local?.is_error, true, JSON.stringify(results));
-      assert.equal(fs.readFileSync(path.join(outside, directoryEditFile), 'utf8'), directoryEditSource);
-      assert.equal(fs.readFileSync(path.join(`${outside}-original`, directoryEditFile), 'utf8'), directoryEditSource);
+      let insertedId;
+      if (notebookPublication) {
+        const result = results.find(row=>row.tool_use_id==='external-insert');
+        assert.ok(result && !result.is_error,JSON.stringify(result));
+        const nb = JSON.parse(fs.readFileSync(path.join(outside,directoryEditFile),'utf8'));
+        insertedId=nb.cells[0]?.id;
+        assert.match(insertedId,/^[0-9a-f]{8}$/);
+        assert.deepEqual(nb.cells,[{cell_type:'markdown',id:insertedId,metadata:{},source:'edited text'}]);
+        for (const id of ['external-replace','external-delete']) {
+          const effect = results.find(row=>row.tool_use_id===id);
+          assert.ok(effect && !effect.is_error,JSON.stringify(effect));
+        }
+        assert.ok(JSON.stringify(result).includes(insertedId));
+      } else assert.deepEqual(fs.readFileSync(path.join(outside, directoryEditFile)), directoryEditBackup ? Buffer.from('\uFEFFupdated\r\nupdated','utf16le') : Buffer.from(directoryEditSource));
+      if (!directoryEditBackup && !notebookPublication) assert.equal(fs.readFileSync(path.join(`${outside}-original`, directoryEditFile), 'utf8'), directoryEditSource);
       const updated = fs.readFileSync(path.join(workspace, directoryEditFile), 'utf8');
       assert.equal(directoryEditTool === 'notebook_edit' ? JSON.parse(updated).cells[0].source : updated, 'CLI_EDIT_MARKER');
-      send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
       const dir = path.join(workspace, '.agent'), name = fs.readdirSync(dir).find(value => value.endsWith('.jsonl'));
       assert.ok(name);
       const id = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8').split('\n')[0]).id;
+      if (directoryEditBackup || notebookPublication) {
+        send('/rewind 1 --files\r');
+        const preview = /Apply: \/rewind 1 --files --apply ([a-f0-9]{64})/;
+        await until(() => preview.test(frame()) && ready(), 'external Edit rewind preview', 15000);
+        send(`/rewind 1 --files --apply ${preview.exec(frame())[1]}\r`);
+        await until(() => fs.readFileSync(path.join(outside, directoryEditFile)).equals(notebookPublication ? Buffer.from(directoryEditSource) : directoryEditBytes()) && ready(), 'original Edit bytes restored', 15000);
+      }
+      send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
       const { spawnSync } = await import('node:child_process');
       const reader = `import {Session} from './dist/session.js'; import path from 'node:path'; const s=Session.open(process.argv[1],{id:process.argv[2]});
         const result=id=>s.events.find(e=>e.kind==='tool_result'&&e.result.tool_use_id===id)?.result;
-        process.stdout.write(JSON.stringify({externalError:result('external-edit')?.is_error===true,workspaceSuccess:!!result('workspace-edit')&&!result('workspace-edit').is_error,
+        const backups=s.directoryBackups.map(b=>b.kind==='valid'?{tool:b.witness.toolUseId,path:b.witness.lexicalPath,
+          digest:b.witness.editInputDigest,bytes:s.readDirectoryBackup(b.id)?.toString('base64')}:b.kind);
+        const notebook=path.join(process.argv[1],'value.ipynb'), entry=s.fileReadCache.get(notebook);
+        process.stdout.write(JSON.stringify({notebookCell:entry?JSON.parse(entry.content).cells[0].source:undefined,
+          notebookInode:entry?.identity?.ino, externalError:result('external-edit')?.is_error===true,workspaceSuccess:!!result('workspace-edit')&&!result('workspace-edit').is_error,
+          backups, publications:s.directoryPublications.map(p=>[p.kind,!!p.retained]),
+          externalDigest:s.events.find(e=>e.kind==='tool_start'&&e.id==='external-edit')?.editInputDigest,
+          workspaceDigest:s.events.find(e=>e.kind==='tool_start'&&e.id==='workspace-edit')?.editInputDigest,
           externalHistory:s.events.some(e=>e.kind==='file_history'&&e.path&&path.resolve(process.argv[1],e.path)===process.argv[3]),
           externalEffect:s.events.some(e=>e.kind==='tool_effect'&&e.result.tool_use_id==='external-edit'&&!e.result.is_error)}));await s.close();`;
       for (let i = 0; i < 2; i++) {
         const cold = spawnSync(process.execPath, ['--input-type=module', '-e', reader, workspace, id, path.join(outside, directoryEditFile)], { cwd: root, encoding: 'utf8' });
         assert.equal(cold.status, 0, cold.stderr);
-        assert.deepEqual(JSON.parse(cold.stdout), { externalError: true, workspaceSuccess: true, externalHistory: false, externalEffect: false });
+        const target = path.join(outside,directoryEditFile);
+        const fingerprint = args => createHash('sha256').update(JSON.stringify(args)).digest('hex');
+        const digest = fingerprint(directoryEditTool === 'notebook_edit' ? ['notebook_edit',target,'fixture','CLI_EDIT_MARKER',null,'replace',null] :
+          ['edit_file', target, directorySecret, 'CLI_EDIT_MARKER', false]);
+        const beforeNotebookEdit = source => {
+          const nb = JSON.parse(directoryEditSource);
+          nb.cells.push({cell_type:'markdown',id:insertedId,source,metadata:{}});
+          return JSON.stringify(nb,null,1);
+        };
+        assert.deepEqual(JSON.parse(cold.stdout), { externalError: true, workspaceSuccess: true, externalHistory: false, externalEffect: false,
+          ...(directoryEditTool === 'notebook_edit' && !notebookPublication ? { notebookCell:'CLI_EDIT_MARKER', notebookInode:String(fs.statSync(path.join(workspace,directoryEditFile),{bigint:true}).ino) } : {}),
+          publications: notebookPublication ? Array.from({length:3},()=>['durable',true]) : directoryEditBackup ? [['durable',true]] : [],
+          backups: notebookPublication ? [['external-edit',digest,directoryEditSource],
+            ['external-insert',fingerprint(['notebook_edit',target,'fixture','inserted text','markdown','insert',insertedId]),directoryEditSource],
+            ['external-replace',fingerprint(['notebook_edit',target,insertedId,'edited text',null,'replace',null]),beforeNotebookEdit('inserted text')],
+            ['external-delete',fingerprint(['notebook_edit',target,'fixture','',null,'delete',null]),beforeNotebookEdit('edited text')]]
+            .map(([tool,digest,original])=>({tool,path:target,digest,bytes:Buffer.from(original).toString('base64')})) :
+            directoryEditBackup ? [['external-edit',digest],...[false,true].map(all=>[all?'external-edit-all':'external-edit-ambiguous',createHash('sha256').update(JSON.stringify([
+            'edit_file',path.join(outside,directoryEditFile),'first\nsecond','updated',all])).digest('hex')])].map(([tool,digest]) =>
+              ({tool,path:path.join(outside,directoryEditFile),digest,bytes:directoryEditBytes().toString('base64')})) : [],
+          externalDigest: digest });
       }
-      console.log(JSON.stringify({ cli: 'passed', directoryEditTool, directoryReplaced: true, coldProcesses: 2, gateway: 'owned loopback SSE' }));
+      console.log(JSON.stringify({ cli: 'passed', directoryEditTool, directoryReplaced: !directoryEditBackup && !notebookPublication, coldProcesses: 2, gateway: 'owned loopback SSE' }));
       break run;
     }
     if (directoryRetainedPublication) {
       const target = path.join(outside, 'value.txt'), original = fs.statSync(target, { bigint: true });
       send('write both fixtures\r');
       await until(() => frame().includes('DIRECTORY_TURN_3_COMPLETE') && ready(), 'retained publication turn', 15000);
-      const results = requests[2].messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(block => block.type === 'tool_result');
+      const results = requests[3].messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(block => block.type === 'tool_result');
+      const read = results.find(result => result.tool_use_id === 'read-before-write');
+      assert.ok(read && !read.is_error && JSON.stringify(read.content).includes('original text'), JSON.stringify(read));
       const external = results.find(result => result.tool_use_id === 'external-write'), local = results.find(result => result.tool_use_id === 'workspace-write');
       assert.notEqual(external?.is_error, true, JSON.stringify(external)); assert.notEqual(local?.is_error, true, JSON.stringify(local));
-      const publication = JSON.parse(String(external.content)); assert.equal(publication.kind, 'durable'); assert.match(publication.id, /^[0-9a-f-]{36}$/);
-      assert.equal(publication.observed, 'observed');
+      assert.ok(external && local);
       assert.equal(fs.readFileSync(target, 'utf8'), 'CLI_WRITE_MARKER'); assert.equal(fs.statSync(target).mode & 0o7777, 0o751);
-      assert.deepEqual(fs.readFileSync(path.join(outside, `.litcode-replace-${publication.id}`, 'held')), directoryBackupBytes);
       assert.equal(fs.readFileSync(path.join(workspace, 'written.txt'), 'utf8'), 'CLI_WRITE_MARKER');
-      send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
       const dir = path.join(workspace, '.agent'), name = fs.readdirSync(dir).find(value => value.endsWith('.jsonl'));
-      assert.ok(name); const id = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8').split('\n')[0]).id;
+      assert.ok(name);
+      const events = fs.readFileSync(path.join(dir, name), 'utf8').trimEnd().split('\n').map(row => JSON.parse(row));
+      const id = events[0].id, publications = events.filter(row => row.kind === 'directory_publication_result');
+      assert.equal(publications.length, 1);
+      const publication = publications[0]; assert.equal(publication.outcome.kind, 'durable');
+      assert.deepEqual(fs.readFileSync(path.join(outside, `.litcode-replace-${publication.id}`, 'held')), directoryBackupBytes);
+      send('/checkpoint-archive-held\r');
+      await until(() => frame().includes(publication.id) && frame().includes('publications') && ready(), 'list retained writes', 15000);
+      send(`/checkpoint-archive-held ${publication.id}\r`);
+      await until(() => frame().includes('"archived"') && ready(), 'archive held original', 15000);
+      const slot = `.litcode-replace-${publication.id}`;
+      assert.equal(fs.existsSync(path.join(outside, slot)), false);
+      const archived = path.join(dir, name + '.retained-archive', slot, 'held');
+      assert.equal(fs.statSync(archived, { bigint: true }).ino, original.ino);
+      assert.deepEqual(fs.readFileSync(archived), directoryBackupBytes);
+      assert.equal(fs.readFileSync(target, 'utf8'), 'CLI_WRITE_MARKER');
+      send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
       const { spawnSync } = await import('node:child_process');
       const reader = `import {Session} from './dist/session.js';const s=Session.open(process.argv[1],{id:process.argv[2]}),signal=new AbortController().signal;
         const records=s.directoryPublications,grant=()=>s.workingDirectories(false).readHandle?.(process.argv[3]);
         const before=s.observeRetainedDirectoryPublication({id:process.argv[4],grant:grant(),signal}).kind;
+        const denied=s.archiveRetainedDirectoryPublication(process.argv[4],signal).kind;
         s.adoptPermissionUpdates([{type:'addDirectories',directories:[process.argv[3]],destination:'session'}]);
         const after=s.observeRetainedDirectoryPublication({id:process.argv[4],grant:grant(),signal}).kind;
-        process.stdout.write(JSON.stringify({records,before,after}));await s.close();`;
+        const retry=s.archiveRetainedDirectoryPublication(process.argv[4],signal).kind;
+        process.stdout.write(JSON.stringify({records,before,denied,after,retry}));await s.close();`;
       for (let i = 0; i < 2; i++) {
         const cold = spawnSync(process.execPath, ['--input-type=module', '-e', reader, workspace, id, outside, publication.id], { cwd: root, encoding: 'utf8' });
         assert.equal(cold.status, 0, cold.stderr); const result = JSON.parse(cold.stdout);
         assert.equal(result.before, 'unknown'); assert.equal(result.after, 'observed'); assert.equal(result.records[0]?.kind, 'durable'); assert.equal(result.records[0]?.id, publication.id);
         assert.equal(result.records[0]?.retained?.held?.ino, String(original.ino));
+        assert.equal(result.retry, 'observed');
+        assert.equal(result.denied, 'unknown');
       }
-      console.log(JSON.stringify({ cli: 'passed', directoryRetainedPublication: true, fixtureWrapper: true, coldProcesses: 2, gateway: 'owned loopback SSE' }));
+      const archiveRoot = path.dirname(path.dirname(archived)), parked = archiveRoot + '-parked';
+      fs.renameSync(archiveRoot, parked);
+      fs.mkdirSync(archiveRoot, {mode: 0o700});
+      fs.renameSync(path.join(parked, slot), path.join(archiveRoot, slot));
+      const checkConflict = () => {
+        const run = spawnSync(process.execPath, ['--input-type=module', '-e', reader, workspace, id, outside, publication.id], { cwd: root, encoding: 'utf8' });
+        assert.equal(run.status, 0, run.stderr);
+        const result = JSON.parse(run.stdout);
+        assert.equal(result.after, 'unknown'); assert.equal(result.retry, 'unknown');
+      };
+      checkConflict();
+      fs.renameSync(path.join(archiveRoot, slot), path.join(outside, slot));
+      fs.rmdirSync(archiveRoot);
+      checkConflict();
+      assert.equal(fs.statSync(path.join(outside, slot, 'held'), {bigint:true}).ino, original.ino);
+      fs.rmdirSync(archiveRoot);
+      fs.renameSync(parked, archiveRoot);
+      fs.renameSync(path.join(outside, slot), path.join(archiveRoot, slot));
+      console.log(JSON.stringify({ cli: 'passed', directoryRetainedPublication: true, coldProcesses: 4, gateway: 'owned loopback SSE' }));
+      break run;
+    }
+    if (directoryMixedRewind) {
+      const target = path.join(outside, 'written.txt'), local = path.join(workspace, 'written.txt');
+      send('write both fixtures\r');
+      await until(() => frame().includes('DIRECTORY_TURN_3_COMPLETE') && ready(), 'mixed initial Write turn', 15000);
+      assert.equal(fs.readFileSync(target, 'utf8'), 'CLI_WRITE_MARKER');
+      assert.equal(fs.readFileSync(local, 'utf8'), 'CLI_WRITE_MARKER');
+      // Owned setup supplies the exact binary/mode baseline and later edits.
+      fs.writeFileSync(target, directoryBackupBytes); fs.chmodSync(target, directoryCreateCut?.startsWith('zero:') ? 0 : 0o751);
+      if (directoryCreateCut?.startsWith('zero:')) execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]);
+      if (mixedRemove || directoryMixedReceipt === 'reverse-linked' || (directoryRetainedCreate && directoryMixedReceipt?.startsWith('reverse'))) fs.unlinkSync(target);
+      fs.writeFileSync(local, 'WORKSPACE_BEFORE');
+      send('/checkpoint mixed-before\r');
+      await until(() => frame().includes('mixed-before') && frame().includes('"external_witness": "available"') && ready(), 'mixed checkpoint', 15000);
+      if (zeroPublished && directoryMixedReceipt?.startsWith('reverse')) {
+        fs.writeFileSync(target, 'EXTERNAL_AFTER'); fs.chmodSync(target, 0);
+        execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]);
+      } else if (!directoryCreateCut?.startsWith('zero:')) { fs.writeFileSync(target, 'EXTERNAL_AFTER'); fs.chmodSync(target, 0o640); }
+      if (directoryMixedReceipt === 'forward-linked' || (directoryRetainedCreate && directoryMixedReceipt?.startsWith('forward'))) fs.unlinkSync(target);
+      fs.writeFileSync(local, 'WORKSPACE_AFTER');
+      send('observe changed fixtures\r');
+      await until(() => frame().includes('DIRECTORY_TURN_4_COMPLETE') && ready(), 'mixed later turn', 15000);
+      send('/rewind 1 --files\r');
+      const applyPattern = /Apply: \/rewind 1 --files --apply ([a-f0-9]{64})/;
+      await until(() => applyPattern.test(frame()) && ready(), 'mixed preview', 15000);
+      assert.match(frame(), /written\.txt/);
+      const token = applyPattern.exec(frame())[1];
+      const initialTarget = fs.existsSync(target) ? fs.statSync(target, { bigint: true }) : undefined;
+      send(`/rewind 1 --files --apply ${token}\r`);
+      if (directoryMixedCold) {
+        assert.equal(await Promise.race([exited, delay(15000).then(() => 'timeout')]), 73);
+        const pending = path.join(workspace, '.agent/checkpoints/transaction.json'), original = fs.readFileSync(pending);
+        const transaction = JSON.parse(original.toString());
+        assert.equal(transaction.state, directoryMixedColdRollback || mixedMarkerCrash ? 'pending' : 'committed');
+        delete env.NODE_OPTIONS; screen.write('\x1bc');
+        if (directoryLinkedPreparation) {
+          const preload = path.join(temporary, 'linked-preparation.mjs');
+          fs.writeFileSync(preload, `import childProcess from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';
+const native=childProcess.spawnSync,points=${JSON.stringify(linkedFaultPoints)},linkedError=${JSON.stringify(linkedError ?? '')};let attempts=0;
+childProcess.spawnSync=function(...args){if(Array.isArray(args[1])&&args[1].includes('--normalize-linked')&&attempts<points.length){
+  const point=points[attempts++];
+  args[0]=${JSON.stringify(path.join(temporary, 'directory-write-test'))};args[2]={...args[2],env:{...process.env,
+    DIRECTORY_WRITE_TEST_RECEIPT_CUT:point.startsWith('receipt-partial:')?point.split(':')[1]:undefined,
+    DIRECTORY_WRITE_TEST_POINT:point.startsWith('receipt-partial:')?'receipt_partial_intent':point,DIRECTORY_WRITE_TEST_SHORT_READ:'1',
+    DIRECTORY_WRITE_TEST_FAIL:linkedError?'1':undefined,DIRECTORY_WRITE_TEST_ERROR_CUT:linkedError==='partial'?'10':undefined,DIRECTORY_WRITE_TEST_SELF_KILL:linkedError?undefined:'1'}};}
+  return native.apply(this,args);};syncBuiltinESMExports();`);
+          env.NODE_OPTIONS = `--import=${preload}`;
+        }
+        if (directoryMixedCleanupCrash) {
+          const preload = path.join(temporary, 'mixed-cleanup-crash.mjs');
+          fs.writeFileSync(preload, `import fs from 'node:fs';const unlink=fs.unlinkSync;
+fs.unlinkSync=function(file){const result=unlink.apply(this,arguments);if(file===${JSON.stringify(path.join(workspace, '.agent', transaction.branch.id + '.jsonl'))})process.exit(74);return result;};`);
+          env.NODE_OPTIONS = `--import=${preload}`;
+        }
+        if (successorInheritanceCrash) {
+          const preload = path.join(temporary, 'interrupt-inheritance.mjs');
+          fs.writeFileSync(preload, `import {Session} from ${JSON.stringify(path.join(root, 'dist/session.js'))};
+Session.prototype.inheritCheckpointWitnesses=function(){process.exit(75)};`);
+          env.NODE_OPTIONS = `--import=${preload}`;
+        }
+        const changeHandoff = directoryMixedSuccessor && directoryMixedColdCompensate;
+        if (changeHandoff) {
+          const preload = path.join(temporary, 'change-handoff.mjs');
+          fs.writeFileSync(preload, `import fs from 'node:fs';import {randomUUID} from 'node:crypto';
+import {Session} from ${JSON.stringify(path.join(root, 'dist/session.js'))};
+const close=Session.prototype.close;
+Session.prototype.close=function(){const releasing=this.isOpen && this.id===${JSON.stringify(transaction.branch.id)};
+  const result=close.call(this);if(releasing){const file=${JSON.stringify(pending)},tx=JSON.parse(fs.readFileSync(file));
+    tx.id=randomUUID();fs.writeFileSync(file,JSON.stringify(tx));}return result;};`);
+          env.NODE_OPTIONS = `--import=${preload}`;
+        }
+        start(['--resume', directoryMixedSuccessor ? transaction.branch.id : transaction.branch.source, '--recover-lock']);
+        await until(ready, 'mixed cold source resume', 15000);
+        send('/checkpoint-recover\r');
+        await until(() => frame().includes('error: External rewind') && ready(), 'mixed recovery without grant refused', 15000);
+        assert.deepEqual(fs.readFileSync(pending), original);
+        send(`/add-dir ${outside}\r`);
+        await until(() => frame().includes('Added') && ready(), 'mixed recovery regrant', 15000);
+        send('/checkpoint-recover\r');
+        if (changeHandoff) {
+          await until(() => frame().includes('error: External rewind transac') && ready() &&
+            frame().includes(transaction.branch.source), 'changed handoff refused', 15000);
+          const changed = JSON.parse(fs.readFileSync(pending));
+          assert.notEqual(changed.id, transaction.id);
+          assert.deepEqual({ ...changed, id: transaction.id }, transaction);
+          assert.equal(fs.statSync(path.join(workspace, '.agent', transaction.branch.id + '.jsonl')).ino, transaction.branch.inode);
+          assert.deepEqual(fs.readFileSync(target), directoryBackupBytes);
+          assert.equal(fs.readFileSync(local, 'utf8'), 'WORKSPACE_BEFORE');
+          fs.writeFileSync(pending, original);
+          send('/checkpoint-recover\r');
+        }
+        if (zeroPublished) {
+          await until(() => frame().includes('error: External rewind needs read') && ready(), 'published byte verification needs access', 15000);
+          assert.deepEqual(fs.readFileSync(pending), original);
+          assert.throws(() => fs.readFileSync(target), { code: 'EACCES' });
+          const before = fs.statSync(target, { bigint: true });
+          execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]);
+          assert.equal(fs.statSync(target, { bigint: true }).ino, before.ino);
+          assert.equal(fs.statSync(target).mode & 0o7777, 0);
+          send('/checkpoint-recover\r');
+        }
+        if (directoryLinkedPreparation) {
+          for (let retry = 0; retry < linkedFaultPoints.length; retry++) {
+            await until(() => {
+              if (!fs.existsSync(pending) || !frame().includes('error: External rewind linked nor') || !ready()) return false;
+              const operation = JSON.parse(fs.readFileSync(pending, 'utf8')).directory.operations[0];
+              const normalization = directoryMixedReceipt === 'forward-linked' ? operation.normalization : operation.rollbackNormalization;
+              return normalization && (operation.abandonedNormalizations?.length ?? 0) === retry &&
+                fs.readFileSync(path.join(workspace, '.agent/checkpoints', `native-attempt-${normalization.id}.receipt`), 'utf8').startsWith('directory-write-receipt-v2\nstart\n');
+            }, 'normalization preparation interrupted', 15000);
+            if (linkedFaultPoints[retry] === 'replace_after_capture') assert.equal(fs.existsSync(target), false);
+            else assert.equal(fs.statSync(target).nlink, linkedFaultPoints[retry] === 'replace_after_publish' ? 1 : 2);
+            send('/checkpoint-recover\r');
+          }
+        }
+        if (directoryMixedCleanupCrash) {
+          assert.equal(await Promise.race([exited, delay(15000).then(() => 'timeout')]), 74);
+          assert.equal(fs.existsSync(path.join(workspace, '.agent', transaction.branch.id + '.jsonl')), false);
+          const archived = path.join(workspace, '.agent/checkpoints', `rollback-branch-${transaction.id}.jsonl`);
+          assert.equal(fs.statSync(archived).ino, transaction.branch.inode);
+          assert.deepEqual(fs.readFileSync(pending), original);
+          delete env.NODE_OPTIONS; screen.write('\x1bc');
+          start(['--resume', transaction.branch.source, '--recover-lock']);
+          await until(ready, 'mixed cleanup crash resume', 15000);
+          send(`/add-dir ${outside}\r`);
+          await until(() => frame().includes('Added') && ready(), 'mixed cleanup crash regrant', 15000);
+          send('/checkpoint-recover\r');
+        }
+        if (successorInheritanceCrash) {
+          assert.equal(await Promise.race([exited, delay(15000).then(() => 'timeout')]), 75);
+          assert.equal(fs.existsSync(pending), false);
+          const archive = path.join(path.dirname(pending), `directory-rewind-${transaction.id}.json`);
+          const receipt = fs.readFileSync(archive), changed = JSON.parse(receipt);
+          changed.branch.prefixSha256 = '0'.repeat(64);
+          fs.writeFileSync(archive, JSON.stringify(changed));
+          const probe = `import {Session} from './dist/session.js';
+            const [root,id]=process.argv.slice(1),s=Session.open(root,{id,recoverLock:true});
+            try {console.log((await s.reconcileResumedCheckpointInheritance({recoverLock:true})).kind);}
+            finally {await s.close();}`;
+          const journal = path.join(workspace, '.agent', transaction.branch.id + '.jsonl'), before = fs.readFileSync(journal);
+          assert.equal(execFileSync(process.execPath, ['--input-type=module', '-e', probe, workspace, transaction.branch.id],
+            { cwd: root, encoding: 'utf8', timeout: 15000 }).trim(), 'unknown');
+          assert.deepEqual(fs.readFileSync(journal), before);
+          fs.writeFileSync(archive, receipt);
+          delete env.NODE_OPTIONS; screen.write('\x1bc');
+          start(['--resume', transaction.branch.id, '--recover-lock']);
+          await until(ready, 'successor inheritance restart', 15000);
+        } else await until(() => frame().includes(`"recovery": "${directoryMixedColdRollback ? 'rolled_back' : 'committed'}"`) && ready(), 'mixed cold recovery', 15000);
+        send('/checkpoint-recover\r');
+        await until(() => frame().includes('"recovery": "none"') && ready(), 'mixed cold repeat recovery', 15000);
+      } else await until(() => frame().includes(directoryMixedRollback ? 'Rewind was not applied; the session was resumed.' : 'External checkpoint file operations completed.') && ready(), 'mixed rewind completion', 15000);
+      assert.doesNotMatch(frame(), /those files were not restored/);
+      const expectedBytes = (mixedRemove && !directoryMixedRollback) || directoryMixedReceipt === 'forward-linked' || (directoryRetainedCreate && directoryMixedReceipt?.startsWith('forward')) ? undefined : directoryMixedRollback ? Buffer.from('EXTERNAL_AFTER') : directoryBackupBytes;
+      const expectedLocal = directoryMixedRollback ? 'WORKSPACE_AFTER' : 'WORKSPACE_BEFORE';
+      if (expectedBytes) {
+        assert.deepEqual(fs.readFileSync(target), expectedBytes);
+        assert.equal(fs.statSync(target).mode & 0o7777, zeroPublished ? 0 : directoryMixedRollback ? 0o640 : 0o751);
+      } else assert.equal(fs.existsSync(target), false);
+      assert.equal(fs.readFileSync(local, 'utf8'), expectedLocal);
+      const store = path.join(workspace, '.agent/checkpoints');
+      const receipts = fs.readdirSync(store).filter(name => name.startsWith(directoryMixedRollback ? 'directory-rollback-' : 'directory-rewind-'));
+      assert.equal(receipts.length, 1);
+      const receipt = JSON.parse(fs.readFileSync(path.join(store, receipts[0]), 'utf8'));
+      assert.equal(receipt.state, directoryMixedRollback || mixedMarkerCrash ? 'pending' : 'committed');
+      const noForwardEffect = directoryMixedReceipt === 'forward-untouched';
+      if (directoryMixedSuccessor) {
+        send('/checkpoint-archive-held\r');
+        await until(() => frame().includes('recordedRewindHolds') && ready(), 'list recorded rewind holds', 15000);
+      }
+      assert.equal(receipt.directory.operations[0].stage.kind, noForwardEffect ? 'refused' : 'completed');
+      if (noForwardEffect) {
+        assert.equal(receipt.directory.operations[0].rollback, undefined);
+        if (initialTarget) assert.equal(fs.statSync(target, { bigint: true }).ino, initialTarget.ino);
+        else assert.equal(fs.existsSync(target), false);
+      } else if (directoryMixedRollback) assert.equal(receipt.directory.operations[0].rollback.kind, 'completed');
+      if (directoryMixedReceipt?.endsWith('-untouched')) {
+        const abandoned = receipt.directory.operations[0].noEffectAttempts;
+        assert.equal(abandoned.length, 1); assert.equal(abandoned[0].reverse, !noForwardEffect);
+        assert.ok(fs.existsSync(path.join(store, `native-attempt-${abandoned[0].id}.receipt`)));
+        if (directoryRetainedCreate) {
+          const publicationCut = directoryCreateCut?.includes('torn:') || ['create_before_mode', 'create_after_mode', 'create_after_recheck', 'create_after_publish'].includes(directoryCreateCut?.replace(/^zero:/, '').replace(/^error:|^partial:[0-9]+:/, ''));
+          assert.equal(abandoned[0].creation.evidence.phase, directoryCreateCut && directoryCreateCut !== 'create_publication_persisted' && !publicationCut ? 'preparing' : 'publishing');
+          assert.equal(createHash('sha256').update(fs.readFileSync(path.join(store, `native-attempt-${abandoned[0].creation.evidence.id}.receipt`))).digest('hex'), abandoned[0].creation.digest);
+          if (directoryCreateCut?.startsWith('zero:')) {
+            assert.equal(abandoned[0].preparation.kind, 'metadata');
+            assert.equal(abandoned[0].preparation.content, 'unverified');
+            const retained = path.join(outside, `.litcode-create-${abandoned[0].creation.evidence.id}`, 'staged');
+            assert.equal(String(fs.statSync(retained, { bigint: true }).ino), abandoned[0].preparation.observation.ino);
+            assert.equal(fs.statSync(retained).mode & 0o7777, 0);
+            assert.throws(() => fs.readFileSync(retained), { code: 'EACCES' });
+          }
+        }
+        if (directoryEarlyPreparation) {
+          assert.equal(abandoned[0].preparation.kind, 'retained');
+          assert.equal(abandoned[0].preparation.staged.kind, 'present');
+          if (directoryEarlyTorn) assert.ok(abandoned[0].preparation.staged.content.bytes > 0);
+          else assert.equal(abandoned[0].preparation.staged.content.bytes, 0);
+          assert.equal(createHash('sha256').update(fs.readFileSync(path.join(store, `native-attempt-${abandoned[0].id}.receipt`))).digest('hex'), abandoned[0].digest);
+        }
+      }
+      if (directoryMixedReceipt?.endsWith('-linked')) {
+        const operation = receipt.directory.operations[0], normalization = directoryMixedReceipt === 'forward-linked' ? operation.normalization : operation.rollbackNormalization;
+        assert.match(normalization.completedReceiptDigest, /^[a-f0-9]{64}$/);
+        assert.equal(fs.statSync(path.join(outside, normalization.alias)).nlink, 2);
+        assert.equal(fs.statSync(path.join(outside, normalization.alias)).ino, fs.statSync(path.join(outside, `.litcode-linked-${normalization.id}`, 'held')).ino);
+        if (directoryLinkedPreparation) {
+          assert.equal(operation.abandonedNormalizations.length, linkedPreparationPoints.length);
+          if (linkedError) {
+            const receipt = fs.readFileSync(path.join(store, `native-attempt-${normalization.id}.receipt`));
+            const marker = linkedError === 'complete' ? 'renamed\nerror unknown 5\nexit 1\n' : 'captured\nerror unkn';
+            assert.ok(receipt.toString().endsWith(marker));
+            assert.equal(normalization.completedReceiptDigest, createHash('sha256').update(receipt).digest('hex'));
+          }
+          for (const abandoned of operation.abandonedNormalizations) {
+            assert.notEqual(abandoned.normalization.id, normalization.id);
+            assert.equal(createHash('sha256').update(fs.readFileSync(path.join(store, `native-attempt-${abandoned.normalization.id}.receipt`))).digest('hex'), abandoned.digest);
+            const retained = path.join(outside, `.litcode-linked-${abandoned.normalization.id}`);
+            if (abandoned.preparation?.kind === 'absent') assert.equal(fs.existsSync(retained), false);
+            else if (abandoned.preparation?.staged.kind === 'missing') assert.equal(fs.existsSync(path.join(retained, 'staged')), false);
+            else assert.equal(fs.statSync(path.join(retained, 'staged')).nlink, 1);
+          }
+        }
+      }
+      assert.equal(fs.existsSync(path.join(store, 'transaction.json')), false);
+      if (directoryMixedRollback || directoryMixedCold) {
+        send('continue after compensated rewind\r');
+        await until(() => frame().includes('DIRECTORY_TURN_5_COMPLETE') && ready(), 'continued compensated session', 15000);
+      }
+      const testArchive = (directoryMixedSuccessor || (directoryMixedRollback && !directoryMixedCold)) && !directoryMixedReceipt && !directoryRetainedCreate;
+      if (testArchive) {
+        const slots = receipt.directory.operations.flatMap(op => [op.stage, op.rollback].flatMap(stage => {
+          if (stage?.kind !== 'completed') return [];
+          const held = stage.result.kind === 'quarantined' ? stage.result.observation : stage.result.held;
+          return held ? [{ name: `.litcode-${stage.result.kind === 'quarantined' ? 'remove' : 'replace'}-${stage.id}`, held }] : [];
+        }));
+        assert.ok(slots.length);
+        const archive = path.join(store, 'held-archive-' + receipt.id);
+        fs.writeFileSync(target, 'USER_EDIT_AFTER_REWIND');
+        const nativeReceipt = path.join(store, 'native-attempt-' + receipt.directory.operations[0].stage.id + '.receipt');
+        fs.renameSync(nativeReceipt, nativeReceipt + '.original');
+        fs.copyFileSync(nativeReceipt + '.original', nativeReceipt);
+        send(`/checkpoint-archive-held ${receipt.id}\r`);
+        await until(() => frame().includes('Native receipt identity') && ready(), 'reject substituted native receipt', 15000);
+        assert.ok(slots.every(slot => fs.existsSync(path.join(outside, slot.name, 'held'))));
+        fs.renameSync(nativeReceipt + '.original', nativeReceipt);
+        if (slots.length === 2) {
+          fs.mkdirSync(archive, { mode: 0o700 });
+          const occupied = path.join(archive, slots[1].name);
+          fs.mkdirSync(occupied, { mode: 0o700 });
+          send(`/checkpoint-archive-held ${receipt.id}\r`);
+          await until(() => frame().includes('Rewind hold archive unconf') && ready(), 'archive slot conflict', 15000);
+          assert.equal(String(fs.statSync(path.join(archive, slots[0].name, 'held'), { bigint: true }).ino), slots[0].held.ino);
+          assert.equal(String(fs.statSync(path.join(outside, slots[1].name, 'held'), { bigint: true }).ino), slots[1].held.ino);
+          fs.rmdirSync(occupied);
+        }
+        for (let i = 0; i < 2; i++) {
+          send(`/checkpoint-archive-held ${receipt.id}\r`);
+          await until(() => frame().split('"files":' + slots.length).length > i + 1 && ready(), 'archive mixed rewind holds', 15000);
+          for (const slot of slots) {
+            assert.equal(fs.existsSync(path.join(outside, slot.name)), false);
+            assert.equal(String(fs.statSync(path.join(archive, slot.name, 'held'), { bigint: true }).ino), slot.held.ino);
+          }
+        }
+        assert.equal(fs.readFileSync(target, 'utf8'), 'USER_EDIT_AFTER_REWIND');
+        if (expectedBytes) fs.writeFileSync(target, expectedBytes);
+        else fs.unlinkSync(target);
+      }
+      send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
+      const { spawnSync } = await import('node:child_process');
+      const reader = `import fs from 'node:fs';import {Session} from './dist/session.js';
+        const [workspace,id,outside,target,local]=process.argv.slice(1),s=Session.open(workspace,{id});
+        if (${directoryMixedSuccessor}) {
+          const {archiveRewindHolds,listRecordedRewindHolds}=await import('./dist/checkpoints.js');
+          const holds=listRecordedRewindHolds(s);
+          const expected=${JSON.stringify(receipt.directory.operations.flatMap(op => [['forward', op.stage], ['rollback', op.rollback]]
+            .filter(([, stage]) => stage?.kind === 'completed' && (stage.result.kind === 'quarantined' || stage.result.held))
+            .map(([phase, stage]) => ({transaction:receipt.id,attempt:stage.id,phase,disposition:directoryMixedRollback?'rolled_back':'committed',
+              operation:stage.result.kind === 'quarantined'?'remove':'replace'}))))};
+          if(JSON.stringify(holds)!==JSON.stringify(expected))throw Error('Recorded rewind holds differ from terminal receipt');
+          if (${!directoryMixedReceipt && !directoryRetainedCreate}) {
+            const {strict:assert}=await import('node:assert');
+            const retry=()=>archiveRewindHolds(s,${JSON.stringify(receipt.id)},s.closeSignal);
+            assert.throws(retry,/explicit grant/);
+            s.adoptPermissionUpdates([{type:'addDirectories',directories:[outside],destination:'session'}]);
+            assert.equal(retry(),expected.length);
+            const archive=${JSON.stringify(path.join(store,'held-archive-'+receipt.id))},parked=archive+'-parked';
+            fs.renameSync(archive,parked);fs.mkdirSync(archive,{mode:0o700});
+            for(const slot of fs.readdirSync(parked))fs.renameSync(parked+'/'+slot,archive+'/'+slot);
+            assert.throws(retry,/archive unconfirmed/);
+            for(const slot of fs.readdirSync(archive))fs.renameSync(archive+'/'+slot,parked+'/'+slot);
+            fs.rmdirSync(archive);fs.renameSync(parked,archive);
+            assert.equal(retry(),expected.length);
+            s.adoptPermissionUpdates([{type:'removeDirectories',directories:[outside],destination:'session'}]);
+          }
+        }
+        if (${directoryMixedSuccessor && directoryMixedRollback}) {
+          if (fs.existsSync(${JSON.stringify(path.join(workspace, '.agent', receipt.branch.id + '.jsonl'))}) ||
+              !s.events.some(e=>e.kind==='message' && e.message.role==='user' && JSON.stringify(e.message.content).includes('continue after compensated rewind')))
+            throw Error('Rollback did not hand the conversation back to the original session');
+          const archived=fs.statSync(${JSON.stringify(path.join(store, 'rollback-branch-' + receipt.id + '.jsonl'))});
+          if(archived.ino!==${JSON.stringify(receipt.branch.inode)})throw Error('Rollback branch archive identity differs');
+        }
+        if (${directoryMixedSuccessor && !directoryMixedRollback}) {
+          const {readDirectoryCheckpointBackup}=await import('./dist/rewind.js');
+          const refs=s.events.filter(e=>e.kind==='directory_checkpoint_inheritance');
+          if(refs.length!==1 || readDirectoryCheckpointBackup(s,'mixed-before',target)?.toString('hex')!==${mixedRemove ? 'undefined' : JSON.stringify(directoryBackupBytes.toString('hex'))})
+            throw Error('Successor checkpoint backup unavailable after reopen');
+        }
+        process.stdout.write(JSON.stringify({grant:!!s.workingDirectories(false).readHandle?.(outside),
+          bytes:fs.existsSync(target)?fs.readFileSync(target).toString('hex'):null,local:fs.readFileSync(local,'utf8')}));await s.close();`;
+      const cold = spawnSync(process.execPath, ['--input-type=module', '-e', reader, workspace, directoryMixedCold && !directoryMixedSuccessor || directoryMixedRollback ? receipt.branch.source : receipt.branch.id, outside, target, local], { cwd: root, encoding: 'utf8' });
+      assert.equal(cold.status, 0, cold.stderr);
+      assert.deepEqual(JSON.parse(cold.stdout), { grant: false, bytes: expectedBytes?.toString('hex') ?? null, local: expectedLocal });
+      console.log(JSON.stringify({ cli: 'passed', directoryMixedRewind: true, directoryMixedRollback, directoryMixedCold, directoryMixedCleanupCrash, directoryMixedColdCompensate, directoryMixedReceipt, directoryRetainedCreate, directoryCreateCut, coldProcesses: 1, gateway: 'owned loopback SSE' }));
       break run;
     }
     if (directoryWrite) {
@@ -704,7 +1261,9 @@ fs.renameSync = function(from, to) {
       const externalResult = results.find(result => result.tool_use_id === 'external-write');
       const workspaceResult = results.find(result => result.tool_use_id === 'workspace-write');
       assert.equal(externalResult?.is_error, true, JSON.stringify(results));
-      assert.match(JSON.stringify(externalResult), /writes through additional directory grants are not implemented/);
+      assert.match(JSON.stringify(externalResult), directoryBackup
+        ? /File has not been read in full/
+        : /writes through additional directory grants are not implemented/);
       assert.notEqual(workspaceResult?.is_error, true, JSON.stringify(results));
       assert.equal(fs.existsSync(path.join(outside, 'written.txt')), false);
       if (directoryBackup) assert.deepEqual(fs.readFileSync(path.join(outside, 'value.txt')), directoryBackupBytes);
@@ -1254,10 +1813,11 @@ fs.renameSync = function(from, to) {
         break run;
       }
     }
+    if (panelPriorError) assert.equal(fs.readFileSync(path.join(temporary,'prior-error'),'utf8'),'observed');
     send('/permissions\r');
     await until(() => frame().includes('Workspace') && frame().includes('Allow'), 'permissions panel', 15000);
     send('\x1b[B\x1b[B\x1b[B\x1b[B\r');
-    await until(() => frame().includes('Original working directory'), 'workspace tab', 15000);
+    await until(() => frame().includes('[Workspace]') && frame().includes('Add directory'), 'workspace tab', 15000);
     send('\x1b[B\r');
     await until(() => frame().includes('Remove directory from workspace?'), 'remove directory confirmation', 15000);
     send('\x1b[A\r');
@@ -1650,21 +2210,45 @@ fs.renameSync = function(from, to) {
     const parentBytes = fs.readFileSync(parent.file, 'utf8'), childBytes = fs.readFileSync(worker.file, 'utf8');
     const before = requests.length;
     screen.write('\x1bc');
+    if (coldWriteRedirect) {
+      const preload = path.join(temporary, 'cold-write-redirect.mjs');
+      fs.writeFileSync(preload, `import { Session } from ${JSON.stringify(new URL('../dist/session.js', import.meta.url).href)};
+import { directoryWriteInputSchema } from ${JSON.stringify(new URL('../dist/directory-publication-authorization.js', import.meta.url).href)};
+const append = Session.prototype.append, parse = directoryWriteInputSchema.parse;
+let armed = false;
+Session.prototype.append = function(event, ...rest) {
+  const result = append.call(this, event, ...rest);
+  if (event.kind === 'tool_start' && event.id.startsWith('cold-write-')) armed = true;
+  return result;
+};
+directoryWriteInputSchema.parse = function(...args) {
+  const parsed = parse.apply(this, args);
+  if (armed && parsed.path === 'cold-effect.txt') return { ...parsed, path: 'cold-redirected.txt' };
+  return parsed;
+};`);
+      env.NODE_OPTIONS = `--import=${preload}`;
+    }
     start(['--resume', parent.metadata.id]);
     await until(ready, 'original parent restart', 15000);
     assert.equal(requests.length, before, 'cold startup sends no model request');
+    if (coldExternalWrite) {
+      send(`/add-dir ${outside}\r`);
+      await until(() => frame().includes('Added') && ready(), 'grant external directory after restart', 15000);
+    }
+    const beforeView = coldExternalWrite ? fs.readFileSync(parent.file, 'utf8') : parentBytes;
     send('/tasks\r');
     await until(() => frame().includes('Completed (1)'), 'cold completed child appears');
     send('\r');
     await until(() => frame().includes('Viewing agent') && frame().includes('CHILD_FIRST_COMPLETE'), 'cold child transcript opens');
     assert.equal(requests.length, before, 'viewing is passive');
-    assert.equal(fs.readFileSync(parent.file, 'utf8'), parentBytes);
+    assert.equal(fs.readFileSync(parent.file, 'utf8'), beforeView);
     assert.equal(fs.readFileSync(worker.file, 'utf8'), childBytes);
     send('CHILD_FOLLOWUP_QUEUED\r');
     if (coldApproval && !planAuto) {
       await until(() => frame().includes('Allow once'), 'cold child interactive approval', 15000);
       assert.match(frame(), /write_file/);
-      assert.equal(fs.existsSync(coldPlan ? planTarget : path.join(workspace, 'cold-effect.txt')), false);
+      if (coldExternalOverwrite) assert.deepEqual(fs.readFileSync(coldEffectFile), coldOriginal);
+      else assert.equal(fs.existsSync(coldPlan ? planTarget : coldEffectFile), false);
       if (coldApproval === 'switch-probe') {
         const beforeSessions = fs.readdirSync(dir).filter(name => name.endsWith('.jsonl')).sort();
         for (const text of ['/clear', `/resume ${parent.metadata.id}`]) {
@@ -1702,16 +2286,39 @@ fs.renameSync = function(from, to) {
       send(coldApproval === 'allow' ? '\r' : coldApproval === 'interrupt' ? '\x03' : '\x1b');
     }
     await until(() => frame().includes('CHILD_FOLLOWUP_COMPLETE'), 'cold child follows up', 15000);
-    const effect = coldPlan ? planTarget : path.join(workspace, 'cold-effect.txt');
-    if (!planAuto && (coldApproval === 'deny' || coldApproval === 'interrupt')) assert.equal(fs.existsSync(effect), false);
+    const effect = coldPlan ? planTarget : coldEffectFile;
+    if (coldWriteRedirect) {
+      assert.equal(fs.existsSync(path.join(workspace, 'cold-redirected.txt')), false, 'redirected Write created a file');
+      assert.equal(fs.existsSync(effect), false);
+    } else if (!planAuto && (coldApproval === 'deny' || coldApproval === 'interrupt')) assert.equal(fs.existsSync(effect), false);
     else assert.equal(fs.readFileSync(effect, 'utf8'), 'OWNED_COLD_EFFECT');
     const events = fs.readFileSync(worker.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+    if (coldExternalWrite) {
+      const backup = events.find(event => event.kind === (coldExternalOverwrite ? 'directory_backup' : 'directory_missing_backup') &&
+        event.lexicalPath === coldEffectFile);
+      assert.equal(backup?.owner, worker.metadata.id);
+      if (coldExternalOverwrite) {
+        assert.equal(fs.statSync(coldEffectFile).mode & 0o777, 0o751);
+        assert.deepEqual(fs.readFileSync(`${worker.file}.backup-unknown-${backup.id}`), coldOriginal);
+        assert.ok(events.some(event => event.kind === 'directory_publication_intent' && event.strategy === 'retained' && event.backupId === backup.id));
+      }
+      assert.ok(events.some(event => event.kind === 'directory_publication_result' && event.owner === worker.metadata.id));
+      assert.ok(!fs.readFileSync(parent.file, 'utf8').includes('"kind":"directory_publication_result"'));
+    }
+    if (coldSkill && (coldWriteRedirect || coldApproval === 'allow' || !coldApproval)) {
+      const stages = events.filter(row => row.kind === 'runtime_wrapper_observer' && row.toolUseId.startsWith('cold-write-') &&
+        row.transition.phase === 'admitted');
+      assert.deepEqual(stages.map(row => row.stage), ['checkScope', 'refresh', 'checkJournal']);
+      assert.ok(stages.every(row => row.owner === worker.metadata.id && row.writeFactory?.owner === parent.metadata.id));
+      if (coldWriteRedirect) assert.match(String(events.find(row => row.kind === 'tool_effect' &&
+        row.result.tool_use_id.startsWith('cold-write-'))?.result.content), /input changed after permission checking/i);
+    }
     assert.equal(events.filter(event => event.kind === 'tool_start' && event.name === 'write_file').length,
       coldPlan && (coldApproval === 'deny' || coldApproval === 'interrupt') ? 0 : 1);
     if (coldApproval) {
       const result = events.find(event => event.kind === 'tool_result' && event.result.tool_use_id.startsWith('cold-write-'));
       assert.ok(result, 'cold write result persisted');
-      assert.equal(result.result.is_error === true, coldApproval !== 'allow');
+      assert.equal(result.result.is_error === true, coldWriteRedirect || coldApproval !== 'allow');
     }
     assert.deepEqual(events[0], worker.metadata);
     assert.deepEqual(JSON.parse(fs.readFileSync(parent.file, 'utf8').split('\n')[0]), parent.metadata);
@@ -1730,9 +2337,17 @@ fs.renameSync = function(from, to) {
         return ready() && fs.readdirSync(path.join(workspace, '.agent')).filter(file => file.endsWith('.jsonl')).some(file => {
           const bytes = fs.readFileSync(path.join(workspace, '.agent', file), 'utf8');
           const rows = bytes.slice(0, bytes.lastIndexOf('\n')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-          return rows[0]?.config.childMode === undefined && rows.at(-1)?.kind === 'turn_end';
+          if (rows[0]?.config.childMode !== undefined) return false;
+          const index = rows.findLastIndex(row => row.kind === 'message' && row.notificationDelivery &&
+            typeof row.message.content === 'string' && row.message.content.includes(`view-${name}`));
+          return index >= 0 && rows.slice(index + 1).some(row => row.kind === 'turn_end');
         });
       }, `${name} completion notification committed`, 15000);
+      const prompt = requests.map(body => body.messages.at(-1)?.content).find(text =>
+        typeof text === 'string' && text.startsWith('Child agent events') && text.includes(`view-${name}`));
+      const batch = JSON.parse(prompt.slice(prompt.indexOf('\n') + 1));
+      const completion = batch.events.find(event => event.agent.name === `view-${name}`);
+      assert.match(completion?.runId ?? '', /^[0-9a-z]{9}-[0-9a-f]{8}$/);
     }
     const before = requests.length;
     send('/tasks\r');
@@ -1791,7 +2406,7 @@ fs.renameSync = function(from, to) {
   send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0, frame());
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   console.log(JSON.stringify({ cli: 'passed', entryOnly: process.argv.includes('--entry-only'),
-    completedHistory: process.argv.includes('--completed-history'), coldHistory, coldSkill, coldApproval, mutationGates, baseline: process.argv.includes('--baseline'),
+    completedHistory: process.argv.includes('--completed-history'), coldHistory, coldSkill, coldApproval, coldWriteRedirect, coldExternalWrite, coldExternalOverwrite, mutationGates, baseline: process.argv.includes('--baseline'),
     childView: !process.argv.includes('--baseline'), modelRequests: requests.length, gateway: 'owned loopback SSE', locksReleased: true }));
 } finally {
   fs.writeFileSync(path.join(temporary, 'screen.txt'), frame());
@@ -1806,6 +2421,6 @@ fs.renameSync = function(from, to) {
   }
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
   screen.close();
-  if (coldHistory || coldSkill || mutationGates || startupProbe || lexicalMutation || coldReplacement || directoryBackup || directoryCheckpointBracket || directoryEditTool || directoryRewindAuthority || directoryBranchHistory) fs.rmSync(temporary, { recursive: true, force: true });
-  console.log(JSON.stringify({ fixture: temporary, removed: !!(coldHistory || coldSkill || mutationGates || startupProbe || lexicalMutation || coldReplacement || directoryBackup || directoryCheckpointBracket || directoryEditTool || directoryRewindAuthority || directoryBranchHistory) }));
+  if (coldHistory || coldSkill || mutationGates || startupProbe || lexicalMutation || coldReplacement || directoryBackup || directoryCheckpointBracket || directoryEditTool || directoryRewindAuthority || directoryBranchHistory || directoryMixedRewind) fs.rmSync(temporary, { recursive: true, force: true });
+  console.log(JSON.stringify({ fixture: temporary, removed: !!(coldHistory || coldSkill || mutationGates || startupProbe || lexicalMutation || coldReplacement || directoryBackup || directoryCheckpointBracket || directoryEditTool || directoryRewindAuthority || directoryBranchHistory || directoryMixedRewind) }));
 }

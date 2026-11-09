@@ -1147,6 +1147,21 @@ test("prompt/agent hooks require explicit injected resolvers and normalize model
   assert.deepEqual(good.additionalContext, ["checked"]);
 });
 
+test('PermissionRequest rejects agent hooks without model execution and keeps supported handlers available', async () => {
+  let invoked = 0;
+  const resolver = async () => { invoked++; return { ok: false, reason: 'must not be called' }; };
+  for (const options of [{ resolveModelHook: resolver }, {}]) {
+    const result = await runHooks({ PermissionRequest: [{ type: 'agent', prompt: 'not a permission decision', once: true }] }, 'PermissionRequest', preTool(), signal(), options);
+    assert.equal(invoked, 0);
+    assert.equal(result.blocked, false);
+    assert.equal(result.pendingHooks, undefined);
+    assert.equal(result.consumedOnce, undefined);
+    assert.ok(result.additionalContext.some(text => text.includes('agent-type hooks are not supported for PermissionRequest')));
+  }
+  await runHooks({ PreToolUse: [{ type: 'agent', prompt: 'supported' }] }, 'PreToolUse', preTool(), signal(), { resolveModelHook: resolver });
+  assert.equal(invoked, 1);
+});
+
 test("model hook timeout and malformed output remain explicit and bounded", async () => {
   let cancelled = false;
   const timeout = await runHooks({ PreToolUse: [{ type: "prompt", prompt: "check", timeout: 0.03 }] }, "PreToolUse", preTool(), signal(), { resolveModelHook: async (_definition, _event, _payload, hookSignal) => new Promise(resolve => { hookSignal.addEventListener("abort", () => { cancelled = true; resolve({ ok: true }); }); }) });

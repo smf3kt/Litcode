@@ -1,0 +1,53 @@
+{
+  "identity": {
+    "sha256": "d496cc775b55fdfa568e68e74edb001dd0fab0f4439f698624b35f8510435472",
+    "inputs": {
+      "sha256": "c790d64596674a47bc8f3abfb09116f46903cf1652364caaa05b47b290b53284",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "8f8b3a175d58d3c6ec5144a975c5c6bbfe425e8e6d7d7db88b9944511b788d0a",
+      "files": 413
+    },
+    "build": {
+      "sha256": "c0acaa284d47ac8410d2edb534252bfd9a2b0bdd7d444e0c294b2ade39d8d372",
+      "files": 728
+    }
+  },
+  "check": "pass",
+  "build": "pass",
+  "focusedPass": 11,
+  "coldHistory": {
+    "pass": 75,
+    "skip": 5,
+    "fail": 0
+  },
+  "existingWriteCliPass": 2,
+  "originalRecoveryCliPass": 1,
+  "distinctPassingAcrossRuns": 89,
+  "childCli": {
+    "cases": 16,
+    "coldReaders": 32
+  },
+  "artifacts": {
+    ".audit/w385-child-display-cli.mjs": "6cbe9eb3d4c3b1bae3548435ccb3f5c11fb53d60dca427e00ff36bb71802651c",
+    ".audit/w385-child-display-cli.json": "9cad25d882169dd41e560334533aab78deab62de7a48f60ade119368c17f9017",
+    ".audit/w385-child-display-source.json": "0e1c9c37f8713732b72690f27c2a5a082f207b89d8fc6ddd1c28d4db2b9c648c",
+    "test/child-display-observer.test.ts": "fb3baac4555e4d969f4f3132e31e8a1c996dab25630245bbdd3522d419f49741"
+  },
+  "logs": [
+    "/private/tmp/w385-child-display-check2.log",
+    "/private/tmp/w385-child-display-build.log",
+    "/private/tmp/w385-child-display-focused.log",
+    "/private/tmp/w385-child-display-cold-suite.log",
+    "/private/tmp/w385-child-display-recovery.log",
+    "/private/tmp/w385-child-display-resume-final.log",
+    "/private/tmp/w385-child-display-cli.log"
+  ],
+  "limitations": [
+    "arbitrary child input is unobserved",
+    "callback settlement does not attest detached or arbitrary effects",
+    "other callback paths and full source progress parity remain open"
+  ],
+  "upstreamCalls": 0
+}

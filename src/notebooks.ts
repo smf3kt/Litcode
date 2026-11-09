@@ -15,16 +15,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { atomicWriteFile } from "./atomic-write.js";
+import { decodeFileBytes, lwe } from "./path-approval-decoder-source.js";
+import { readStableDirectoryFile } from "./directory-file-state.js";
+import { verifyIdentity, type ResolvedPath } from "./path-identity.js";
 
 import { z } from "zod";
 
-import { confineResolved, type ToolContext, type ToolDefinition } from "./tools.js";
+import { captureExternalEdit, confineResolved, publishExternalEdit, registerBuiltinEdit, requireDirectoryHandle, verifyApprovedEditInput, type ToolContext, type ToolDefinition } from "./tools.js";
 
-const AGENT_DIR = ".agent";
-const NOTEBOOK_MAX_BYTES = 8 * 1024 * 1024;
+import { NOTEBOOK_MAX_BYTES, CELL_TYPES, EDIT_MODES, notebookEditSchema, parseNotebook, renderNotebookEdit, type Notebook } from "./notebook-edit.js";
 const FALLBACK_MAX_OUTPUT_BYTES = 100_000;
-const CELL_TYPES = ["code", "markdown", "raw"] as const;
-const EDIT_MODES = ["replace", "insert", "delete"] as const;
 
 // ---------------------------------------------------------------------------
 // Errors and output capping (local copies: tools.ts keeps its helpers private)
@@ -65,70 +65,6 @@ function isWithin(root: string, candidate: string): boolean {
   return candidate.startsWith(root + path.sep);
 }
 
-function rejectAgentSegment(root: string, target: string): void {
-  const rel = path.relative(root, target);
-  if (rel === "") return;
-  if (rel.split(path.sep).includes(AGENT_DIR)) {
-    throw new Error(`path is inside the reserved "${AGENT_DIR}" directory`);
-  }
-}
-
-/**
- * Resolve `userPath` inside `root`, following every symlink component and
- * rejecting any path that leaves the workspace or aliases the reserved
- * `.agent` directory. Absolute paths are rejected outright.
- */
-function confine(root: string, userPath: string, mustExist: boolean): string {
-  if (path.isAbsolute(userPath)) {
-    throw new Error(`path escapes the workspace (absolute paths are not allowed): ${userPath}`);
-  }
-  const abs = path.resolve(root, userPath);
-  if (!isWithin(root, abs)) {
-    throw new Error(`path escapes the workspace: ${userPath}`);
-  }
-  const rel = path.relative(root, abs);
-  if (rel === "") {
-    if (mustExist && !fs.existsSync(abs)) {
-      throw new Error(`path does not exist: ${userPath}`);
-    }
-    return root;
-  }
-  const segments = rel.split(path.sep);
-  let current = root;
-  for (const seg of segments) {
-    if (seg === AGENT_DIR) {
-      throw new Error(`path is inside the reserved "${AGENT_DIR}" directory: ${userPath}`);
-    }
-    const next = path.join(current, seg);
-    let stat: fs.Stats | null = null;
-    try {
-      stat = fs.lstatSync(next);
-    } catch {
-      stat = null;
-    }
-    if (stat && stat.isSymbolicLink()) {
-      let linkReal: string;
-      try {
-        linkReal = fs.realpathSync(next);
-      } catch {
-        throw new Error(`path escapes the workspace through a dangling symlink: ${userPath}`);
-      }
-      if (!isWithin(root, linkReal)) {
-        throw new Error(`path escapes the workspace through a symlink: ${userPath}`);
-      }
-      rejectAgentSegment(root, linkReal);
-      current = linkReal;
-    } else {
-      if (!stat && mustExist) {
-        throw new Error(`path does not exist: ${userPath}`);
-      }
-      current = next;
-    }
-  }
-  rejectAgentSegment(root, current);
-  return current;
-}
-
 function workspaceReal(workspace: string): string {
   const resolved = path.resolve(workspace);
   try {
@@ -142,105 +78,44 @@ function workspaceReal(workspace: string): string {
 // Atomic write
 // ---------------------------------------------------------------------------
 
-function atomicWrite(real: string, content: string, mode?: number): void {
+function atomicWrite(real: string, content: Buffer, mode?: number) {
   // Delegated to the shared writer, so a notebook write is verified the same
   // way a text write is.
-  atomicWriteFile(real, content, mode === undefined ? { label: "notebook_edit" } : { mode, label: "notebook_edit" });
+  return atomicWriteFile(real, content, mode === undefined ? { label: "notebook_edit" } : { mode, label: "notebook_edit" });
+}
+
+// NotebookEdit.validateInput/call, sfn1dbxq [4177228,4181923), UTF-16.
+async function readNotebookFile(resolved: ResolvedPath, userPath: string, tool: 'notebook_edit' | 'notebook_read',
+  context: ToolContext, cacheKey: string) {
+  const file = await fs.promises.open(resolved.path, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  try {
+    const stat = await file.stat({ bigint: true });
+    if (!stat.isFile()) throw new Error(`${tool}: not a regular file: ${userPath}`);
+    const identity = { dev: String(stat.dev), ino: String(stat.ino) };
+    if (identity.dev !== resolved.identity?.dev || identity.ino !== resolved.identity?.ino)
+      throw new Error(`${tool}: file changed before read: ${userPath}`);
+    const timestamp = Number(stat.mtimeNs / 1000000n);
+    if (tool === 'notebook_edit' && context.readFileCache) {
+      const prior = context.readFileCache.get(cacheKey);
+      if (!prior) throw new Error('File has not been read yet. Read it first before writing to it.');
+      if (timestamp > prior.timestamp || (prior.identity && (prior.realPath !== resolved.path ||
+          prior.identity.dev !== identity.dev || prior.identity.ino !== identity.ino)))
+        throw new Error('File has been modified since read. Read it again before attempting to write it.');
+    }
+    if (stat.size > NOTEBOOK_MAX_BYTES) throw new Error(`${tool}: notebook exceeds the maximum size (${NOTEBOOK_MAX_BYTES} bytes): ${userPath}`);
+    const decoded = await lwe(file, resolved.path, NOTEBOOK_MAX_BYTES);
+    if (decoded.lossyDecode) throw new Error(`${tool}: unsupported encoding; invalid UTF-8`);
+    verifyIdentity(resolved);
+    context.signal.throwIfAborted();
+    return { decoded, identity, timestamp, fileMode: Number(stat.mode & 0o7777n) };
+  } finally { await file.close(); }
 }
 
 // ---------------------------------------------------------------------------
 // Notebook model and validation
 // ---------------------------------------------------------------------------
 
-type CellType = (typeof CELL_TYPES)[number];
-type EditMode = (typeof EDIT_MODES)[number];
-
-type NotebookCell = {
-  cell_type: CellType;
-  id?: string;
-  source: string | string[];
-  metadata?: Record<string, unknown>;
-  outputs?: unknown[];
-  execution_count?: number | null;
-  [key: string]: unknown;
-};
-
-type Notebook = {
-  nbformat: number;
-  nbformat_minor: number;
-  cells: NotebookCell[];
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown;
-};
-
 const notebookReadSchema = z.object({ path: z.string().min(1) }).strict();
-
-const notebookEditSchema = z
-  .object({
-    path: z.string().min(1),
-    cell_id: z.string().optional(),
-    new_source: z.string(),
-    cell_type: z.enum(CELL_TYPES).optional(),
-    edit_mode: z.enum(EDIT_MODES).optional(),
-  })
-  .strict();
-
-function isCellType(value: unknown): value is CellType {
-  return typeof value === "string" && (CELL_TYPES as readonly string[]).includes(value);
-}
-
-function isSource(value: unknown): value is string | string[] {
-  if (typeof value === "string") return true;
-  return Array.isArray(value) && value.every((line) => typeof line === "string");
-}
-
-/** Parse and validate a notebook document; throws with a caller-facing reason. */
-function parseNotebook(text: string, rel: string): Notebook {
-  let value: unknown;
-  try {
-    value = JSON.parse(text);
-  } catch {
-    throw new Error(`notebook is not valid JSON: ${rel}`);
-  }
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`notebook is not a JSON object: ${rel}`);
-  }
-  const nb = value as Record<string, unknown>;
-  if (nb.nbformat !== 4) {
-    throw new Error(
-      `unsupported notebook format (nbformat=${String(nb.nbformat)}); only nbformat 4 is supported: ${rel}`,
-    );
-  }
-  if (!Array.isArray(nb.cells)) {
-    throw new Error(`notebook is missing a "cells" array: ${rel}`);
-  }
-  const seen = new Set<string>();
-  for (const raw of nb.cells) {
-    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-      throw new Error(`notebook contains a malformed cell: ${rel}`);
-    }
-    const cell = raw as Record<string, unknown>;
-    if (!isCellType(cell.cell_type)) {
-      throw new Error(`notebook cell has an invalid cell_type: ${rel}`);
-    }
-    if (!isSource(cell.source)) {
-      throw new Error(`notebook cell source must be a string or a list of strings: ${rel}`);
-    }
-    if (cell.id !== undefined) {
-      if (typeof cell.id !== "string" || cell.id.length === 0) {
-        throw new Error(`notebook cell "id" must be a non-empty string: ${rel}`);
-      }
-      if (seen.has(cell.id)) {
-        throw new Error(`notebook contains duplicate cell id "${cell.id}": ${rel}`);
-      }
-      seen.add(cell.id);
-    }
-  }
-  if (typeof nb.nbformat_minor !== "number" || !Number.isInteger(nb.nbformat_minor) || nb.nbformat_minor < 0) {
-    nb.nbformat_minor = 0;
-  }
-  return nb as unknown as Notebook;
-}
 
 /** Flatten a validated cell source (string or list of lines) into one string. */
 function sourceText(source: string | string[]): string {
@@ -276,32 +151,6 @@ function formatRead(rel: string, nb: Notebook): string {
   return out.join("\n");
 }
 
-/**
- * Resolve an edit target to a cell array index. An exact `cell_id` match wins;
- * a purely numeric id that matches no cell is treated as a 0-based index
- * fallback. A referenced index that names no existing cell is rejected, and a
- * missing id is reported explicitly rather than silently skipped.
- */
-function resolveIndex(cells: NotebookCell[], cellId: string | undefined, mode: EditMode): number {
-  if (cellId === undefined || cellId === "") {
-    if (mode !== "insert") {
-      throw new Error(`cell_id is required when edit_mode is "${mode}".`);
-    }
-    return 0;
-  }
-  let index = cells.findIndex((cell) => cell.id === cellId);
-  if (index === -1) {
-    if (!/^[0-9]+$/.test(cellId)) {
-      throw new Error(`Cell with ID "${cellId}" not found in notebook.`);
-    }
-    index = Number.parseInt(cellId, 10);
-  }
-  if (index >= cells.length) {
-    throw new Error(`Cell with index ${index} does not exist in notebook (${cells.length} cells).`);
-  }
-  return mode === "insert" ? index + 1 : index;
-}
-
 // ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------
@@ -312,11 +161,10 @@ function notebookReadTool(): ToolDefinition {
     schema: {
       name: "notebook_read",
       description:
-        "Read a Jupyter notebook (.ipynb) inside the agent workspace and list its " +
+        "Read a Jupyter notebook (.ipynb) in the workspace or an explicitly granted directory and list its " +
         "cells. Each cell is shown with its stable `id` (or `(no id)` when the " +
         "notebook predates cell ids) and 0-based index, so `notebook_edit` can " +
-        "target it. Only nbformat 4 is accepted. Paths are workspace-relative and " +
-        "confined to the workspace.",
+        "target it. Only nbformat 4 is accepted.",
       input_schema: {
         type: "object",
         properties: {
@@ -330,24 +178,38 @@ function notebookReadTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath } = notebookReadSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = context.workingDirectories?.(true).length
-        ? confineResolved(root, userPath, true, context.workingDirectories(true)).path : confine(root, userPath, true);
+      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(true));
+      const real = resolved.path;
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error(`notebook_read: not a Jupyter notebook (.ipynb): ${userPath}`);
       }
-      const stat = fs.statSync(real);
-      if (!stat.isFile()) {
-        throw new Error(`notebook_read: not a regular file: ${userPath}`);
+      const cacheKey = path.resolve(root, userPath);
+      let decoded: ReturnType<typeof decodeFileBytes>, identity: { dev: string; ino: string }, timestamp: number;
+      if (isWithin(root, real)) {
+        ({decoded, identity, timestamp} = await readNotebookFile(resolved, userPath, 'notebook_read', context, cacheKey));
+      } else {
+        const grant = requireDirectoryHandle(context, cacheKey, true);
+        const signal = AbortSignal.any([grant.signal, context.signal]);
+        const read = readStableDirectoryFile({ fd: grant.fd, relative: path.relative(grant.root, cacheKey) }, NOTEBOOK_MAX_BYTES, signal);
+        if (!read || read.observation.dev !== resolved.identity?.dev || read.observation.ino !== resolved.identity?.ino)
+          throw new Error('notebook_read: directory notebook is unavailable or changed');
+        verifyIdentity(resolved);
+        decoded = decodeFileBytes(read.bytes);
+        if (decoded.lossyDecode) throw new Error('notebook_read: unsupported encoding; invalid UTF-8');
+        identity = {dev: read.observation.dev, ino: read.observation.ino};
+        timestamp = Number(BigInt(read.observation.mtimeSeconds) * 1000n + BigInt(read.observation.mtimeNanoseconds) / 1000000n);
+        context.readGrantWitness?.({owner: grant.owner, incarnation: grant.incarnation});
       }
-      if (stat.size > NOTEBOOK_MAX_BYTES) {
-        throw new Error(
-          `notebook_read: notebook exceeds the maximum size (${NOTEBOOK_MAX_BYTES} bytes): ${userPath}`,
-        );
-      }
-      const text = fs.readFileSync(real, "utf8");
       const rel = path.relative(root, real) || userPath;
-      const notebook = parseNotebook(text, rel);
-      return truncateHead(formatRead(rel, notebook), maxBytesFor(context), "notebook_read");
+      const notebook = parseNotebook(decoded.content, rel);
+      const rendered = formatRead(rel, notebook);
+      const content = truncateHead(rendered, maxBytesFor(context), "notebook_read");
+      const truncated = rendered !== content;
+      const offset = 1, limit = Number.MAX_SAFE_INTEGER;
+      context.readFileCache?.set(cacheKey, {content, identity, timestamp, realPath: real,
+        isPartialView: truncated, contentNotInModelContext: true, offset, limit});
+      context.hostResult?.({kind:'file_read', filePath:real, cacheKey, content, mtimeMs:timestamp, identity, offset, limit, truncated});
+      return content;
     },
   };
 }
@@ -362,17 +224,15 @@ function notebookEditTool(): ToolDefinition {
     schema: {
       name: "notebook_edit",
       description:
-        "Edit one cell of a Jupyter notebook (.ipynb) inside the agent workspace. " +
+        "Edit one cell of a Jupyter notebook (.ipynb) in the workspace or an explicitly granted directory. " +
         "`edit_mode` is `replace` (default), `insert`, or `delete`. `cell_id` names " +
         "the target cell by its stable id (a numeric value falls back to a 0-based " +
         "index); it is required for replace/delete and, when given for insert, the " +
         "new cell is placed after it (otherwise at the top). `cell_type` is required " +
         "for insert. Only nbformat 4 is accepted; untouched cells, metadata, and " +
         "outputs are preserved, while a code cell whose source is replaced has its " +
-        "outputs cleared and execution_count reset to null. Changing a cell to type " +
-        "`code` initializes its outputs/execution_count; changing a code cell to " +
-        "another type removes them. Inserts get a new " +
-        "crypto UUID. The write is atomic and confined to the workspace.",
+        "outputs cleared and execution_count reset to null. A cell-N selector addresses " +
+        "the zero-based index N. Inserted cells receive an eight-character ID in nbformat 4.5 and later.",
       input_schema: {
         type: "object",
         properties: {
@@ -399,89 +259,54 @@ function notebookEditTool(): ToolDefinition {
     },
     async execute(input, context) {
       if (context.signal.aborted) throw abortError();
-      const {
-        path: userPath,
-        cell_id,
-        new_source,
-        cell_type,
-        edit_mode,
-      } = notebookEditSchema.parse(input);
-      const mode: EditMode = edit_mode ?? "replace";
+      const parsed = notebookEditSchema.parse(input);
+      verifyApprovedEditInput(input, parsed);
+      const { path: userPath, edit_mode: mode = "replace", cell_type } = parsed;
       const root = workspaceReal(context.workspace);
-      const real = context.workingDirectories?.(false).length
-        ? confineResolved(root, userPath, true, context.workingDirectories(false)).path : confine(root, userPath, true);
-      // Host restriction: NotebookEdit.call, sfn1dbxq [4179123,4181923), UTF-16,
-      // pins US before reading and publishing; the external grant-FD chain is unconnected.
-      if (!isWithin(root, real)) throw new Error('notebook_edit: edits through additional directory grants are not implemented');
+      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(false));
+      const real = resolved.path;
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error("File must be a Jupyter notebook (.ipynb file).");
-      }
-      const stat = fs.statSync(real);
-      if (!stat.isFile()) {
-        throw new Error(`notebook_edit: not a regular file: ${userPath}`);
-      }
-      if (stat.size > NOTEBOOK_MAX_BYTES) {
-        throw new Error(
-          `notebook_edit: notebook exceeds the maximum size (${NOTEBOOK_MAX_BYTES} bytes): ${userPath}`,
-        );
       }
       if (mode === "insert" && !cell_type) {
         throw new Error("Cell type is required when using edit_mode=insert.");
       }
       const rel = path.relative(root, real) || userPath;
-      const notebook = parseNotebook(fs.readFileSync(real, "utf8"), rel);
-      const cells = notebook.cells;
-      const index = resolveIndex(cells, cell_id, mode);
-
-      let resultId: string | undefined;
-      if (mode === "delete") {
-        resultId = cells[index]!.id;
-        cells.splice(index, 1);
-      } else if (mode === "insert") {
-        const cell: NotebookCell = { cell_type: cell_type!, source: new_source, metadata: {} };
-        if (cell.cell_type === "code") {
-          cell.execution_count = null;
-          cell.outputs = [];
-        }
-        cell.id = crypto.randomUUID();
-        cells.splice(index, 0, cell);
-        resultId = cell.id;
-      } else {
-        const cell = cells[index]!;
-        const nextType: CellType = cell_type !== undefined && cell_type !== cell.cell_type ? cell_type : cell.cell_type;
-        cell.source = new_source;
-        // A code cell carries execution_count/outputs; initialize them when the
-        // cell is (or becomes) code and drop them when it stops being code.
-        if (nextType === "code") {
-          cell.execution_count = null;
-          cell.outputs = [];
-        } else if (cell.cell_type === "code") {
-          delete cell.execution_count;
-          delete cell.outputs;
-        }
-        if (nextType !== cell.cell_type) {
-          cell.cell_type = nextType;
-        }
-        resultId = cell.id;
+      // NotebookEdit.call, sfn1dbxq [4179123,4181923), UTF-16: readExisting
+      // and recheckBeforeWrite refer to the same resolved notebook.
+      const cacheKey = path.resolve(root, userPath);
+      const external = !isWithin(root, real);
+      if (external && (resolved.identity?.size ?? 0) > NOTEBOOK_MAX_BYTES) throw new Error('notebook_edit: notebook exceeds the maximum size');
+      const original = external ? await captureExternalEdit(context, resolved, cacheKey,
+        { ...parsed, ...(context.notebookInsertId ? { insertId: context.notebookInsertId } : {}) })
+        : await readNotebookFile(resolved, userPath, 'notebook_edit', context, cacheKey);
+      if ('observed' in original) {
+        const prior = context.readFileCache?.get(cacheKey), observation = original.observed;
+        if (!prior?.identity) throw new Error('File has not been read yet. Read it first before writing to it.');
+        if (prior.realPath !== real || prior.identity.dev !== observation.dev || prior.identity.ino !== observation.ino ||
+            Number(BigInt(observation.mtimeSeconds) * 1000n + BigInt(observation.mtimeNanoseconds) / 1000000n) > prior.timestamp)
+          throw new Error('File has been modified since read. Read it again before attempting to write it.');
       }
-
-      const serialized = `${JSON.stringify(notebook, null, 1)}\n`;
-      if (Buffer.byteLength(serialized, "utf8") > NOTEBOOK_MAX_BYTES) {
-        throw new Error(
-          `notebook_edit: edit rejected; the updated notebook would exceed the maximum size ` +
-            `(${NOTEBOOK_MAX_BYTES} bytes). The file was left unchanged.`,
-        );
-      }
-      context.fileHistory?.(real);
-      atomicWrite(real, serialized, stat.mode & 0o7777);
+      const { serialized, json, resultId, index } = renderNotebookEdit(original.decoded, parsed, rel,
+        () => context.notebookInsertId ?? crypto.randomUUID().slice(0, 8));
+      if (!external) context.fileHistory?.(real);
+      verifyIdentity(resolved);
+      context.signal.throwIfAborted();
+      const publication = 'retained' in original ? publishExternalEdit(context, original.retained, cacheKey, serialized)
+        : atomicWrite(real, serialized, original.fileMode);
+      const landed = { filePath: real, cacheKey, content: json, mtimeMs: publication.mtimeMs, identity: publication.identity };
+      context.readFileCache?.clear();
+      context.readFileCache?.set(cacheKey, { content: json, timestamp: Math.floor(publication.mtimeMs),
+        identity: publication.identity, realPath: real, contentNotInModelContext: true });
+      context.hostResult?.({ kind: 'notebook_edit', landed });
 
       if (mode === "delete") return `Deleted cell ${resultId ?? index} from ${rel}`;
-      if (mode === "insert") return `Inserted cell ${resultId} into ${rel}`;
+      if (mode === "insert") return `Inserted cell ${resultId ?? index} into ${rel}`;
       return `Updated cell ${resultId ?? index} in ${rel}`;
     },
   };
 }
 
 export function createNotebookTools(): ToolDefinition[] {
-  return [notebookReadTool(), notebookEditTool()];
+  return [notebookReadTool(), registerBuiltinEdit(notebookEditTool())];
 }

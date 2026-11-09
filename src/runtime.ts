@@ -28,8 +28,9 @@ import { modelSettingsSchema, type ModelSettings } from './effort-command.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 
 import { defaultUserDir, expandSkill, renderInstructionBlocks, INSTRUCTION_INTRO, type InstructionFile, type SkillInfo } from './config.js';
-import { hooksSettingsSchema, runHooks, type HooksConfig, type HookRunOptions } from './hooks.js';
-import { AsyncHookRegistry } from './async-hooks.js';
+import { hooksSettingsSchema, runHooks, type HooksConfig, type HookRunOptions, type HookPayload } from './hooks.js';
+import { AsyncHookRegistry, type AsyncHookCompletion } from './async-hooks.js';
+import { duplicateSessionStart, type AsyncHookAttachment } from './async-hook-response.js';
 import { validateHookTerminalSequence } from './hook-terminal.js';
 import { connectMcpServers, mcpServersSchema, type McpClientRequests, type McpConnection, type McpServerConfig } from './mcp.js';
 import type { McpProgressUpdate } from './mcp-progress.js';
@@ -56,9 +57,10 @@ import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { createCheckpointTools } from './checkpoints.js';
 import { WorktreeManager, createWorktreeTools, hasDotSegment, requireHookWorktreeDirectory, screenWorktreeAncestry } from './worktrees.js';
 import { classicEventHooked, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
+import { createClassicChainObserver } from './classic-hook-observer.js';
 import { DEFAULT_PERMISSION_MODE, permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
-import type { StopRuntimeState } from './agent.js';
+import { createHookResolverObserver, type StopRuntimeState } from './agent.js';
 import { Session, configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
 import { disabledMcpServers, saveMcpEnabled } from './mcp-state.js';
 import type { SessionConfig } from './session.js';
@@ -450,6 +452,7 @@ export function validateRuntimeConfig(config: SessionConfig): void {
 // ---------------------------------------------------------------------------
 
 export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string; dynamic?: true } |
+  { kind: 'async_hook'; owner: string; deliveryId: string; jobId: string; event: string; prompt: string; attachment?: AsyncHookAttachment; commandScope?: string; hookTerminal?: { id: string; event: string; sequences: string[] } } |
   { kind: 'background'; owner: string; deliveryId?: string; events: BackgroundEvent[]; dropped: number; pending: number; maxOutputBytes: number; prompt?: never } |
   { kind: 'agent_events'; owner: string; deliveryId?: string; events: import('./agent-registry.js').AgentNotification[]; dropped: number; maxOutputBytes: number; prompt?: never } |
   { kind: 'instruction_paths'; paths: string[]; prompt?: never } |
@@ -531,6 +534,7 @@ export type Runtime = {
   releaseSession?(owner: string, completed?: () => void): Promise<void>;
   sessionLease?(session: Session): () => boolean;
   bindAgentApproval?(config: SessionConfig, owner: string, callback: import('./agent-registry.js').SessionApproval): () => void;
+  continueWorkerDeliveries?(session: Session, signal: AbortSignal, onUncertain: (message: string) => void): Promise<import('./agent-registry.js').AgentDescriptor[]>;
   tryMemoryConsolidation?(config: SessionConfig, owner: string): Promise<void>;
   settleMemoryConsolidation?(owner: string): Promise<void>;
   drainMemoryStatus?(owner: string): string[];
@@ -711,6 +715,7 @@ export async function createRuntimeAssembly(
   // tool set is built; `Zjt` spawns with the parent's tools and no narrowing.
   const subtaskSeams = new Map<string, { registry: () => AgentRegistry; tools: ToolDefinition[] }>();
   const childTerminalCallbacks = new WeakMap<ToolDefinition[], (child: string, sequence: string) => void>();
+  const childCompletionCallbacks = new WeakMap<ToolDefinition[], (child: string, completion: AsyncHookCompletion) => void>();
   const childInstructionCallbacks = new WeakMap<ToolDefinition[], (workspace: string, paths: string[]) => void>();
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
   const schedulerAccessors = new Map<string, () => LocalScheduler>();
@@ -729,6 +734,38 @@ export async function createRuntimeAssembly(
   const lifetimeController = new AbortController();
   const notify = (owner: string) => {
     for (const listener of listeners) { try { listener(owner); } catch { /* observers own their errors */ } }
+  };
+  // Adapt CDr [3641569,3648332), sfn1dbxq SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+  // zero-based half-open UTF-16: child async attachments are collected by the root conversation.
+  const deliverHook = (owner: string, scope: object, resources: Resources, completion: AsyncHookCompletion, forwardTerminal: boolean) => {
+    if (closed || signal.aborted || owners.get(owner) !== resources || ownerScopes.get(owner) !== scope) return;
+    if (completion.delivery.kind === 'none') return;
+    const attachment = completion.delivery.kind === 'attachment' ? completion.delivery.attachment : undefined;
+    const bound = messagingSessions.get(owner);
+    if (attachment?.hookEvent === 'SessionStart' && bound && duplicateSessionStart(attachment, bound.sessionStartAttachments(completion.commandScope))) return;
+    const { terminalSequences, ...result } = completion.result;
+    // An asyncRewake exit-2 completion wakes the model with its own body
+    // (source `m5e` → `z6t`, chunk-sfn1dbxq.js offsets 2956018/633021)
+    // instead of the generic completion record.
+    const prompt = completion.rewake ? completion.rewake.body : attachment ? 'Async hook response (data):\n' + JSON.stringify(attachment)
+      : 'Async hook completion (data):\n' + JSON.stringify({ ...completion, result });
+    const terminal = forwardTerminal && terminalSequences?.length ? { hookTerminal: { id: completion.id, event: completion.event, sequences: terminalSequences } } : {};
+    let event: RuntimeEvent;
+    if (bound) {
+      if (!bound.isOpen) return;
+      const deliveryId = randomUUID();
+      // Adapt LLr/Zt, sfn1dbxq SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+      // [3703453,3704511)/[3698839,3699060), UTF-16: process and conversation delivery have distinct identities.
+      // S3 host rewrite: sync intent before queue eviction; an unreceipted delivery remains unknown on reopen.
+      const batch = { kind: 'async_hook', jobId: completion.id, event: completion.event, prompt,
+        commandScope: completion.commandScope,
+        ...(attachment ? { attachment } : {}) } as const;
+      bound.append({ kind: 'notification_intent_v2', deliveryId, owner, batch });
+      event = { ...batch, owner, deliveryId, ...terminal };
+    } else event = { kind: 'notification', prompt, ...terminal };
+    if (resources.queued.length >= 50) { resources.queued.shift(); resources.dropped++; }
+    resources.queued.push(event);
+    notify(owner);
   };
   const scopeFor = (owner: string): object => {
     if (closed || signal.aborted) throw new Error('Runtime is closed');
@@ -819,6 +856,7 @@ export async function createRuntimeAssembly(
       return 'agent';
     }
     const parent = messagingSessions.get(owner);
+    if (parent && await resources.agents?.stopInterruptedTask(parent,id)) return 'agent';
     const standalone = [...standaloneChildren].find(([session, entry]) => session.id === id && entry.parent === parent &&
       parent?.isOpen && !entry.signal.aborted);
     if (standalone) {
@@ -859,13 +897,18 @@ export async function createRuntimeAssembly(
     const storedMonitor = current.tools.find(tool => tool.name === 'monitor');
     const monitorProperties = storedMonitor?.input_schema.properties;
     const monitorWebsocket = !storedMonitor || (monitorProperties !== null && typeof monitorProperties === 'object' && 'ws' in monitorProperties);
-    const fingerprint = JSON.stringify({ generation: current.pluginGeneration ?? 0,
+    const fingerprint = JSON.stringify({
       // A turn's path access mutates the live skill catalog on the config: `activateTouchedSkills`
       // moves a held skill into `skills`, `discoverTouchedSkills` records the `<HARNESS_DIR>/skills`
       // directories it visited, and both rewrite the rendered system section. The skill tool reads
       // those arrays by reference, so none of it can make the tool set stale.
       settings: { ...settings, skills: undefined, heldSkills: undefined, dynamicSkillDirs: undefined,
-        agentTypes: undefined,
+        // dG/lJ/B select current registrations per dispatch; hooks do not shape tool definitions.
+        // r9b1bf0c SHA e1fc92f84c1f6219da38ddb0e54e8778799cd20586ab176ad6481787fc8f7d28 [1584,2002), UTF-16.
+        hooks: undefined,
+        // oL/bq.applyRefresh update live command/agent catalogs, not tool definitions.
+        // 70zd5em8 SHA 47281b06c46ad309c7fd0571114ba9b2090b5ac718c4b2009a3a31f2fbc62f8b [1378,3258), UTF-16.
+        agentTypes: undefined, pluginGeneration: undefined,
         // The model picker, `/effort` and the thinking chord apply to live state without
         // rebuilding tools (`w9`, chunk-24k7d6mw.js 894465; `MOe`, chunk-0q6c90q6.js 6286;
         // `kp`, chunk-24k7d6mw.js 898567). These fields shape the request only, so they must
@@ -896,6 +939,8 @@ export async function createRuntimeAssembly(
       if (accessor) agentAccessors.set(copy, accessor);
       const terminalCallback = childTerminalCallbacks.get(cached.tools);
       if (terminalCallback) childTerminalCallbacks.set(copy, terminalCallback);
+      const completionCallback = childCompletionCallbacks.get(cached.tools);
+      if (completionCallback) childCompletionCallbacks.set(copy, completionCallback);
       const instructionCallback = childInstructionCallbacks.get(cached.tools);
       if (instructionCallback) childInstructionCallbacks.set(copy, instructionCallback);
       return copy;
@@ -935,6 +980,12 @@ export async function createRuntimeAssembly(
         if (!target.instructionPaths.has(file) && bytes + Buffer.byteLength(file) <= 65536) { target.instructionPaths.add(file); bytes += Buffer.byteLength(file); }
       }
       if (target.instructionPaths.size) notify(owner);
+    };
+    const childCompletion = (_child: string, completion: AsyncHookCompletion) => {
+      if (closed || signal.aborted || ownerScopes.get(owner) !== scope) return;
+      // Child lifecycle already forwards terminal sequences through its separate observer.
+      const target = owners.get(owner);
+      if (target) deliverHook(owner, scope, target, completion, false);
     };
     const childTerminal = (child: string, sequence: string) => {
       if (closed || signal.aborted || ownerScopes.get(owner) !== scope) return;
@@ -1010,6 +1061,8 @@ export async function createRuntimeAssembly(
       // Source iye executes against the invocation session; this host gives each
       // child its own journal while the parent owns cancellation and cleanup.
       return executeSkill(skill, args, { config: child!.config, parentSessionId: child!.id, session: resolve,
+        hasLiveForkedSkill: name => { resolve(); return resources().agents?.hasLiveForkedSkill(name) ?? false; },
+        ...(registry?.childSkillTools(child!, parent!) ? { backgroundRegistry: () => registry.nestedSkillRegistry(resolve(), parent!) } : {}),
         parentPlanId: child!.planId, provider, tools: childTools,
         signal: AbortSignal.any([context.signal, parent!.closeSignal, child!.closeSignal, ...(standalone ? [standalone.signal] : [])]), source: 'model',
         requestPermission: (tool, input, decision, requestSignal) => agents().requestApproval(tool, input, decision, requestSignal),
@@ -1068,6 +1121,42 @@ export async function createRuntimeAssembly(
     const childEnvironmentFactory: ChildEnvironmentFactory = async request => {
       checkScope(owner, scope);
       request.signal.throwIfAborted();
+      const hookOwner = messagingSessions.get(owner);
+      const runClassicWorktree = (event: 'WorktreeCreate' | 'WorktreeRemove', payload: Record<string, unknown>, hookSignal?: AbortSignal) => {
+        let observeChain;
+        if (hookOwner?.isOpen && !hookOwner.isJournalFenced) {
+          const id = randomUUID(); hookOwner.append({ kind: 'hook_start', id, event: `classic:${event}` });
+          observeChain = createClassicChainObserver(hookOwner, id);
+        }
+        return raiseClassicEvent({ event, hookInput: classicHookInput(event, payload), signal: hookSignal, observeChain });
+      };
+      // CTn [2952923,2954231), Xir [2954231,2955189), b0 [3046410,3055699),
+      // UTF-16, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+      // Preserve outside-REPL dispatch and payload; adapt its Session owner to
+      // the host journal. Closed-owner removal remains necessary but unobserved.
+      const runWorktreeHooks = async (event: 'WorktreeCreate' | 'WorktreeRemove', payload: HookPayload, hookSignal?: AbortSignal) => {
+        const definitions = current.hooks ?? {};
+        if (event === 'WorktreeCreate' && hookOwner && !hookOwner.isOpen) throw new Error('Worktree hook session owner released');
+        if (!definitions[event]?.length || !hookOwner?.isOpen || event === 'WorktreeRemove' && hookOwner.isJournalFenced) {
+          return runHooks(definitions, event, payload, hookSignal, callbackHooks());
+        }
+        const id = randomUUID();
+        hookOwner.append({ kind: 'hook_start', id, event });
+        const result = await runHooks(definitions, event, payload, hookSignal, {
+          ...callbackHooks(), observeResolver: createHookResolverObserver(hookOwner, id, true),
+        });
+        if (hookOwner.isOpen && !hookOwner.isJournalFenced) {
+          hookOwner.append({ kind: 'hook_result', id, event, blocked: result.blocked, additionalContext: result.additionalContext,
+            ...(result.reason === undefined ? {} : { reason: result.reason }),
+            ...(result.stopRequested === undefined ? {} : { stopRequested: result.stopRequested }),
+            ...(result.suppressOutput === undefined ? {} : { suppressOutput: result.suppressOutput }),
+            ...(result.systemMessages === undefined ? {} : { systemMessages: result.systemMessages }),
+            ...(result.userDisplayMessage === undefined ? {} : { userDisplayMessage: result.userDisplayMessage }),
+            ...(result.backgroundTasks === undefined ? {} : { backgroundTasks: result.backgroundTasks }),
+            ...(result.terminalSequences === undefined ? {} : { terminalSequences: result.terminalSequences }) });
+        }
+        return result;
+      };
       // WorktreeCreate hooks own the checkout when configured; a loaded classic
       // module counts too (`ATn`/`die`, chunk-sfn1dbxq.js offsets 2952836 and
       // 556297). Otherwise the owned Git worktree manager creates it.
@@ -1084,12 +1173,11 @@ export async function createRuntimeAssembly(
       // checkout path, which the caller then screens before using it.
       const createHookWorktree = async (): Promise<string> => {
         const payload = { name, cwd: current.workspace };
-        const raised = await runHooks(current.hooks ?? {}, 'WorktreeCreate', payload, request.signal, callbackHooks());
+        const raised = await runWorktreeHooks('WorktreeCreate', payload, request.signal);
         let supplied = raised.worktreePath;
         let classicRecords = 0;
         if (classicEventHooked('WorktreeCreate')) {
-          const classic = await raiseClassicEvent({ event: 'WorktreeCreate',
-            hookInput: classicHookInput('WorktreeCreate', payload), signal: request.signal });
+          const classic = await runClassicWorktree('WorktreeCreate', payload, request.signal);
           classicRecords = classic.records.length;
           if (classic.block !== undefined) throw new Error(`WorktreeCreate hook failed: ${classic.block}`);
           if (supplied === undefined && typeof classic.answer.worktreePath === 'string') {
@@ -1124,13 +1212,11 @@ export async function createRuntimeAssembly(
         if (!configured) {
           throw new Error('no WorktreeRemove hook is enabled here (hooks are disabled, or the repo defines only WorktreeCreate)');
         }
-        const raised = await runHooks(current.hooks ?? {}, 'WorktreeRemove',
-          { worktree_path: target, cwd: current.workspace }, undefined, callbackHooks());
+        const raised = await runWorktreeHooks('WorktreeRemove', { worktree_path: target, cwd: current.workspace });
         let classicRecords = 0;
         let classicFailure: string | undefined;
         if (classicEventHooked('WorktreeRemove')) {
-          const classic = await raiseClassicEvent({ event: 'WorktreeRemove',
-            hookInput: classicHookInput('WorktreeRemove', { worktree_path: target, cwd: current.workspace }) });
+          const classic = await runClassicWorktree('WorktreeRemove', { worktree_path: target, cwd: current.workspace });
           classicRecords = classic.records.length;
           const failed = classic.records.find(record => !record.succeeded);
           if (failed) classicFailure = failed.output.trim() || 'failed with no output';
@@ -1197,6 +1283,7 @@ export async function createRuntimeAssembly(
       provider, tools: childTools, signal,
       hookOptions: () => callbackHooks(),
       terminalSequence: childTerminal,
+      onHookCompletion: childCompletion,
       instructionFiles: childInstructions,
       stopState: () => stopStateForOwner(owner),
       enableAdvanced: current.features?.agentTypes === true, agentTypes: current.agentTypes, childEnvironmentFactory,
@@ -1365,6 +1452,7 @@ export async function createRuntimeAssembly(
       } else tools.push(createSubagentTool(() => current, provider, childTools, {
         hookOptions: () => callbackHooks(),
         terminalSequence: childTerminal,
+        onHookCompletion: childCompletion,
         instructionFiles: childInstructions,
         stopState: () => stopStateForOwner(owner),
         // iye, sfn1dbxq [3368429,3370821), UTF-16: inner calls use the actual child session.
@@ -1463,6 +1551,7 @@ export async function createRuntimeAssembly(
       mcpToolNames.clear(); for (const tool of replacements) mcpToolNames.add(tool.schema.name);
     });
     childTerminalCallbacks.set(selected, childTerminal);
+    childCompletionCallbacks.set(selected, childCompletion);
     childInstructionCallbacks.set(selected, childInstructions);
     toolSets.set(owner, { fingerprint, tools: selected });
     return selected;
@@ -1615,6 +1704,7 @@ export async function createRuntimeAssembly(
       return executeSkill(skill, args, { config: current, parentSessionId: owner, session: skillSession(owner, scopeFor(owner), session), parentPlanId: messagingSessions.get(owner)?.planId, provider, tools, signal: invocationSignal,
         source, humanAuthorization, registry, requestPermission, conversation, hookOptions: () => callbackHooks(),
         terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
+        onHookCompletion: childCompletionCallbacks.get(tools),
         stopState: () => stopStateForOwner(owner), effectJournal: new SkillEffectJournal(current.workspace, owner),
         commandOwner: resourcesFor(owner, scopeFor(owner)).skillCommands ??= new SkillCommandOwner() });
     };
@@ -1629,6 +1719,10 @@ export async function createRuntimeAssembly(
         buildTools(current, owner);
         const registry = subtaskSeams.get(owner)?.registry();
         return registry?.bindApproval(callback) ?? (() => {});
+      },
+      async continueWorkerDeliveries(session, signal, onUncertain) {
+        const registry = subtaskSeams.get(session.id)?.registry();
+        return registry ? registry.continueWorkerDeliveries(session, signal, onUncertain) : [];
       },
       bindPeerMessaging(owner, transport) { scopeFor(owner); peerBindings.set(owner, transport); },
       bindSession(session) {
@@ -1738,17 +1832,9 @@ export async function createRuntimeAssembly(
           return callback(definition, event, payload, hookSignal);
         }) satisfies NonNullable<HookRunOptions['resolveCallbackHook']> } : {}), startAsyncCommand: request => {
           const resources = resourcesFor(owner, scope);
-          resources.hooks ??= new AsyncHookRegistry({ workspace: current.workspace, signal, onResult: completion => {
-            if (owners.get(owner) !== resources || ownerScopes.get(owner) !== scope) return;
-            if (resources.queued.length >= 50) { resources.queued.shift(); resources.dropped++; }
-            const { terminalSequences, ...result } = completion.result;
-            // An asyncRewake exit-2 completion wakes the model with its own body
-            // (source `m5e` → `z6t`, chunk-sfn1dbxq.js offsets 2956018/633021)
-            // instead of the generic completion record.
-            resources.queued.push({ kind: 'notification',
-              prompt: completion.rewake ? completion.rewake.body : 'Async hook completion (data):\n' + JSON.stringify({ ...completion, result }),
-              ...(terminalSequences?.length ? { hookTerminal: { id: completion.id, event: completion.event, sequences: terminalSequences } } : {}) });
-            notify(owner);
+          resources.hooks ??= new AsyncHookRegistry({ workspace: current.workspace, signal,
+            journalOwner: messagingSessions.get(owner), onResult: completion => {
+            deliverHook(owner, scope, resources, completion, true);
           } });
           if (request.handle) return resources.hooks.adopt(request, request.handle, `async_hook_${request.handle.pid ?? ''}`);
           return resources.hooks.start(request);
@@ -1784,6 +1870,8 @@ export async function createRuntimeAssembly(
         target.memory ??= new MemoryConsolidation({ config: current, tools, provider, owner,
           signal: AbortSignal.any([signal, lifetimeController.signal]),
           hookOptions: () => runtime.hookOptions?.(current, owner) ?? {},
+          onHookCompletion: childCompletionCallbacks.get(tools),
+          terminalSequence: childTerminalCallbacks.get(tools),
           onChange: () => { if (!closed && ownerScopes.get(owner) === scope) notify(owner); },
           onStatus: text => {
             if (closed || ownerScopes.get(owner) !== scope) return;

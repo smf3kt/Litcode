@@ -19,7 +19,8 @@ export function inheritedToolObservation(event: Extract<SessionEvent, { kind: 't
         cacheKey = path.resolve(source.config.workspace, block.input.path);
     }
     if (cacheKey) return { kind: 'write_observation', result: { ...event.result, content: '' },
-      operation: 'oldString' in event.host ? 'edit_file' : 'write_file', landed: { ...landed, cacheKey } };
+      operation: 'kind' in event.host && event.host.kind === 'notebook_edit' ? 'notebook_edit' :
+        'oldString' in event.host ? 'edit_file' : 'write_file', landed: { ...landed, cacheKey } };
   }
   return { kind: 'read_observation', result: { ...event.result, content: '' },
     ...(event.timestamp === undefined ? {} : { timestamp: event.timestamp }),
@@ -165,7 +166,8 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
     for (const [index, event] of history.entries()) {
       // v/RRn [16667,17235)/[4502962,4503404), UTF-16; fold metadata travels with retained messages.
       if (event.kind === 'message' || event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
-        fork.append(event);
+        const copied = event.kind === 'message' ? source.branchMessage(event) : event.kind === 'compact' ? fork.rebaseCompaction(event) : event;
+        if (copied) fork.append(copied);
         if (event.kind === 'turn_end') boundaries.set(index, fork.events.length - 1);
       }
       if (event.kind === 'read_observation') fork.append({ ...event, ...(event.readGrantWitness ? { readGrantWitness: transferWitness(event.readGrantWitness) } : {}) });

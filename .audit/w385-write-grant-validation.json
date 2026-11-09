@@ -1,0 +1,11 @@
+{
+  "identity": "4877f66454b687c12248b0f2c3f8523503c8b7335fb7d715b4195589f5cffeed",
+  "check": { "exit": 0, "log": "/private/tmp/w385-write-grant-check.log" },
+  "build": { "exit": 0, "log": "/private/tmp/w385-write-grant-build.log" },
+  "focused": { "exit": 0, "passed": 6, "log": "/private/tmp/w385-write-grant-focused.log" },
+  "regressions": { "exit": 0, "passed": 4, "log": "/private/tmp/w385-write-grant-regressions.log" },
+  "cli": { "exit": 0, "cases": 10, "coldReaders": 20,
+    "evidence": [".audit/w385-write-grant-preflight.json", ".audit/w385-write-context-observed.json"] },
+  "upstreamCalls": 0,
+  "remaining": ["input-description and other Session/policy effects", "factory and effective-input provenance", "arbitrary effect proof and lock reclamation"]
+}

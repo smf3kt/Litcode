@@ -1,0 +1,84 @@
+{
+  "identity": {
+    "sha256": "96d49c0de7599ece6327470f2c171a1d7a4c69ae63c21dfab37439e15a59a662",
+    "inputs": {
+      "sha256": "eef9735373fbb8b1eaaea4ab103ad0f1a8b899537522b564efea9208f6067da7",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "5addf156bf7bb17590079bade88ea5a1b459f00d763e8676df8f2387133a9e53",
+      "files": 412
+    },
+    "build": {
+      "sha256": "983953139a0bfc6541451f1e4e661e0d24da3b5357c1531090abf158d307e1b7",
+      "files": 728
+    }
+  },
+  "check": "pass",
+  "coldHistory": {
+    "tests": 80,
+    "pass": 75,
+    "fail": 0,
+    "skip": 5
+  },
+  "compiledChildPersistence": {
+    "messaging": true,
+    "standalone": true,
+    "provider": "local loopback fixture"
+  },
+  "themeWatcher": {
+    "pass": 1,
+    "environment": "outside sandbox native filesystem events"
+  },
+  "productChanges": false,
+  "buildChanges": false,
+  "causes": {
+    "childOutput": "real user config directory not isolated; persistence correctly fell back inline",
+    "cancellation": "stale expectation turned normally returned values into errors",
+    "release": "stale error wording omitted current pending cleanup AbortError",
+    "theme": "native events unavailable in sandbox"
+  },
+  "source": {
+    "module": "chunk-sfn1dbxq.js",
+    "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "coordinates": "zero-based half-open UTF-16",
+    "ranges": [
+      [
+        4335357,
+        4336747
+      ],
+      [
+        2292400,
+        2294250
+      ],
+      [
+        2302000,
+        2304720
+      ]
+    ]
+  },
+  "logs": [
+    {
+      "path": "/private/tmp/w385-child-output-full-final.log",
+      "sha256": "1a88210a0de23be2b4e36e5a4ad6dbe8ff7b370d2dfd42fa587b69d75cdaf76f"
+    },
+    {
+      "path": "/private/tmp/w385-child-output-check-final.log",
+      "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886"
+    },
+    {
+      "path": "/private/tmp/w385-child-output-cli-final.log",
+      "sha256": "2c353b9b64a177bbe5e30a56ace368faa7693567a6174ea1168231eec4e0d1c6"
+    },
+    {
+      "path": "/private/tmp/w385-child-output-cli-messaging.log",
+      "sha256": "2c353b9b64a177bbe5e30a56ace368faa7693567a6174ea1168231eec4e0d1c6"
+    },
+    {
+      "path": "/private/tmp/w385-theme-unsandboxed.log",
+      "sha256": "917eea843c074b7e5f777853007197cbbafb865f8a670108fb1cdafe44beb09e"
+    }
+  ],
+  "externalUpstreamCalls": 0,
+  "remaining": "Other W385 implementation and complete-project requirements remain open"
+}

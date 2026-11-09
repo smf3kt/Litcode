@@ -1,0 +1,23 @@
+{
+  "unit": "W385 #43 async hook notification delivery association",
+  "status": "verified bounded integration; lifecycle attestation and source payload parity remain open",
+  "identity": "ada95dd36292282c92b9785529ae91e0a75e9d760d1c8e34466c4f3f290e88e3",
+  "inputs": "103763c1fcc2e2e0961fd2a1c4ad52a07316ba7007985e4a36c5f9c27147ce06",
+  "validation": "552443d05538d81003e7ca7bb077038d6b21c65464d28179b863237510bfdc5f",
+  "build": "37f4c925a7a829a5768ac36897b0e2e5d5f4a38ab740edb4aa4eeca145f905a3",
+  "sourceModule": "chunk-sfn1dbxq.js",
+  "sourceSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+  "sourceRanges": { "Sbt": [626520, 627570], "LLr": [3703453, 3704511], "Zt": [3698839, 3699060] },
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "focused": "3/3 pass in test/async-hook-delivery.test.ts: 51-to-50 queue overflow, authorized message and cold restore, generation release/rebind, real compiled CLI success/intent-SIGKILL/message-SIGKILL and explicit saved-output retry",
+    "related": "24 async-hook and 21 runtime-resource cases passed; interaction-runtime passed 66 with its required CLAUDE_JOB_DIR/tmp fixture root; 114 passing cases including the final three new groups across runs",
+    "initialCombined": "62 pass, 52 fail: interaction fixtures missing CLAUDE_JOB_DIR; rerun with isolated temporary root passed 66/66 without product changes",
+    "coldReaders": "two independent compiled Session readers per success/death cut, explicit recoverLock for dead fixture writers; one additional reader after actual CLI retry",
+    "upstreamRequests": 0,
+    "packageSmoke": "not_run; packaging unchanged"
+  },
+  "remaining": ["source silence suppression and SessionStart de-dup", "durable process/callback lifecycle observation with root and child provenance", "no-effect proof and reclamation remain open", "old protocol draft remains inactive"]
+}

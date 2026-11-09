@@ -21,9 +21,10 @@ import { contentRuleMatches, ruleToolMatches } from './permission-content.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
 import { SkillEffectRecoveryError, type SkillEffectJournal, type SkillEffectRetryGrant } from './skill-effects.js';
-import { capChildOutput, childConfig, createChildHookLifecycle, forkMessages, selectChildTools, resolveChildLaunch, type ChildHookOptions } from './subagents.js';
-import type { ToolDefinition } from './tools.js';
+import { capChildOutput, childConfig, childSpawnDepth, maxSubagentSpawnDepth, createChildHookLifecycle, forkMessages, selectChildTools, resolveChildLaunch, type ChildHookOptions } from './subagents.js';
+import { bindScopedChildTool, type ToolDefinition } from './tools.js';
 import { consumeHumanSkillAuthorization, type HumanSkillAuthorization } from './notification-authorization.js';
+import { observeApprovalOperation } from './approval-operation-observer.js';
 
 export interface SkillExecutionOptions {
   config: SessionConfig;
@@ -38,10 +39,13 @@ export interface SkillExecutionOptions {
   humanAuthorization?: HumanSkillAuthorization;
   onText?: (text: string) => void;
   registry?: AgentRegistry;
+  backgroundRegistry?: () => AgentRegistry;
+  hasLiveForkedSkill?: (name: string) => boolean;
   conversation?: readonly Anthropic.MessageParam[];
   requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision, signal: AbortSignal) => Promise<PermissionDecision>;
   timeoutMs?: number;
   hookOptions?: ChildHookOptions['hookOptions'];
+  onHookCompletion?: ChildHookOptions['onHookCompletion'];
   terminalSequence?: ChildHookOptions['terminalSequence'];
   instructionFiles?: ChildHookOptions['instructionFiles'];
   stopState?: ChildHookOptions['stopState'];
@@ -126,7 +130,11 @@ function grant(skill: SkillInfo, tool: ToolDefinition, input?: unknown, workspac
   });
 }
 
-async function approve(tool: ToolDefinition, input: unknown, options: SkillExecutionOptions, explicit = false,
+async function approve(...args: Parameters<typeof approveBody>): Promise<void> {
+  return observeApprovalOperation(args[2].session?.(), { kind: 'skill' }, () => approveBody(...args));
+}
+
+async function approveBody(tool: ToolDefinition, input: unknown, options: SkillExecutionOptions, explicit = false,
   alternateHome?: string, workspace = options.config.workspace, planOwnership?: import('./plan-file.js').PlanOwnership, approved = false): Promise<void> {
   options.signal.throwIfAborted();
   if (tool.schema.name === 'run_command' && (!options.config.allowShell || options.inlineShellAllowed === false)) throw new Error('Skill shell access is disabled');
@@ -492,7 +500,13 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     argumentNames: skill.argumentNames,
     appendUnusedArguments: options.config.features?.skillSourceArguments === true || options.config.features?.skillArgumentFallback === true }), options.config);
   const fork = skillReturnsForkResult(skill);
-  if (skill.background && !options.registry) throw new Error('Background skill requires a session-owned agent registry');
+  // zyn [1892,4679), Re [13917,14750), half-open UTF-16: reaching the
+  // asynchronous spawn cap falls through to the foreground fork.
+  const withinBackgroundLimit = skill.background === true && childSpawnDepth(options.config) <= maxSubagentSpawnDepth();
+  const hasLiveFork = () => options.hasLiveForkedSkill?.(skill.name) || options.registry?.hasLiveForkedSkill(skill.name);
+  const mayStartBackground = withinBackgroundLimit && !hasLiveFork();
+  if (mayStartBackground && !options.registry) options.registry = options.backgroundRegistry?.();
+  if (mayStartBackground && !options.registry) throw new Error('Background skill requires a session-owned agent registry');
   const approvalValid = options.registry?.captureApprovalGeneration();
   const { hooks, hookHomes } = await prepareSkillHooks(skill, options, approvalValid);
   options.session?.();
@@ -522,19 +536,12 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   const mode = route?.mode ?? 'general';
   const originals = selectChildTools(options.tools, mode, route?.type?.tools).filter(tool => parentNames.has(tool.schema.name) && grant(skill, tool));
   const beforeTool = skillToolApproval(() => currentSkill, options);
-  const selected = originals.map(tool => ({
-    ...tool,
-    async execute(input: unknown, context: Parameters<ToolDefinition['execute']>[1]): Promise<string> {
-      await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership);
-      return tool.execute(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
-    },
-    ...(tool.executeBlocks ? {
-      async executeBlocks(input: unknown, context: Parameters<ToolDefinition['execute']>[1]) {
-        await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership);
-        return tool.executeBlocks!(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
-      },
-    } : {}),
-  }));
+  // _Wo [2237279,2239655), Kt [121053,123737), UTF-16: dispatch the approved
+  // input through the selected tool, retaining the skill's directory and shell policy.
+  const selected = originals.map(tool => bindScopedChildTool(tool, async (input, context) => {
+    await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership);
+    return { ...context, workingDirectories: context.workingDirectories ?? owner?.workingDirectories, allowShell: context.allowShell && config.allowShell };
+  }, 'after-approval'));
   config.tools = selected.map(tool => ({ ...tool.schema, eager_input_streaming: true }));
   const child = childConfig(config, selected, { mode, max_turns: Math.min(config.maxTurns, route?.max_turns ?? config.maxTurns), ...(route?.type ? { type: route.type } : {}) });
   // oh/En, chunk-bf3z2ftn [43591,43758), UTF-16: source reads the live session root.
@@ -543,17 +550,19 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   if (parentSessionId !== undefined) child.parentSessionId = parentSessionId;
   if (options.parentPlanId !== undefined) child.parentPlanId = options.parentPlanId;
   checkConversationBudget(conversation, body, child);
-  if (skill.background || route?.isolation) {
+  // zyn rechecks the live tasks after asynchronous preparation, immediately before registration.
+  const background = mayStartBackground && !hasLiveFork();
+  if (background || route?.isolation) {
     // Registry builds its own child prefix; carry only the authored type body once.
     const registryConfig = structuredClone(config);
     if (route?.type?.body) registryConfig.system += '\n\nAgent instructions:\n' + route.type.body;
-    const descriptor = await options.registry!.launch({ prompt: body, mode, max_turns: Math.min(child.maxTurns, 30), background: skill.background === true,
+    const descriptor = await options.registry!.launch({ prompt: body, mode, max_turns: Math.min(child.maxTurns, 30), background,
       ...(model && model !== 'inherit' ? { model } : {}), ...(route?.isolation ? { isolation: route.isolation } : {}) }, options.signal,
       { config: registryConfig, tools: originals, beforeTool, permissionOwner: childOwner, hookHomes,
         skillScope: { skillName: skill.name, attributionName: skill.name, skillPath: skill.path, hookIdentity: JSON.stringify(skill.hooks ?? null), ...(effort !== undefined ? { effort } : {}) },
         skillContinuation: { path: skill.path, hooks: JSON.stringify(skill.hooks ?? null), approvalValid, update: next => { currentSkill = next; } },
         ...(conversation !== undefined ? { conversation } : {}) });
-    if (!skill.background) return capChildOutput(JSON.stringify({ session_id: descriptor.session_id, reason: descriptor.reason, text: descriptor.summary, model_calls: descriptor.model_calls }), config.maxOutputBytes);
+    if (!background) return capChildOutput(JSON.stringify({ session_id: descriptor.session_id, reason: descriptor.reason, text: descriptor.summary, model_calls: descriptor.model_calls }), config.maxOutputBytes);
     return capChildOutput(JSON.stringify(descriptor), config.maxOutputBytes);
   }
   // The executor wrapper owns the original policy, including post-hook inputs.
@@ -566,7 +575,8 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   try {
     for (const message of conversation ?? []) session.append({ kind: 'message', message });
     if (conversation !== undefined) session.append({ kind: 'turn_end', reason: 'fork_seed' });
-    asyncHooks = createChildHookLifecycle(session, { hookOptions: options.hookOptions, terminalSequence: options.terminalSequence }, hookHomes);
+    asyncHooks = createChildHookLifecycle(session, { hookOptions: options.hookOptions, terminalSequence: options.terminalSequence,
+      onHookCompletion: options.onHookCompletion }, hookHomes);
     agent = new Agent(session, options.provider, selected, { text: options.onText, hookOptions: asyncHooks.hookOptions,
       ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session.config.workspace, paths) } : {}),
       ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session.id, sequence) } : {}),

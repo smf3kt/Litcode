@@ -1,0 +1,64 @@
+{
+  "unit": "W385 #43 mixed synchronous/async SessionStart visibility",
+  "status": "verified bounded unit; broader package open",
+  "identity": "657d99cbd86d3fe4ea63d4f6f91bfc9b18a9d6b2b3d7ca73a96677a5770730ef",
+  "inputs": "9af43e04c53feeeeba5056188dbc80cb391fefe2511587d431211516f2296ebd",
+  "validation": "78896dbb6ed4d077db9cf4a1a7f16dee4339198a0cd7e4a0046acee02d61c4e0",
+  "build": "19b42d657761a5d794eac7a70ab1a14b10e0ead3eb41543cd4ac53e3da17cda1",
+  "source": {
+    "module": "chunk-sfn1dbxq.js",
+    "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "coordinates": "zero-based half-open UTF-16",
+    "symbols": {
+      "lnn": [
+        2483510,
+        2483675
+      ],
+      "jZo": [
+        2483272,
+        2483353
+      ],
+      "CVt": [
+        1301158,
+        1301271
+      ],
+      "vhe": [
+        1300642,
+        1301158
+      ],
+      "h$t": [
+        1301271,
+        1301637
+      ],
+      "lHe": [
+        1301637,
+        1301736
+      ],
+      "_yn": [
+        3630962,
+        3631285
+      ]
+    }
+  },
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "hookLifecycleCli": "59/59",
+    "interaction": "66/66 with isolated CLAUDE_JOB_DIR/tmp",
+    "actualCli": {
+      "modelCalls": 1,
+      "contextOccurrences": 1,
+      "notificationIntents": 0,
+      "locksReleased": true
+    },
+    "coldReaders": "two independent readers per original/fork",
+    "modelUpstreamRequests": 0,
+    "package": "not rerun: no package content/dependency change in this unit"
+  },
+  "remaining": [
+    "separate vhe filtering (p9 dependency not yet read)",
+    "full plugin origin",
+    "notification-bearing fork owner association investigation",
+    "durable root/child process and callback lifecycle proof"
+  ]
+}

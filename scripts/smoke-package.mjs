@@ -29,6 +29,7 @@ packageSmoke: try {
   run("npm", ["run", "build"], root, 180000);
   const [packed] = JSON.parse(run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", artifacts], root));
   assert.ok(packed.files.some(file => file.path === "dist/cli.js"));
+  assert.ok(packed.files.some(file => file.path === "dist/async-hook-response.js"));
   assert.ok(packed.files.some(file => file.path === "bin/personal-harness.mjs"));
   assert.ok(packed.files.some(file => file.path === "bin/litcode.mjs"));
   assert.ok(packed.files.some(file => file.path === "bin/litcode-magpie.mjs"));
@@ -262,12 +263,12 @@ packageSmoke: try {
       input:JSON.stringify({...payload,hook_event_name:'PostToolUse'})+'\\n',timeoutMs:10000,signal:new AbortController().signal});
       const result=await registry.wait(id),afterWait=registry.get(id).callbackState;await registry.close();
       const afterClose=registry.get(id).callbackState,beforeEffect=fs.existsSync(marker);release();await new Promise(resolve=>setImmediate(resolve));
-      process.stdout.write(JSON.stringify({process:result.state,afterWait,afterClose,beforeEffect,afterCallback:registry.get(id).callbackState,effect:fs.readFileSync(marker,'utf8')}));
+      process.stdout.write(JSON.stringify({process:result.state,delivery:result.delivery.kind,afterWait,afterClose,beforeEffect,afterCallback:registry.get(id).callbackState,effect:fs.readFileSync(marker,'utf8')}));
     }finally{release();await registry.close()}`;
   const callbackCheck = spawnSync(process.execPath, ['--input-type=module', '-e', callbackFixture, callbackRoot],
     { cwd: install, encoding: 'utf8', timeout: 15000 });
   assert.equal(callbackCheck.status, 0, callbackCheck.stderr);
-  assert.deepEqual(JSON.parse(callbackCheck.stdout), { process: 'completed', afterWait: 'pending', afterClose: 'pending',
+  assert.deepEqual(JSON.parse(callbackCheck.stdout), { process: 'completed', delivery: 'none', afterWait: 'pending', afterClose: 'pending',
     beforeEffect: false, afterCallback: 'returned', effect: 'LATE_INSTALLED_EFFECT' });
   console.log(JSON.stringify({ installedCallbackSettlement: 'passed', boundedCloseCanRemainPending: true, lateReturnObserved: true }));
   const publication = `import path from 'node:path';import {Session} from ${JSON.stringify(sessionModule)};import {Agent,defaultConfig} from ${JSON.stringify(agentModule)};import {createTools} from ${JSON.stringify(toolsModule)};

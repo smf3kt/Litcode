@@ -1,0 +1,13 @@
+{
+  "identity": "2e884385613af126098f304cb36a07df25aecfc9f3129eb7144fdd85affa3281",
+  "source": ".audit/w385-progress-cleanup-source.json",
+  "sameAgentCli": ".audit/w385-progress-cleanup-cli.json",
+  "displayGapRevalidation": ".audit/w385-progress-cleanup-validation.json",
+  "check": "pass",
+  "build": "pass",
+  "affected": { "initialPass": 200, "initialFail": 1, "skip": 3, "postBuildExactRerunPass": 1, "distinctPassing": 201 },
+  "initialFailure": "Compiled CLI test overlapped rebuilding dist and could not import dist/provider.js; exact post-build rerun passed.",
+  "logs": ["/private/tmp/w385-progress-cleanup-check-final.log", "/private/tmp/w385-progress-cleanup-build.log", "/private/tmp/w385-progress-cleanup-suite.log", "/private/tmp/w385-progress-cleanup-cli-regression.log", "/private/tmp/w385-progress-cleanup-cli-retry2.log", "/private/tmp/w385-progress-cleanup-cli.log"],
+  "scope": "Progress exception turn cleanup; callback order and exceptions retained. Display effects and full source loop parity remain open.",
+  "upstreamCalls": 0
+}

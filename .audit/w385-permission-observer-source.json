@@ -1,0 +1,19 @@
+{
+  "module": "chunk-sfn1dbxq.js",
+  "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+  "coordinates": "zero-based half-open UTF-16",
+  "ranges": [
+    {
+      "symbol": "_Wo",
+      "start": 2237279,
+      "end": 2239655,
+      "bodySha256": "b5af0ffa2181db2da644e010f38119b64568ad9458c2dc58473cea792004b4d3"
+    },
+    {
+      "symbol": "Cge",
+      "start": 2239655,
+      "end": 2240346,
+      "bodySha256": "3679f7e8f5c89849901ba1c25d7a8238c3f20bea0c580bf3c9addc47c87d4ba0"
+    }
+  ]
+}

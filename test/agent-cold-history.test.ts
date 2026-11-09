@@ -5,7 +5,7 @@ import { getEventListeners } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { after, before, test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig } from '../src/agent.js';
 import { forkSession } from '../src/sessions.js';
@@ -21,6 +21,19 @@ import { ToolCancellation } from '../src/tool-cancellation.js';
 
 const temporary = () => fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'agent-cold-test-')));
+// Root tool-results follow CLAUDE_CONFIG_DIR, including in cold-reader subprocesses.
+// Keep persistence fixtures out of the user's actual configuration directory.
+const previousConfigDirectory = process.env.CLAUDE_CONFIG_DIR;
+let fixtureConfigDirectory: string | undefined;
+before(() => {
+  fixtureConfigDirectory = temporary();
+  process.env.CLAUDE_CONFIG_DIR = fixtureConfigDirectory;
+});
+after(() => {
+  if (previousConfigDirectory === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+  else process.env.CLAUDE_CONFIG_DIR = previousConfigDirectory;
+  if (fixtureConfigDirectory) fs.rmSync(fixtureConfigDirectory, { recursive: true, force: true });
+});
 const reply = (content: Anthropic.ContentBlock[], stop_reason: Anthropic.Message['stop_reason'] = 'end_turn'): Anthropic.Message => ({
   id: 'owned', model: 'fixture', type: 'message', role: 'assistant', content, stop_reason, stop_sequence: null,
   container: null, diagnostics: null, stop_details: null,
@@ -259,7 +272,7 @@ test('agent publishes batched reads before marking them visible and clears cache
   } finally { await runtime.close(); parent.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
-test('agent propagates explicit tool cancellation to a concurrent sibling', async () => {
+test('agent propagates explicit tool cancellation and preserves returned versus thrown sibling outcomes', async () => {
   let calls = 0;
   const provider: ModelProvider = { count: async () => 0, complete: async () => ++calls === 1 ? reply([
     { type: 'tool_use', id: 'cancel-first', name: 'read_file', input: { path: 'fixture.txt' }, caller: { type: 'direct' } },
@@ -283,6 +296,7 @@ test('agent propagates explicit tool cancellation to a concurrent sibling', asyn
       assert.ok(controller, 'tool has a call-owned cancellation controller');
       if (index === 0) controller.abort(reason);
       assert.equal(context.signal.reason, reason);
+      if (index === 1) throw reason;
       return 'cancelled';
     } };
     const running = new Agent(parent, provider, tools.map(candidate => candidate === read ? wrapped : candidate)).run('cancel');
@@ -294,17 +308,20 @@ test('agent propagates explicit tool cancellation to a concurrent sibling', asyn
     assert.ok(identities.every(identity => identity.aborted));
     assert.equal(entered, 2);
     assert.equal(calls, 1);
-    assert.ok(parent.events.some(event => event.kind === 'tool_result' && event.result.tool_use_id === 'cancel-first' && String(event.result.content).includes(reason.message)));
+    // KWo, sfn1dbxq [2292400,2294250)/[2302000,2304720), UTF-16:
+    // a completed tool return is retained even when the shared signal is aborted.
+    assert.ok(parent.events.some(event => event.kind === 'tool_result' && event.result.tool_use_id === 'cancel-first' && event.result.content === 'cancelled'));
+    assert.ok(parent.events.some(event => event.kind === 'tool_result' && event.result.tool_use_id === 'cancel-second' && String(event.result.content).includes(reason.message)));
     const persisted = parent.events.filter(event => event.kind === 'tool_result' && ['cancel-first', 'cancel-second'].includes(event.result.tool_use_id));
     assert.deepEqual(persisted.map(event => event.kind === 'tool_result' && [event.result.tool_use_id, event.result.is_error]),
-      [['cancel-first', true], ['cancel-second', true]]);
+      [['cancel-first', undefined], ['cancel-second', true]]);
     const id = parent.id;
     await runtime.close(); parent.close();
     const reopened = Session.open(workspace, { id });
     try {
       const rows = reopened.events.filter(event => event.kind === 'tool_result' && ['cancel-first', 'cancel-second'].includes(event.result.tool_use_id));
       assert.deepEqual(rows.map(event => event.kind === 'tool_result' && [event.result.tool_use_id, event.result.is_error]),
-        [['cancel-first', true], ['cancel-second', true]]);
+        [['cancel-first', undefined], ['cancel-second', true]]);
     } finally { reopened.close(); }
   } finally { await runtime.close(); parent.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
@@ -2315,7 +2332,8 @@ test('messaging owner follows the open Session through release and cold restore'
     assert.match(await tool(runtime, reopened, 'agent').execute({ prompt: 'OWNED' }, context(workspace)), /OWNED_COMPLETE/);
     const liveTool = tool(runtime, reopened, 'agent');
     const releasing = runtime.releaseSession!(id);
-    await assert.rejects(liveTool.execute({ prompt: 'OWNED' }, context(workspace)), /session-owned tools|released|closed/);
+    await assert.rejects(liveTool.execute({ prompt: 'OWNED' }, context(workspace)), error =>
+      error instanceof Error && error.name === 'AbortError' && error.message === 'Runtime session cleanup is unconfirmed; operation aborted');
     await releasing;
   } finally {
     await runtime.close(); await parent.close(); await other?.close(); await reopened?.close();
@@ -2888,6 +2906,8 @@ test('fork skill crash at synchronous persistence barriers preserves prior histo
         if (stage === 'intent-after') {
           assert.equal(intent.parent, ids.parent);
           assert.equal(intent.oldDigest, witness.digest);
+          assert.equal(intent.stagedRunId, sidecar.state.runId);
+          assert.equal(fingerprintOf(intent.terminalRecord), intent.newDigest);
           const journal = fs.readFileSync(childJournal);
           assert.equal(intent.journal.bytes, journal.length);
           assert.equal(intent.journal.sha256, createHash('sha256').update(journal).digest('hex'));
@@ -2923,7 +2943,7 @@ test('fork skill crash at synchronous persistence barriers preserves prior histo
         await runtime.bindSession!(parent);
         assert.equal(runtime.agentTranscript!(parent.id, ids.prior)?.status, 'completed', stage);
         assert.equal(runtime.agentTranscript!(parent.id, ids.child)?.status,
-          ['settled-after', 'settled-torn', 'settled-witness-after'].includes(stage) ? 'completed' : undefined, `${stage} ${JSON.stringify(warnings)}`);
+          ['intent-after', 'settled-before', 'settled-after', 'settled-torn', 'settled-witness-after'].includes(stage) ? 'completed' : undefined, `${stage} ${JSON.stringify(warnings)}`);
       } finally { await runtime.close(); parent.close(); }
       // A second cold open must reach the same result without consuming evidence.
       const sidecar = path.join(historyDir, `${ids.child}.meta.json`);
@@ -2939,7 +2959,7 @@ test('fork skill crash at synchronous persistence barriers preserves prior histo
         await again.bindSession!(reopened);
         assert.equal(again.agentTranscript!(reopened.id, ids.prior)?.status, 'completed', stage);
         assert.equal(again.agentTranscript!(reopened.id, ids.child)?.status,
-          ['settled-after', 'settled-torn', 'settled-witness-after'].includes(stage) ? 'completed' : undefined, stage);
+          ['intent-after', 'settled-before', 'settled-after', 'settled-torn', 'settled-witness-after'].includes(stage) ? 'completed' : undefined, stage);
       } finally { await again.close(); reopened.close(); }
       assert.deepEqual(fs.readFileSync(parentFile), committed, `${stage}: second recovery must not append`);
       if (retainedSidecar) assert.deepEqual(fs.readFileSync(sidecar), retainedSidecar, stage);

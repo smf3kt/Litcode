@@ -48,7 +48,8 @@ export interface FileReadHostResult {
   identity?: { dev: string; ino: string };
 }
 
-export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult | QuestionHostResult | FileReadHostResult;
+type NotebookEditObservation = { kind: 'notebook_edit'; landed: LandedFileObservation };
+export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult | QuestionHostResult | FileReadHostResult | NotebookEditObservation;
 
 /**
  * The stored row: the source's storage projection. A write keeps its content only in the create
@@ -60,6 +61,7 @@ export type StoredToolUseResult =
   | PlanHostResult
   | QuestionHostResult
   | FileReadHostResult
+  | NotebookEditObservation
   | { type: 'create'; filePath: string; content: string; structuredPatch: StructuredPatchHunk[]; landed?: LandedFileObservation }
   | { type: 'update'; filePath: string; structuredPatch: StructuredPatchHunk[]; landed?: LandedFileObservation }
   | { filePath: string; oldString: string; newString: string; structuredPatch: StructuredPatchHunk[]; replaceAll: boolean; landed?: LandedFileObservation };
@@ -88,9 +90,9 @@ export function writeEffectResult(filePath: string, previous: string, applied: s
  * `type` on this payload, and its consumer accepts a non-empty patch without one.
  */
 export function editEffectResult(filePath: string, previous: string, applied: string,
-    oldString: string, newString: string, replaceAll: boolean): EditEffectResult {
+    oldString: string, newString: string, replaceAll: boolean, patch?: StructuredPatchHunk[]): EditEffectResult {
   return { filePath, oldString, newString, originalFile: previous,
-    structuredPatch: structuredPatch(filePath, previous, applied, { convertTabs: true }), replaceAll };
+    structuredPatch: patch ?? structuredPatch(filePath, previous, applied, { convertTabs: true }), replaceAll };
 }
 
 /** Source `TRn`: the row that is written to the transcript. */

@@ -21,7 +21,8 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { HARNESS_DIR, activateConditionalSkills, loadProjectConfig, loadSkillsFromDirectories, type SkillInfo } from './config.js';
-import { discoverInstalledPluginComponents, installedPluginCatalogIdentity } from './plugins.js';
+import { discoverInstalledPluginComponents, installedPluginCatalogIdentity, installedPluginHooks } from './plugins.js';
+import { hooksSchema } from './hooks.js';
 import { loadPluginComponents } from './plugin-components.js';
 import type { SessionConfig } from './session.js';
 import type { AgentTypeInfo } from './agent-types.js';
@@ -40,12 +41,25 @@ export function refreshPluginComponents(current: SessionConfig): void {
   // A child config is a snapshot of its owner's catalog; reloading it there
   // would change the leased environment and the child's pinned system text.
   if (current.childMode !== undefined) return;
-  if (!current.plugins?.enabled) return;
+  const hasPluginHooks = Object.values(current.hooks ?? {}).some(entries => entries?.some(entry => 'hooks' in entry && entry.pluginOrigin !== undefined));
+  if (!current.plugins?.enabled && !pluginIdentities.has(current) && !hasPluginHooks &&
+      !current.skills?.some(skill => skill.source === 'plugin') && !current.agentTypes?.some(agent => agent.plugin !== undefined)) return;
   const identity = installedPluginCatalogIdentity(current.workspace, current.plugins);
   if (pluginIdentities.get(current) === identity) return;
-  const loaded = loadPluginComponents(discoverInstalledPluginComponents(current.workspace, current.plugins),
+  const components = discoverInstalledPluginComponents(current.workspace, current.plugins);
+  // Adapt Ji/PPr/v4, 4bw62nzm SHA-256 1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713,
+  // [111491,111767)/[111344,111491)/[110769,110965), zero-based half-open UTF-16.
+  const mergedHooks: Record<string, unknown[]> = current.legacyPluginHookSnapshot ? current.hooks ?? {} : installedPluginHooks(components);
+  if (!current.legacyPluginHookSnapshot) for (const [event, entries] of Object.entries(current.hooks ?? {})) {
+    const explicit = entries.filter(entry => !('hooks' in entry) || entry.pluginOrigin === undefined);
+    if (explicit.length) mergedHooks[event] = [...(mergedHooks[event] ?? []), ...explicit];
+  }
+  const hooks = hooksSchema.parse(mergedHooks);
+  const loaded = loadPluginComponents(components,
     new Set((current.skills ?? []).filter(skill => skill.source !== 'plugin').map(skill => skill.path)), undefined,
     current.features?.pluginSkillNamespaces === true, current.workspace);
+  const previousCatalog = JSON.stringify([current.skills ?? [], current.agentTypes ?? []]);
+  if (current.hooks !== undefined || Object.keys(hooks).length) current.hooks = hooks;
   const skills = current.skills ??= [];
   const retained = skills.filter(skill => skill.plugin === undefined && skill.source !== 'plugin');
   skills.splice(0, skills.length, ...retained, ...loaded.skills);
@@ -75,7 +89,7 @@ export function refreshPluginComponents(current: SessionConfig): void {
   pluginIdentities.set(current, identity);
   // The owner's cached tool set and the live catalog must agree; a plugin
   // install, update or removal replaces the catalog a later turn can reach.
-  current.pluginGeneration = (current.pluginGeneration ?? 0) + 1;
+  if (previousCatalog !== JSON.stringify([skills, agents])) current.pluginGeneration = (current.pluginGeneration ?? 0) + 1;
 }
 
 

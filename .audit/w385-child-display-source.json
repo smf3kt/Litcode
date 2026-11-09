@@ -1,0 +1,20 @@
+{
+  "module": "chunk-wj6fycw8.js",
+  "moduleSha256": "ce38912bf9ddb32271235f9639bd42afb9c42c11ce66ee1d4471362d4a99d8ae",
+  "coordinates": "zero-based half-open UTF-16",
+  "ranges": [
+    {
+      "symbol": "Bt progress callback",
+      "start": 40094,
+      "end": 41702,
+      "bodySha256": "0521513160a2fc34722ef08d68f5eb9951b3afdc9a5f0d39fb0af8048d7b0fde"
+    },
+    {
+      "symbol": "foreground finally block",
+      "start": 45034,
+      "end": 45420,
+      "bodySha256": "2f1b509ec78633a2f8516ea09f74d91d005acd15b01d2c9627af5bc6303b4de0"
+    }
+  ],
+  "host": "S3 callback journal adaptation; no source fsync protocol"
+}

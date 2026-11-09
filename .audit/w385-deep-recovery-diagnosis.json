@@ -1,0 +1,13 @@
+{
+  "identity": "3df2bae75e58dfeae64d65b2a63ecd02901b2146d2540bc7cdcc6c56c462606c",
+  "productChanged": false,
+  "probe": "W385_DEEP_RECOVERY_PROBE=1",
+  "red": { "exit": 1, "expected": true, "failure": "third recovery: unknown instead of reconciled", "log": "/private/tmp/w385-deep-recovery-red.log" },
+  "baseline": { "exit": 0, "log": "/private/tmp/w385-deep-recovery-baseline-host.log" },
+  "experiment": { "exit": 0, "directory": "/private/tmp/w385-deep-recovery-uknn5o23", "onlyChange": "src/directory-checkpoint.ts RECOVERY_DEPTH_CAP 2 to 3", "originalSha256": "c14c2a20211a7a994fa2a735b1636efac2eb09e6a5464cca8e136d85eee1dcfb", "experimentSha256": "4388d549363a02c9f9820394bf122259be0d43927af62c5faf804fccd174da42", "log": "/private/tmp/w385-deep-recovery-isolated-host.log" },
+  "check": { "exit": 0, "log": "/private/tmp/w385-deep-recovery-check.log" },
+  "initialEnvironmentFailures": ["/private/tmp/w385-deep-recovery-isolated.log", "/private/tmp/w385-deep-recovery-baseline.log"],
+  "implementationComplete": false,
+  "next": "bounded proof graph verification with unchanged identity, cycle, tamper and live reread checks",
+  "upstreamCalls": 0
+}

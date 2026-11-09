@@ -1,0 +1,56 @@
+{
+  "task": "W385 default external Write dispatch",
+  "status": "verified_partial_feature",
+  "date": "2026-11-07",
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "1a5d59dc95144ae1d12b8135af15c4325df2c2b27753fd2414c848662b31908a",
+    "inputs": {
+      "sha256": "40cfc9584c866aec6cd23dc63b591b8d6d2d7cad22f42bd54eb5b277aa58562c",
+      "files": 1054
+    },
+    "validation": {
+      "sha256": "8c2d974fae7462e9bebda3dbd9ec83c648d9e423e586dc396c5d7f826d96caa7",
+      "files": 416
+    },
+    "build": {
+      "sha256": "d0a536c6dfd0e0a8366532cb88a13e46e50f5b4dc30c9270694e0ebfa8be4308",
+      "files": 729
+    }
+  },
+  "validation": {
+    "check": 0,
+    "build": 0,
+    "affected": {
+      "exit": 0,
+      "pass": 61,
+      "skip": 2,
+      "log": "/private/tmp/w385-default-write-affected2.log"
+    },
+    "workspace": {
+      "exit": 0,
+      "pass": 2,
+      "log": "/private/tmp/w385-default-write-tools.log"
+    },
+    "cliRecovery": {
+      "exit": 0,
+      "pass": 2,
+      "log": "/private/tmp/w385-default-write-recovery.log"
+    }
+  },
+  "initialDiagnosis": {
+    "pass": 41,
+    "fail": 20,
+    "skip": 2,
+    "log": "/private/tmp/w385-default-write-affected.log",
+    "reason": "Refusal-dependent fixture setup and adapter catch blocks; migrated without relaxing original-byte/unknown checks."
+  },
+  "remaining": [
+    "External Edit and mixed external rewind",
+    "Arbitrary callback effect provenance",
+    "Native late staging interleavings and retained-object restore/cleanup",
+    "Full suite not run"
+  ],
+  "upstream": "not_run",
+  "colima": "untouched"
+}

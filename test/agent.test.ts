@@ -12,10 +12,12 @@ import { after, test } from "node:test";
 
 import type Anthropic from "@anthropic-ai/sdk";
 
-import { Agent, assertPaired, defaultConfig, toolCalls } from "../src/agent.js";
+import { Agent, assertPaired, defaultConfig, toolCalls, type AgentEvents } from "../src/agent.js";
 import { fingerprint, Session, type SessionConfig } from "../src/session.js";
+import { forkSession } from "../src/sessions.js";
 import type { ModelProvider } from "../src/provider.js";
 import type { ToolContext, ToolDefinition } from "../src/tools.js";
+import { bindRuntimeTool } from '../src/tools.js';
 
 // Derive fixture shapes from the provider interface so tests track its contract.
 type Req = Parameters<ModelProvider["complete"]>[0];
@@ -357,7 +359,7 @@ test("cancellation mid-batch skips the remaining tools and still pairs every cal
 
     const results = lastToolResults(session);
     assert.deepEqual(results.map((r) => r.tool_use_id), ["c1", "c2", "c3"]);
-    assert.equal(results[0]!.is_error, undefined);
+    assert.equal(results[0]!.is_error, undefined, JSON.stringify(results[0]));
     assert.equal(results[1]!.is_error, true);
     assert.match(String(results[1]!.content), /Cancelled before execution/);
     assert.equal(results[2]!.is_error, true);
@@ -394,7 +396,8 @@ test("hitting the round limit ends with a paired turn_end", async () => {
     const messages = session.events.filter((e) => e.kind === "message");
     assert.equal(messages.length, 5); // user + (assistant + results) x2
     assertPaired(session.messages);
-    assert.equal(session.events.at(-1)!.kind, "turn_end");
+    assert.equal(session.events.findLast(event => event.kind !== 'agent_display_observer')!.kind, "turn_end");
+    assert.equal(session.awaitingResponse, false);
   } finally {
     session.close();
   }
@@ -689,6 +692,62 @@ test("compaction starts a summary-only epoch that omits the old thinking block",
 // 12. Rapid context refill after compaction trips the circuit breaker
 // ---------------------------------------------------------------------------
 
+test("compaction retains complete latest groups and startup provenance through forks and cold recovery", async () => {
+  const ws = tmpDir(), cfg = makeConfig(ws, []);
+  let session = Session.open(ws, { config: cfg });
+  let fork: Session | undefined;
+  try {
+    session.append({ kind: 'message', message: { role: 'user', content: 'old request' } });
+    const first = serverMessage([text('old answer')], 'end_turn');
+    session.append({ kind: 'message', message: { role: 'assistant', content: first.content }, response: first });
+    session.append({ kind: 'message', message: { role: 'user', content: 'next request' } });
+    const last = serverMessage([think('retained reasoning', 'retained-signature'), call('retained-call', 'alpha', {})], 'tool_use');
+    session.append({ kind: 'message', message: { role: 'assistant', content: last.content }, response: last });
+    session.append({ kind: 'message', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'retained-call', content: 'retained result' }] } });
+    session.append({ kind: 'message', isMeta: true, sessionStartContext: ['RETAINED_HOOK'],
+      message: { role: 'user', content: [{ type: 'text', text: 'Hook context:\nRETAINED_HOOK' }] } });
+    session.append({ kind: 'turn_end', reason: 'fixture' });
+    const provider = new FakeProvider([serverMessage([text('SUMMARY')], 'end_turn')]);
+    await new Agent(session, provider, []).compactContext();
+    const summarized = JSON.stringify(provider.requests[0]!.messages);
+    assert.match(summarized, /old answer/);
+    assert.doesNotMatch(summarized, /retained-signature|RETAINED_HOOK|retained-call/);
+    const visible = session.messages;
+    assert.equal(visible.length, 4);
+    assert.match(JSON.stringify(visible), /retained-signature/);
+    assertPaired(visible);
+    const attachments = session.sessionStartAttachments('any');
+    assert.equal(attachments.length, 1);
+    const compact = session.events.find(e => e.kind === 'compact');
+    assert.ok(compact?.kind === 'compact' && compact.preservedMessages);
+    assert.throws(() => session.append({ ...compact, preservedMessages: [{ index: 0, sha256: '0'.repeat(64) }] }), /no longer matches/);
+    fork = forkSession(session);
+    assert.deepEqual(fork.messages, visible);
+    assert.deepEqual(fork.sessionStartAttachments('any'), attachments);
+    const forkId = fork.id; fork.close();
+    const forkFile = path.join(ws, '.agent', `${forkId}.jsonl`);
+    const journal = fs.readFileSync(forkFile, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+    journal.find(row => row.kind === 'compact').preservedMessages[0].sha256 = '0'.repeat(64);
+    fs.writeFileSync(forkFile, journal.map(row => JSON.stringify(row)).join('\n') + '\n');
+    assert.throws(() => Session.open(ws, { id: forkId }), /no longer matches/);
+    const id = session.id; session.close(); session = Session.open(ws, { id, config: cfg });
+    assert.deepEqual(session.messages, visible);
+    assert.deepEqual(session.sessionStartAttachments('any'), attachments);
+    const next = new FakeProvider([serverMessage([text('continued')], 'end_turn')]);
+    await new Agent(session, next, []).run('continue');
+    assert.match(JSON.stringify(next.requests[0]!.messages), /retained-signature/);
+    assertPaired(next.requests[0]!.messages);
+    next.push(serverMessage([text('SECOND SUMMARY')], 'end_turn'));
+    await new Agent(session, next, []).compactContext();
+    assert.equal(session.events.filter(row => row.kind === 'compact').length, 2);
+    assert.match(JSON.stringify(session.messages), /SECOND SUMMARY/);
+    assert.doesNotMatch(JSON.stringify(session.messages), /retained-signature|RETAINED_HOOK/);
+    assert.deepEqual(session.sessionStartAttachments('any'), []);
+    session.close(); session = Session.open(ws, { id, config: cfg });
+    assert.match(JSON.stringify(session.messages), /SECOND SUMMARY/);
+  } finally { session.close(); fork?.close(); }
+});
+
 test("context that refills immediately after compaction stops the loop", async () => {
   const ws = tmpDir();
   const alpha = spyTool("alpha");
@@ -720,6 +779,172 @@ test("context that refills immediately after compaction stops the loop", async (
 // ---------------------------------------------------------------------------
 // 13. Pairing primitives and config fingerprinting
 // ---------------------------------------------------------------------------
+
+test('actual tool observers distinguish synchronous, Promise and detached work without changing scheduling', async () => {
+  for (const mode of ['absent', 'sync', 'throw', 'promise', 'reject', 'detached', 'thenable', 'getter', 'cancel', 'close'] as const) {
+    const ws = tmpDir(), tool = spyTool('observed'), cfg = makeConfig(ws, [tool.definition]);
+    let session = Session.open(ws, { config: cfg });
+    const controller = new AbortController();
+    let release = () => {}, reject = (_reason: Error) => {}, effects = 0, selected = 0;
+    const completion = new Promise<void>((resolve, fail) => { release = resolve; reject = fail; });
+    const events: AgentEvents = {};
+    const callback = function(this: AgentEvents) {
+      assert.equal(this, events);
+      assert.equal(session.toolResultObservations.at(-1)?.state, 'admitted_unknown');
+      if (mode === 'throw') throw Error('observer failure');
+      if (mode === 'thenable') return Object.defineProperty({}, 'then', { get() { selected++; throw Error('must not assimilate'); } });
+      if (mode === 'cancel') controller.abort();
+      if (['promise', 'reject', 'cancel', 'close'].includes(mode)) return completion.then(() => { effects++; });
+      if (mode === 'detached') { void completion.then(() => { effects++; }); return; }
+      effects++;
+    };
+    if (mode === 'getter') Object.defineProperty(events, 'toolResult', { get() {
+      selected++; assert.equal(session.toolResultObservations.at(-1)?.state, 'admitted_unknown'); return callback;
+    } });
+    else if (mode !== 'absent') events.toolResult = callback;
+    const provider = new FakeProvider([serverMessage([call('same', 'observed', {})], 'tool_use'), serverMessage([text('done')], 'end_turn')]);
+    try {
+      const run = new Agent(session, provider, [tool.definition], events).run('task', controller.signal);
+      if (mode === 'throw') { await assert.rejects(run, /observer failure/); assert.equal(session.toolResultObservations[0]?.state, 'threw'); continue; }
+      const result = await run;
+      assert.equal(result.reason, mode === 'cancel' ? 'aborted' : 'end_turn');
+      if (['promise', 'reject', 'cancel', 'close'].includes(mode)) {
+        assert.equal(session.toolResultObservations[0]?.state, 'promise_pending'); assert.equal(effects, 0);
+        if (mode === 'close') { const id = session.id; session.close(); session = Session.open(ws, { id, config: cfg }); }
+        if (mode === 'reject') reject(Error('async observer failure')); else release();
+        await new Promise<void>(resolve => setImmediate(resolve));
+        assert.equal(session.toolResultObservations[0]?.state, mode === 'close' ? 'promise_pending' : mode === 'reject' ? 'rejected' : 'fulfilled');
+      } else {
+        assert.equal(session.toolResultObservations[0]?.state, mode === 'absent' ? 'absent' : 'sync_returned');
+        if (mode === 'detached') { assert.equal(effects, 0); release(); await new Promise<void>(resolve => setImmediate(resolve)); assert.equal(effects, 1); }
+        assert.equal(selected, mode === 'getter' ? 1 : 0);
+      }
+      assert.equal(session.toolResultObservations.length, 1);
+    } finally { release(); session.close(); }
+  }
+});
+
+test('observer live authority, persistence failures and cold validation preserve unknown state without replay', async () => {
+  for (const failure of ['none', 'admission', 'return'] as const) {
+    const ws = tmpDir(), tool = spyTool('observed'), cfg = makeConfig(ws, [tool.definition]);
+    let session = Session.open(ws, { config: cfg }); let calls = 0;
+    const write = fs.writeSync;
+    try {
+      fs.writeSync = new Proxy(write, { apply(target, receiver, args) {
+        const bytes = args[1];
+        if (Buffer.isBuffer(bytes) && bytes.includes('"kind":"tool_result_observer"') &&
+            (failure === 'admission' && bytes.includes('"phase":"admitted"') || failure === 'return' && bytes.includes('"phase":"returned"')))
+          throw Error('observer journal fixture');
+        return Reflect.apply(target, receiver, args);
+      } });
+      const provider = new FakeProvider([serverMessage([call('reused', 'observed', {})], 'tool_use'), serverMessage([text('done')], 'end_turn')]);
+      const run = new Agent(session, provider, [tool.definition], { toolResult: () => { calls++; } }).run('task');
+      if (failure === 'none') await run; else await assert.rejects(run, /observer journal fixture/);
+    } finally { fs.writeSync = write; }
+    try {
+      assert.equal(calls, failure === 'admission' ? 0 : 1);
+      const id = session.id; session.close(); session = Session.open(ws, { id, config: cfg });
+      assert.equal(session.toolResultObservations[0]?.state, failure === 'admission' ? undefined : failure === 'return' ? 'admitted_unknown' : 'sync_returned');
+      const event = session.events.find(row => row.kind === 'tool_result_observer');
+      if (event) assert.throws(() => session.append(structuredClone(event)), /observer authorization/);
+      if (session.awaitingResponse) await new Agent(session, new FakeProvider([serverMessage([text('recovered')], 'end_turn')]), [tool.definition],
+        { toolResult: () => { throw Error('observer replay'); } }).run();
+      const fork = forkSession(session);
+      try { assert.deepEqual(fork.toolResultObservations, []); } finally { fork.close(); }
+      if (event) {
+        const file = session.file; session.close();
+        const rows = fs.readFileSync(file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+        rows.find(row => row.kind === 'tool_result_observer').resultSha256 = '0'.repeat(64);
+        fs.writeFileSync(file, rows.map(row => JSON.stringify(row)).join('\n') + '\n');
+        assert.throws(() => Session.open(ws, { id }), /Invalid tool result observer history/);
+      }
+    } finally { session.close(); }
+  }
+});
+
+test('runtime wrapper observes actual checks, Promise settlement and owner boundaries without replay', async () => {
+  for (const mode of ['sync', 'getter', 'scope-throw', 'refresh-throw', 'journal-throw', 'promise', 'reject', 'close', 'blocks', 'detached'] as const) {
+    const ws = tmpDir(), inner = spyTool('wrapped'), order: string[] = [];
+    let release = () => {}, reject = (_reason: Error) => {}, late = 0;
+    const pending = new Promise<void>((resolve, fail) => { release = resolve; reject = fail; });
+    const checks = {
+      checkScope() { assert.equal(this, checks); order.push('scope'); if (mode === 'scope-throw') throw Error('scope failure'); },
+      refresh() {
+        assert.equal(this, checks); order.push('refresh');
+        if (mode === 'refresh-throw') throw Error('refresh failure');
+        if (['promise', 'reject', 'close'].includes(mode)) return pending;
+        if (mode === 'detached') void pending.then(() => { late++; });
+      },
+      checkJournal() { assert.equal(this, checks); order.push('journal'); if (mode === 'journal-throw') throw Error('journal failure'); },
+    };
+    const tool = bindRuntimeTool(mode === 'blocks' ? { ...inner.definition, executeBlocks: async () => [{ type: 'text', text: 'blocks result' }] } : inner.definition, checks);
+    const cfg = makeConfig(ws, [tool]); let session = Session.open(ws, { config: cfg });
+    if (mode === 'getter') {
+      const refresh = checks.refresh;
+      Object.defineProperty(checks, 'refresh', { get() {
+        assert.equal(session.runtimeWrapperObservations.at(-1)?.state, 'admitted_unknown'); return refresh;
+      } });
+    }
+    try {
+      await new Agent(session, new FakeProvider([serverMessage([call('wrapped-call', 'wrapped', {})], 'tool_use'), serverMessage([text('done')], 'end_turn')]), [tool]).run('task');
+      const rows = session.runtimeWrapperObservations;
+      const thrown = mode.endsWith('-throw');
+      assert.equal(rows.at(-1)?.state, thrown ? 'threw' : 'sync_returned');
+      assert.deepEqual(order, mode === 'blocks' ? ['scope', 'journal'] : mode === 'scope-throw' ? ['scope'] : mode === 'refresh-throw' ? ['scope', 'refresh'] : ['scope', 'refresh', 'journal']);
+      assert.equal(inner.calls.length, thrown || mode === 'blocks' ? 0 : 1);
+      const refresh = rows.find(row => row.event.stage === 'refresh');
+      if (['promise', 'reject', 'close'].includes(mode)) {
+        assert.equal(refresh?.state, 'promise_pending');
+        if (mode === 'close') { const id = session.id; session.close(); session = Session.open(ws, { id }); }
+        if (mode === 'reject') reject(Error('late failure')); else release();
+        await new Promise<void>(resolve => setImmediate(resolve));
+        assert.equal(session.runtimeWrapperObservations.find(row => row.event.stage === 'refresh')?.state,
+          mode === 'close' ? 'promise_pending' : mode === 'reject' ? 'rejected' : 'fulfilled');
+      }
+      if (mode === 'detached') { release(); await new Promise<void>(resolve => setImmediate(resolve)); assert.equal(late, 1); assert.equal(refresh?.state, 'sync_returned'); }
+      const last = session.runtimeWrapperObservations.at(-1); assert.ok(last);
+      assert.throws(() => session.append(structuredClone(last.event)), /wrapper observer authorization/);
+      const id = session.id; session.close(); session = Session.open(ws, { id });
+      const fork = forkSession(session); try { assert.deepEqual(fork.runtimeWrapperObservations, []); } finally { fork.close(); }
+      assert.deepEqual(order, mode === 'blocks' ? ['scope', 'journal'] : mode === 'scope-throw' ? ['scope'] : mode === 'refresh-throw' ? ['scope', 'refresh'] : ['scope', 'refresh', 'journal']);
+    } finally { release(); session.close(); }
+  }
+});
+
+test('wrapper persistence faults retain uncertainty and cold recovery never repeats checks', async () => {
+  for (const failure of ['admitted', 'returned', 'settled'] as const) {
+    const ws = tmpDir(), inner = spyTool('wrapped'); let effects = 0, release = () => {};
+    const completion = new Promise<void>(resolve => { release = resolve; });
+    const tool = bindRuntimeTool(inner.definition, { checkScope() {}, refresh() { effects++; return failure === 'settled' ? completion : undefined; }, checkJournal() {} });
+    const cfg = makeConfig(ws, [tool]); let session = Session.open(ws, { config: cfg }); const write = fs.writeSync;
+    try {
+      fs.writeSync = new Proxy(write, { apply(target, receiver, args) {
+        const bytes = args[1];
+        if (Buffer.isBuffer(bytes) && bytes.includes('"kind":"runtime_wrapper_observer"') && bytes.includes('"stage":"refresh"') && bytes.includes(`"phase":"${failure}"`))
+          throw Error('wrapper persistence fixture');
+        return Reflect.apply(target, receiver, args);
+      } });
+      const run = new Agent(session, new FakeProvider([serverMessage([call('wrapped-call', 'wrapped', {})], 'tool_use'), serverMessage([text('done')], 'end_turn')]), [tool]).run('task');
+      if (failure === 'settled') { await run; release(); await new Promise<void>(resolve => setImmediate(resolve)); }
+      else await assert.rejects(run, /wrapper persistence fixture|journal write failed/);
+      assert.equal(session.isJournalFenced, true);
+    } finally { fs.writeSync = write; release(); }
+    try {
+      assert.equal(effects, failure === 'admitted' ? 0 : 1);
+      assert.equal(inner.calls.length, failure === 'settled' ? 1 : 0);
+      const id = session.id; session.close(); session = Session.open(ws, { id });
+      assert.equal(session.runtimeWrapperObservations.find(row => row.event.stage === 'refresh')?.state,
+        failure === 'admitted' ? undefined : failure === 'returned' ? 'admitted_unknown' : 'promise_pending');
+      if (session.awaitingResponse) await new Agent(session, new FakeProvider([serverMessage([text('recovered')], 'end_turn')]), [tool]).run();
+      assert.equal(effects, failure === 'admitted' ? 0 : 1);
+      const file = session.file; session.close();
+      const rows = fs.readFileSync(file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+      rows.find(row => row.kind === 'runtime_wrapper_observer').startSha256 = '0'.repeat(64);
+      fs.writeFileSync(file, rows.map(row => JSON.stringify(row)).join('\n') + '\n');
+      assert.throws(() => Session.open(ws, { id }), /Invalid runtime wrapper observer history/);
+    } finally { session.close(); }
+  }
+});
 
 test("toolCalls, assertPaired and fingerprint behave as the loop depends on", () => {
   const tools = [spyTool("alpha").definition];

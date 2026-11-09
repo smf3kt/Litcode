@@ -14,6 +14,7 @@
 import { pathToFileURL } from 'node:url';
 import { AK } from './plugin-chain-host.js';
 import { chainModuleRecord } from './plugin-chain-module-record.js';
+import { runObservedClassicModule } from './classic-module-observer.js';
 import { aP, hlt, Ooe } from './plugin-chain-source.js';
 import type {
   ChainCallHandle,
@@ -132,7 +133,8 @@ export function inProcessEnvironmentHost(): ChainEnvironmentHost {
     name: held.module.name,
     tier: held.module.tier,
     run: (input: unknown, handle: unknown) =>
-      (held.module.record(event) as ChainHandler).run(input, handle as never, {} as never),
+      runObservedClassicModule(held.module, event, () =>
+        (held.module.record(event) as ChainHandler).run(input, handle as never, {} as never)),
   });
 
   return {

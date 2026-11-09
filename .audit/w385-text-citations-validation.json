@@ -1,0 +1,11 @@
+{
+  "identity": "c948f3cb9f7afce37e4b95112ed22f55eda0123e59a345c3f4d9af02e51374f5",
+  "source": { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbol": "Z2n", "range": [417118,417742], "coordinates": "zero-based half-open UTF-16", "bodySha256": "3d4be4ae0ae5dbce472b42d393907f74f43deaf71d30673c90bbd10acccff744" },
+  "red": { "exit": 1, "expected": true, "log": "/private/tmp/w385-text-citations-red.log" },
+  "check": { "exit": 0, "log": "/private/tmp/w385-text-citations-check-final.log" },
+  "build": { "exit": 0, "log": "/private/tmp/w385-text-citations-build.log" },
+  "focused": { "exit": 0, "passed": 3, "log": "/private/tmp/w385-text-citations-focused.log" },
+  "cli": { "exit": 0, "testGroups": 1, "scenarios": 21, "newScenarios": 2, "newScenarioColdReaders": 4, "log": "/private/tmp/w385-text-citations-cli.log" },
+  "upstreamCalls": 0,
+  "remaining": ["nonempty citations", "nonempty snapshot reclamation and deeper recovery", "arbitrary effect provenance", "issues 7 and 11"]
+}

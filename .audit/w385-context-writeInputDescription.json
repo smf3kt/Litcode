@@ -1,0 +1,202 @@
+{
+  "identity": {
+    "sha256": "2249e0c768524a14e5fe68c5322b65f12d158a4d79613b8a189d06c4a2e7f954",
+    "inputs": {
+      "sha256": "f6be5212f833f620b535fa0c598f372309f419f01b9841cafa616095d068c1ac",
+      "files": 1076
+    },
+    "validation": {
+      "sha256": "b0d34f9f9cd0c550c562101a1129b866ba9faf9b25c009e80c540667a61c9de8",
+      "files": 416
+    },
+    "build": {
+      "sha256": "699dd120310d3136805fb472e85cbc8fa45054b73e5ec3c9dc10d86ad76fa974",
+      "files": 744
+    }
+  },
+  "source": [
+    {
+      "module": "chunk-hwpb27as.js",
+      "sha256": "c5f6d5b8fb187a14de3db7aebcb5615a3632aa34a0e174c54d38607e7c5ead8e",
+      "start": 121053,
+      "end": 123737,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "3264590a60017e7d4e4eac5674a2664961a98ce5ed4c3349c871d5c39214145e"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "start": 739599,
+      "end": 743280,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "df63c9e2f785bb91b417b3e28077126194204b62b3455dd8a0185b3f83f6e4a7"
+    }
+  ],
+  "cases": [
+    {
+      "changed": false,
+      "cut": "normal",
+      "actualContextEffect": false,
+      "execution": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "completed",
+          "outcome": "blocked-additional-directory"
+        }
+      ],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "cut": "before",
+      "actualContextEffect": false,
+      "execution": [],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "cut": "after",
+      "actualContextEffect": true,
+      "execution": [],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "cut": "returned",
+      "actualContextEffect": true,
+      "execution": [],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "cut": "normal",
+      "actualContextEffect": true,
+      "execution": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "completed",
+          "outcome": "blocked-additional-directory"
+        }
+      ],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    }
+  ],
+  "conclusion": "Builtin execution boundaries do not attest Session workingDirectories callback effects. No reclamation expansion is justified.",
+  "upstreamCalls": 0
+}

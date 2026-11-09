@@ -1,0 +1,68 @@
+{
+  "identity": "2e884385613af126098f304cb36a07df25aecfc9f3129eb7144fdd85affa3281",
+  "cases": [
+    {
+      "callback": "status",
+      "cut": "before",
+      "actualEffect": false,
+      "recordedHookResult": true,
+      "observerKinds": [
+        "hook_command_observer"
+      ],
+      "coldReaders": 1
+    },
+    {
+      "callback": "status",
+      "cut": "after",
+      "actualEffect": true,
+      "recordedHookResult": true,
+      "observerKinds": [
+        "hook_command_observer"
+      ],
+      "coldReaders": 1
+    },
+    {
+      "callback": "progress",
+      "cut": "before",
+      "actualEffect": false,
+      "recordedHookResult": false,
+      "observerKinds": [],
+      "coldReaders": 1
+    },
+    {
+      "callback": "progress",
+      "cut": "after",
+      "actualEffect": true,
+      "recordedHookResult": false,
+      "observerKinds": [],
+      "coldReaders": 1
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "before",
+      "actualEffect": false,
+      "recordedHookResult": true,
+      "observerKinds": [
+        "hook_command_observer"
+      ],
+      "coldReaders": 1
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "after",
+      "actualEffect": true,
+      "recordedHookResult": true,
+      "observerKinds": [
+        "hook_command_observer"
+      ],
+      "coldReaders": 1
+    }
+  ],
+  "cleanup": {
+    "progressThrowLeavesBusy": false,
+    "retryReachedProvider": true
+  },
+  "upstreamCalls": 0,
+  "conclusion": "Display callbacks have no admission/settlement record; hook_result is input intent only.",
+  "cleanupAcceptance": true
+}

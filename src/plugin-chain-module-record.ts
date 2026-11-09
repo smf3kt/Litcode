@@ -34,6 +34,8 @@ interface DispatchAnswer {
 /** One call below the module's handler: `(input, signal?, floors?)`. */
 type Beneath = (input: unknown, signal?: AbortSignal, floors?: readonly unknown[]) => Promise<unknown>;
 
+import { runObservedClassicModule } from './classic-module-observer.js';
+
 export function chainModuleRecord(module: ChainModule): ChainModuleRecord {
   const tier = module.tier ?? 'user';
   // The hook surface: a module that declared patterns answers through the source's own `wGt` over
@@ -71,7 +73,8 @@ export function chainModuleRecord(module: ChainModule): ChainModuleRecord {
     // below the module.
     const budgetMs = handler.budgetMs ?? 0;
     const budget = budgetMs > 0 ? Xt(budgetMs, signal, payload.cutAt) : undefined;
-    const running = handler.run(payload.payload, handle, { call: handle, floors: [...(payload.floors ?? [])], cutAt: payload.cutAt });
+    const running = runObservedClassicModule(module, payload.event, () =>
+      handler.run(payload.payload, handle, { call: handle, floors: [...(payload.floors ?? [])], cutAt: payload.cutAt }));
     if (budget !== undefined && budget.expired !== undefined) {
       // `expired` rejects with the source's own budget error, so both settlements mean the same
       // thing here: the module ran past the budget it declared for itself.

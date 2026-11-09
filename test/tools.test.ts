@@ -8,13 +8,63 @@ import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 
-import { createTools, copyStableDirectoryFile, type ToolContext, type ToolDefinition } from "../src/tools.js";
+import { bindScopedChildTool, bindRuntimeTool, createTools, copyStableDirectoryFile, executeAgentTool, snapshotBuiltinMutationInput, type ToolContext, type ToolDefinition } from "../src/tools.js";
+import { createNotebookTools } from "../src/notebooks.js";
 import { publishDirectoryFile, removeDirectoryFile } from '../src/directory-file-state.js';
+import { SourceReadCache } from '../src/controlled-read-projection-source.js';
 
 const tools = createTools();
 const byName = new Map(tools.map((tool) => [tool.schema.name, tool]));
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+test("edit dispatch rejects handler replacement after selection without invoking accessors", async () => {
+  const context = makeContext(tmpDir());
+  for (const name of ['edit_file', 'notebook_edit']) {
+    for (const route of ['raw', 'wrapper', 'refresh', 'child']) {
+      const raw = (name === 'edit_file' ? createTools() : createNotebookTools()).find(tool => tool.schema.name === name)!;
+      let invoked = 0;
+      const replace = (tool: ToolDefinition) => Object.defineProperty(tool, route === 'raw' ? 'executeBlocks' : 'execute', {
+        get() { invoked++; return async () => 'substituted'; }
+      });
+      const tool = route === 'wrapper' || route === 'refresh' ? bindRuntimeTool(raw, {
+        checkScope() {}, refresh() { if (route === 'refresh') replace(raw); }, checkJournal() {}
+      }) : raw;
+      const input = snapshotBuiltinMutationInput(tool, {path:'selected'});
+      if (route === 'child') {
+        const child = bindScopedChildTool(raw, async () => { replace(raw); return context; }, 'after-approval');
+        await assert.rejects(child.execute(input, context), /implementation changed/);
+      } else {
+        if (route !== 'refresh') replace(tool);
+        await assert.rejects(executeAgentTool(tool, input, context), /implementation changed/);
+      }
+      assert.equal(invoked, 0);
+    }
+  }
+});
+
+test("child approval retains the selected Edit and NotebookEdit input across awaited callbacks", async () => {
+  const ws = tmpDir();
+  for (const definition of [tool('edit_file'), createNotebookTools().find(value => value.schema.name === 'notebook_edit')!]) {
+    const notebook = definition.schema.name === 'notebook_edit';
+    const original = notebook ? JSON.stringify({nbformat:4,nbformat_minor:5,cells:[{id:'a',cell_type:'markdown',source:'before'}]}) : 'before';
+    const extension = notebook ? '.ipynb' : '.txt';
+    const selected = 'selected' + extension, other = 'other' + extension;
+    fs.writeFileSync(path.join(ws, selected), original);
+    fs.writeFileSync(path.join(ws, other), original);
+    const input = notebook ? {path:selected,cell_id:'a',new_source:'approved'} : {path:selected,old_string:'before',new_string:'approved'};
+    const wrapped = bindRuntimeTool(definition, {checkScope() {}, refresh() {}, checkJournal() {}});
+    const scoped = bindScopedChildTool(wrapped, async (checked, context) => {
+      assert.equal((checked as {path:string}).path, selected);
+      await Promise.resolve();
+      Object.assign(input,{path:other},notebook ? {new_source:'substituted'} : {new_string:'substituted'});
+      return context;
+    });
+    await executeAgentTool(scoped, input, makeContext(ws));
+    assert.equal(fs.readFileSync(path.join(ws, other), 'utf8'), original);
+    assert.match(fs.readFileSync(path.join(ws, selected), 'utf8'), /approved/);
+  }
+});
 
 const tempDirs: string[] = [];
 function tmpDir(prefix = "ccrev-"): string {
@@ -456,6 +506,31 @@ test("an in-workspace symlink that stays inside is followed", async () => {
   assert.equal(await run("read_file", { path: "alias.txt" }, makeContext(ws)), "content");
 });
 
+test('Write baseline checks precede history and successful publication updates cache before host result', async () => {
+  const ws = fs.realpathSync(tmpDir()), file = path.join(ws, 'value'), cache = new SourceReadCache(8);
+  fs.writeFileSync(file, 'ORIGINAL');
+  let history = 0, results = 0;
+  const context = makeContext(ws, { readFileCache: cache,
+    fileMutationGate: { preReadGuard: true, readAllowed: () => true },
+    fileHistory: () => { history++; assert.equal(fs.readFileSync(file, 'utf8'), 'ORIGINAL'); },
+    hostResult: result => {
+      results++; assert.equal(history, 1); assert.equal(cache.get(file)?.content, 'NEXT');
+      assert.match(JSON.stringify(result), /ORIGINAL/); assert.match(JSON.stringify(result), /NEXT/);
+    } });
+  const input = { path: 'value', content: 'NEXT', overwrite: true };
+  await assert.rejects(run('write_file', input, context), /not been read in full/);
+  cache.set(file, { content: 'ORIGINAL', timestamp: 0, isPartialView: true });
+  await assert.rejects(run('write_file', input, context), /not been read in full/);
+  cache.set(file, { content: 'STALE', timestamp: 0 });
+  await assert.rejects(run('write_file', input, context), /modified since read/);
+  assert.equal(history, 0); assert.equal(results, 0); assert.equal(fs.readFileSync(file, 'utf8'), 'ORIGINAL');
+  cache.set(file, { content: 'ORIGINAL', timestamp: 0 });
+  cache.set(path.join(ws, 'alias'), { content: 'ORIGINAL', timestamp: 0 });
+  await run('write_file', input, context);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'NEXT'); assert.equal(cache.has(path.join(ws, 'alias')), false);
+  assert.equal(history, 1); assert.equal(results, 1);
+});
+
 test("write_file is atomic, refuses overwrite by default, and preserves mode", async () => {
   const ws = tmpDir();
 
@@ -505,6 +580,21 @@ test("the write tools land the verified byte count on disk", async () => {
   assert.deepEqual(leftovers, []);
 });
 
+test("edit_file preserves encoding and newline style and refuses lossy text", async () => {
+  const ws = tmpDir();
+  for (const encoding of ['utf8', 'utf16le'] as const) {
+    const file = path.join(ws, encoding);
+    fs.writeFileSync(file, Buffer.from('\uFEFFalpha\r\nbeta\r\ngamma\r\n', encoding));
+    await run('edit_file', { path: encoding, old_string: 'alpha\nbeta', new_string: 'first\nsecond' }, makeContext(ws));
+    await run('edit_file', { path: encoding, old_string: 'second', new_string: '' }, makeContext(ws));
+    assert.deepEqual(fs.readFileSync(file), Buffer.from('\uFEFFfirst\r\ngamma\r\n', encoding));
+  }
+  const bytes = Buffer.from([0xff, 0x41]);
+  fs.writeFileSync(path.join(ws, 'invalid'), bytes);
+  await assert.rejects(run('edit_file', { path: 'invalid', old_string: 'A', new_string: 'B' }, makeContext(ws)), /encoding|UTF-8/i);
+  assert.deepEqual(fs.readFileSync(path.join(ws, 'invalid')), bytes);
+});
+
 test("edit_file requires a unique match and supports replace_all", async () => {
   const ws = tmpDir();
   write(ws, "e.txt", "alpha\nbeta\nalpha\n");
@@ -523,6 +613,14 @@ test("edit_file requires a unique match and supports replace_all", async () => {
 
   await run("edit_file", { path: "e.txt", old_string: "alpha", new_string: "A", replace_all: true }, makeContext(ws));
   assert.equal(read(ws, "e.txt"), "A\nB\nA\n");
+});
+
+test("edit_file preserves the matched quote and Unicode escape spellings", async () => {
+  const ws = tmpDir();
+  write(ws, 'styled.txt', '“old” and \\u00E9\n');
+  await run('edit_file', { path: 'styled.txt', old_string: '"old"', new_string: '"new"' }, makeContext(ws));
+  await run('edit_file', { path: 'styled.txt', old_string: 'é', new_string: 'éè' }, makeContext(ws));
+  assert.equal(read(ws, 'styled.txt'), '“new” and \\u00E9\\u00E8\n');
 });
 
 test("list_files lists workspace-relative paths, honors glob and limit", async () => {

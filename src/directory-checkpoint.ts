@@ -11,6 +11,7 @@ import { directoryCheckpointInheritanceSchema, directoryCheckpointPathsSchema, d
 import type { DirectoryCheckpointBracket } from './directory-checkpoint-bracket.js';
 import type { DirectoryReadHandle } from './path-identity.js';
 import type { Session } from './session.js';
+import { skipInertDisplayPairs } from './agent-display-observer.js';
 
 // Host rewrite: Fet/Tke/Cwt/E$n, sfn1dbxq [4731316,4733481)/[4734814,4735645)/[4743506,4743628), UTF-16,
 // bind message snapshots; they do not provide a workspace-checkpoint bracket or receipt.
@@ -46,8 +47,29 @@ export function consumeDirectoryCheckpointAuthorization(session: Session, commit
 }
 const META_CAP = 8 * 1024 * 1024;
 const JOURNAL_CAP = 100 * 1024 * 1024;
-const RECOVERY_DEPTH_CAP = 2;
 const RECOVERED_REFERENCE_CAP = 64;
+// Host S3 traversal budget for AVr/kkn, sfn1dbxq
+// 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+// [4744282,4746177)/[4747790,4749819), UTF-16; source has no torn-proof graph.
+// Share across branches and final rereads; successful prior reads are never cached.
+class RecoveryVerificationBudget {
+  private steps = 4096;
+  private bytes = JOURNAL_CAP;
+  charge(bytes = 0): void {
+    if (--this.steps < 0 || bytes > this.bytes) throw new Error('Checkpoint recovery verification budget exhausted');
+    this.bytes -= bytes;
+  }
+  read(file: string, cap: number): Buffer {
+    this.charge();
+    const value = readPrivate(file, Math.min(cap, this.bytes));
+    this.charge(value.length); return value;
+  }
+  receipt(journal: string, id: string) {
+    this.charge();
+    const result = readReceipt(journal, id);
+    this.charge(result.bytes.length); return result;
+  }
+}
 // A no-path shell touch or an outside path does not bind the affected external history.
 const workspaceHistoryPath = z.string().min(1).refine(value => !value.includes('\0') && !path.isAbsolute(value) &&
   value !== '.' && value !== '..' && !value.startsWith(`..${path.sep}`) && path.normalize(value) === value);
@@ -56,7 +78,11 @@ const recoverySuffixSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('file_history'), path: workspaceHistoryPath, tracked: z.boolean() }).strict(),
 ]);
-const recoveryTextBlockSchema = z.object({ type: z.literal('text'), text: z.string() }).strict();
+// Z2n, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+// [417118,417742), UTF-16: absent/null citations normalize to an empty list.
+// S3 recovery accepts only empty representations; original journal bytes still bind equality.
+const recoveryTextBlockSchema = z.object({ type: z.literal('text'), text: z.string(),
+  citations: z.array(z.never()).max(0).nullable().optional() }).strict();
 const recoveryUserMessageSchema = z.object({ kind: z.literal('message'),
   message: z.object({ role: z.literal('user'), content: z.string() }).strict(), messageId: z.string().uuid(),
   directoryHistoryDisabled: z.literal(true).optional(), classifier: z.object({ origin: z.object({ kind: z.literal('human') }).strict(),
@@ -141,11 +167,12 @@ export function matchesTornCheckpointInheritance(journal: Buffer, candidate: Dir
 // the source has no retained torn-inheritance commitment.
 export function checkpointRecoveryAnchor(events: readonly unknown[], end: number): number {
   if (!Number.isSafeInteger(end) || end < 0 || end > events.length) return -1;
-  let index = end - 1;
+  let index = skipInertDisplayPairs(events, end - 1);
   while (index >= 0) {
-    if (recoverySuffixSchema.safeParse(events[index]).success) { index--; continue; }
-    if (index < 2 || !isCheckpointRecoveryTextTurn(events[index - 2], events[index - 1], events[index])) break;
-    index -= 3;
+    if (recoverySuffixSchema.safeParse(events[index]).success) { index = skipInertDisplayPairs(events, index - 1); continue; }
+    const assistant = skipInertDisplayPairs(events, index - 1), user = skipInertDisplayPairs(events, assistant - 1);
+    if (user < 0 || !isCheckpointRecoveryTextTurn(events[user], events[assistant], events[index])) break;
+    index = skipInertDisplayPairs(events, user - 1);
   }
   return index;
 }
@@ -424,12 +451,14 @@ function inheritedSourcePaths(rows: ({ kind: string } & Record<string, unknown>)
 }
 
 function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, index: number, recovery: DirectoryCheckpointTornRecoveryEvent,
-    ancestors: ReadonlySet<string> = new Set()): boolean {
+    ancestors: ReadonlySet<string> = new Set(), budget = new RecoveryVerificationBudget()): boolean {
   try {
-    if (ancestors.has(target.owner) || ancestors.size >= RECOVERY_DEPTH_CAP) return false;
+    budget.charge(journal.length);
+    if (ancestors.has(target.owner)) return false;
     const visiting = new Set(ancestors); visiting.add(target.owner);
     const { candidate, evidence, sourceJournal, targetJournal } = recovery;
     const torn = target.readEvidence(), targetPrefix = journal.subarray(0, targetJournal.bytes);
+    budget.charge(torn?.bytes.length ?? 0);
     const branchPrefix = checkpointRecoveryPrefix(target.events, targetPrefix, index);
     const branch = z.object({ kind: z.literal('branch'), source: z.string().uuid(), workspace: z.string() }).passthrough()
       .safeParse(branchPrefix && target.events[branchPrefix.index]);
@@ -450,7 +479,7 @@ function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, ind
     const sourceTorn = fs.readdirSync(path.dirname(sourceFile)).some(name => name.startsWith(`${path.basename(sourceFile)}.torn-`));
     if (sourceTorn && candidate.references.some(reference => !('kind' in reference.origin) ||
         reference.origin.owner !== candidate.source || reference.origin.journal !== sourceFile)) return false;
-    const source = readPrivate(sourceFile, JOURNAL_CAP), sourcePrefix = source.subarray(0, sourceJournal.bytes);
+    const source = budget.read(sourceFile, JOURNAL_CAP), sourcePrefix = source.subarray(0, sourceJournal.bytes);
     if (source.at(-1) !== 10 || sourcePrefix.length !== sourceJournal.bytes || sourcePrefix.at(-1) !== 10 || hash(sourcePrefix) !== sourceJournal.sha256) return false;
     const rowSchema = z.object({ kind: z.string() }).passthrough();
     source.toString('utf8').trimEnd().split('\n').forEach(line => rowSchema.parse(JSON.parse(line)));
@@ -465,8 +494,9 @@ function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, ind
       id: z.string().uuid(), name: checkpointName, witness: digest }).strict();
     const origins = new Map<string, { journal: Buffer; rows: typeof rows; torn: boolean }>();
     for (const reference of candidate.references) {
+      budget.charge();
       const recorded = reference.origin, priorRecovery = 'kind' in recorded;
-      if (priorRecovery && !verifyRecoveredLineage(target.workspace, reference, visiting)) return false;
+      if (priorRecovery && !verifyRecoveredLineage(target.workspace, reference, visiting, budget)) return false;
       const origin = priorRecovery ? recorded.original : recorded;
       const direct = !priorRecovery && origin.owner === candidate.source;
       const ownRecovery = priorRecovery && recorded.owner === candidate.source && recorded.journal === sourceFile;
@@ -480,7 +510,7 @@ function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, ind
         if (!saved) {
           const torn = fs.readdirSync(path.dirname(origin.journal)).some(name => name.startsWith(`${path.basename(origin.journal)}.torn-`));
           if (torn && !recoveredReceiptOwner) return false;
-          const original = readPrivate(origin.journal, JOURNAL_CAP);
+          const original = budget.read(origin.journal, JOURNAL_CAP);
           if (original.at(-1) !== 10) return false;
           const originalRows = original.toString('utf8').trimEnd().split('\n').map(line => rowSchema.parse(JSON.parse(line)));
           const originalMetadata = z.object({ kind: z.literal('metadata'), id: z.string().uuid(),
@@ -491,9 +521,9 @@ function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, ind
         if (saved.torn && !recoveredReceiptOwner) return false;
         originPrefix = saved.journal; originRows = saved.rows;
       }
-      const stored = readReceipt(origin.journal, origin.receipt), receiptBytes = stored.bytes;
+      const stored = budget.receipt(origin.journal, origin.receipt), receiptBytes = stored.bytes;
       const receipt = receiptSchema.parse(JSON.parse(receiptBytes.toString('utf8')));
-      const intentBytes = readPrivate(intentFile(origin.journal, origin.receipt), META_CAP);
+      const intentBytes = budget.read(intentFile(origin.journal, origin.receipt), META_CAP);
       const intent = intentSchema.parse(JSON.parse(intentBytes.toString('utf8')));
       const checkpoint = checkpointSchema.safeParse(originRows[intent.journal.events]);
       const commitment = commitmentSchema.safeParse(originRows[receipt.journal.events]);
@@ -512,13 +542,16 @@ function verifyTornRecoveryEvidence(target: RecoveryTarget, journal: Buffer, ind
           commitment.data.id !== receipt.id || commitment.data.name !== reference.name || commitment.data.witness !== hash(receiptBytes) ||
           sameCommitments.length !== 1 || (inheritedPaths && receipt.entries.some(entry => !inheritedPaths.some(path => JSON.stringify(path) === JSON.stringify(entry.path))))) return false;
     }
-    if (!readPrivate(sourceFile, JOURNAL_CAP).equals(source) ||
+    if (!budget.read(sourceFile, JOURNAL_CAP).equals(source) ||
         fs.readdirSync(path.dirname(sourceFile)).some(name => name.startsWith(`${path.basename(sourceFile)}.torn-`)) !== sourceTorn) return false;
-    for (const [file, saved] of origins) if (!readPrivate(file, JOURNAL_CAP).equals(saved.journal) ||
+    for (const [file, saved] of origins) if (!budget.read(file, JOURNAL_CAP).equals(saved.journal) ||
         fs.readdirSync(path.dirname(file)).some(name => name.startsWith(`${path.basename(file)}.torn-`)) !== saved.torn) return false;
-    for (const reference of recovered) if (!verifyRecoveredLineage(target.workspace, reference, visiting)) return false;
+    for (const reference of recovered) if (!verifyRecoveredLineage(target.workspace, reference, visiting, budget)) return false;
     const again = target.readEvidence();
-    return !!again && again.id === torn.id && again.bytes.equals(torn.bytes) && target.readJournal().equals(journal);
+    budget.charge(again?.bytes.length ?? 0);
+    if (!again || again.id !== torn.id || !again.bytes.equals(torn.bytes)) return false;
+    const finalJournal = target.readJournal(); budget.charge(finalJournal.length);
+    return finalJournal.equals(journal);
   } catch { return false; }
 }
 
@@ -584,14 +617,16 @@ export function hasUnresolvedDirectoryHistoryTorn(session: Session): boolean {
 
 // Host lineage rewrite for kkn/AVr, sfn1dbxq [4747790,4749819)/[4744282,4746177), UTF-16;
 // source copies backup files but does not commit intermediate torn-journal evidence.
-function verifyRecoveredLineage(workspace: string, reference: DirectoryCheckpointReference, ancestors: ReadonlySet<string> = new Set()): boolean {
+function verifyRecoveredLineage(workspace: string, reference: DirectoryCheckpointReference, ancestors: ReadonlySet<string> = new Set(),
+    budget = new RecoveryVerificationBudget()): boolean {
   try {
+    budget.charge();
     const origin = reference.origin;
     if (!('kind' in origin) || !origin.proof || origin.proof.recoveryIndex >= origin.proof.journal.events ||
         ancestors.has(origin.owner) || origin.workspace !== workspace || origin.original.workspace !== workspace) return false;
     const lineage = origin.proof, file = path.join(workspace, '.agent', `${origin.owner}.jsonl`);
     if (origin.journal !== file) return false;
-    const journal = readPrivate(file, JOURNAL_CAP);
+    const journal = budget.read(file, JOURNAL_CAP);
     const prefix = journal.subarray(0, lineage.journal.bytes);
     if (journal.at(-1) !== 10 || prefix.length !== lineage.journal.bytes || prefix.at(-1) !== 10 || hash(prefix) !== lineage.journal.sha256) return false;
     const rowSchema = z.object({ kind: z.string() }).passthrough();
@@ -622,13 +657,13 @@ function verifyRecoveredLineage(workspace: string, reference: DirectoryCheckpoin
           JSON.stringify('kind' in original.origin ? original.origin.original : original.origin) !== JSON.stringify(origin.original)) return false;
       const checkpoints = rows.slice(0, branchIndex).filter(row => row.kind === 'checkpoint' && row.name === reference.name);
       if (checkpoints.length !== 1 || checkpoints[0]?.digest !== original.digest || checkpoints[0]?.boundary !== original.boundary) return false;
-      const receipt = receiptSchema.parse(JSON.parse(readReceipt(origin.original.journal, origin.original.receipt).bytes.toString('utf8')));
+      const receipt = receiptSchema.parse(JSON.parse(budget.receipt(origin.original.journal, origin.original.receipt).bytes.toString('utf8')));
       if (receipt.entries.some(entry => !paths.some(item => JSON.stringify(item) === JSON.stringify(entry.path)))) return false;
     } else {
       const original = origin.original;
       if (original.owner !== origin.owner || original.journal !== file) return false;
-      const receiptBytes = readReceipt(file, original.receipt).bytes, receipt = receiptSchema.parse(JSON.parse(receiptBytes.toString('utf8')));
-      const intentBytes = readPrivate(intentFile(file, original.receipt), META_CAP), intent = intentSchema.parse(JSON.parse(intentBytes.toString('utf8')));
+      const receiptBytes = budget.receipt(file, original.receipt).bytes, receipt = receiptSchema.parse(JSON.parse(receiptBytes.toString('utf8')));
+      const intentBytes = budget.read(intentFile(file, original.receipt), META_CAP), intent = intentSchema.parse(JSON.parse(intentBytes.toString('utf8')));
       const checkpointSchema = z.object({ kind: z.literal('checkpoint'), name: checkpointName, digest,
         boundary: z.number().int().nonnegative().safe() }).strict();
       const commitmentSchema = z.object({ kind: z.literal('directory_checkpoint_witness'), owner: z.string().uuid(),
@@ -650,7 +685,7 @@ function verifyRecoveredLineage(workspace: string, reference: DirectoryCheckpoin
     }
     const target: RecoveryTarget = { owner: origin.owner, workspace, events: rows, readEvidence: () => readTornEvidenceFile(file),
       readJournal: () => readPrivate(file, JOURNAL_CAP) };
-    return verifyTornRecoveryEvidence(target, journal, lineage.recoveryIndex, recovered.data, ancestors);
+    return verifyTornRecoveryEvidence(target, journal, lineage.recoveryIndex, recovered.data, ancestors, budget);
   } catch { return false; }
 }
 

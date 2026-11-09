@@ -1,0 +1,11 @@
+{
+  "identity": "e6d13577717656ab17f1c2ae2d0b43575f5bfa453fbc247628e4e4639e860703",
+  "source": { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "dnoRange": [733986,734328], "dnoBodySha256": "70938aef64a0e2c6f65e5d3fd75703d1ab323deecc8e04cca40ccdf71d348dad", "unoRange": [739599,743280], "coordinates": "zero-based half-open UTF-16" },
+  "check": { "exit": 0, "log": "/private/tmp/w385-write-shared-check-final.log" },
+  "build": { "exit": 0, "log": "/private/tmp/w385-write-shared-build.log" },
+  "tools": { "exit": 0, "passed": 4, "log": "/private/tmp/w385-write-shared-tools.log" },
+  "agentAndCli": { "exit": 0, "passedGroups": 3, "log": "/private/tmp/w385-write-shared-cli.log" },
+  "upstreamCalls": 0,
+  "externalWriteEnabled": false,
+  "next": "Connect owned publication observations to shared guard/result and migrate refusal-dependent recovery fixtures"
+}

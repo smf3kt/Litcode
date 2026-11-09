@@ -1,0 +1,16 @@
+{
+  "unit": "W385 #35 command result observer",
+  "identity": "d789b20ae31a314d591c922f6745a32cdce86c33a1e1f118096cc478ddb62d74",
+  "inputs": "80dce50303d54aad7803e95440417bb3ff4e6b73dd671d16f78cc86e11d72b70",
+  "validation": "6c8c35f6dc968c83599f4e32c6378bd74501b7f5ea3191eee36bf10d7be6e287",
+  "build": "4be7f8ebaca0c9c285c785ec7e6941a85da821e3dc77cff69aafb582df6d9453",
+  "sourceLedger": ".audit/w385-hook-dispatch-source.json",
+  "driver": ".audit/w385-command-observer-cli.mjs",
+  "driverSha256": "6299871a34d56f1bf9c813ac1044f2853551831ad420234ea1f78ff59dacbb60",
+  "check": "pass",
+  "buildCheck": "pass",
+  "affectedTests": {"pass": 106, "fail": 0, "skip": 0},
+  "cli": {"modes": ["foreground", "configured"], "cuts": ["normal", "admitted", "returned"], "cases": 6, "independentReaders": 12, "resumeWithoutReplay": true, "upstreamCalls": 0},
+  "logs": ["/private/tmp/w385-command-observer-check-final.log", "/private/tmp/w385-command-observer-build.log", "/private/tmp/w385-command-observer-suite.log", "/private/tmp/w385-command-observer-cli.log"],
+  "limitations": ["Closed-owner cleanup unobserved", "Native Promise settlement is not detached or remote effect proof", "Other observer boundaries remain open", "Process death is not power-loss durability"]
+}

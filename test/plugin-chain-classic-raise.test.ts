@@ -173,6 +173,8 @@ test('classic raise: the agent\'s tool path applies a post hook\'s rewrite and i
     ]), tools);
     await agent.run('go');
     const pair = session.messages.at(-2);
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PostToolUse', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PostToolUse', 'fulfilled']]);
     // The chain's rewrite replaces the tool's own result, and its context rides the same message.
     assert.deepEqual(pair, { role: 'user', content: [
       { type: 'tool_result', tool_use_id: 't1', content: 'rewritten by the fixture' },
@@ -201,6 +203,8 @@ test('classic raise: the agent\'s tool path applies a post hook\'s rewrite and i
     ]), failing);
     await agent.run('go');
     const pair = session.messages.at(-2);
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PostToolUseFailure', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PostToolUseFailure', 'fulfilled']]);
     // The failing event is raised under its own name, and its block text is the feedback the same
     // message carries: the error result itself is left as the tool produced it.
     assert.deepEqual(pair, { role: 'user', content: [

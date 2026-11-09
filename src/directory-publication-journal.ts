@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { publicationEditSchema } from './directory-publication-authorization.js';
 import { boundDirectoryFileObservationSchema, directoryPublicationExpectedSchema } from './directory-file-state.js';
 
 // Host journal rewrite: uno/Fet, sfn1dbxq [739599,743280)/[4731316,4732048),
@@ -11,7 +12,7 @@ export const directoryPublicationIntentSchema = z.object({ kind: z.literal('dire
   lexicalPath: z.string().min(1).max(4096), grant: z.object({ root: z.string().min(1).max(4096), incarnation: z.string().uuid(),
     dev: identity, ino: identity }).strict(), backupId: z.string().uuid(), expected: directoryPublicationExpectedSchema,
   content: z.object({ bytes: z.number().int().nonnegative().safe(), sha256: digest }).strict(), overwrite: z.boolean().optional(),
-  strategy: z.literal('retained').optional() }).strict();
+  edit: publicationEditSchema.optional(), strategy: z.literal('retained').optional() }).strict();
 export const directoryPublicationResultSchema = z.object({ kind: z.literal('directory_publication_result'), id: z.string().uuid(),
   owner: z.string().uuid(), intent: digest, outcome: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('durable'), observation: boundDirectoryFileObservationSchema,

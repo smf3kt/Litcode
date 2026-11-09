@@ -1,12 +1,19 @@
 import { classifyAutoAction, classifierSystem } from './auto-classifier.js';
+import { filterStartupAttachments, startupContextAttachments } from './async-hook-response.js';
 import { classifierTranscript, serializeAutoTool } from './auto-classifier-transcript.js';
 import { autoModeDenialDisplay, autoModeDenialInputKey } from './permission-denials.js';
 import { cloneClassifierMessages, type MessageOrigin } from './message-origin.js';
 import type Anthropic from '@anthropic-ai/sdk';
-import { Session, type SessionConfig, type ToolResult } from './session.js';
+import { Session, renderCompactSummary, type SessionConfig, type ToolResult } from './session.js';
+import { reactiveCompact } from './reactive-compaction-source.js';
+import { compactionFailure } from './compaction-errors.js';
+import { compactionPrompt } from './compaction-prompt-source.js';
+import { observerDisplayDigest, observerResultDigest, type ToolResultObserverEvent } from './tool-result-observer.js';
 import { bindNotificationMessage, type NotificationAuthorization } from './notification-authorization.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
-import { executeAgentTool, consumeBuiltinWriteExecution, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
+import { executeAgentTool, snapshotBuiltinMutationInput, consumeBuiltinWriteExecution, consumeRuntimeWrapperObservation, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
+import { createToolContextObserver } from './tool-context-observer.js';
+import { wrapperStartDigest, type RuntimeWrapperEvent } from './runtime-wrapper-observer.js';
 import { ToolCancellation } from './tool-cancellation.js';
 import { PathApprovalCallOwner, type PathApprovalCall } from './path-approval-call-owner.js';
 import { randomUUID } from 'node:crypto';
@@ -15,7 +22,8 @@ import { planModeReminder } from './plan-mode.js';
 import { existsSync } from 'node:fs';
 import { PROMPT_PREDICTION_INSTRUCTION, normalizePromptSuggestion, promptPredictionEligible,
   promptSuggestionRejection, type PromptPrediction } from './prompt-suggestions.js';
-import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
+import { HookLifecycle, consumeHookResolverObservation, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
+import type { HookResolverEvent } from './hook-resolver-observer.js';
 import { DEFAULT_ALLOW_SHELL, parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema, sourceReadAutomaticallyAllowed } from './permissions.js';
 import { sourceLocalPreReadGuard } from './controlled-read-projection-source.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
@@ -35,7 +43,11 @@ import { WORKTREE_DIRECTORY } from './worktrees.js';
 import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
-import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
+import type { ClassicEventRaise, ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
+import { createClassicChainObserver } from './classic-hook-observer.js';
+import { registerHookToolOwner, runObservedHookTool } from './hook-tool-observer.js';
+import { registerHookCommandOwner } from './hook-command-observer.js';
+import { observeAgentDisplay, type AgentDisplayArgs } from './agent-display-observer.js';
 import { activateTouchedSkills, discoverTouchedSkills, reloadSkills, refreshPluginComponents } from './skill-catalog.js';
 import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
@@ -47,8 +59,8 @@ import type { ContextCounts } from './context-panel.js';
 import { contextDetails } from './context-details.js';
 import { HOST_IDENTITY, hostContext } from './host-context.js';
 import { SkillEffectRecoveryError } from './skill-effects.js';
-import { describeDirectoryWriteInput, directoryWriteFingerprint, issueDirectoryPublicationAuthorization } from './directory-publication-authorization.js';
-import { runtimeWriteOwner } from './runtime-write-start.js';
+import { describeDirectoryEditInput, describeDirectoryWriteInput, directoryWriteFingerprint, issueDirectoryPublicationAuthorization, prepareNotebookPublication } from './directory-publication-authorization.js';
+import { registeredWriteFactory, runtimeWriteOwner } from './runtime-write-start.js';
 
 export type RuntimeWriteAuthorization = object;
 type RuntimeWriteStart = { kind: 'tool_start'; id: string; name: 'write_file'; parentMessageId: string; writeInputDigest: string;
@@ -128,9 +140,15 @@ function issueRuntimeWriteStart(input: { session: Session; tool: ToolDefinition;
     if (!observed || context.session !== grant.session || context.toolUseId !== selected.id ||
         context.signal !== grant.signal || context.pathApprovalCall !== grant.call ||
         context.authorizationIdentity?.signal !== grant.authorizationSignal ||
-        context.workspace !== grant.session.config.workspace || !validRuntimeWriteStart(grant)) return;
+        context.workspace !== grant.session.config.workspace || !validRuntimeWriteStart(grant)) {
+      if (observed?.phase === 'completed') return;
+      throw new Error('Runtime Write execution authorization changed before entry');
+    }
     const actual = describeDirectoryWriteInput(grant.session, observed.input);
-    if (!actual || directoryWriteFingerprint(actual) !== selected.writeInputDigest) return;
+    if (!actual || directoryWriteFingerprint(actual) !== selected.writeInputDigest) {
+      if (observed.phase === 'completed') return;
+      throw new Error('Runtime Write input changed after permission checking');
+    }
     const { input: _parsedInput, ...boundary } = observed;
     const execution: RuntimeWriteExecution = { kind: 'runtime_write_execution', id: selected.id,
       parentMessageId: selected.parentMessageId, writeInputDigest: selected.writeInputDigest,
@@ -212,6 +230,62 @@ export function assertPaired(messages: Anthropic.MessageParam[]): void {
     if (pending.length && (message.role !== 'assistant' || new Set(pending).size !== pending.length)) throw new Error('Invalid or duplicate tool call IDs');
   }
   if (pending.length) throw new Error('Unanswered tool calls');
+}
+
+export function recoverPendingToolResults(session: Session): void {
+  const messages = session.messages;
+  const last = messages.at(-1);
+  if (!last || last.role !== 'assistant') { assertPaired(messages); return; }
+  const calls = toolCalls(last);
+  if (!calls.length) { assertPaired(messages); return; }
+  assertPaired(messages.slice(0, -1));
+  if (new Set(calls.map((call) => call.id)).size !== calls.length) throw new Error('Duplicate tool call IDs');
+  const tail = [];
+  for (let i = session.events.length - 1; i >= 0; i--) {
+    const event = session.events[i]!;
+    if (event.kind === 'message' || event.kind === 'compact') break;
+    tail.unshift(event);
+  }
+  const completed = new Map<string, ToolResult>();
+  const effects = new Map<string, ToolResult>();
+  const witnesses = new Map<string, { owner: string; incarnation: string; callId: string }>();
+  const feedback = new Map<string, ToolFeedbackBlock[]>();
+  const started = new Set<string>();
+  for (const event of tail) {
+    if ((event.kind === 'tool_effect' || event.kind === 'tool_result') && event.readGrantWitness)
+      witnesses.set(event.result.tool_use_id, event.readGrantWitness);
+    if (event.kind === 'tool_start') started.add(event.id);
+    if (event.kind === 'tool_effect') {
+      if (effects.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool effect');
+      effects.set(event.result.tool_use_id, event.result);
+      if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
+    }
+    if (event.kind === 'tool_result') {
+      if (completed.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool result');
+      completed.set(event.result.tool_use_id, event.result);
+      if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
+    }
+    if (event.kind === 'tool_output') {
+      if (!completed.has(event.result.tool_use_id)) throw new Error('Transformed output has no durable tool result');
+      completed.set(event.result.tool_use_id, event.result);
+    }
+  }
+  const results = calls.map((call) => {
+    const saved = completed.get(call.id);
+    if (saved) return session.projectToolResult(saved, witnesses.get(call.id));
+    const effect = effects.get(call.id);
+    const message = started.has(call.id)
+      ? effect ? 'The tool finished, but its post-hook result was interrupted before commit. The final output is unknown. Inspect workspace state before deciding whether to repeat it.'
+        : 'Execution was interrupted after it started. Its effect is unknown. Inspect workspace state before deciding whether to repeat it.'
+      : 'This queued call was skipped during recovery. Re-evaluate it against current workspace state.';
+    const result: ToolResult = {type:'tool_result',tool_use_id:call.id,content:boundToolContent(message,session.config.maxOutputBytes),is_error:true};
+    session.append({ kind: 'tool_result', result });
+    return result;
+  });
+  // KWo, sfn1dbxq [2275902,2308030), UTF-16.
+  session.append({ kind: 'message', message: { role: 'user', content:
+    [...results, ...calls.flatMap(call => feedback.get(call.id) ?? [])] } });
+  assertPaired(session.messages);
 }
 
 export type RunResult = { reason: string; text: string; modelCalls: number };
@@ -308,10 +382,108 @@ function createdTaskFields(input: unknown, content: ToolResult['content']): { id
   return { ...(id === undefined ? {} : { id }), subject: record.subject, description: record.description };
 }
 
+const toolObserverWrites = new WeakMap<object, { session: Session; event: ToolResultObserverEvent }>();
+const runtimeWrapperWrites = new WeakMap<object, { session: Session; event: RuntimeWrapperEvent }>();
+const hookResolverWrites = new WeakMap<object, { session: Session; event: HookResolverEvent }>();
+// Shared by Agent dispatch and the source's Session-owned CTn/Xir factory path.
+// Retired worktree cleanup may still run, but cannot acquire a successor's journal.
+export function createHookResolverObserver(ownerSession: Session, id: string, allowRetired = false): NonNullable<HookRunOptions['observeResolver']> {
+  const observeResolver = (authorization: object) => {
+    const observation = consumeHookResolverObservation(authorization, observeResolver);
+    if (!observation) throw new Error('Hook resolver observation authorization invalid');
+    if ((allowRetired || observation.transition.phase === 'settled') && (!ownerSession.isOpen || ownerSession.isJournalFenced)) return;
+    const observed: HookResolverEvent = Object.freeze({ kind: 'hook_resolver', owner: ownerSession.id, hookId: id,
+      ...observation, transition: Object.freeze(observation.transition) });
+    hookResolverWrites.set(observed, { session: ownerSession, event: observed });
+    try { ownerSession.append(observed); } finally { hookResolverWrites.delete(observed); }
+  };
+  registerHookToolOwner(observeResolver, ownerSession, id);
+  registerHookCommandOwner(observeResolver, ownerSession, id);
+  return observeResolver;
+}
+export function consumeHookResolverWrite(session: Session, event: object): HookResolverEvent | undefined {
+  const grant = hookResolverWrites.get(event); hookResolverWrites.delete(event);
+  return grant?.session === session ? grant.event : undefined;
+}
+export function consumeRuntimeWrapperWrite(session: Session, event: object): RuntimeWrapperEvent | undefined {
+  const grant = runtimeWrapperWrites.get(event); runtimeWrapperWrites.delete(event);
+  return grant?.session === session ? grant.event : undefined;
+}
+/** Consumer only: invocation capabilities are issued inside the actual Agent call boundary. */
+export function consumeToolObserverWrite(session: Session, event: object): ToolResultObserverEvent | undefined {
+  const grant = toolObserverWrites.get(event);
+  toolObserverWrites.delete(event);
+  return grant?.session === session ? grant.event : undefined;
+}
+
 export class Agent {
   private busy = false;
+  #wrapperObserver(tool: ToolDefinition, input: unknown, context: ToolContext, parentMessageId: string, toolUseId: string) {
+    const session = this.session;
+    const startIndex = session.events.findLastIndex(row => row.kind === 'tool_start' && row.id === toolUseId && row.parentMessageId === parentMessageId);
+    const start = session.events[startIndex];
+    if (start?.kind !== 'tool_start') throw new Error('Runtime wrapper requires a committed tool start');
+    const startSha256 = wrapperStartDigest(start);
+    const writeFactory = start.name === 'write_file' ? registeredWriteFactory(tool) : undefined;
+    return (authorization: object) => {
+      const observed = consumeRuntimeWrapperObservation(authorization, tool, input, context);
+      if (!observed) throw new Error('Runtime wrapper observation authorization invalid');
+      if ((observed.transition.phase === 'settled' || observed.transition.phase === 'unobserved') &&
+          (!session.isOpen || session.isJournalFenced)) return;
+      const event: RuntimeWrapperEvent = Object.freeze({ kind: 'runtime_wrapper_observer', owner: session.id,
+        parentMessageId, toolUseId, startIndex, startSha256, ...(writeFactory ? { writeFactory } : {}),
+        ...observed, transition: Object.freeze(observed.transition) });
+      runtimeWrapperWrites.set(event, { session, event });
+      try { session.append(event); } finally { runtimeWrapperWrites.delete(event); }
+    };
+  }
+  // W385 host observation of the injected presentation callback; see tool-result-observer.ts.
+  // It preserves nonawaiting scheduling and does not attest detached work or absence of effects.
+  #observeToolResult(parentMessageId: string, display: import('./tui-tool-result.js').ToolDisplayResult): void {
+    const session = this.session, receiver = this.events;
+    const resultIndex = session.events.findLastIndex(row =>
+      (row.kind === 'tool_result' || row.kind === 'tool_output') && row.result.tool_use_id === display.id);
+    const committed = session.events[resultIndex];
+    if (!committed || (committed.kind !== 'tool_result' && committed.kind !== 'tool_output'))
+      throw new Error('Tool observer requires a committed result');
+    const binding = { owner: session.id, invocationId: randomUUID(), parentMessageId, toolUseId: display.id,
+      resultIndex, resultSha256: observerResultDigest(committed.result), displaySha256: observerDisplayDigest(display) };
+    const record = (transition: ToolResultObserverEvent['transition']) => {
+      const event: ToolResultObserverEvent = Object.freeze({ kind: 'tool_result_observer', ...binding,
+        transition: Object.freeze(transition) });
+      toolObserverWrites.set(event, { session, event });
+      try { session.append(event); }
+      finally { toolObserverWrites.delete(event); }
+    };
+    // Admit before resolving the property: supplied getters/proxies may themselves have effects.
+    record({ phase: 'admitted' });
+    let returned: unknown, present: boolean;
+    try {
+      const callback = receiver.toolResult;
+      present = callback !== undefined && callback !== null;
+      if (callback !== undefined && callback !== null) returned = Reflect.apply(callback, receiver, [display]);
+    } catch (error) { record({ phase: 'threw' }); throw error; }
+    if (!present) { record({ phase: 'returned', mode: 'absent' }); return; }
+    if (!utilTypes.isPromise(returned)) { record({ phase: 'returned', mode: 'sync' }); return; }
+    let failed = false, failure: unknown;
+    try { record({ phase: 'returned', mode: 'promise' }); }
+    catch (error) { failed = true; failure = error; }
+    const settle = (outcome: 'fulfilled' | 'rejected') => {
+      if (failed || !session.isOpen || session.isJournalFenced) return;
+      try { record({ phase: 'settled', outcome }); }
+      catch { /* The original journal is fenced; retain its pending observation without replay. */ }
+    };
+    // Intrinsic handling avoids evaluating a caller-defined .then. It may still fail for
+    // unusual Promise subclasses; that is unknown, not a fabricated completion.
+    try { Promise.prototype.then.call(returned, () => settle('fulfilled'), () => settle('rejected')); }
+    catch {
+      if (!failed && session.isOpen && !session.isJournalFenced) record({ phase: 'unobserved' });
+    }
+    if (failed) throw failure;
+  }
   /** Ie.isLoading [18880,18897), chunk-appb2dtz.js reads the live model-turn owner. */
   isRunning(): boolean { return this.busy; }
+  private display(...args: AgentDisplayArgs): void { observeAgentDisplay(this.session, this.events, ...args); }
   /** Source tool result `endsTurn`: the current batch ended the turn. */
   private endedByTool = false;
   private ended = false;
@@ -334,7 +506,11 @@ export class Agent {
     if (this.tools.size !== tools.length) throw new Error('Duplicate tool names');
     const config = session.config;
     const schemas = tools.map((tool) => ({ ...tool.schema, eager_input_streaming: true }));
-    if (JSON.stringify(schemas) !== JSON.stringify(config.tools)) throw new Error('Session tool schemas changed; start a new session');
+    if (JSON.stringify(schemas) !== JSON.stringify(config.tools)) {
+      const receipt = session.pendingWorkerReceipt;
+      if (receipt) throw new Error(`Worker tool schemas differ from this runtime. Parent session ${receipt.parent} owns run ${receipt.runId} with pending delivery ${receipt.deliveryId}.`);
+      throw new Error('Session tool schemas changed; start a new session');
+    }
     if (config.compactAt + config.maxTokens >= config.contextTokens) throw new Error('Compaction threshold must leave room for model output');
   }
 
@@ -366,7 +542,7 @@ export class Agent {
     const duration = this.turnTiming ? {uuid:this.turnTiming.uuid,
       durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()} : undefined;
     this.session.append({ kind: 'turn_end', reason, ...(duration ? {duration} : {}) });
-    if (duration) this.events.progress?.({kind:'finish', reason, duration});
+    if (duration) this.display('progress', {kind:'finish', reason, duration});
     this.turnTiming = undefined;
     if (reason !== 'aborted') await this.snapshotBoundary(signal);
     return { reason, text, modelCalls };
@@ -376,69 +552,16 @@ export class Agent {
     try { await automaticCheckpointWithDirectoryWitness(this.session, signal); }
     catch (error) {
       if (signal.aborted || !this.session.isOpen || this.session.isJournalFenced) throw error;
-      this.events.status?.(`Automatic checkpoint skipped: ${error instanceof Error ? error.message : String(error)}`);
+      this.display('status', `Automatic checkpoint skipped: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  private recoverPending(): void {
-    const messages = this.session.messages;
-    const last = messages.at(-1);
-    if (!last || last.role !== 'assistant') { assertPaired(messages); return; }
-    const calls = toolCalls(last);
-    if (!calls.length) { assertPaired(messages); return; }
-    assertPaired(messages.slice(0, -1));
-    if (new Set(calls.map((call) => call.id)).size !== calls.length) throw new Error('Duplicate tool call IDs');
-    const tail = [];
-    for (let i = this.session.events.length - 1; i >= 0; i--) {
-      const event = this.session.events[i]!;
-      if (event.kind === 'message' || event.kind === 'compact') break;
-      tail.unshift(event);
-    }
-    const completed = new Map<string, ToolResult>();
-    const effects = new Map<string, ToolResult>();
-    const witnesses = new Map<string, { owner: string; incarnation: string; callId: string }>();
-    const feedback = new Map<string, ToolFeedbackBlock[]>();
-    const started = new Set<string>();
-    for (const event of tail) {
-      if ((event.kind === 'tool_effect' || event.kind === 'tool_result') && event.readGrantWitness)
-        witnesses.set(event.result.tool_use_id, event.readGrantWitness);
-      if (event.kind === 'tool_start') started.add(event.id);
-      if (event.kind === 'tool_effect') {
-        if (effects.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool effect');
-        effects.set(event.result.tool_use_id, event.result);
-        if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
-      }
-      if (event.kind === 'tool_result') {
-        if (completed.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool result');
-        completed.set(event.result.tool_use_id, event.result);
-        if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
-      }
-      if (event.kind === 'tool_output') {
-        if (!completed.has(event.result.tool_use_id)) throw new Error('Transformed output has no durable tool result');
-        completed.set(event.result.tool_use_id, event.result);
-      }
-    }
-    const results = calls.map((call) => {
-      const saved = completed.get(call.id);
-      if (saved) return this.session.projectToolResult(saved, witnesses.get(call.id));
-      const effect = effects.get(call.id);
-      const message = started.has(call.id)
-        ? effect ? 'The tool finished, but its post-hook result was interrupted before commit. The final output is unknown. Inspect workspace state before deciding whether to repeat it.'
-          : 'Execution was interrupted after it started. Its effect is unknown. Inspect workspace state before deciding whether to repeat it.'
-        : 'This queued call was skipped during recovery. Re-evaluate it against current workspace state.';
-      const result = this.result(call.id, message, true);
-      this.session.append({ kind: 'tool_result', result });
-      return result;
-    });
-    // KWo, sfn1dbxq [2275902,2308030), UTF-16.
-    this.session.append({ kind: 'message', message: { role: 'user', content:
-      [...results, ...calls.flatMap(call => feedback.get(call.id) ?? [])] } });
-    assertPaired(this.session.messages);
-  }
 
   // dze/Okn/P9r, sfn1dbxq [3063858,3064190)/[3062119,3062957), UTF-16:
   // call identity travels separately from hook stdin. The journal/task-ID fields are host adapters.
   private async hook(event: HookEvent, payload: HookPayload, signal: AbortSignal, call?: HookCall): Promise<HookResult> {
+    // dG [3002364,3002772), sfn1dbxq: select the current registered hook catalog per dispatch.
+    refreshPluginComponents(this.session.config);
     const definitions = this.session.config.hooks?.[event];
     if (!definitions?.length) return { blocked: false, additionalContext: [] };
     signal.throwIfAborted();
@@ -446,6 +569,7 @@ export class Agent {
     const associated = call?.toolUseId ?? payload.tool_use_id;
     this.session.append({ kind: 'hook_start', id, event, ...(associated ? { toolUseId: associated } : {}),
       ...(call === undefined ? {} : { parentMessageId: call.parentMessageId }) });
+    const observeResolver = createHookResolverObserver(this.session, id);
     const result = await runHooks(this.session.config.hooks!, event, {
       session_id: this.session.id, transcript_path: this.session.file, cwd: this.session.config.workspace,
       permission_mode: this.session.config.permissions?.mode ?? 'default', ...payload,
@@ -484,11 +608,12 @@ export class Agent {
                 if (!tool) throw new Error('Hook tool is unavailable');
                 const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.permissionState(), this.session.config.workspace);
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
+                const observeContext = createToolContextObserver(this.session, call.id, 'model_hook');
                 const context: ToolContext = { workspace: this.session.config.workspace, signal: hookSignal,
                   allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384), pathApprovalCall,
-                  workingDirectories: readOnly => this.session.workingDirectories(readOnly) };
-                results.push(this.result(call.id, tool.executeBlocks
-                  ? await tool.executeBlocks(call.input, context) : await tool.execute(call.input, context)));
+                  workingDirectories: readOnly => observeContext('workingDirectories', readOnly, () => this.session.workingDirectories(readOnly)) };
+                results.push(this.result(call.id, await runObservedHookTool(tool.schema.name, call.id, call.input,
+                  () => tool.executeBlocks ? tool.executeBlocks(call.input, context) : tool.execute(call.input, context))));
               } catch (error) { failed = true; results.push(this.result(call.id, error instanceof Error ? error.message : String(error), true)); }
               finally {
                 hookSignal.removeEventListener('abort', retireOnAbort);
@@ -509,7 +634,8 @@ export class Agent {
         const tool = this.tools.get(definition.tool);
         if (!tool || !tool.readOnly || !tool.schema.name.startsWith("mcp__")) throw new Error("MCP hooks require an available read-only namespaced tool");
         const input = definition.arguments ?? {};
-        const pathApprovalCall = this.pathApprovalOwner.begin(randomUUID());
+        const callId = randomUUID();
+        const pathApprovalCall = this.pathApprovalOwner.begin(callId);
         const retireOnAbort = () => { pathApprovalCall.finish('cancelled'); hookSignal.removeEventListener('abort', retireOnAbort); };
         hookSignal.addEventListener('abort', retireOnAbort, { once: true });
         if (hookSignal.aborted) retireOnAbort();
@@ -517,8 +643,9 @@ export class Agent {
         try {
           if (permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
           hookSignal.throwIfAborted();
-          const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
-            allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes, pathApprovalCall });
+          const content = await runObservedHookTool(tool.schema.name, callId, input, () => tool.execute(input,
+            { workspace: this.session.config.workspace, signal: hookSignal,
+              allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes, pathApprovalCall }));
           const parsed = JSON.parse(content);
           failed = false;
           return parsed && typeof parsed === "object" && Object.hasOwn(parsed, "structuredContent") ? parsed.structuredContent : parsed;
@@ -529,6 +656,7 @@ export class Agent {
       },
       ...this.events.hookOptions,
       lifecycle: hookLifecycle(this.session),
+      observeResolver,
     });
     this.session.append({ kind: 'hook_result', id, event, blocked: result.blocked,
       ...(result.reason ? { reason: result.reason } : {}), ...(result.stopRequested ? { stopRequested: true } : {}), additionalContext: result.additionalContext,
@@ -537,7 +665,7 @@ export class Agent {
       ...(result.userDisplayMessage === undefined ? {} : { userDisplayMessage: result.userDisplayMessage }),
       ...(result.backgroundTasks === undefined ? {} : { backgroundTasks: [...result.backgroundTasks] }),
       ...(result.terminalSequences?.length ? { terminalSequences: result.terminalSequences } : {}) });
-    for (const sequence of result.terminalSequences ?? []) this.events.terminalSequence?.(sequence);
+    for (const sequence of result.terminalSequences ?? []) this.display('terminalSequence', sequence);
     let budget = this.session.config.maxOutputBytes;
     const display = (text: string, prefixed = true) => {
       if (budget <= 0) return;
@@ -549,7 +677,7 @@ export class Agent {
       const suffix = bytes.length > room && room >= 12 ? ' [truncated]' : '';
       let end = Math.min(bytes.length, room - Buffer.byteLength(suffix));
       while (end < bytes.length && end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
-      this.events.status?.(`${prefix}${bytes.subarray(0, end).toString('utf8')}${suffix}`);
+      this.display('status', `${prefix}${bytes.subarray(0, end).toString('utf8')}${suffix}`);
       budget -= overhead + end + Buffer.byteLength(suffix);
     };
     if (!result.suppressOutput) {
@@ -575,6 +703,15 @@ export class Agent {
 
   async emitHook(event: HookEvent, payload: HookPayload, signal = new AbortController().signal): Promise<HookResult> {
     return await this.hook(event, payload, signal);
+  }
+
+  private raiseOwnedClassic(options: Omit<ClassicEventRaise, 'observeChain'>) {
+    // Ikt [562773,563154), Okn/P9r/Hkn/I9r/dze [3062119,3064190), UTF-16,
+    // sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+    // Preserve the copied raise; adapt its Session ownership to the host S3 journal.
+    const owner = this.session, id = randomUUID();
+    owner.append({ kind: 'hook_start', id, event: `classic:${options.event}` });
+    return raiseClassicEvent({ ...options, observeChain: createClassicChainObserver(owner, id) });
   }
 
   async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<{ initialUserMessage?: string; watchPaths?: string[] }> {
@@ -624,7 +761,7 @@ export class Agent {
     if (result.reloadSkills === true) {
       try { reloadSkills(this.session.config); }
       catch (error) {
-        this.events.status?.(`Skill reload failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.display('status', `Skill reload failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     // The recovered prologue drains the staged value with `OXr`
@@ -663,11 +800,16 @@ export class Agent {
     await this.hook('SessionEnd', { reason: sourceReason }, signal);
   }
 
-  private pendingHookContext(): string[] {
-    const context: string[] = [];
+  private pendingHookContext(): { context: string[]; sessionStartContext: string[] } {
+    const contexts: Array<{ text: string; startup: boolean }> = [];
+    const sessionStartContext: string[] = [];
+    let pastTurnEnd = false;
     for (let i = this.session.events.length - 1; i >= 0; i--) {
       const event = this.session.events[i]!;
-      if (event.kind === 'message' || event.kind === 'compact' || event.kind === 'turn_end') break;
+      if (event.kind === 'message' || event.kind === 'compact') break;
+      // lnn/jZo/CVt, sfn1dbxq [2483510,2483675)/[2483272,2483353)/[1301158,1301271), UTF-16:
+      // startup context belongs to conversation history; a rejected prompt has not consumed it.
+      if (event.kind === 'turn_end') { pastTurnEnd = true; continue; }
       // SubagentStart's additionalContext joins the child's context as a
       // `hook_additional_context` attachment before its first turn
       // (chunk-40cepjpq.js offsets 127150 and 127532); the source's
@@ -677,12 +819,18 @@ export class Agent {
       // that request drains them, so the same one-shot scan applies. Setup
       // wraps its additionalContexts in a `hook_additional_context` attachment
       // for the startup message list (offset 2484520).
-      if (event.kind === 'hook_result' && (event.event === 'SessionStart' ||
-        event.event === 'SubagentStart' || event.event === 'PostModelSwitch' || event.event === 'Setup')) {
-        context.unshift(...event.additionalContext);
+      if (event.kind === 'hook_result' && (event.event === 'SessionStart' || !pastTurnEnd &&
+        (event.event === 'SubagentStart' || event.event === 'PostModelSwitch' || event.event === 'Setup'))) {
+        contexts.unshift(...event.additionalContext.map(text => ({ text, startup: event.event === 'SessionStart' })));
+        if (event.event === 'SessionStart') sessionStartContext.unshift(...event.additionalContext);
       }
     }
-    return context;
+    // vhe, sfn1dbxq [1300642,1301158), UTF-16 (digest in async-hook-response.ts).
+    // h$t ignores async rows, so its history keys are independent of command HOME.
+    const filtered = filterStartupAttachments(this.session.sessionStartAttachments(''), startupContextAttachments(sessionStartContext))
+      .flatMap(row => row.type === 'hook_additional_context' ? row.content : []);
+    const retained = new Set(filtered);
+    return { context: contexts.filter(row => !row.startup || retained.has(row.text)).map(row => row.text), sessionStartContext: filtered };
   }
 
   /**
@@ -733,7 +881,7 @@ export class Agent {
         if (attempt === STALL_RETRIES) {
           throw new Error(`agent stalled on all ${STALL_RETRIES + 1} attempts (no progress for ${stallMs}ms each)`);
         }
-        this.events.status?.(`[stall] retrying (${attempt + 1}/${STALL_RETRIES})`);
+        this.display('status', `[stall] retrying (${attempt + 1}/${STALL_RETRIES})`);
       } finally {
         if (timer !== undefined) clearTimeout(timer);
         signal.removeEventListener('abort', forward);
@@ -768,10 +916,17 @@ export class Agent {
     }
   }
 
+  // _Wo/Cge, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+  // [2237279,2240346), UTF-16. S3 records host lookup and awaited approval separately.
+  private permissionSelection(callId: string) {
+    const observe = createToolContextObserver(this.session, callId, 'agent');
+    return { observe, prompt: observe('permissionLookup', undefined, () => this.events.permission) };
+  }
+
   // _Wo/Cge, sfn1dbxq [2237279,2240346); host live-owner adaptation, W385.
   private async confirmPermission(tool: ToolDefinition, input: unknown, reason: string, signal: AbortSignal,
-    shellHome: { value: string | undefined }, identity: AbortController, skipIfNotRule = false): Promise<string | undefined> {
-    const prompt = this.events.permission;
+    shellHome: { value: string | undefined }, identity: AbortController, callId: string, skipIfNotRule = false): Promise<string | undefined> {
+    const { prompt, observe } = this.permissionSelection(callId);
     if (!prompt) return reason + '; use an interactive session or an explicit allow rule';
     const snapshot = JSON.stringify(input);
     for (;;) {
@@ -784,7 +939,8 @@ export class Agent {
       const current = withShellAnalysisHome(shellHome.value ?? '', () => permissionDecision(policy, tool, input, owner, workspace));
       if (current.decision === 'deny') return current.reason ?? 'Permission denied';
       if (skipIfNotRule && (current.decision !== 'ask' || current.floor !== 'rule')) return;
-      if (!await prompt({ tool: tool.schema.name, input: structuredClone(input), reason, signal, authorizationIdentity: identity })) return 'Permission declined';
+      const request = { tool: tool.schema.name, input: structuredClone(input), reason, signal, authorizationIdentity: identity };
+      if (!await observe('permission', request, async () => await prompt(request))) return 'Permission declined';
       signal.throwIfAborted();
       if (JSON.stringify(input) !== snapshot) return 'Permission input changed during approval';
       const clamp = await this.checkCommandClamp(tool, input, signal, shellHome.value);
@@ -805,6 +961,7 @@ export class Agent {
   }
 
   private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, identity: { current: AbortController; hookCall: HookCall }, callId = '', heldFloor = false, deferAuto = false, classifierMessages: readonly Anthropic.MessageParam[] = this.session.messages): Promise<{ input: unknown; shellHome?: { value: string | undefined }; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
+    input = snapshotBuiltinMutationInput(tool, input);
     const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
     if (clampDenial !== undefined) return { input, denied: clampDenial };
     this.session.prepareAutoMode();
@@ -856,7 +1013,7 @@ export class Agent {
         tool_use_id: callId, reason: denied }, signal, identity.hookCall);
       let retry = native.retry === true;
       if (classicEventRaised('PermissionDenied')) {
-        const raised = await raiseClassicEvent({ event: 'PermissionDenied', signal,
+        const raised = await this.raiseOwnedClassic({ event: 'PermissionDenied', signal,
           hookInput: classicHookInput('PermissionDenied', { session_id: this.session.id,
             cwd: this.session.config.workspace, tool_name: tool.schema.name, tool_input: input, tool_use_id: callId, reason: denied }) });
         retry ||= raised.answer.retry === true;
@@ -883,7 +1040,7 @@ export class Agent {
     // and adopted by the session owner before the call runs. Settings persistence
     // is queued independently and drained by that owner on shutdown.
     if (classicEventRaised(CLASSIC_PERMISSION_REQUEST)) {
-      const raised = await raiseClassicEvent({
+      const raised = await this.raiseOwnedClassic({
         event: CLASSIC_PERMISSION_REQUEST,
         hookInput: classicHookInput(CLASSIC_PERMISSION_REQUEST, {
           session_id: this.session.id, cwd: this.session.config.workspace,
@@ -916,7 +1073,7 @@ export class Agent {
         // The source logs the interrupt, then aborts the turn's controller
         // (`n2e` consumers, chunk-rx2nah4x.js offset 660913 and
         // chunk-fk088dyb.js offset 89115).
-        this.events.status?.(`Hook interrupt: tool=${tool.schema.name} hookMessage=${denied}`);
+        this.display('status', `Hook interrupt: tool=${tool.schema.name} hookMessage=${denied}`);
         this.events.interruptTurn?.();
       }
       return { input, denied };
@@ -924,7 +1081,7 @@ export class Agent {
     if (requested.updatedInput !== undefined) {
       identity.current.abort();
       identity.current = new AbortController();
-      input = structuredClone(requested.updatedInput);
+      input = snapshotBuiltinMutationInput(tool, structuredClone(requested.updatedInput));
       const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
       if (clampDenial !== undefined) return { input, denied: clampDenial };
       shellHome = { value: process.env.HOME };
@@ -932,22 +1089,22 @@ export class Agent {
       // g1t.runHooks, 9c5se12s [7100,8340); sxr, sfn1dbxq [3317869,3319984), UTF-16.
       if (updated.decision === 'deny') return { input, denied: updated.reason ?? 'Permission denied' };
       if (requested.permissionDecision === 'allow' && updated.decision === 'ask' && updated.floor === 'rule') {
-        if (this.events.permissionPrompt !== 'interactive' || !this.events.permission) return { input, denied: updated.reason ?? 'Permission denied' };
-        const denied = await this.confirmPermission(tool, input, updated.reason ?? 'Approval required', signal, shellHome, identity.current, true);
+        if (this.events.permissionPrompt !== 'interactive' || !this.permissionSelection(callId).prompt) return { input, denied: updated.reason ?? 'Permission denied' };
+        const denied = await this.confirmPermission(tool, input, updated.reason ?? 'Approval required', signal, shellHome, identity.current, callId, true);
         return denied === undefined ? { input, shellHome } : { input, denied };
       }
     }
     // sxr/yk/GAn, chunk-sfn1dbxq.js [3317678,3319984),
     // [3357795,3359265), [3355478,3355651), UTF-16.
     if (requested.permissionDecision === 'allow' && requested.updatedInput === undefined &&
-        tool.requiresUserInteraction === true && (this.events.permissionPrompt === 'unavailable' || !this.events.permission)) {
+        tool.requiresUserInteraction === true && (this.events.permissionPrompt === 'unavailable' || !this.permissionSelection(callId).prompt)) {
       const current = permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace);
       return { input, denied: current.reason ?? `Approval required for ${tool.schema.name}` };
     }
     // g1t.runHooks, chunk-9c5se12s.js [5863,10103), UTF-16:
     // let the interaction owner continue without adopting hook updates.
     if (requested.permissionDecision === 'allow' && requested.updatedInput === undefined && tool.requiresUserInteraction === true &&
-        this.events.permissionPrompt !== 'unavailable' && this.events.permission) return { input, shellHome };
+        this.events.permissionPrompt !== 'unavailable' && this.permissionSelection(callId).prompt) return { input, shellHome };
     if (requested.permissionDecision === 'allow') {
       if (requested.updatedPermissions?.length) {
         const outcome = this.session.adoptPermissionUpdates(requested.updatedPermissions);
@@ -955,7 +1112,7 @@ export class Agent {
       }
       return { input, shellHome };
     }
-    const denied = await this.confirmPermission(tool, input, reason, signal, shellHome, identity.current);
+    const denied = await this.confirmPermission(tool, input, reason, signal, shellHome, identity.current, callId);
     return denied === undefined ? { input, shellHome } : { input, denied };
   }
 
@@ -1078,8 +1235,6 @@ export class Agent {
     const context: ToolContext = { session: this.session, workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
       conversation: cloneClassifierMessages(conversation), interaction: this.events.interaction,
       planMode: this.session.planMode,
-      workingDirectories: readOnly => this.session.workingDirectories(readOnly),
-      fileHistory: file => this.session.touchFile(file),
       readFileCache: this.session.fileReadCache,
       fileMutationGate: { preReadGuard: sourceLocalPreReadGuard(c.model), readAllowed: (file, tool) =>
         sourceReadAutomaticallyAllowed(c.permissions, this.permissionState(), c.workspace, file, [...this.tools.keys()], tool) },
@@ -1147,7 +1302,10 @@ export class Agent {
           // (chunk-sfn1dbxq.js `m_t` [504681,505531), `$go` chunk-nyce03br.js [121822,121896)); the
           // answer joins the same permission path below, so a deny or a rewrite is handled once.
           if (classicPreToolUseHooked()) {
-            const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input: structuredClone(input), signal });
+            const owner = this.session, id = randomUUID();
+            owner.append({ kind: 'hook_start', id, event: 'classic:PreToolUse' });
+            const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input: structuredClone(input), signal,
+              observeChain: createClassicChainObserver(owner, id) });
             callContext.push(...(permission.additionalContexts ?? []));
             if (permission.permissionBehavior === 'deny') {
               pre.blocked = true;
@@ -1161,9 +1319,9 @@ export class Agent {
           }
           if (pre.blocked) {
             const asks = pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer';
-            if (!asks || pre.stopRequested || !this.events.permission) throw new Error(pre.reason ?? 'Blocked by PreToolUse hook');
+            if (!asks || pre.stopRequested || !this.permissionSelection(call.id).prompt) throw new Error(pre.reason ?? 'Blocked by PreToolUse hook');
             const denied = await this.confirmPermission(tool, input, pre.reason ?? 'PreToolUse hook requested approval', signal,
-              shellHome ?? { value: undefined }, identity.current);
+              shellHome ?? { value: undefined }, identity.current, call.id);
             if (denied !== undefined) throw new Error(denied === 'Permission declined' ? pre.reason ?? 'Blocked by PreToolUse hook' : denied);
           }
           if (pre.updatedInput !== undefined) {
@@ -1209,8 +1367,11 @@ export class Agent {
             callContext.push(...lifecycle.additionalContext);
             if (lifecycle.blocked) throw new Error(lifecycle.reason ?? `Blocked by ${gate} hook`);
           }
+          const observeContext = createToolContextObserver(this.session, call.id, 'agent');
           let executionContext: ToolContext = { ...context, signal, abortController, pathApprovalCall, authorizationIdentity: identity.current, toolUseId: call.id,
-            agentProgress: (agentId, message) => this.events.agentProgress?.({ agentId, toolUseId: call.id, message }),
+            workingDirectories: readOnly => observeContext('workingDirectories', readOnly, () => this.session.workingDirectories(readOnly)),
+            fileHistory: file => observeContext('fileHistory', file, () => this.session.touchFile(file)),
+            agentProgress: (agentId, message) => this.display('agentProgress', { agentId, toolUseId: call.id, message }),
             hostResult: value => { hostResult = projectToolUseResult(value); },
             readGrantSignal: value => { readGrantSignal = value; },
             readGrantWitness: value => { readGrantWitness = { ...value, callId: call.id }; },
@@ -1224,38 +1385,53 @@ export class Agent {
             executionContext = { ...executionContext, shellHome };
           }
           signal.throwIfAborted();
-          const writeWitness = call.name === 'write_file' ? describeDirectoryWriteInput(this.session, input) : undefined;
-          const writeRelative = writeWitness ? path.relative(c.workspace, writeWitness.lexicalPath) : undefined;
+          // Kt [121053,123737), uno [739599,743280), half-open UTF-16.
+          // The host describes post-hook Write input before checking the grant.
+          const writeWitness = call.name === 'write_file'
+            ? observeContext('writeInputDescription', input, () => describeDirectoryWriteInput(this.session, input)) : undefined;
+          const notebook = call.name === 'notebook_edit' ? prepareNotebookPublication(input) : undefined;
+          const described = notebook || call.name === 'edit_file' ? describeDirectoryEditInput(this.session, notebook ?? input) : undefined;
+          const editWitness = described?.tool === call.name ? described : undefined;
+          const mutation = writeWitness ?? editWitness;
+          const writeRelative = mutation ? path.relative(c.workspace, mutation.lexicalPath) : undefined;
           const outsideWorkspace = writeRelative !== undefined &&
             (writeRelative === '..' || writeRelative.startsWith(`..${path.sep}`) || path.isAbsolute(writeRelative));
-          const granted = outsideWorkspace && writeWitness && this.session.workingDirectories(false).some(directory => {
-            const relative = path.relative(directory, writeWitness.lexicalPath);
+          // Kt, hwpb27as c5f6d5b8fb187a14de3db7aebcb5615a3632aa34a0e174c54d38607e7c5ead8e
+          // [121053,123737), UTF-16. S3 host grant preflight, separate from tool execution.
+          const granted = outsideWorkspace && mutation && observeContext('writeGrantCheck', false, () => this.session.workingDirectories(false).some(directory => {
+            const relative = path.relative(directory, mutation.lexicalPath);
             return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
-          });
+          }));
           const externalWrite = granted ? writeWitness : undefined;
           const writeInputDigest = externalWrite ? directoryWriteFingerprint(externalWrite) : undefined;
-          const runtimeStart = writeInputDigest ? issueRuntimeWriteStart({ session: this.session, tool, call: pathApprovalCall,
-            signal, authorizationSignal: identity.current.signal, value: input, id: call.id, parentMessageId, writeInputDigest }) : undefined;
+          const runtimeStart = writeInputDigest ? observeContext('writeRuntimeStart', input, () =>
+            issueRuntimeWriteStart({ session: this.session, tool, call: pathApprovalCall,
+              signal, authorizationSignal: identity.current.signal, value: input, id: call.id, parentMessageId, writeInputDigest })) : undefined;
           this.session.append(runtimeStart?.event ?? { kind: 'tool_start', id: call.id, name: call.name, parentMessageId,
-            ...(writeInputDigest ? { writeInputDigest } : {}) }, undefined, undefined, runtimeStart?.authorization);
-          if (externalWrite) {
-            const authorization = issueDirectoryPublicationAuthorization({ session: this.session, toolUseId: call.id, value: input,
-              signal, authorizationSignal: identity.current.signal, approvalCall: pathApprovalCall });
-            if (authorization) executionContext = { ...executionContext, directoryPublicationAuthorization: authorization };
+            ...(writeInputDigest ? { writeInputDigest } : {}),
+            ...(outsideWorkspace && editWitness ? { editInputDigest: editWitness.digest } : {}) }, undefined, undefined, runtimeStart?.authorization);
+          if (granted) {
+            const authorization = observeContext('writePublicationAuthorization', input, () =>
+              issueDirectoryPublicationAuthorization({ session: this.session, toolUseId: call.id, value: notebook ?? input, ...(editWitness ? {tool:editWitness.tool} : {}),
+                signal, authorizationSignal: identity.current.signal, approvalCall: pathApprovalCall }));
+            if (authorization) executionContext = { ...executionContext, directoryPublicationAuthorization: authorization,
+              ...(notebook?.insertId ? { notebookInsertId: notebook.insertId } : {}) };
           }
           executed = true;
-          this.events.status?.(`tool: ${call.name}`);
-          this.events.progress?.({kind:'phase', mode:'tool-use'});
+          this.display('status', `tool: ${call.name}`);
+          this.display('progress', {kind:'phase', mode:'tool-use'});
           const startedAt = Date.now();
           try {
             result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
-              runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext))));
-            signal.throwIfAborted();
+              runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext)),
+              { forTool: (selected, context) => this.#wrapperObserver(selected, input, context, parentMessageId, call.id) }));
+            // KWo, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+            // [2290000,2304720), UTF-16: a returned tool value remains a result after cancellation.
             failed = false;
           } finally {
             durationMs = Date.now() - startedAt;
             // Foreground emitter finally, wj6fycw8 [44500,45150), UTF-16.
-            this.events.clearAgentProgress?.(call.id);
+            if (!this.session.isJournalFenced) this.display('clearAgentProgress', call.id);
           }
         } catch (error) {
           if (error instanceof SkillEffectRecoveryError) callRecovery = error;
@@ -1349,7 +1525,7 @@ export class Agent {
           // or a rewrite is handled once.
           const classicName = result.is_error ? CLASSIC_POST_TOOL_USE_FAILURE : CLASSIC_POST_TOOL_USE;
           if (classicEventRaised(classicName)) {
-            const raised = await raiseClassicEvent({
+            const raised = await this.raiseOwnedClassic({
               event: classicName,
               hookInput: classicHookInput(classicName, {
                 session_id: this.session.id, cwd: c.workspace,
@@ -1419,9 +1595,11 @@ export class Agent {
       results[results.length - 1] = result;
       if (result !== invocation.result) this.session.append({ kind: 'tool_output', result });
       // After the post hook and any replacement, so the rows show what the model received.
-      // xe/Eo, sfn1dbxq [4380701,4382470), tar639dc [61633,62418), UTF-16.
+      // xe, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+      // [4380701,4382470), UTF-16, constructs the result message. This host observer is separate;
+      // persisting that message does not attest the observer's effects or settlement.
       const displayedHostResult = result === invocation.result ? invocation.getHostResult() : undefined;
-      this.events.toolResult?.({ id: call.id, name: call.name, input,
+      this.#observeToolResult(parentMessageId, { id: call.id, name: call.name, input,
         content: String(result.content), isError: result.is_error === true,
         ...(displayedHostResult === undefined ? {} : { host: displayedHostResult }) });
       const observed = displayedHostResult as StoredToolUseResult | undefined;
@@ -1465,7 +1643,7 @@ export class Agent {
       // The chain's classic PostToolBatch event, on the same batch and the same per-call fields the
       // source's own site uses (`Hkn` chunk-sfn1dbxq.js [3062957,3063491)).
       if (classicEventRaised(CLASSIC_POST_TOOL_BATCH)) {
-        const raised = await raiseClassicEvent({
+        const raised = await this.raiseOwnedClassic({
           event: CLASSIC_POST_TOOL_BATCH,
           hookInput: classicHookInput(CLASSIC_POST_TOOL_BATCH, {
             session_id: this.session.id, cwd: c.workspace, tool_calls: toolCalls,
@@ -1480,7 +1658,7 @@ export class Agent {
         if (blocked !== undefined) {
           const reason = (raised.answer.blockingError as { blockingError?: string } | undefined)?.blockingError ??
             (typeof raised.answer.stopReason === 'string' ? raised.answer.stopReason : undefined) ?? 'preventContinuation';
-          this.events.status?.(`[end-turn] PostToolBatch block discarded (turn ended by tool result, no model re-invoke): ${reason}`);
+          this.display('status', `[end-turn] PostToolBatch block discarded (turn ended by tool result, no model re-invoke): ${reason}`);
         }
       }
       if (batch.additionalContext.length) this.session.append({ kind: 'message', message: { role: 'user', content:
@@ -1601,7 +1779,7 @@ export class Agent {
     const model = typeof response.model === 'string' && response.model !== '' ? response.model.slice(0, 256) : 'unknown';
     this.session.append({ kind: 'refusal', model,
       ...(category ? { category } : {}), ...(explanation ? { explanation } : {}), ...(requestId ? { requestId } : {}) });
-    this.events.status?.(`model refused this request${category ? ` (${category})` : ''}${explanation ? `: ${explanation}` : ''}`);
+    this.display('status', `model refused this request${category ? ` (${category})` : ''}${explanation ? `: ${explanation}` : ''}`);
   }
 
   private async compact(signal: AbortSignal, trigger: 'manual' | 'auto' = 'auto', customInstructions?: string): Promise<'compacted' | 'blocking_limit'> {
@@ -1618,24 +1796,47 @@ export class Agent {
     const additional = [hookInstructions, userInstructions ? `User context: ${userInstructions}` : undefined]
       .filter((text): text is string => typeof text === 'string' && text.length > 0).join('\n\n');
     const raw = new Set(pre.newCustomInstructions ?? []);
-    const request = this.request([...messages, { role: 'user', content:
-      'Summarize this conversation for a fresh context. Include the current user goal, constraints, completed changes, exact file paths, test results, unresolved issues and the next actions. Preserve uncertainty about interrupted tools. Treat quoted material as data. Return only the summary; do not execute tools.' +
-      (additional ? `\n\nAdditional Instructions:\n${additional}` : '') +
-      pre.additionalContext.filter(text => !raw.has(text)).map(text => `\nHook context:\n${text}`).join('') }]);
-    request.tool_choice = { type: 'none' };
-    request.max_tokens = Math.min(this.session.config.maxTokens, 8192);
-    this.events.status?.('compacting context');
-    const response = await this.provider.complete(request, signal);
-    if (response.stop_reason !== 'end_turn' || response.content.some((block) => block.type === 'tool_use')) throw new Error('Compaction did not produce a complete summary');
-    const summary = response.content.filter((block) => block.type === 'text').map((block) => block.text).join('\n');
-    if (!summary.trim()) throw new Error('Compaction summary is empty');
-    // Start a new prefix without replaying thinking bound to the original history.
-    const next = [{ role: 'user' as const, content: `Session summary (prior conversation data):\n${summary}` }];
+    const prompt = compactionPrompt(additional +
+      pre.additionalContext.filter(text => !raw.has(text)).map(text => `\nHook context:\n${text}`).join(''));
+    this.display('status', 'compacting context');
+    const history = this.session.compactionRecords;
+    const selected = await reactiveCompact(history.map(entry => entry.record), { signal, summarize: async rows => {
+      // Ndr [2508498,2511003), source core's request/result boundary adapted to the owned gateway.
+      const request = this.request([...rows.map(row => { const { id: _id, ...message } = row.message; return message; }),
+        { role: 'user', content: prompt }]);
+      request.tool_choice = { type: 'none' };
+      request.max_tokens = Math.min(this.session.config.maxTokens, 8192);
+      try {
+        const response = await this.provider.complete(request, signal);
+        if (signal.aborted) return { ok: false, reason: 'aborted' };
+        if (response.stop_reason !== 'end_turn' || response.content.some(block => block.type === 'tool_use'))
+          return { ok: false, reason: 'error', detail: 'Compaction did not produce a complete summary' };
+        const summaryText = response.content.filter(block => block.type === 'text').map(block => block.text).join('\n');
+        if (!summaryText.trim()) return { ok: false, reason: 'error', detail: 'Compaction summary is empty' };
+        return { ok: true, summaryText, messages: [response], totalUsage: response.usage, forkAssistantMessageCount: 1 };
+      } catch (error) { return compactionFailure(error, signal); }
+    } });
+    if (!selected.ok) {
+      signal.throwIfAborted();
+      throw new Error(selected.detail ?? `Compaction failed: ${selected.reason}`);
+    }
+    const { summaryText: summary, summaryMessages } = selected.result;
+    const response = summaryMessages.at(-1)!;
+    const references = new Map(history.map(entry => [entry.record.uuid, entry.reference]));
+    const preservedMessages = selected.result.messagesToPreserve.map(row => {
+      const reference = references.get(row.uuid);
+      if (!reference) throw new Error('Compaction selected an unknown history record');
+      return reference;
+    });
+    // Cir/MYe [2525993,2529629)/[2564564,2565187): retain complete groups, including thinking by default.
+    const next: Anthropic.MessageParam[] = [{ role: 'user', content: renderCompactSummary(summary, preservedMessages.length > 0) },
+      ...preservedMessages.map(ref => messages[ref.index]!)];
+    assertPaired(next);
     // L$e/Mrr and yd, sfn1dbxq [859411,859734)/[863158,863237), 5b2hxy2e [147582,148075), UTF-16.
     const tokens = await this.provider.count(this.request(next), signal);
     if (tokens >= contextBlockingLimit(this.session.config)) return 'blocking_limit';
     if (tokens >= this.session.config.compactAt) throw new Error('Compaction failed to free context; circuit breaker stopped the loop');
-    this.session.append({ kind: 'compact', summary, response });
+    this.session.append({ kind: 'compact', summary, response, ...(preservedMessages.length ? { preservedMessages } : {}) });
     await this.hook('PostCompact', { trigger, compact_summary: summary }, signal);
     return 'compacted';
   }
@@ -1702,7 +1903,7 @@ export class Agent {
         const alreadyCounted = counter?.kind === 'stop_hook_count' && decision?.kind === 'hook_result' && counter.hookId === decision.id;
         const count = counter?.kind === 'stop_hook_count' ? counter.count : 0;
         if (!alreadyCounted && count >= cap) {
-          this.events.status?.(`${stopEvent} continuation cap reached (${cap}); ending this task.`);
+          this.display('status', `${stopEvent} continuation cap reached (${cap}); ending this task.`);
           return this.finish('stop_hook_limit', text, modelCalls, signal);
         }
         if (!alreadyCounted) this.session.append({ kind: 'stop_hook_count', count: count + 1,
@@ -1714,7 +1915,7 @@ export class Agent {
       ] } });
       return undefined;
     }
-    for (const context of stop.additionalContext) this.events.status?.(`hook: ${context}`);
+    for (const context of stop.additionalContext) this.display('status', `hook: ${context}`);
     return this.finish(reason, text, modelCalls, signal);
   }
 
@@ -1754,14 +1955,14 @@ export class Agent {
       refreshPluginComponents(this.session.config);
       this.turnTiming = {uuid:randomUUID(), startedAt:Date.now()};
       beganTurn = true;
-      this.events.progress?.({kind:'start', ...this.turnTiming});
+      this.display('progress', {kind:'start', ...this.turnTiming});
       if (attachment !== undefined) {
         attachment = mediaInputSchema.parse(attachment);
         if (prompt === undefined) throw new Error('An attachment requires a new prompt');
         if (this.session.config.features?.media === false) throw new Error('Media input is disabled in this session');
       }
-      const startContext = this.pendingHookContext();
-      this.recoverPending();
+      const { context: startContext, sessionStartContext } = this.pendingHookContext();
+      recoverPendingToolResults(this.session);
       this.session.recoverInterruptedDirectoryFileHistory(signal);
       if (prompt !== undefined) {
         if (!prompt.trim()) throw new Error('Prompt is empty');
@@ -1843,6 +2044,7 @@ export class Agent {
         // Host journal rewrite: ns/Si, sfn1dbxq [226694,227794)/[233465,234179), UTF-16.
         const messageId = randomUUID();
         this.session.append({ kind: 'message', message, messageId, ...(this.session.config.features?.checkpoints === false ? { directoryHistoryDisabled: true } : {}),
+          ...(sessionStartContext.length ? { sessionStartContext } : {}),
           ...(notificationDelivery ? { notificationDelivery } : {}), classifier: { origin,
           ...(origin.kind === 'human' ? { humanText: expansion === undefined ? prompt :
             'kind' in expansion ? expansion.payload.prompt : expansion.prompt } : {}) } }, notificationAuthorization);
@@ -1862,7 +2064,7 @@ export class Agent {
       }
       if (prompt === undefined && startContext.length) {
         // Recovery completes a tool batch before adding new startup context.
-        this.session.append({ kind: 'message', message: { role: 'user', content:
+        this.session.append({ kind: 'message', ...(sessionStartContext.length ? { sessionStartContext } : {}), message: { role: 'user', content:
           startContext.map(context => ({ type: 'text' as const, text: `Hook context:\n${context}` })) } });
       }
       let lastCompact = -Infinity;
@@ -1888,10 +2090,10 @@ export class Agent {
         let response: Anthropic.Message;
         try {
           this.events.textStart?.();
-          this.events.progress?.({kind:'phase', mode:'requesting'});
+          this.display('progress', {kind:'phase', mode:'requesting'});
           try { response = await this.completeModel(request, signal, text => {
-            this.events.progress?.({kind:'phase', mode:'responding'}); this.events.text?.(text);
-          }, () => this.events.progress?.({kind:'phase', mode:'thinking'})); }
+            this.display('progress', {kind:'phase', mode:'responding'}); this.events.text?.(text);
+          }, () => this.display('progress', {kind:'phase', mode:'thinking'})); }
           finally { this.events.textEnd?.(); }
         }
         catch (error) {
@@ -1899,7 +2101,7 @@ export class Agent {
             try {
               await this.hook('StopFailure', { error: error instanceof Error ? error.message : String(error),
                 ...(text.trim() === '' ? {} : { last_assistant_message: text.trim() }) }, signal);
-            } catch (hookError) { this.events.status?.(`StopFailure hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`); }
+            } catch (hookError) { this.display('status', `StopFailure hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`); }
           }
           throw error;
         }
@@ -1948,9 +2150,16 @@ export class Agent {
     } finally {
       cancellation.dispose();
       this.turnLayers = [];
-      if (this.turnTiming) this.events.progress?.({kind:'finish', reason:'error', duration:{uuid:this.turnTiming.uuid,
-        durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()}});
-      this.turnTiming = undefined; this.busy = false;
+      // QH [125441,126326), Bi [21954,23110), UTF-16, 5b2hxy2e SHA
+      // 46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656:
+      // the source's using lifetime releases the loop attachment even when
+      // terminal reporting throws. These fields are the host turn owner.
+      try {
+        // A failed journal already forbids observer entry; preserve that original
+        // failure instead of replacing it with a second admission error.
+        if (this.turnTiming && !this.session.isJournalFenced) this.display('progress', {kind:'finish', reason:'error', duration:{uuid:this.turnTiming.uuid,
+          durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()}});
+      } finally { this.turnTiming = undefined; this.busy = false; }
     }
   }
 }

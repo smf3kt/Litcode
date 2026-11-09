@@ -150,11 +150,15 @@ export const emptySessionPermissionUpdates = (): SessionPermissionUpdates => ({ 
   alwaysAllowRules: {}, alwaysDenyRules: {}, alwaysAskRules: {}, additionalWorkingDirectories: new Map(),
   isBypassPermissionsModeAvailable: false });
 
+export type PermissionWriteOrigin = {
+  sessionId: string;
+  onWrite?(work: Promise<import('./permission-settings.js').PermissionWriteResult>): void;
+};
 export type LivePermissionOwner = {
   prepareAutoMode?(): void;
   state(): SessionPermissionUpdates;
   workingDirectories(readOnly: boolean): import('./path-identity.js').WorkingDirectories;
-  adoptUpdates?(updates: readonly PermissionUpdate[]): PermissionUpdatesOutcome;
+  adoptUpdates?(updates: readonly PermissionUpdate[], origin?: PermissionWriteOrigin): PermissionUpdatesOutcome;
 };
 const permissionOwners = new WeakMap<PermissionPolicy, LivePermissionOwner>();
 const planFiles = new WeakMap<PermissionPolicy, string>();

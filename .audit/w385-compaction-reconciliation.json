@@ -1,0 +1,13 @@
+{
+  "identity": "4877f66454b687c12248b0f2c3f8523503c8b7335fb7d715b4195589f5cffeed",
+  "productChanged": false,
+  "sourceVerification": { "exit": 0, "copiedDeclarations": 54, "modules": 5, "sourceEntryPointsExecuted": 0 },
+  "coreAndAgent": { "exit": 0, "passed": 6, "log": "/private/tmp/w385-compaction-reconcile-test.log" },
+  "provenance": { "exit": 0, "passed": 2, "log": "/private/tmp/w385-compaction-reconcile-provenance.log" },
+  "cli": { "exit": 0, "scenarios": 2, "coldReaders": 4, "forks": 4, "log": "/private/tmp/w385-compaction-reconcile-cli.log" },
+  "upstreamCalls": 0,
+  "correction": "Ordinary retained-tail compaction already implemented; recent summary-only gap claims superseded",
+  "stillUnported": ["enabled optional precompute/cache/policy variants"],
+  "activePackage": "W385",
+  "remainingIssues": [35, 34, 7, 11]
+}

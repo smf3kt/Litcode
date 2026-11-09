@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 
 const project=path.resolve(import.meta.dirname,'..');
 const base=process.env.CLAUDE_JOB_DIR?path.join(process.env.CLAUDE_JOB_DIR,'tmp'):os.tmpdir();
-const work=fs.mkdtempSync(path.join(base,'checkpoint-bracket-')),binary=path.join(project,'native/directory-read/read');
+const work=fs.realpathSync(fs.mkdtempSync(path.join(base,'checkpoint-bracket-'))),binary=path.join(project,'native/directory-read/read');
 const {Session}=await import(pathToFileURL(path.join(project,'dist/session.js')));
 const {defaultConfig}=await import(pathToFileURL(path.join(project,'dist/agent.js')));
 const {checkpointConversation}=await import(pathToFileURL(path.join(project,'dist/rewind.js')));

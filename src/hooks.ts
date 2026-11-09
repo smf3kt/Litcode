@@ -22,7 +22,11 @@
 //     verbatim and `continue: false` is ignored.
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from 'node:util';
+import type { HookResolverObservation } from './hook-resolver-observer.js';
+import { withHookToolScope } from './hook-tool-observer.js';
+import { observeHookCommandResult } from './hook-command-observer.js';
 import { basename } from "node:path";
 import { z } from "zod";
 import { validateHookTerminalSequence } from "./hook-terminal.js";
@@ -117,11 +121,13 @@ export const hookDefinitionSchema = z.union([
 // Absent command type stays absent when legacy session/config JSON is parsed.
 export type HookDefinition = z.infer<typeof hookDefinitionSchema>;
 export const MAX_HOOK_DEFINITIONS = 1024;
+export const hookPluginOriginSchema = z.object({ id: z.string().min(1), name: z.string().min(1), root: z.string().min(1) }).strict();
 export const hookEntrySchema = z.union([
   hookDefinitionSchema,
   z.object({
     matcher: commonHookFields.matcher,
     hooks: z.array(hookDefinitionSchema).min(1).max(MAX_HOOK_DEFINITIONS),
+    pluginOrigin: hookPluginOriginSchema.optional(),
   }).strict(),
 ]);
 export type HookEntry = z.infer<typeof hookEntrySchema>;
@@ -184,6 +190,7 @@ export class HookLifecycle {
 
 export type FlattenedHookDefinition = {
   definition: HookDefinition;
+  pluginId?: string;
   entryIndex: number;
   /** null identifies a legacy flat entry. */
   innerIndex: number | null;
@@ -220,9 +227,11 @@ export function flattenHookDefinitions(config: HooksConfig, event: HookEvent): F
     for (const [position, definition] of definitions.entries()) {
       const innerIndex = group ? position : null;
       const matchers = [group?.matcher, definition?.matcher].filter((matcher): matcher is string => typeof matcher === "string");
-      const digest = createHash("sha256").update(JSON.stringify({ event, entryIndex, innerIndex, groupMatcher: group?.matcher, definition })).digest("hex");
+      const digest = createHash("sha256").update(JSON.stringify({ event, entryIndex, innerIndex, groupMatcher: group?.matcher, definition,
+        ...(group?.pluginOrigin === undefined ? {} : { pluginId: group.pluginOrigin.id }) })).digest("hex");
       const identity = { event, key: `${event}:${entryIndex}:${innerIndex ?? "flat"}:${digest}` };
-      flattened.push({ definition, entryIndex, innerIndex, matchers, identity, matches: value => matchers.every(matcher => matcherMatches(matcher, value)) });
+      flattened.push({ definition, entryIndex, innerIndex, matchers, identity,
+        ...(group?.pluginOrigin === undefined ? {} : { pluginId: group.pluginOrigin.id }), matches: value => matchers.every(matcher => matcherMatches(matcher, value)) });
     }
   }
   return flattened;
@@ -233,6 +242,7 @@ export type CallbackHookDefinition = Extract<HookDefinition, { type: "callback" 
 export type McpHookDefinition = Extract<HookDefinition, { type: "mcp_tool" }>;
 export type HookCommandHome = { value: string | undefined };
 export type AsyncHookRequest = {
+  pluginId?: string;
   definition: Extract<HookDefinition, { type?: "command" }>;
   event: HookEvent;
   payload: HookPayload;
@@ -256,6 +266,8 @@ export type CommandHookExecution = {
   aborted: boolean;
 };
 export type HookRunOptions = {
+  /** One-use observation from the actual resolver/HTTP boundary; owning Agent binds its journal. */
+  observeResolver?: (authorization: object) => void;
   /** Parent resolver owns model calls, tool limits, cancellation and billing. */
   resolveModelHook?: (definition: ModelHookDefinition, event: HookEvent, payload: HookPayload, signal: AbortSignal) => Promise<unknown>;
   /** Trusted host callback; the owner must share lifecycle across resolver wrappers. */
@@ -863,6 +875,45 @@ export type HookCommandHandle = {
   cleanup(): void;
 };
 
+type HookCommandIdentity = { command: string; cwd: string; timeoutMs: number; input: string;
+  signal: AbortSignal; commandHome?: HookCommandHome; pluginId?: string };
+type OwnedHookCommand = Pick<HookCommandHandle, 'done' | 'pid' | 'detachForeground' | 'kill' | 'cleanup'> & {
+  restoreForeground(): void;
+  associateJob?: (job: { jobId: string; generation: string }) => void;
+};
+const ownedHookCommands = new WeakMap<HookCommandHandle, { identity: HookCommandIdentity;
+  bindings: PropertyDescriptorMap; prototype: object | null; background: HookCommandHandle['background'];
+  command: OwnedHookCommand; claimed: boolean; record?: ReturnType<typeof hookExecutionRecorder> }>();
+
+// Adapt m5e/Axe/kbt, chunk-sfn1dbxq.js SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+// [2955889,2958184)/[82919,87427)/[625629,626248), zero-based half-open UTF-16.
+// The source transfers the identical live command once. Pin this host's public handle at spawn and admission.
+export function claimOwnedHookCommand(handle: HookCommandHandle, identity: HookCommandIdentity, taskId: string): OwnedHookCommand | undefined {
+  const saved = ownedHookCommands.get(handle);
+  if (!saved || saved.claimed || saved.command.pid === undefined || saved.command.pid <= 1 || Object.getPrototypeOf(handle) !== saved.prototype ||
+      saved.identity.command !== identity.command || saved.identity.cwd !== identity.cwd ||
+      saved.identity.timeoutMs !== identity.timeoutMs || saved.identity.input !== identity.input || saved.identity.signal !== identity.signal ||
+      saved.identity.pluginId !== identity.pluginId ||
+      (saved.identity.commandHome === undefined) !== (identity.commandHome === undefined) ||
+      saved.identity.commandHome?.value !== identity.commandHome?.value) return;
+  const keys = Object.keys(saved.bindings);
+  if (Reflect.ownKeys(handle).length !== keys.length) return;
+  for (const key of keys) {
+    const before = saved.bindings[key];
+    const after = Object.getOwnPropertyDescriptor(handle, key);
+    if (!before || !after || before.value !== after.value || before.get !== after.get || before.set !== after.set ||
+        before.configurable !== after.configurable || before.enumerable !== after.enumerable || before.writable !== after.writable) return;
+  }
+  if (identity.signal.aborted || !saved.background(taskId)) return;
+  saved.claimed = true;
+  let associated = false;
+  return { ...saved.command, associateJob: saved.record ? job => {
+    if (associated) throw new Error('Hook command job association already consumed');
+    associated = true;
+    saved.record?.({ phase: 'adopted_job', ...job });
+  } : undefined };
+}
+
 export function startHookCommand(
   command: string,
   cwd: string,
@@ -871,7 +922,9 @@ export function startHookCommand(
   signal: AbortSignal,
   adoptable = true,
   commandHome?: HookCommandHome,
+  pluginId?: string,
 ): HookCommandHandle {
+  const home = commandHome === undefined ? undefined : { value: commandHome.value };
   let handle!: HookCommandHandle;
   let backgrounded = false;
   let transferred = false;
@@ -897,7 +950,7 @@ export function startHookCommand(
     get pid() { return childRef?.pid; },
     background: (taskId: string) => {
       void taskId;
-      if (processSettled) return false;
+      if (processSettled || backgrounded) return false;
       backgrounded = true;
       return true;
     },
@@ -919,7 +972,7 @@ export function startHookCommand(
     try {
       child = spawn("/bin/sh", ["-c", command], {
         cwd,
-        env: commandHome === undefined ? process.env : { ...process.env, HOME: commandHome.value },
+        env: home === undefined ? process.env : { ...process.env, HOME: home.value },
         detached: true, // own process group so the whole tree can be killed
         stdio: ["pipe", "pipe", "pipe"],
       });
@@ -1030,14 +1083,12 @@ export function startHookCommand(
       let parsed: unknown;
       try { parsed = JSON.parse(line); } catch { return; }
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || (parsed as { async?: unknown }).async !== true) return;
-      const id = `async_hook_${child.pid}`;
-      // `UF` detaches the foreground deadline/listeners and resolves
-      // status 0/backgrounded only after the owner claimed the process through
-      // `m5e`; an owner-side rejection is reported as a foreground failure and
-      // the process keeps its original owner.
-      if (!handle.background(id)) return;
+      // Adapt UF [2969279,2980094), m5e [2955889,2958184) and Axe
+      // [82919,87427), chunk-sfn1dbxq.js, zero-based half-open UTF-16.
+      // Header parsing proposes transfer to our asynchronous owner callback.
+      // Only registry acceptance may background/detach the original process;
+      // rejection must retain its foreground deadline and abort listener.
       transferred = true;
-      detachForeground();
       // The captured header bytes stay part of the final output for the owner.
       transfer({ stdout: decode(Buffer.concat(outParts)), stderr: decode(Buffer.concat(errParts)),
         code: null, timedOut: false, aborted: false, truncated, spawnError: null, backgrounded: true });
@@ -1109,6 +1160,11 @@ export function startHookCommand(
     });
     child.on("close", () => finish());
   });
+  ownedHookCommands.set(handle, { identity: { command, cwd, timeoutMs, input, signal, pluginId, ...(home === undefined ? {} : { commandHome: home }) },
+    bindings: Object.getOwnPropertyDescriptors(handle), prototype: Object.getPrototypeOf(handle), background: handle.background,
+    command: { done: done.then(raw => ({ ...raw })), pid: childRef?.pid,
+      detachForeground: handle.detachForeground, kill: handle.kill, cleanup: handle.cleanup,
+      restoreForeground: () => { backgrounded = false; } }, claimed: false });
   return handle;
 }
 
@@ -1151,14 +1207,21 @@ function httpHookHeaders(definition: Extract<HookDefinition, { type: "http" }>, 
   }
   return headers;
 }
-async function runHookHttp(definition: Extract<HookDefinition, { type: "http" }>, input: string, timeoutMs: number, signal: AbortSignal, headers: Headers): Promise<RawHookResult> {
+async function runHookHttp(definition: Extract<HookDefinition, { type: "http" }>, input: string, timeoutMs: number, signal: AbortSignal, headers: Headers,
+  event: HookEvent, observation: { identity: HookOnceRecord; observer?: HookRunOptions['observeResolver'] }): Promise<RawHookResult> {
   if (signal.aborted) return emptyRaw({ aborted: true });
+  // ETn [2919219,2921427), UTF-16, sfn1dbxq SHA
+  // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+  // Observe local request/body settlement before translating the transport result;
+  // neither a response nor cancellation proves remote effects have settled.
+  const record = hookExecutionRecorder(definition, event, observation);
+  record({ phase: 'admitted' });
   const controller = new AbortController();
   const onAbort = () => controller.abort();
   signal.addEventListener("abort", onAbort, { once: true });
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
-  try {
+  const execute = async (): Promise<RawHookResult> => {
     const response = await fetch(definition.url, { method: "POST", headers, body: input, signal: controller.signal, redirect: "manual" });
     if (response.status >= 300 && response.status < 400) {
       await response.body?.cancel();
@@ -1189,16 +1252,92 @@ async function runHookHttp(definition: Extract<HookDefinition, { type: "http" }>
     const stdout = decode(Buffer.concat(chunks));
     if (!parseHookJson(stdout)) return emptyRaw({ stderr: "HTTP hook returned malformed JSON object.", code: 1 });
     return emptyRaw({ stdout, code: 0 });
+  };
+  let returned: RawHookResult;
+  let outcome: 'fulfilled' | 'rejected' = 'fulfilled';
+  try {
+    returned = await execute();
   } catch {
-    return emptyRaw({ timedOut, aborted: signal.aborted, stderr: timedOut || signal.aborted ? "" : "HTTP hook transport failed.", code: 1 });
+    outcome = 'rejected';
+    returned = emptyRaw({ timedOut, aborted: signal.aborted, stderr: timedOut || signal.aborted ? "" : "HTTP hook transport failed.", code: 1 });
   } finally {
     clearTimeout(timer);
     signal.removeEventListener("abort", onAbort);
   }
+  // Journal errors must escape rather than becoming an ordinary HTTP diagnostic.
+  record({ phase: 'settled', outcome });
+  record({ phase: 'returned', outcome: returned.timedOut ? 'timed_out' : returned.aborted ? 'aborted' : 'completed' });
+  return returned;
 }
-async function runResolvedHook<D extends HookDefinition>(definition: D, event: HookEvent, payload: HookPayload, signal: AbortSignal, timeoutMs: number,
-  resolver: (definition: D, event: HookEvent, payload: HookPayload, signal: AbortSignal) => Promise<unknown>, label: string, release: () => void): Promise<RawHookResult> {
+const resolverObservations = new WeakMap<object, { observer: NonNullable<HookRunOptions['observeResolver']>; event: HookResolverObservation }>();
+export function consumeHookResolverObservation(authorization: object, observer: NonNullable<HookRunOptions['observeResolver']>): HookResolverObservation | undefined {
+  const saved = resolverObservations.get(authorization); resolverObservations.delete(authorization);
+  return saved?.observer === observer ? structuredClone(saved.event) : undefined;
+}
+
+const commandResultForwarders = new WeakMap<object, (options: HookRunOptions, execution: CommandHookExecution) => void>();
+function hookExecutionRecorder(definition: Exclude<HookDefinition, { type: 'script' }>, event: HookEvent,
+  observation: { identity: HookOnceRecord; observer?: HookRunOptions['observeResolver'] }) {
+  const observer = observation.observer;
+  const binding = { invocationId: randomUUID(), event, resolverType: definition.type ?? 'command', definitionKey: observation.identity.key,
+    definitionSha256: createHash('sha256').update(JSON.stringify(definition)).digest('hex') };
+  const record = (transition: HookResolverObservation['transition']) => {
+    if (!observer) return;
+    const authorization = {};
+    resolverObservations.set(authorization, { observer, event: { ...binding, transition } });
+    try { observer(authorization); } finally { resolverObservations.delete(authorization); }
+  };
+  const commandResult = observer && commandResultForwarders.get(observer);
+  return Object.assign(record, { run: <T>(body: () => T) => withHookToolScope(observer, binding.invocationId, body),
+    commandResult: commandResult ?? ((options: HookRunOptions, execution: CommandHookExecution) =>
+      observeHookCommandResult(observer, binding.invocationId, options, execution)) });
+}
+
+type ConfiguredHookGrant = { snapshot: Omit<AsyncHookRequest, 'signal'>; signal: AbortSignal;
+  record: ReturnType<typeof hookExecutionRecorder>; started: boolean };
+const configuredHookGrants = new WeakMap<AsyncHookRequest, ConfiguredHookGrant>();
+const consumedConfiguredHookRequests = new WeakSet<AsyncHookRequest>();
+
+// UF [2969279,2980094), m5e [2955889,2958184), UTF-16, sfn1dbxq SHA
+// 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+// Keep the original selection identity when the registry normalizes async to sync.
+export async function runConfiguredHookCommand(request: AsyncHookRequest, signal: AbortSignal, options: HookRunOptions,
+  job?: { jobId: string; generation: string }): Promise<HookResult> {
+  const grant = configuredHookGrants.get(request);
+  if (consumedConfiguredHookRequests.has(request)) throw new Error('Configured hook request already consumed');
+  if (grant) {
+    configuredHookGrants.delete(request); consumedConfiguredHookRequests.add(request);
+    const { signal: originalSignal, ...snapshot } = request;
+    if (originalSignal !== grant.signal || !isDeepStrictEqual(snapshot, grant.snapshot)) throw new Error('Configured hook request changed');
+  }
+  const selected = grant?.snapshot ?? request;
+  const definition = selected.definition;
+  const { asyncRewake: _asyncRewake, ...foreground } = definition;
+  const timeout = typeof definition.timeout === 'number' && definition.timeout > 0 ? definition.timeout : selected.timeoutMs / 1000;
+  const observeResolver: NonNullable<HookRunOptions['observeResolver']> = authorization => {
+    if (!grant) throw new Error('Configured hook execution grant missing');
+    const event = consumeHookResolverObservation(authorization, observeResolver);
+    if (!event) throw new Error('Configured hook execution observation invalid');
+    if (event.transition.phase === 'admitted') {
+      grant.record(event.transition);
+      if (job) grant.record({ phase: 'async_job', ...job });
+      grant.started = true;
+    } else if (event.transition.phase === 'settled') grant.record(event.transition);
+    // The outer invocation owns the backgrounded return. Inner sync return is
+    // execution plumbing, not another foreground return for the original call.
+  };
+  // Pin the outer resolver, not the normalized inner command definition.
+  if (grant) commandResultForwarders.set(observeResolver, grant.record.commandResult);
+  return runHooks({ [selected.event]: [{ ...foreground, async: false, timeout }] }, selected.event,
+    structuredClone(selected.payload), signal, { ...options, observeResolver: grant ? observeResolver : undefined });
+}
+
+async function runResolvedHook<D extends ModelHookDefinition | CallbackHookDefinition | McpHookDefinition>(definition: D, event: HookEvent, payload: HookPayload, signal: AbortSignal, timeoutMs: number,
+  resolver: (definition: D, event: HookEvent, payload: HookPayload, signal: AbortSignal) => Promise<unknown>, label: string, release: () => void,
+  observation: { identity: HookOnceRecord; observer?: HookRunOptions['observeResolver'] }): Promise<RawHookResult> {
   if (signal.aborted) { release(); return emptyRaw({ aborted: true }); }
+  const record = hookExecutionRecorder(definition, event, observation);
+  try { record({ phase: 'admitted' }); } catch (error) { release(); throw error; }
   const controller = new AbortController();
   let timer: NodeJS.Timeout | undefined;
   let onAbort = (): void => {};
@@ -1209,17 +1348,23 @@ async function runResolvedHook<D extends HookDefinition>(definition: D, event: H
   });
   // Invoke in this synchronous turn so a claim never precedes a deferred start.
   let resolved: Promise<unknown>;
-  try { resolved = Promise.resolve(resolver(definition, event, payload, controller.signal)); }
+  try { resolved = Promise.resolve(record.run(() => resolver(definition, event, payload, controller.signal))); }
   catch { resolved = Promise.reject(new Error(`${label} hook resolver failed.`)); }
   const execution = resolved.then(value => {
+    record({ phase: 'settled', outcome: 'fulfilled' });
     const stdout = typeof value === "string" ? value : JSON.stringify(value);
     if (typeof stdout !== "string" || Buffer.byteLength(stdout) > MAX_HOOK_OUTPUT_BYTES) return emptyRaw({ stderr: `${label} hook response exceeded output cap or was absent.`, code: 1, truncated: true });
     const json = parseHookJson(stdout);
     if (!json) return emptyRaw({ stderr: `${label} hook returned malformed JSON object.`, code: 1 });
     if (typeof json.ok === "boolean") return emptyRaw({ code: json.ok ? 0 : 2, stderr: asString(json.reason) ?? `${label} hook blocked the event.`, stdout: json.ok ? stdout : "" });
     return emptyRaw({ stdout, code: 0 });
-  }).catch(() => emptyRaw({ stderr: `${label} hook resolver failed.`, code: 1 })).finally(release);
-  try { return await Promise.race([execution, cancelled]); }
+  }, error => { record({ phase: 'settled', outcome: 'rejected' }); throw error; })
+    .catch(() => emptyRaw({ stderr: `${label} hook resolver failed.`, code: 1 })).finally(release);
+  try {
+    const returned = await Promise.race([execution, cancelled]);
+    record({ phase: 'returned', outcome: returned.timedOut ? 'timed_out' : returned.aborted ? 'aborted' : 'completed' });
+    return returned;
+  }
   finally { if (timer) clearTimeout(timer); signal.removeEventListener("abort", onAbort); }
 }
 
@@ -1579,10 +1724,23 @@ export async function runHooks(
     }
     const definition = parsed.data;
     if (matcherValue !== undefined && !flattened.matches(matcherValue)) continue;
+    // $dn [3009066,3009247), sfn1dbxq SHA
+    // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+    // UTF-16: startup/setup selection excludes HTTP before execution or once claims.
+    if (definition.type === 'http' && (event === 'SessionStart' || event === 'Setup')) continue;
     if (definition.once && lifecycle.has(flattened.identity.key)) continue;
     if (signal.aborted) {
       result.additionalContext.push(`[${event} hook: not run, cancelled before start]`);
       break;
+    }
+
+    // Adapt Bkr [3023184,3023443), sfn1dbxq SHA
+    // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+    // UTF-16: agent verdicts cannot answer PermissionRequest. Its catch reports
+    // a nonblocking execution error; reject before reserving a host resolver/once slot.
+    if (definition.type === 'agent' && event === 'PermissionRequest') {
+      fail(`[${event} hook: agent-type hooks are not supported for PermissionRequest events (an agent hook answers ok or not ok, and cannot return the allow / deny decision a permission request needs). Use a command- or http-type hook instead.]`);
+      continue;
     }
 
     const seconds = hookTimeoutSeconds(definition, event, options.environment ?? process.env);
@@ -1652,13 +1810,13 @@ export async function runHooks(
       result.executedHooks = (result.executedHooks ?? 0) + 1;
     }
     let raw: RawHookResult;
-    if (definition.type === "http") raw = await runHookHttp(definition, input, timeoutMs, signal, headers!);
+    if (definition.type === "http") raw = await runHookHttp(definition, input, timeoutMs, signal, headers!, event, { identity: flattened.identity, observer: options.observeResolver });
     else if (definition.type === "prompt" || definition.type === "agent") {
-      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveModelHook!, "Model", release!);
+      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveModelHook!, "Model", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "callback") {
-      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveCallbackHook!, "Callback", release!);
+      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveCallbackHook!, "Callback", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "mcp_tool") {
-      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveMcpHook!, "MCP", release!);
+      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveMcpHook!, "MCP", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "script") {
       // This build refuses script hooks: `ito` throws "script hooks are not available in this
       // build" (chunk-n3ykh62m.js offset 409142). The adapter catches it, reports the message as
@@ -1672,23 +1830,50 @@ export async function runHooks(
       }
       continue;
     } else if (asyncCommand) {
+      let commandHome: HookCommandHome | undefined;
+      try { commandHome = options.commandHome?.(flattened.identity); }
+      catch { result.additionalContext.push(`[${event} hook: async owner registration failed]`); continue; }
+      const request: AsyncHookRequest = { definition, event, payload, input, cwd, timeoutMs, signal, commandHome, pluginId: flattened.pluginId };
+      const { signal: originalSignal, ...snapshot } = request;
+      const grant: ConfiguredHookGrant = { snapshot: structuredClone(snapshot), signal: originalSignal, started: false,
+        record: hookExecutionRecorder(definition, event, { identity: flattened.identity, observer: options.observeResolver }) };
+      configuredHookGrants.set(request, grant);
+      let registered = false;
       try {
-        const commandHome = options.commandHome?.(flattened.identity);
-        const id = await options.startAsyncCommand!({ definition, event, payload, input, cwd, timeoutMs, signal, commandHome });
+        const id = await options.startAsyncCommand!(request);
         if (typeof id !== "string" || !id) throw new Error("Missing owned task id");
         (result.backgroundTasks ??= []).push(id);
+        registered = true;
       } catch { result.additionalContext.push(`[${event} hook: async owner registration failed]`); }
+      finally { configuredHookGrants.delete(request); }
+      if (grant.started && registered) grant.record({ phase: 'returned', outcome: 'backgrounded' });
       continue;
     } else {
-      const commandHome = options.commandHome?.(flattened.identity);
-      const handle = startHookCommand(definition.command, cwd, timeoutMs, input, signal, options.adoptAsyncHeaders !== false, commandHome);
+      const resolvedHome = options.commandHome?.(flattened.identity);
+      const commandHome = resolvedHome === undefined ? undefined : { value: resolvedHome.value };
+      // UF [2969279,2980094), UTF-16, sfn1dbxq SHA
+      // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da:
+      // foreground handoff (Mr) is distinct from process/stream settlement (gr).
+      const record = hookExecutionRecorder(definition, event, { identity: flattened.identity, observer: options.observeResolver });
+      record({ phase: 'admitted' });
+      const handle = startHookCommand(definition.command, cwd, timeoutMs, input, signal, options.adoptAsyncHeaders !== false, commandHome, flattened.pluginId);
+      const owned = ownedHookCommands.get(handle);
+      if (owned) owned.record = record;
+      const settlement = handle.done.then(final => {
+        record({ phase: 'settled', outcome: final.spawnError ? 'rejected' : 'fulfilled' });
+      });
+      // An adopted process can settle after the runner returns. A failed late
+      // journal write fences its owner; the observation remains unknown.
+      void settlement.catch(() => {});
+      const returned = (value: RawHookResult) => record({ phase: 'returned', outcome:
+        value.timedOut ? 'timed_out' : value.aborted ? 'aborted' : 'completed' });
       options.onCommandHandle?.(handle);
       raw = await handle.result;
       if (raw.backgrounded) {
         let id: string;
         try {
           if (!options.startAsyncCommand) throw new Error("async command owner registry is pending parent integration");
-          id = await options.startAsyncCommand({ definition, event, payload, input, cwd, timeoutMs, signal, handle });
+          id = await options.startAsyncCommand({ definition, event, payload, input, cwd, timeoutMs, signal, commandHome, handle, pluginId: flattened.pluginId });
           if (typeof id !== "string" || !id) throw new Error("Missing owned task id");
         } catch {
           // A rejected registration leaves the process in the foreground's
@@ -1697,19 +1882,24 @@ export async function runHooks(
           // the same header-skipping rule as a registered completion.
           raw = await handle.done;
           handle.cleanup();
+          await settlement;
+          returned(raw);
           // The process ended, so the foreground reports it like any other
           // synchronous command (`UF` keeps the final result when `fo` is false).
-          options.onCommandResult?.({ command: definition.command, code: raw.code, stdout: raw.stdout,
+          record.commandResult(options, { command: definition.command, code: raw.code, stdout: raw.stdout,
             stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
           const output = interpretableRaw(raw);
           if (output && interpretRawCommand(event, definition, output, timeoutMs, result, displayLines)) stopContext = true;
           continue;
         }
         (result.backgroundTasks ??= []).push(id);
+        record({ phase: 'returned', outcome: 'backgrounded' });
         continue;
       }
       handle.cleanup();
-      options.onCommandResult?.({ command: definition.command, code: raw.code, stdout: raw.stdout,
+      await settlement;
+      returned(raw);
+      record.commandResult(options, { command: definition.command, code: raw.code, stdout: raw.stdout,
         stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
     }
 

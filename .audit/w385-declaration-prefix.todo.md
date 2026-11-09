@@ -1,6 +1,8 @@
 # W385 declaration-prefix preflight
 
-- [x] Preserve the complete child Session.append tuple through its budget wrapper. Real child/cold-journal regression, 111 affected tests, check/build and compiled child/transcript CLI pass at 212f728bfdc720169e4bdb63ed443902cfbb8dc0c0b85155af668eecfaad43ed. The #43 prototype is archived and inactive; its source gate remains open. See research/HANDOFF-2026-11-06.md.
+- [x] Preserve the complete child Session.append tuple through its budget wrapper. Real child/cold-journal regression, 111 affected tests, check/build and compiled child/transcript CLI pass at 212f728bfdc720169e4bdb63ed443902cfbb8dc0c0b85155af668eecfaad43ed. The original #43 prototype remains archived and inactive. Its subsequent source-driven replacement passed the original acceptance below. See research/HANDOFF-2026-11-06.md.
+
+- [x] Complete original #43 source persistence contract and copy/adapt rationale, then actual Agent/child/cancel/release/cold-reader/CLI death acceptance. Source attachment/resume fixtures, root/child durable association and retained compaction with receipt/revoke/reload controls are recorded in W385. This does not certify arbitrary effects or activate source precompute flags; #35 and #34 remain open.
 
 - [x] Persist present/missing external checkpoint witnesses and carry source-journal-authorized tracked identities into new successor checkpoints. Actual Agent, terminal, installed package and cold readers pass at `d4b8dfd34153b07323a152349a9b2f6217bf3216a6d930d8d944580dddc0de50`. See W385 for source ranges and validation scope.
 

@@ -73,7 +73,8 @@ export function tasksPanelSubtitle(items: readonly BackgroundTaskItem[]): string
 
 /** `RB` at 699056: a running row can be stopped. */
 export function backgroundTaskStoppable(item: BackgroundTaskItem): boolean {
-  return item.status === 'running' || item.status === 'queued' || item.status === 'recurring' || item.status === 'scheduled';
+  return item.status === 'running' || item.status === 'queued' || item.status === 'recurring' || item.status === 'scheduled' ||
+    (item.kind === 'agent' && item.status === 'interrupted');
 }
 
 export interface BackgroundTaskRow {

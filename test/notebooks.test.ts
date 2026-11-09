@@ -5,6 +5,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 
 import { createNotebookTools } from "../src/notebooks.js";
+import { SourceReadCache } from "../src/controlled-read-projection-source.js";
 import type { ToolContext, ToolDefinition } from "../src/tools.js";
 
 const tools = createNotebookTools();
@@ -141,7 +142,7 @@ test("notebook_edit preserves unrelated cells, metadata, ids, and outputs", asyn
   assert.deepEqual(nb.cells[2], markdown("md\n", "md"));
 });
 
-test("notebook_edit inserts a cell with a crypto UUID and code defaults", async () => {
+test("notebook_edit inserts a cell with a short random id and code defaults", async () => {
   const ws = tmpDir();
   write(ws, "nb.ipynb", notebook([markdown("first\n", "m1")]));
 
@@ -160,7 +161,7 @@ test("notebook_edit inserts a cell with a crypto UUID and code defaults", async 
   assert.equal(inserted.execution_count, null);
   assert.deepEqual(inserted.outputs, []);
   assert.deepEqual(inserted.metadata, {});
-  assert.match(String(inserted.id), /^[0-9a-f-]{36}$/);
+  assert.match(String(inserted.id), /^[0-9a-f]{8}$/);
   assert.equal(nb.cells[1]!.id, "m1");
 });
 
@@ -241,11 +242,10 @@ test("notebook_edit rejects duplicate cell ids", async () => {
   );
 });
 
-test("notebook_edit initializes or removes code fields on cell_type change", async () => {
+test("notebook_edit resets execution fields according to the original cell type", async () => {
   const ws = tmpDir();
   write(ws, "nb.ipynb", notebook([markdown("md\n", "m"), code("py\n", "c")]));
 
-  // markdown -> code initializes execution_count/outputs and keeps metadata.
   await run(
     "notebook_edit",
     { path: "nb.ipynb", cell_id: "m", cell_type: "code", new_source: "md\n" },
@@ -253,11 +253,10 @@ test("notebook_edit initializes or removes code fields on cell_type change", asy
   );
   const promoted = parse(ws, "nb.ipynb").cells[0]!;
   assert.equal(promoted.cell_type, "code");
-  assert.equal(promoted.execution_count, null);
-  assert.deepEqual(promoted.outputs, []);
+  assert.equal(promoted.execution_count, undefined);
+  assert.equal(promoted.outputs, undefined);
   assert.deepEqual(promoted.metadata, { collapsed: false });
 
-  // code -> markdown removes the code-only fields.
   await run(
     "notebook_edit",
     { path: "nb.ipynb", cell_id: "c", cell_type: "markdown", new_source: "py\n" },
@@ -265,9 +264,39 @@ test("notebook_edit initializes or removes code fields on cell_type change", asy
   );
   const demoted = parse(ws, "nb.ipynb").cells[1]!;
   assert.equal(demoted.cell_type, "markdown");
-  assert.equal("outputs" in demoted, false);
-  assert.equal("execution_count" in demoted, false);
+  assert.deepEqual(demoted.outputs, []);
+  assert.equal(demoted.execution_count, null);
   assert.deepEqual(demoted.metadata, { tags: [] });
+});
+
+test("notebook_edit uses cell-N after literal ids, preserves CRLF, and omits new ids before 4.5", async () => {
+  const ws = tmpDir();
+  const file = path.join(ws, "legacy.ipynb");
+  write(ws, "legacy.ipynb", notebook([markdown("first"), markdown("literal", "cell-0")], { nbformat_minor: 4 }).replaceAll("\n", "\r\n"));
+  await run("notebook_edit", {path:"legacy.ipynb", cell_id:"cell-0", new_source:"literal updated"}, makeContext(ws));
+  await run("notebook_edit", {path:"legacy.ipynb", cell_id:"cell-1", edit_mode:"insert", cell_type:"markdown", new_source:"inserted"}, makeContext(ws));
+  const nb = parse(ws, "legacy.ipynb");
+  assert.deepEqual(nb.cells.map(cell => cell.source), ["first", "literal updated", "inserted"]);
+  assert.equal(nb.cells[2]!.id, undefined);
+  assert.equal(fs.readFileSync(file, "utf8"), JSON.stringify(nb,null,1).replaceAll("\n","\r\n"));
+});
+
+test("notebook_edit refuses malformed UTF-8 and a target replaced before writing", async () => {
+  const ws = tmpDir(), file = path.join(ws,"nb.ipynb");
+  const original = notebook([markdown("original","a")]);
+  const invalid = Buffer.from(original);
+  invalid[invalid.indexOf("original")] = 255;
+  fs.writeFileSync(file,invalid);
+  const edit = {path:"nb.ipynb", cell_id:"a", new_source:"changed"};
+  await assert.rejects(run("notebook_edit",edit,makeContext(ws)),/invalid UTF-8/);
+  assert.deepEqual(fs.readFileSync(file),invalid);
+  write(ws, "nb.ipynb", original);
+  await assert.rejects(run("notebook_edit",edit,makeContext(ws,{fileHistory() {
+    fs.renameSync(file,file+".moved");
+    fs.writeFileSync(file,"replacement");
+  }})),/changed/);
+  assert.equal(fs.readFileSync(file,"utf8"),"replacement");
+  assert.equal(fs.readFileSync(file+".moved","utf8"),original);
 });
 
 test("notebook_read rejects malformed cell sources instead of altering them", async () => {
@@ -301,6 +330,27 @@ test("notebook tools reject non-notebooks, invalid JSON, and non-nbformat-4", as
 
   write(ws, "plain.txt", "hello");
   await assert.rejects(run("notebook_read", { path: "plain.txt" }, makeContext(ws)), /\.ipynb/);
+});
+
+test("session notebook edits require a current read and advance the identity after each write", async () => {
+  const ws = tmpDir(), name = "state.ipynb", file = path.join(ws, name);
+  const context = makeContext(ws, { readFileCache: new SourceReadCache(16) });
+  const input = { path: name, cell_id: "a", new_source: "one" };
+  write(ws, name, notebook([markdown("before", "a")]));
+  await assert.rejects(run("notebook_edit", input, context), /has not been read/);
+  await run("notebook_read", { path: name }, context);
+  fs.utimesSync(file, new Date(), new Date(Date.now() + 5000));
+  await assert.rejects(run("notebook_edit", input, context), /modified since read/);
+  await run("notebook_read", { path: name }, context);
+  fs.renameSync(file, file + ".old");
+  write(ws, name, notebook([markdown("replacement", "a")]));
+  await assert.rejects(run("notebook_edit", input, context), /modified since read/);
+  assert.equal(parse(ws, name).cells[0]!.source, "replacement");
+  await run("notebook_read", { path: name }, context);
+  await run("notebook_edit", input, context);
+  await run("notebook_edit", { ...input, new_source: "two" }, context);
+  assert.equal(parse(ws, name).cells[0]!.source, "two");
+  assert.equal(context.readFileCache?.get(fs.realpathSync(file))?.identity?.ino, String(fs.statSync(file, { bigint: true }).ino));
 });
 
 test("notebook_read truncates output at maxOutputBytes", async () => {

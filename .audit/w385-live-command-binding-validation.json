@@ -1,0 +1,23 @@
+{
+  "unit": "W385 #43 live-command binding",
+  "status": "verified bounded unit; durable protocol remains open",
+  "identity": "0ef54da6d08e10ed6b8ea793152a797a612cc3e49f4b0fd315df6b0352c58ea8",
+  "inputs": "2424c61e60a0b676be9e8db210dd1f46fa63af3174d462c83ae12d1136d19a14",
+  "validation": "7d9ff395b455ba9de35e755a512353263ca87d12f1d222262b347c30d04b0ed9",
+  "build": "c8d18f7f1d1bd8e30671330cde08fe841e32975d270ada1d79f3c5331f7e6756",
+  "sourceModule": "chunk-sfn1dbxq.js",
+  "sourceSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+  "sourceRanges": { "m5e": [2955889, 2958184], "Axe": [82919, 87427], "kbt": [625629, 626248] },
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "beforeFix": "2 real-command groups failed: copied handle admitted and header request omitted command HOME",
+    "focused": "3/3 pass, including compiled interactive CLI with real hook process and local scripted provider",
+    "typecheck": 0,
+    "build": 0,
+    "related": "node --import tsx --test test/async-hooks.test.ts test/hooks.test.ts test/runtime-resources.test.ts: 106 pass, 0 fail, 0 skip, normal local permissions",
+    "diffCheck": 0,
+    "upstreamRequests": 0,
+    "packageSmoke": "not_run; packaging unchanged"
+  },
+  "remaining": ["durable lifecycle and distinct attachment delivery association", "root/child/release/cold-reader/death-cut validation", "unknown-effect fences unchanged; no lock reclamation proof"]
+}

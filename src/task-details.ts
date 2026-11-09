@@ -25,7 +25,7 @@ export function initialTaskDetail(snapshot: BackgroundTaskSnapshot): string | un
   const job = snapshot.jobs[0];
   if (job !== undefined) return job.source === 'websocket' ? undefined : job.id;
   const agent = snapshot.agents[0];
-  return agent?.status === 'completed' ? undefined : agent?.id;
+  return agent?.status === 'completed' || agent?.status === 'interrupted' ? undefined : agent?.id;
 }
 
 // ct [8443,8612), chunk-yn0pfn70.js, UTF-16; ae and ra use existing source host seams.

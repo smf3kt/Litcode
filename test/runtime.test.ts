@@ -19,7 +19,7 @@ import { createPluginTools, discoverInstalledPluginComponents } from '../src/plu
 import { HOOK_EVENTS, type HooksConfig } from '../src/hooks.js';
 import { activateTouchedSkills, discoverTouchedSkills } from '../src/skill-catalog.js';
 import { PathApprovalCallOwner } from '../src/path-approval-call-owner.js';
-import { describeDirectoryWriteInput, directoryWriteFingerprint } from '../src/directory-publication-authorization.js';
+import { describeDirectoryWriteInput, directoryWriteFingerprint, directoryWriteInputSchema } from '../src/directory-publication-authorization.js';
 import type { ModelProvider } from '../src/provider.js';
 import { Session, type SessionConfig } from '../src/session.js';
 import { createTools, type ToolContext, type ToolDefinition } from '../src/tools.js';
@@ -678,7 +678,7 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
     return { count: async () => 1, complete: async () => {
       const first = calls++ === 0;
       return { id: 'fixture', model: 'fixture', type: 'message', role: 'assistant',
-        content: first ? [{ type: 'tool_use', id, name: 'write_file', input: { path: file, content: 'NOT_WRITTEN', overwrite: true } }] :
+        content: first ? [{ type: 'tool_use', id, name: 'write_file', input: { path: file, content: id, overwrite: true } }] :
           [{ type: 'text', text: 'done' }], stop_reason: first ? 'tool_use' : 'end_turn', stop_sequence: null,
         usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
     } };
@@ -691,7 +691,7 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
   const accessorEffect = path.join(ws, 'start-authorization-getter');
   const cancellation = new AbortController();
   let releasing: Promise<void> | undefined;
-  let executingIncarnation = '', reopened: Session | undefined;
+  let executingIncarnation = '', borrowedIncarnation = '', reopened: Session | undefined;
   Session.prototype.append = function(event, authorization, backupToken, runtimeAuthorization) {
     if (this === executing && event.kind === 'tool_start' && event.id === 'own-owner-write' && event.runtimeWriteOwner) {
       captured.event = structuredClone(event); captured.authorization = runtimeAuthorization;
@@ -731,12 +731,13 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
     assert.equal(ownerLease(), true); assert.equal(executingLease(), true);
     executing.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(executing, provider('borrowed-owner-write'), ownerTools).run('track borrowed wrapper');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'borrowed-owner-write');
     await new Agent(executing, provider('own-owner-write'), executingTools).run('track own wrapper');
     for (const id of ['borrowed-owner-write', 'own-owner-write']) {
       const effect = executing.events.find(event => event.kind === 'tool_effect' && event.result.tool_use_id === id);
       const backup = executing.events.find(event => event.kind === 'directory_backup' && event.toolUseId === id);
-      assert.ok(effect?.kind === 'tool_effect' && effect.result.is_error);
-      assert.equal(effect.result.content, 'write_file: writes through additional directory grants are not implemented');
+      assert.ok(effect?.kind === 'tool_effect', id);
+      assert.ok(!effect.result.is_error, String(effect.result.content));
       assert.ok(backup?.kind === 'directory_backup'); assert.equal(backup.owner, executing.id);
     }
     const borrowedStart = executing.events.find(event => event.kind === 'tool_start' && event.id === 'borrowed-owner-write');
@@ -776,11 +777,19 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
     assert.equal(serialized.result.content, 'injected serialized owner authorization');
     assert.equal(executing.events.some(event => event.kind === 'tool_start' && event.id === 'tojson-owner-write'), false);
     assert.equal(owner.events.some(event => event.kind === 'directory_backup'), false);
-    assert.equal(fs.readFileSync(file, 'utf8'), 'OWNER_ORIGINAL');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'own-owner-write');
     owner.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(owner, provider('old-generation-write'), ownerTools).run('track original owner');
     const oldStart = owner.events.find(event => event.kind === 'tool_start' && event.id === 'old-generation-write');
     assert.ok(oldStart?.kind === 'tool_start' && oldStart.runtimeWriteOwner);
+    borrowedIncarnation = oldStart.runtimeWriteOwner.incarnation;
+    const factoryRows = executing.events.filter(row => row.kind === 'runtime_wrapper_observer')
+      .filter(row => row.toolUseId === 'borrowed-owner-write');
+    assert.equal(factoryRows.length, 6);
+    for (const row of factoryRows) {
+      assert.equal(row.owner, executing.id);
+      assert.deepEqual(row.writeFactory, oldStart.runtimeWriteOwner);
+    }
     await runtime.releaseSession!(owner.id);
     assert.equal(ownerLease(), false); assert.equal(executingLease(), true);
     await new Agent(executing, provider('retired-owner-write'), ownerTools).run('track retired wrapper');
@@ -822,7 +831,9 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
   const reader = `import {Session} from './src/session.ts';const [root,id,outside]=process.argv.slice(1),s=Session.open(root,{id});
     const backups=s.events.filter(x=>x.kind==='directory_backup').map(x=>({owner:x.owner,call:x.toolUseId}));
     const starts=s.events.filter(x=>x.kind==='tool_start').map(x=>({id:x.id,owner:x.runtimeWriteOwner??null}));
-    process.stdout.write(JSON.stringify({backups,starts,grant:!!s.workingDirectories(false).readHandle?.(outside)}));await s.close()`;
+    const factories=s.events.filter(x=>x.kind==='runtime_wrapper_observer'&&x.stage==='checkScope'&&x.transition.phase==='admitted'
+      &&['borrowed-owner-write','own-owner-write'].includes(x.toolUseId)).map(x=>x.writeFactory);
+    process.stdout.write(JSON.stringify({backups,starts,factories,grant:!!s.workingDirectories(false).readHandle?.(outside)}));await s.close()`;
   for (let i = 0; i < 2; i++) {
     const cold = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', reader, ws, executing.id, outside],
       { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
@@ -832,7 +843,9 @@ test('runtime Write wrapper scope and executing Session can differ', { timeout: 
     ], starts: [{ id: 'borrowed-owner-write', owner: null },
       { id: 'own-owner-write', owner: { owner: executing.id, incarnation: executingIncarnation } },
       { id: 'post-start-replacement', owner: { owner: executing.id, incarnation: executingIncarnation } },
-      { id: 'retired-owner-write', owner: null }], grant: false });
+      { id: 'retired-owner-write', owner: null }], factories: [
+        { owner: owner.id, incarnation: borrowedIncarnation }, { owner: executing.id, incarnation: executingIncarnation },
+      ], grant: false });
   }
 });
 
@@ -862,11 +875,11 @@ test('runtime Write start cannot be forged during event serialization', async ()
 });
 
 test('runtime Write execution records reject changed phases and retire with the call', { timeout: 30000 }, async () => {
-  for (const scenario of ['ordinary', 'input-after-entry', 'parsed-input-drift', 'start-object-after-append', 'entry-accessor', 'completion-rewrite', 'cancel-after-entry', 'release-before-entry'] as const) {
+  for (const scenario of ['parsed-path-redirect', 'ordinary', 'input-after-entry', 'parsed-input-drift', 'start-object-after-append', 'entry-accessor', 'completion-rewrite', 'cancel-after-entry', 'release-before-entry'] as const) {
     const ws = fs.realpathSync(tmpDir()), outside = fs.realpathSync(tmpDir()), file = path.join(outside, 'value');
     fs.writeFileSync(file, 'EXECUTION_ORIGINAL');
     const config = defaultConfig(ws, []); config.model = 'fixture'; config.permissions = { mode: 'bypass', allow: [], deny: [] };
-    const cancellation = new AbortController(), toolInput = { path: file, content: 'NO', overwrite: true }; let calls = 0;
+    const cancellation = new AbortController(), toolInput = { path: file, content: 'NO', overwrite: false }; let calls = 0;
     let changeParsedInput = false;
     if (scenario === 'parsed-input-drift') Object.defineProperty(toolInput, 'content', { enumerable: true, get() {
       if (!changeParsedInput) return 'NO'; changeParsedInput = false; return 'CHANGED_AT_PARSE';
@@ -882,6 +895,7 @@ test('runtime Write execution records reject changed phases and retire with the 
     config.tools = pinToolSchemas(runtime.tools);
     const session = Session.open(ws, { config }), append = Session.prototype.append;
     const marker = path.join(ws, 'execution-accessor');
+    const parse = directoryWriteInputSchema.parse;
     let release: Promise<void> | undefined;
     try {
       await runtime.bindSession!(session);
@@ -905,6 +919,9 @@ test('runtime Write execution records reject changed phases and retire with the 
           if (scenario === 'release-before-entry' && event.phase === 'entered') release = runtime.releaseSession!(session.id);
         }
         const result = append.call(this, event, authorization, backupToken, runtimeAuthorization);
+        if (this === session && scenario === 'parsed-path-redirect' && event.kind === 'tool_start' && event.runtimeWriteOwner) {
+          directoryWriteInputSchema.parse = (...args) => ({ ...parse(...args), path: marker });
+        }
         if (this === session && event.kind === 'tool_start' && scenario === 'start-object-after-append') {
           event.id = 'changed-after-commit'; if (event.runtimeWriteOwner) event.runtimeWriteOwner.incarnation = crypto.randomUUID();
         }
@@ -925,13 +942,13 @@ test('runtime Write execution records reject changed phases and retire with the 
       assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(file, 'utf8'), 'EXECUTION_ORIGINAL');
       assert.equal(session.events.some(event => event.kind === 'directory_backup'), scenario === 'ordinary' || scenario === 'input-after-entry' || scenario === 'start-object-after-append' || scenario === 'completion-rewrite', scenario);
       if (scenario === 'input-after-entry') {
-        const actual = describeDirectoryWriteInput(session, { path: file, content: 'NO', overwrite: true }); assert.ok(actual);
+        const actual = describeDirectoryWriteInput(session, { path: file, content: 'NO', overwrite: false }); assert.ok(actual);
         assert.ok(observations.every(event => event.writeInputDigest === directoryWriteFingerprint(actual)));
       }
       for (const event of observations) assert.throws(() => append.call(session, event), /Runtime Write execution authorization invalid/);
       const effect = session.events.find(event => event.kind === 'tool_effect' && event.result.tool_use_id === 'execution-write');
       assert.ok(effect?.kind === 'tool_effect' && effect.result.is_error);
-    } finally { Session.prototype.append = append; await session.close(); await runtime.close(); }
+    } finally { directoryWriteInputSchema.parse = parse; Session.prototype.append = append; await session.close(); await runtime.close(); }
     const reopened = Session.open(ws, { id: session.id });
     try {
       assert.deepEqual(reopened.events.filter(event => event.kind === 'runtime_write_execution'),

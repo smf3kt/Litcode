@@ -1,0 +1,19 @@
+{
+  "identity": "49d62836991bf43de89e25aed9e63ffcebfaa1ff57b523755aa7e216f920c6e5",
+  "inputs": "aeb7782c05c48ae432fb7ca7d36db32920eb515b6fcc3cba3854e5a94750b7d4",
+  "validation": "edd2b69da86cb59fab356034759ae4a760cef2002ef6cb8bb2cc1bb7f9bb097c",
+  "build": "fa720a6b1af30e82d967c5d513446a4eb5b0c65665c4448e8d836fe791c1e327",
+  "check": "pass",
+  "buildCheck": "pass",
+  "affectedInitial": {"pass": 144, "environmentFail": 52},
+  "interactionWithRequiredFixtureDirectory": {"pass": 66, "overlapWithInitialPass": 14},
+  "originalRecoveryGroups": {"pass": 2, "fail": 0, "effectfulGetterCliNegative": true},
+  "distinctAffectedPassingAcrossRuns": 198,
+  "displayCliEvidence": ".audit/w385-inert-display-cli.json",
+  "displayCliIdentity": "fea096b0cce9ecc0f723e0564015c67f0f2296b7871d965c78de499799d80245",
+  "identityNote": "Only test fixtures changed after that CLI run; product and build unchanged.",
+  "sourceLedger": ".audit/w385-inert-display-source.json",
+  "logs": ["/private/tmp/w385-inert-display-check-final4.log", "/private/tmp/w385-inert-display-build.log", "/private/tmp/w385-inert-display-suite.log", "/private/tmp/w385-inert-display-interaction.log", "/private/tmp/w385-inert-display-recovery.log", "/private/tmp/w385-inert-display-resume-negative-final.log", "/private/tmp/w385-inert-display-focused-final.log", "/private/tmp/w385-inert-display-cli.log"],
+  "limitations": ["Actual callbacks and dynamic/legacy absence remain unknown", "Modern nullable-citations messages remain outside legacy recovery suffix grammar", "Broader factory and arbitrary-effect provenance remain open"],
+  "upstreamCalls": 0
+}

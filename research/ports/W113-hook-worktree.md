@@ -1,5 +1,9 @@
 # W113 — hook-based isolated worktrees
 
+W385 recheck (2026-11-07): exact zero-based half-open UTF-16 bodies are ATn [2952802,2952853), G_r [2952853,2952904), CTn [2952923,2954231), Xir [2954231,2955189), chunk-sfn1dbxq.js SHA `4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da`. Historical offsets below identify locations within some bodies, not complete body starts. The old no-Session adaptation is stale for a bound runtime: messagingSessions now retains the parent Session. Direct factory runHooks still bypasses Agent journaling; an actual CLI probe confirms both worktree commands execute with no worktree execution records. See current W385 task before changing creation or post-owner-close cleanup behavior.
+
+W385 implementation follow-up (2026-11-07): bound factories now capture the original parent Session and journal configured runHooks start/execution/result. Source payload, path checks and outside-REPL resolver selection stay unchanged. Required removal after owner close/fence still executes without fabricating durable completion or writing to a reopened successor. Classic dispatch remains separate and not covered by these execution records. The former gap probe has become .audit/w385-worktree-observer-cli.mjs; normal plus six deaths/14 cold readers pass. See W385 for current identity and remaining limits.
+
 ## Source position
 
 `ATn` (chunk-sfn1dbxq.js offset 2952836) selects the hook path when a

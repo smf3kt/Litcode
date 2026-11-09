@@ -1,0 +1,138 @@
+{
+  "sources": [
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "Rpr",
+      "range": [
+        33818,
+        34569
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "6d6c8f1c51678b80c7c87ac528804b8cba91b8c19d4d11def0de6885317837d9"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "$o",
+      "range": [
+        34872,
+        35397
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "4e234a08bd7ced4c00b4e12d5e3fdca1b8e0926af4f12b9cf13a712db2fa21f8"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "tt/rt",
+      "range": [
+        36530,
+        37034
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "bdc0b42874f338533c580dfa9f041bffb7cb2df6ddfa33d8dff9e27e50d20ca4"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "jDe",
+      "range": [
+        37704,
+        37996
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "50239f52372bdd9e60abcb82ae9f7863152c8fbdfac2516cd6856413fadedab0"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "P0",
+      "range": [
+        39124,
+        39281
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "5836a7e79a4a0e14764e9936bfd21b8d40efaa0ce35efbda5a2a9f3ec7056b51"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "moduleSha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "symbol": "chain region including aP/dx/Xt",
+      "range": [
+        111504,
+        128400
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "8434c3e4b94fbbdd72781af1fcc887190634720bfcc948e589038b4dd266ed1c"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "moduleSha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "symbol": "W",
+      "range": [
+        12696,
+        14205
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "11dd564cd9ea68b4f10138b320608ff69e9404d0177c27e986f773c1b922c2e1"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "moduleSha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "symbol": "bgo dispatch v",
+      "range": [
+        18214,
+        18751
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "6b75248bdf37ad70c69817d1540e4cd21541e8a2923ade1c81b55582d4cb75ff"
+    }
+  ],
+  "cases": [
+    {
+      "mode": "return",
+      "handler": [
+        "entered",
+        "returning"
+      ],
+      "chain": "fulfilled",
+      "module": "fulfilled",
+      "cold": "fulfilled"
+    },
+    {
+      "mode": "throw",
+      "handler": [
+        "entered",
+        "throwing"
+      ],
+      "chain": "rejected",
+      "module": "rejected",
+      "cold": "rejected"
+    },
+    {
+      "mode": "throw-with-core",
+      "handler": [
+        "entered",
+        "throwing"
+      ],
+      "chain": "fulfilled",
+      "module": "rejected",
+      "cold": "fulfilled"
+    },
+    {
+      "mode": "pre-aborted",
+      "handler": [
+        "entered",
+        "returning"
+      ],
+      "chain": "fulfilled",
+      "module": "fulfilled",
+      "cold": "fulfilled"
+    }
+  ],
+  "upstream": 0,
+  "entrypointsExecuted": 0,
+  "identity": "d2e7975077b788bbb1b979a41dc38628e0ba2363461fa26e230a88dcf2128d5e",
+  "driverSha256": "7b5a29cca7c59a705044e1b7621d80a856075238c27fa4cf94e69e27a4593ec5"
+}

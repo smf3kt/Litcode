@@ -1,0 +1,51 @@
+{
+  "identity": {
+    "sha256": "9cce162fba993d5a46704b106fbacee9912064251ea82fe5a42bc1190c3463b1",
+    "inputs": {
+      "sha256": "c1397073eba709c9fda394e74b7e4ea5f505aaf91002e00af362c705598ee354",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "ffb5a5b68a838134dfdb95b204645c927e75cc146306ca0b50382464e6542377",
+      "files": 414
+    },
+    "build": {
+      "sha256": "d6d03b4eb7add754e149b1bfcce5a8afc346910fee1f8d998a22bbe20eb5cb42",
+      "files": 728
+    }
+  },
+  "check": "pass",
+  "build": "pass",
+  "focusedPass": 6,
+  "existingRegressions": {
+    "pass": 31,
+    "skip": 1,
+    "fail": 0
+  },
+  "cli": {
+    "cases": 7,
+    "coldReaders": 14,
+    "identity": "70679bc024aedd5c775d1c0409f78e25bbad060ac3169683e773eb506fc88d3f",
+    "note": "Final thenable extension changes test files only; product/build identical"
+  },
+  "artifacts": {
+    ".audit/w385-permission-observer-source.json": "6468e0f8e11b12899c2aedeff252da7d23e7d265355875259f8a07a289bb96aa",
+    ".audit/w385-permission-observer-cli.mjs": "64050f9607af3b1dbabf64cb9b7878c822a103e45eba9a2b5d8481d4b85c8469",
+    ".audit/w385-permission-observer-cli.json": "d30d5791ecac7c3b0f37df416a062fa80e16ae0f72ff468cb40c5c743d3638eb",
+    "test/permission-observer.test.ts": "0a78e43b3ff34fb22ebbac58e37a946290bee73a87fac089e9a84b8eaeff6490"
+  },
+  "logs": [
+    "/private/tmp/w385-permission-observer-check-final.log",
+    "/private/tmp/w385-permission-observer-build.log",
+    "/private/tmp/w385-permission-observer-focused-final.log",
+    "/private/tmp/w385-permission-observer-regressions.log",
+    "/private/tmp/w385-permission-observer-cli.log"
+  ],
+  "limitations": [
+    "request input unobserved",
+    "fulfillment is not an allow decision or a tool effect",
+    "runtime registry skill approval entrypoints outside Agent remain open",
+    "no arbitrary-effect or reclamation authority"
+  ],
+  "externalUpstreamCalls": 0
+}

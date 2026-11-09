@@ -1,0 +1,12 @@
+{
+  "identity": "1413fe9b282aef6d05e2d0f079d604252eff3e049f45ffd1b7413f19848b7fba",
+  "productChanged": false,
+  "check": { "exit": 0, "log": "/private/tmp/w385-precommit-disposition-check.log" },
+  "initialFixtureFailure": { "exit": 1, "reason": "resume rejects fresh user-dir setting", "log": "/private/tmp/w385-precommit-disposition.log" },
+  "final": { "exit": 0, "testGroups": 1, "writerDeathPhases": 4, "compiledCliResumes": 4, "compiledColdReaders": 21, "log": "/private/tmp/w385-precommit-disposition-final.log" },
+  "phases": { "checkpoint": "unknown", "prepared": "unknown", "commit": "available", "receipt": "available" },
+  "uncommittedFilenamePromotion": "unknown with original bytes preserved",
+  "restoredGrants": false,
+  "upstreamCalls": 0,
+  "remaining": ["orphan cleanup and broader precommit reconciliation", "nonempty-snapshot effect provenance", "mixed rewind", "issues 7 and 11"]
+}

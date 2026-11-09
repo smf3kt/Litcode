@@ -1,0 +1,61 @@
+{
+  "unit": "W385 #43 live classic-hook replacement",
+  "identity": "73eae4c90cf0e1be152edc55901001b08aedf84d85d56f99f5b7c64845ab51bb",
+  "inputs": "08c90e9522174185be9f7179ed9f5342aa5f1dcfc29f324daf2c2c43584b89f7",
+  "validation": "7ee426025767e5e554bed2b1cec325d2b7e5ab2d2cf085d2234f1c7800afd62c",
+  "build": "e6cf20075d2ecb1a465afe2498770a42741ea1dcf9ba41eca497f8124e75649b",
+  "source": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "symbols": {
+        "Ji": [
+          111491,
+          111767
+        ],
+        "PPr": [
+          111344,
+          111491
+        ],
+        "v4": [
+          110769,
+          110965
+        ]
+      }
+    },
+    {
+      "module": "chunk-r9b1bf0c.js",
+      "sha256": "e1fc92f84c1f6219da38ddb0e54e8778799cd20586ab176ad6481787fc8f7d28",
+      "symbols": {
+        "lJ": [
+          1584,
+          1616
+        ],
+        "B": [
+          1616,
+          2002
+        ]
+      }
+    }
+  ],
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "check": 0,
+    "build": 0,
+    "affected": "97/97",
+    "cli": ".audit/w385-live-hooks-cli.mjs",
+    "cliTurns": 3,
+    "trace": "aebee",
+    "locksReleased": true,
+    "modelUpstreamRequests": 0,
+    "actualAgent": "update, repeated unchanged, disable/re-enable, global disable/re-enable, removal, explicit retention and child snapshot",
+    "aggregate": "1024 explicit plus installed hook rejected before config mutation",
+    "structuralOwnerFence": "existing runtime-resources negative control passed"
+  },
+  "remaining": [
+    "mixed skill/agent tool catalog owner transition",
+    "legacy untagged plugin hook compatibility",
+    "notification-bearing branch owners",
+    "durable process/callback lifecycle proof"
+  ]
+}

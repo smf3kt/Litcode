@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import { addAbortListener } from 'node:events';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { isDeepStrictEqual, types as utilTypes } from 'node:util';
@@ -11,9 +12,11 @@ import { classifierMessageSchema, classifierMessage, markClassifierMessage } fro
 import { z } from 'zod';
 import { effortSelectionSchema, modelSettingsSchema, type EffortSelection, type ModelSettings } from './effort-command.js';
 import type Anthropic from '@anthropic-ai/sdk';
+import type { CompactionRecord } from './reactive-compaction-source.js';
 import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
+import { asyncHookLifecycleSchema, consumeAsyncHookLifecycle, validateAsyncHookLifecycles, type AsyncHookLifecycleEvent } from './async-hooks.js';
 import { autoPolicySchema, permissionPolicySchema, permissionLayerSchema, emptySessionPermissionUpdates, seedPermissionUpdates, bindPermissionOwner, reloadPermissionState, childPermissionState, type LivePermissionOwner, applyPermissionUpdates, type PermissionUpdate, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
 import { persistPermissionUpdate, permissionSettingsPaths, type PermissionWriteResult, type PermissionIgnoreResult } from './permission-settings.js';
 import { AutoModeDenialStore, permissionRetryMessage } from './permission-denials.js';
@@ -27,11 +30,12 @@ import type { Keybindings } from './terminal.js';
 import { webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
-import { clearCheckpointAssociation, recoverCheckpointAssociations, withIdleCheckpointStore } from './checkpoints.js';
+import { clearCheckpointAssociation, hasArchivedRewindCommit, recoverCheckpointAssociations, withIdleCheckpointStore } from './checkpoints.js';
 import { sessionLockSchema, recoverableSessionLockSchema, type SessionGateIdentity } from './session-lock-record.js';
 import { spinnerVerbsSchema } from './tui-progress-settings.js';
 import { spinnerTipsLayersSchema } from './spinner-tips-settings.js';
 import { notificationChannelSchema, type NotificationChannel } from './terminal-notifications.js';
+import { asyncHookAttachmentSchema, startupContextAttachments, type AsyncHookAttachment } from './async-hook-response.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { FileReadHostResult, LandedFileObservation, StoredToolUseResult } from './tool-use-result.js';
@@ -45,7 +49,17 @@ import { SETTING_SOURCE_ORDER, settingSourcesSchema, type SettingSource } from '
 import { subscribeSettingsWrites, type SettingsWrite } from './setting-writes.js';
 import { atomicWriteFile, syncDirectory } from './atomic-write.js';
 import { consumeNotificationAuthorization, type NotificationAuthorization } from './notification-authorization.js';
-import { consumeRuntimeWriteAuthorization, type RuntimeWriteAuthorization } from './agent.js';
+import { consumeRuntimeWriteAuthorization, consumeToolObserverWrite, consumeRuntimeWrapperWrite, consumeHookResolverWrite, type RuntimeWriteAuthorization } from './agent.js';
+import { hookResolverSchema, hookResolverObservations, type HookResolverEvent } from './hook-resolver-observer.js';
+import { hookToolSchema, hookToolExecutions, consumeHookToolWrite, type HookToolEvent } from './hook-tool-observer.js';
+import { hookCommandObserverSchema, hookCommandObservations, consumeHookCommandWrite, type HookCommandObserverEvent } from './hook-command-observer.js';
+import { agentDisplaySchema, agentDisplayObservations, consumeAgentDisplayWrite, skipInertDisplayPairs, type AgentDisplayEvent } from './agent-display-observer.js';
+import { toolContextSchema, toolContextObservations, consumeToolContextWrite, type ToolContextEvent } from './tool-context-observer.js';
+import { approvalOperationSchema, approvalOperations, consumeApprovalOperationWrite, type ApprovalOperationEvent } from './approval-operation-observer.js';
+import { classicHookChainSchema, classicHookChains, consumeClassicChainWrite, type ClassicHookChainEvent } from './classic-hook-observer.js';
+import { classicModuleSchema, classicHookModules, consumeClassicModuleWrite, type ClassicModuleEvent } from './classic-module-observer.js';
+import { runtimeWrapperSchema, runtimeWrapperObservations, type RuntimeWrapperEvent } from './runtime-wrapper-observer.js';
+import { toolResultObserverSchema, toolResultObservations, type ToolResultObserverEvent } from './tool-result-observer.js';
 import { lock as flock, SkillEffectJournal, type SkillEffectRetryGrant } from './skill-effects.js';
 import { directoryFileObservationSchema, boundDirectoryFileObservationSchema, copyStableDirectoryFile, probeMissingDirectoryFile, publishDirectoryFile,
   publishRetainedDirectoryFile, observeRetainedDirectoryFile, type BoundDirectoryFileObservation, type DirectoryPublication, type DirectoryPublicationExpected,
@@ -58,7 +72,7 @@ import { beginDirectoryCheckpointBracket as beginCheckpointBracket, type Directo
 import { checkpointRecoveryAnchor, checkpointRecoveryPrefix, collectDirectoryCheckpointReferences, consumeDirectoryCheckpointAuthorization, hasUnresolvedDirectoryHistoryTorn, inspectDirectoryCheckpointTornRecovery, isCheckpointRecoveryTextTurn, isReconciledCheckpointTorn,
   matchesTornCheckpointInheritance, readTornCheckpointEvidence, verifyDirectoryCheckpointTornCandidate } from './directory-checkpoint.js';
 import type { PathApprovalCall } from './path-approval-call-owner.js';
-import { consumeDirectoryPublicationAuthorization, describeDirectoryWriteInput, directoryWriteFingerprint, type DirectoryPublicationAuthorization } from './directory-publication-authorization.js';
+import { consumeDirectoryPublicationAuthorization, describeDirectoryEditInput, describeDirectoryWriteInput, directoryEditContent, directoryWriteFingerprint, type DirectoryPublicationAuthorization } from './directory-publication-authorization.js';
 import { directorySnapshotIntentSchema, directorySnapshotObservationSchema, directorySnapshotSchema, directorySnapshotRecoverySchema, directoryRewindExternalSchema, directoryCheckpointPathsSchema, directoryCheckpointInheritanceSchema, directoryCheckpointTornRecoverySchema,
   directoryHistoryTrackingPath, emptyDirectoryFileHistory, nextDirectoryHistoryVersion, reduceDirectoryFileHistory, selectDirectoryRewindSnapshot, shouldTrackDirectoryHistory,
   type DirectorySnapshotIntentEvent, type DirectorySnapshotObservationEvent, type DirectorySnapshotEvent, type DirectorySnapshotRecoveryEvent,
@@ -87,11 +101,14 @@ export type SessionConfig = {
   modelSettings?: ModelSettings;
   effortSelection?: EffortSelection;
   childMode?: 'explore' | 'general';
+  spawnDepth?: number;
   /** Host journal owner for a child session; retained across cold opens. */
   parentSessionId?: string;
   parentPlanId?: string;
   gateway?: GatewayConfig;
   hooks?: HooksConfig;
+  /** An old merged hook snapshot has no recoverable plugin/explicit partition. */
+  legacyPluginHookSnapshot?: true;
   permissions?: PermissionPolicy;
   /** Per-spawn `agent({bashCommandClamp})` groups. Every reading of a shell
    *  command has to match a rule in every group (source `fTr`). */
@@ -207,11 +224,12 @@ export type SessionConfig = {
 };
 export type ToolResult = Anthropic.ToolResultBlockParam;
 import { permissionModeCommandSchema, type PermissionModeCommand } from './plan-resume.js';
-export type NotificationBatch = Extract<SessionEvent, { kind: 'notification_intent_v2' }>['batch'];
+export type NotificationBatch = z.infer<typeof notificationBatchSchema>;
 
 // Host batch presentation, adapted from the existing interactive consumer; source ns/Si,
 // chunk-sfn1dbxq.js [226694,227794)/[233465,234179), UTF-16, do not define this JSON format.
 export function renderNotificationBatch(batch: NotificationBatch): string {
+  if (batch.kind === 'async_hook') return batch.prompt;
   const bytes = Buffer.from(JSON.stringify(batch.kind === 'background'
     ? { events: batch.events, dropped: batch.dropped, pending: batch.pending }
     : { events: batch.events, dropped: batch.dropped }));
@@ -229,12 +247,13 @@ type DirectoryBackupObservation = z.infer<typeof directoryFileObservationSchema>
 type DirectoryBackupMessageContext = { userMessageId: string; parentMessageId: string };
 type DirectoryBackupEvent = {
   kind: 'directory_backup'; id: string; owner: string; toolUseId: string; lexicalPath: string;
+  editInputDigest?: string;
   messageContext?: DirectoryBackupMessageContext;
   grant: { root: string; incarnation: string; dev: string; ino: string };
   source: { begin: DirectoryBackupObservation; end: DirectoryBackupObservation };
   sidecar: { dev: string; ino: string; uid: string }; bytes: number; sha256: string;
 };
-type DirectorySnapshotFileEvent = Omit<DirectoryBackupEvent, 'kind' | 'toolUseId' | 'messageContext' | 'source'> & {
+type DirectorySnapshotFileEvent = Omit<DirectoryBackupEvent, 'kind' | 'toolUseId' | 'editInputDigest' | 'messageContext' | 'source'> & {
   kind: 'directory_snapshot_file'; snapshotId: string; messageId: string; trackingPath: string;
   source: { begin: BoundDirectoryFileObservation; end: BoundDirectoryFileObservation };
 };
@@ -247,16 +266,30 @@ export type DirectoryBackup =
   | { kind: 'valid'; id: string; witness: DirectoryBackupEvent; sidecar: string };
 export type DirectoryFileHistory = { kind: 'unknown' } | { kind: 'available'; snapshots: DirectoryHistorySnapshot[] };
 type SessionOpenOptions = { config?: SessionConfig; id?: string; recoverLock?: boolean; storageRoot?: string; startedAt?: number;
+  childJournalLimits?: {maxJournalBytes: number; maxJournalEvents: number};
   expectedJournal?: { bytes: number; sha256: string }; childRoot?: { parent: Session; isOwner: () => boolean; verifyHistory?: () => boolean } };
 type ReadGrantContinuation = { root: string; owner: string; incarnation: string };
 const directoryBackupJournalToken = Symbol('directory backup journal');
+// Every history witness has a 36-byte UUID and a 64-byte hexadecimal digest.
+const historyWitnessBytes = Buffer.byteLength(JSON.stringify({kind:'agent_history',id:'0'.repeat(36),digest:'0'.repeat(64)})) + 1;
 const directoryPublicationJournalToken = Symbol('directory publication journal');
+const asyncHookLifecycleWrites = new WeakMap<object, { session: Session; event: AsyncHookLifecycleEvent }>();
+export type CompactionReference = { index: number; sha256: string };
+type ConversationEntry = { message: Anthropic.MessageParam; sha256: string; source?: Extract<SessionEvent, { kind: 'message' }> };
+
+// Ann/gnn, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+// [2505984,2506362), zero-based half-open UTF-16; retained context was not part of the summary request.
+export function renderCompactSummary(summary: string, retained = false): string {
+  return `Session summary (prior conversation data):\n${summary}` + (retained
+    ? '\n\nThe messages after this summary are the most recent messages from before compaction, kept verbatim. The summary was written without seeing them, so something it says has not happened yet may already have happened in them.' : '');
+}
+
 export type SessionEvent =
   | ScheduledFire
   | { kind: 'loop_boundary'; reason: 'foreign_user_input' | 'tool_abort' }
   | PermissionModeCommand
   | ModelPlanModeEvent
-  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number; rootIdentity?: { rootSessionId: string; originalCwd: string } }
+  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; pluginHookOriginsVersion?: 1; startedAt?: number; rootIdentity?: { rootSessionId: string; originalCwd: string } }
   | { kind: 'file_history'; path?: string; tracked: boolean }
   | DirectoryBackupEvent
   | DirectoryMissingBackupEvent
@@ -274,17 +307,21 @@ export type SessionEvent =
   | { kind: 'directory_backup_failed'; id: string; owner: string; witness: string }
   | { kind: 'directory_snapshot_failed'; id: string; owner: string; witness: string }
   | { kind: 'agent_history'; id: string; digest: string }
-  | { kind: 'agent_history_intent'; parent: string; id: string; oldDigest: string; newDigest: string; journal: { bytes: number; sha256: string } }
+  | { kind: 'parked_agent_stop'; parent: string; id: string; activeDigest: string }
+  | { kind: 'subtree_stop_request'; requestId: string; parent: string; receiver: string; activeDigest: string; id: string; runId: string }
+  | { kind: 'subtree_stop_redirect'; requestId: string; parent: string; events: import('./agent-registry.js').AgentNotification[] }
+  | { kind: 'agent_history_intent'; parent: string; id: string; oldDigest: string; newDigest: string; continuationDeliveryId?: string; cancelledRunId?: string; stagedRunId?: string; terminalRecord?: Record<string, unknown>; shutdownLock?: CheckpointSourceLock; journal: { bytes: number; sha256: string } }
   | { kind: 'agent_message_pin'; key: string; pin: AgentMessagePin }
   | { kind: 'notification_intent'; deliveryId: string; owner: string; entries: { source: 'background' | 'agent'; taskId: string; text: string }[] }
   | { kind: 'notification_intent_v2'; deliveryId: string; owner: string; batch:
       | { kind: 'background'; events: import('./background.js').BackgroundEvent[]; dropped: number; pending: number; maxOutputBytes: number }
-      | { kind: 'agent_events'; events: import('./agent-registry.js').AgentNotification[]; dropped: number; maxOutputBytes: number } }
-  | { kind: 'message'; message: Anthropic.MessageParam; messageId?: string; response?: Anthropic.Message; isMeta?: boolean; directoryHistoryDisabled?: true; classifier?: import('./message-origin.js').ClassifierMessage; notificationDelivery?: { owner: string; deliveryId: string } }
+      | { kind: 'async_hook'; jobId: string; event: string; prompt: string; attachment?: AsyncHookAttachment; commandScope?: string }
+      | { kind: 'agent_events'; receiverRunId?: string; events: import('./agent-registry.js').AgentNotification[]; dropped: number; maxOutputBytes: number } }
+  | { kind: 'message'; message: Anthropic.MessageParam; messageId?: string; response?: Anthropic.Message; isMeta?: boolean; directoryHistoryDisabled?: true; sessionStartContext?: string[]; classifier?: import('./message-origin.js').ClassifierMessage; notificationDelivery?: { owner: string; deliveryId: string }; inheritedNotification?: { owner: string; deliveryId: string; batch: NotificationBatch } }
   | { kind: 'mcp_catalog'; configDigest: string; disabledServers: string[]; unavailableServers?: string[]; tools: SessionConfig['tools'] }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
-  | { kind: 'tool_start'; id: string; name: string; parentMessageId?: string; writeInputDigest?: string;
+  | { kind: 'tool_start'; id: string; name: string; parentMessageId?: string; writeInputDigest?: string; editInputDigest?: string;
       runtimeWriteOwner?: { owner: string; incarnation: string } }
   | ({ kind: 'runtime_write_execution'; id: string; parentMessageId: string; writeInputDigest: string;
       runtimeWriteOwner: { owner: string; incarnation: string } } &
@@ -292,7 +329,7 @@ export type SessionEvent =
   | { kind: 'tool_result'; result: ToolResult; timestamp?: string; host?: StoredToolUseResult; feedbackBlocks?: ToolFeedbackBlock[]; readGrantWitness?: ReadGrantWitness }
   | { kind: 'tool_effect'; result: ToolResult; timestamp?: string; host?: StoredToolUseResult; feedbackBlocks?: ToolFeedbackBlock[]; readGrantWitness?: ReadGrantWitness }
   | { kind: 'read_observation'; result: ToolResult; timestamp?: string; host?: FileReadHostResult; readGrantWitness?: ReadGrantWitness }
-  | { kind: 'write_observation'; result: ToolResult; operation: 'write_file' | 'edit_file'; landed: LandedFileObservation }
+  | { kind: 'write_observation'; result: ToolResult; operation: 'write_file' | 'edit_file' | 'notebook_edit'; landed: LandedFileObservation }
   | { kind: 'read_invalidate'; paths: string[] }
   | { kind: 'tool_output'; result: ToolResult }
   | { kind: 'hook_once'; event: string; key: string }
@@ -303,11 +340,23 @@ export type SessionEvent =
   | { kind: 'refusal'; model: string; category?: string; explanation?: string; requestId?: string }
   | { kind: 'branch'; source: string; workspace: string; boundary: number; reason: 'fork' | 'rewind' | 'reload' | 'configuration' | 'relocation'; external?: DirectoryRewindExternal; checkpointPaths?: DirectoryCheckpointPaths }
   | { kind: 'hook_start'; id: string; event: string; toolUseId?: string; parentMessageId?: string }
+  | AsyncHookLifecycleEvent
+  | ToolResultObserverEvent
+  | RuntimeWrapperEvent
+  | HookResolverEvent
+  | HookToolEvent
+  | HookCommandObserverEvent
+  | AgentDisplayEvent
+  | ToolContextEvent
+  | ApprovalOperationEvent
+  | ClassicHookChainEvent
+  | ClassicModuleEvent
+  | { kind: 'hook_observer'; id: string; owner: string; jobId: string; observer: { kind: 'completion' } | { kind: 'terminal'; index: number }; state: 'pending' | 'returned' | 'threw' }
   | { kind: 'hook_terminal'; id: string; event: string; sequences: string[] }
   | { kind: 'instruction_watch'; workspace: string; paths: string[] }
   | { kind: 'stop_hook_count'; count: number; hookId?: string }
   | { kind: 'hook_result'; id: string; event: string; blocked: boolean; reason?: string; additionalContext: string[]; stopRequested?: boolean; suppressOutput?: boolean; systemMessages?: string[]; terminalSequences?: string[]; userDisplayMessage?: string; backgroundTasks?: string[] }
-  | { kind: 'compact'; summary: string; response: Anthropic.Message }
+  | { kind: 'compact'; summary: string; response: Anthropic.Message; preservedMessages?: CompactionReference[] }
   | { kind: 'turn_end'; reason: string; duration?: import('./tui-progress.js').TurnDuration };
 
 type CheckpointBranch = Extract<SessionEvent, { kind: 'branch' }> & { external: DirectoryRewindExternal; checkpointPaths: DirectoryCheckpointPaths };
@@ -345,15 +394,17 @@ function completedCheckpointSnapshotAnchor(events: readonly SessionEvent[], owne
     const index = checkpointRecoveryAnchor(events, end), last = events[index];
     if (last?.kind === 'directory_checkpoint_torn_recovery') return index;
     if (index < 4 || last?.kind !== 'turn_end') return -1;
-    const user = events[index - 4], intent = directorySnapshotIntentSchema.safeParse(events[index - 3]);
-    const snapshot = directorySnapshotSchema.safeParse(events[index - 2]), assistant = events[index - 1];
+    const assistantIndex = skipInertDisplayPairs(events, index - 1), snapshotIndex = skipInertDisplayPairs(events, assistantIndex - 1);
+    const intentIndex = skipInertDisplayPairs(events, snapshotIndex - 1), userIndex = skipInertDisplayPairs(events, intentIndex - 1);
+    const user = events[userIndex], intent = directorySnapshotIntentSchema.safeParse(events[intentIndex]);
+    const snapshot = directorySnapshotSchema.safeParse(events[snapshotIndex]), assistant = events[assistantIndex];
     if (user?.kind !== 'message' || !user.messageId || user.directoryHistoryDisabled ||
         !intent.success || !snapshot.success || !isCheckpointRecoveryTextTurn(user, assistant, last) ||
         intent.data.owner !== owner || snapshot.data.owner !== owner || intent.data.id !== snapshot.data.id ||
         intent.data.messageId !== user.messageId || snapshot.data.messageId !== user.messageId ||
         intent.data.timestamp !== snapshot.data.timestamp || intent.data.paths.length !== 0 || snapshot.data.entries.length !== 0 ||
         snapshot.data.interrupted || snapshot.data.preCheckpoint) return -1;
-    end = index - 4;
+    end = userIndex;
   }
   return -1;
 }
@@ -433,6 +484,7 @@ export const configSchema = z.object({
   modelSettings: modelSettingsSchema.optional(),
   effortSelection: effortSelectionSchema.optional(),
   childMode: z.enum(['explore', 'general']).optional(),
+  spawnDepth: z.number().int().positive().optional(),
   parentSessionId: z.string().uuid().optional(),
   parentPlanId: z.string().uuid().optional(),
   gateway: z.object({
@@ -441,6 +493,7 @@ export const configSchema = z.object({
     promptCaching: z.boolean(), eagerToolInput: z.boolean(),
   }).strict().optional(),
   hooks: hooksSchema.optional(),
+  legacyPluginHookSnapshot: z.literal(true).optional(),
   permissions: permissionPolicySchema.optional(),
   /** Explicit same-host inbound policy; omitted follows the permission mode. */
   crossSessionInbound: z.enum(['accept', 'hold', 'refuse']).optional(),
@@ -553,6 +606,7 @@ const resultSchema = z.object({ type: z.literal('tool_result'), tool_use_id: z.s
 const readGrantWitnessSchema = z.object({ owner: z.string().uuid(), incarnation: z.string().uuid(), callId: z.string().min(1).max(256) }).strict();
 const decimalIdentitySchema = z.string().regex(/^[0-9]+$/);
 const directoryBackupSchema = z.object({ kind: z.literal('directory_backup'), id: z.string().uuid(), owner: z.string().uuid(),
+  editInputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   toolUseId: z.string().min(1).max(256), lexicalPath: z.string().min(1).max(4096),
   messageContext: z.object({ userMessageId: z.string().uuid(), parentMessageId: z.string().uuid() }).strict().optional(),
   grant: z.object({ root: z.string().min(1).max(4096), incarnation: z.string().uuid(), dev: decimalIdentitySchema, ino: decimalIdentitySchema }).strict(),
@@ -576,7 +630,7 @@ const directoryBackupFailureSchema = z.object({ kind: z.literal('directory_backu
 const directorySnapshotFailureSchema = directoryBackupFailureSchema.extend({ kind: z.literal('directory_snapshot_failed') });
 const directoryCheckpointWitnessSchema = z.object({ kind: z.literal('directory_checkpoint_witness'), id: z.string().uuid(), owner: z.string().uuid(),
   name: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), witness: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
-const directorySnapshotFileSchema = directoryBackupSchema.omit({ kind: true, toolUseId: true, messageContext: true, source: true }).extend({
+const directorySnapshotFileSchema = directoryBackupSchema.omit({ kind: true, toolUseId: true, editInputDigest: true, messageContext: true, source: true }).extend({
   kind: z.literal('directory_snapshot_file'), snapshotId: z.string().uuid(), messageId: z.string().uuid(), trackingPath: z.string().min(1).max(4096),
   source: z.object({ begin: boundDirectoryFileObservationSchema, end: boundDirectoryFileObservationSchema }).strict(),
 }).strict();
@@ -586,8 +640,10 @@ const patchHunkSchema = z.object({ oldStart: z.number().int(), oldLines: z.numbe
   newStart: z.number().int(), newLines: z.number().int(), lines: z.array(z.string()) }).strict();
 const landedSchema = z.object({ filePath: z.string().min(1), cacheKey: z.string().min(1).optional(), content: z.string(), mtimeMs: z.number().finite(),
   identity: z.object({ dev: z.string().regex(/^\d+$/), ino: z.string().regex(/^\d+$/) }).strict(), isPartialView: z.boolean().optional() }).strict();
+const fileReadHostSchema = z.object({ kind: z.literal('file_read'), filePath: z.string().min(1), cacheKey: z.string().min(1).optional(), content: z.string(), mtimeMs: z.number().finite(), offset: z.number().int().positive(), limit: z.number().int().positive(), truncated: z.boolean(), identity: z.object({ dev: z.string().regex(/^\d+$/), ino: z.string().regex(/^\d+$/) }).strict().optional() }).strict();
 const storedToolUseResultSchema = z.union([
-  z.object({ kind: z.literal('file_read'), filePath: z.string().min(1), cacheKey: z.string().min(1).optional(), content: z.string(), mtimeMs: z.number().finite(), offset: z.number().int().positive(), limit: z.number().int().positive(), truncated: z.boolean(), identity: z.object({ dev: z.string().regex(/^\d+$/), ino: z.string().regex(/^\d+$/) }).strict().optional() }).strict(),
+  z.object({ kind: z.literal('notebook_edit'), landed: landedSchema }).strict(),
+  fileReadHostSchema,
   findingsHostResultSchema,
   planHostResultSchema,
   questionHostResultSchema,
@@ -603,7 +659,9 @@ const backgroundNotificationSchema = z.object({ seq: z.number().int().nonnegativ
   lines: z.array(z.string()), text: z.string(), state: z.enum(['running', 'completed', 'failed', 'cancelled', 'timed_out']).optional(),
   exit_code: z.number().int().nullable().optional(), exit_signal: z.string().nullable().optional(), source: z.literal('websocket').optional(),
   close_code: z.number().int().optional(), close_reason: z.string().optional(), truncated: z.literal(true).optional(), original_bytes: z.number().int().nonnegative().optional() }).strict();
-const agentNotificationSchema = z.object({ kind: z.literal('agent'), sequence: z.number().int().nonnegative(), agent: z.object({
+const notificationRunIdSchema = z.string().regex(/^[0-9a-z]{9,}-[0-9a-f]{8}$/).optional();
+const agentNotificationSchema = z.object({ kind: z.literal('agent'), sequence: z.number().int().nonnegative(),
+  runId: notificationRunIdSchema, agent: z.object({
   id: z.string().min(1), session_id: z.string().min(1), name: z.string().nullable(), status: z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
   mode: z.enum(['explore', 'general']), model: z.string(), summary: z.string(), error: z.string().nullable(), reason: z.string().nullable(),
   model_calls: z.number().int().nonnegative(), queued_messages: z.number().int().nonnegative(), workspace: z.string().optional(), subagent_type: z.string().optional(),
@@ -612,12 +670,19 @@ const agentNotificationSchema = z.object({ kind: z.literal('agent'), sequence: z
 const branchEventSchema = z.object({ kind: z.literal('branch'), source: z.string().uuid(), workspace: z.string().min(1), boundary: z.number().int().nonnegative(),
   reason: z.enum(['fork', 'rewind', 'reload', 'configuration', 'relocation']), external: directoryRewindExternalSchema.optional(),
   checkpointPaths: directoryCheckpointPathsSchema.optional() }).strict();
+export const workerNotificationBatchSchema = z.object({ kind: z.literal('agent_events'), receiverRunId: notificationRunIdSchema, events: z.array(agentNotificationSchema).max(100), dropped: z.number().int().nonnegative(), maxOutputBytes: z.number().int().nonnegative() }).strict();
+const notificationBatchSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('async_hook'), jobId: z.string().uuid(), event: z.string().min(1), prompt: z.string(), attachment: asyncHookAttachmentSchema.optional(), commandScope: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
+  z.object({ kind: z.literal('background'), events: z.array(backgroundNotificationSchema).max(100), dropped: z.number().int().nonnegative(), pending: z.number().int().nonnegative(), maxOutputBytes: z.number().int().nonnegative() }).strict(),
+  workerNotificationBatchSchema,
+]);
 const eventSchema = z.discriminatedUnion('kind', [
   scheduledFireSchema,
   z.object({ kind: z.literal('model_plan_mode'), operation: z.enum(['enter', 'exit']),
     mode: permissionPolicySchema.shape.mode, planId: z.string().uuid() }).strict(),
   z.object({ kind: z.literal('loop_boundary'), reason: z.enum(['foreign_user_input', 'tool_abort']) }).strict(),
   z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
+    pluginHookOriginsVersion: z.literal(1).optional(),
     fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional(),
     rootIdentity: z.object({ rootSessionId: z.string().uuid(), originalCwd: z.string().min(1) }).strict().optional() }).strict(),
   z.object({ kind: z.literal('permission_mode_command'), operation: z.enum(['enter', 'exit', 'select']),
@@ -639,17 +704,27 @@ const eventSchema = z.discriminatedUnion('kind', [
   directoryBackupFailureSchema,
   directorySnapshotFailureSchema,
   z.object({ kind: z.literal('agent_history'), id: z.string().uuid(), digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({ kind: z.literal('parked_agent_stop'), parent: z.string().uuid(), id: z.string().uuid(),
+    activeDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({kind:z.literal('subtree_stop_request'),requestId:z.string().uuid(),parent:z.string().uuid(),receiver:z.string().uuid(),
+    activeDigest:z.string().regex(/^[a-f0-9]{64}$/),id:z.string().uuid(),runId:notificationRunIdSchema.unwrap()}).strict(),
+  z.object({kind:z.literal('subtree_stop_redirect'),requestId:z.string().uuid(),parent:z.string().uuid(),
+    events:workerNotificationBatchSchema.shape.events}).strict(),
   z.object({ kind: z.literal('agent_history_intent'), parent: z.string().uuid(), id: z.string().uuid(),
+    continuationDeliveryId: z.string().uuid().optional(),
+    cancelledRunId: z.string().regex(/^[0-9a-z]{9,}-[0-9a-f]{8}$/).optional(),
+    stagedRunId: z.string().regex(/^[0-9a-z]{9,}-[0-9a-f]{8}$/).optional(),
+    terminalRecord: z.record(z.string(),z.unknown()).optional(),
+    shutdownLock: directoryCheckpointTornRecoverySchema.shape.sourceLock,
     oldDigest: z.string().regex(/^[a-f0-9]{64}$/), newDigest: z.string().regex(/^[a-f0-9]{64}$/),
     journal: z.object({ bytes: z.number().int().nonnegative(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict() }).strict(),
   z.object({ kind: z.literal('agent_message_pin'), key: z.string().min(1), pin: agentMessagePinSchema }).strict(),
   z.object({ kind: z.literal('notification_intent'), deliveryId: z.string().uuid(), owner: z.string().uuid(),
     entries: z.array(z.object({ source: z.enum(['background', 'agent']), taskId: z.string().min(1), text: z.string() }).strict()).min(1).max(200) }).strict(),
-  z.object({ kind: z.literal('notification_intent_v2'), deliveryId: z.string().uuid(), owner: z.string().uuid(), batch: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('background'), events: z.array(backgroundNotificationSchema).max(100), dropped: z.number().int().nonnegative(), pending: z.number().int().nonnegative(), maxOutputBytes: z.number().int().nonnegative() }).strict(),
-    z.object({ kind: z.literal('agent_events'), events: z.array(agentNotificationSchema).max(100), dropped: z.number().int().nonnegative(), maxOutputBytes: z.number().int().nonnegative() }).strict(),
-  ]) }).strict(),
+  z.object({ kind: z.literal('notification_intent_v2'), deliveryId: z.string().uuid(), owner: z.string().uuid(), batch: notificationBatchSchema }).strict(),
   z.object({ kind: z.literal('message'), message: messageSchema, messageId: z.string().uuid().optional(), response: responseSchema.optional(), isMeta: z.boolean().optional(), directoryHistoryDisabled: z.literal(true).optional(), classifier: classifierMessageSchema.optional(),
+    sessionStartContext: z.array(z.string()).min(1).optional(),
+    inheritedNotification: z.object({ owner: z.string().uuid(), deliveryId: z.string().uuid(), batch: notificationBatchSchema }).strict().optional(),
     notificationDelivery: z.object({ owner: z.string().uuid(), deliveryId: z.string().uuid() }).strict().optional() }).strict(),
   z.object({ kind: z.literal('mcp_catalog'), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     disabledServers: z.array(z.string().min(1).max(256)).max(1024),
@@ -659,6 +734,7 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
   z.object({ kind: z.literal('tool_start'), id: z.string(), name: z.string(), parentMessageId: z.string().uuid().optional(),
     writeInputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    editInputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     runtimeWriteOwner: z.object({ owner: z.string().uuid(), incarnation: z.string().uuid() }).strict().optional() }).strict(),
   z.object({ kind: z.literal('runtime_write_execution'), id: z.string(), parentMessageId: z.string().uuid(),
     writeInputDigest: z.string().regex(/^[a-f0-9]{64}$/),
@@ -666,8 +742,8 @@ const eventSchema = z.discriminatedUnion('kind', [
     phase: z.enum(['entered', 'completed']), outcome: z.enum(['returned', 'threw', 'blocked-additional-directory']).optional() }).strict(),
   z.object({ kind: z.literal('tool_result'), result: resultSchema, timestamp: z.string().datetime({ offset: true }).optional(), host: storedToolUseResultSchema.optional(), feedbackBlocks: toolFeedbackBlocksSchema.optional(), readGrantWitness: readGrantWitnessSchema.optional() }).strict(),
   z.object({ kind: z.literal('tool_effect'), result: resultSchema, timestamp: z.string().datetime({ offset: true }).optional(), host: storedToolUseResultSchema.optional(), feedbackBlocks: toolFeedbackBlocksSchema.optional(), readGrantWitness: readGrantWitnessSchema.optional() }).strict(),
-  z.object({ kind: z.literal('read_observation'), result: resultSchema, timestamp: z.string().datetime({ offset: true }).optional(), host: storedToolUseResultSchema.options[0].optional(), readGrantWitness: readGrantWitnessSchema.optional() }).strict(),
-  z.object({ kind: z.literal('write_observation'), result: resultSchema, operation: z.enum(['write_file', 'edit_file']), landed: landedSchema }).strict(),
+  z.object({ kind: z.literal('read_observation'), result: resultSchema, timestamp: z.string().datetime({ offset: true }).optional(), host: fileReadHostSchema.optional(), readGrantWitness: readGrantWitnessSchema.optional() }).strict(),
+  z.object({ kind: z.literal('write_observation'), result: resultSchema, operation: z.enum(['write_file', 'edit_file', 'notebook_edit']), landed: landedSchema }).strict(),
   z.object({ kind: z.literal('read_invalidate'), paths: z.array(z.string().min(1)) }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
@@ -681,6 +757,21 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('rewind'), source: z.string().uuid(), boundary: z.number().int().nonnegative(), checkpoint: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ kind: z.literal('hook_once'), event: z.enum(HOOK_EVENTS), key: z.string().max(256).regex(/^[A-Za-z]+:(?:0|[1-9]\d{0,3}):(?:flat|0|[1-9]\d{0,3}):[a-f0-9]{64}$/) }).strict(),
   z.object({ kind: z.literal('hook_start'), id: z.string(), event: z.string(), toolUseId: z.string().optional(), parentMessageId: z.string().uuid().optional() }).strict(),
+  asyncHookLifecycleSchema,
+  toolResultObserverSchema,
+  runtimeWrapperSchema,
+  hookResolverSchema,
+  hookToolSchema,
+  hookCommandObserverSchema,
+  agentDisplaySchema,
+  toolContextSchema,
+  approvalOperationSchema,
+  classicHookChainSchema,
+  classicModuleSchema,
+  z.object({ kind: z.literal('hook_observer'), id: z.string().uuid(), owner: z.string().uuid(), jobId: z.string().min(1),
+    observer: z.discriminatedUnion('kind', [z.object({ kind: z.literal('completion') }).strict(),
+      z.object({ kind: z.literal('terminal'), index: z.number().int().nonnegative() }).strict()]),
+    state: z.enum(['pending', 'returned', 'threw']) }).strict(),
   z.object({ kind: z.literal('stop_hook_count'), count: z.number().int().min(0).max(1024), hookId: z.string().optional() }).strict(),
   z.object({ kind: z.literal("instruction_watch"), workspace: z.string().min(1),
     paths: z.array(z.string().min(1).refine(value => path.isAbsolute(value) && Buffer.byteLength(value) <= 4096)).max(2048)
@@ -692,15 +783,40 @@ const eventSchema = z.discriminatedUnion('kind', [
     backgroundTasks: z.array(z.string().min(1)).optional(),
     terminalSequences: z.array(z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096)).max(128)
       .refine(values => values.reduce((total, value) => total + Buffer.byteLength(value), 0) <= 32768).optional() }).strict(),
-  z.object({ kind: z.literal('compact'), summary: z.string().min(1), response: responseSchema }).strict(),
+  z.object({ kind: z.literal('compact'), summary: z.string().min(1), response: responseSchema,
+    preservedMessages: z.array(z.object({ index: z.number().int().nonnegative(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).optional() }).strict(),
   z.object({ kind: z.literal('turn_end'), reason: z.string(), duration: z.object({uuid:z.string().uuid(),
     durationMs:z.number().finite().nonnegative(), timestamp:z.string().datetime({offset:true})}).strict().optional() }).strict(),
 ]).superRefine((record, context) => {
+  if (record.kind === 'compact' && record.preservedMessages?.some((ref, index, refs) => index > 0 && ref.index <= refs[index - 1]!.index))
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Compaction references must preserve conversation order' });
+  if (record.kind === 'message' && record.inheritedNotification) {
+    const content = record.message.content, expected = renderNotificationBatch(record.inheritedNotification.batch);
+    if (record.notificationDelivery || record.message.role !== 'user' || (typeof content === 'string' ? content !== expected :
+      content.length === 0 || content[0]?.type !== 'text' || content[0].text !== expected ||
+      content.slice(1).some(block => block.type !== 'text' || typeof block.text !== 'string' || !block.text.startsWith('Hook context:\n'))))
+      context.addIssue({ code: z.ZodIssueCode.custom, message: 'Inherited notification must match visible message without live delivery authority' });
+  }
+  if (record.kind === 'message' && record.sessionStartContext) {
+    const blocks = Array.isArray(record.message.content) ? record.message.content : [];
+    let index = 0;
+    for (const text of record.sessionStartContext) {
+      while (index < blocks.length && !(blocks[index]?.type === 'text' && blocks[index].text === `Hook context:\n${text}`)) index++;
+      if (index >= blocks.length || record.message.role !== 'user') {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: 'SessionStart context must match delivered message blocks' });
+        break;
+      }
+      index++;
+    }
+  }
   if (record.kind === 'runtime_write_execution' && ((record.phase === 'completed') !== (record.outcome !== undefined))) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid runtime Write execution phase' });
   }
   if (record.kind === 'tool_start' && record.writeInputDigest && (record.name !== 'write_file' || !record.parentMessageId)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid directory publication input witness' });
+  }
+  if (record.kind === 'tool_start' && record.editInputDigest && (!['edit_file','notebook_edit'].includes(record.name) || !record.parentMessageId)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid directory edit input witness' });
   }
   if (record.kind === 'tool_start' && record.runtimeWriteOwner &&
       (record.name !== 'write_file' || !record.parentMessageId || !record.writeInputDigest)) {
@@ -763,6 +879,17 @@ export function readSessionJournal(workspace: string, id: string, limits: { maxB
     const meta = events[0];
     if (meta?.kind !== 'metadata' || meta.id !== id || meta.config.workspace !== root || meta.fingerprint !== fingerprint(meta.config)
       || events.slice(1).some(event => event.kind === 'metadata' || ((event.kind === 'notification_intent' || event.kind === 'notification_intent_v2') && event.owner !== id))) throw new Error('Child journal identity mismatch');
+    validateAsyncHookLifecycles(events.filter(event => event.kind === 'async_hook_lifecycle'), id);
+    toolResultObservations(events, id);
+    runtimeWrapperObservations(events, id);
+    hookResolverObservations(events, id);
+    hookToolExecutions(events, id);
+    hookCommandObservations(events, id);
+    agentDisplayObservations(events, id);
+    toolContextObservations(events, id);
+    approvalOperations(events, id);
+    classicHookChains(events, id);
+    classicHookModules(events, id);
     return events;
   } finally { fs.closeSync(fd); }
 }
@@ -786,7 +913,7 @@ export class Session {
       const calls = new Map<string, { name: string; path: string; content?: string }>();
       const results = new Set<string>();
       for (const message of this.messages) if (Array.isArray(message.content)) for (const block of message.content) {
-        if (block.type === 'tool_use' && ['read_file', 'write_file', 'edit_file'].includes(block.name) &&
+        if (block.type === 'tool_use' && ['read_file', 'write_file', 'edit_file', 'notebook_read', 'notebook_edit'].includes(block.name) &&
             typeof block.input === 'object' && block.input !== null && 'path' in block.input && typeof block.input.path === 'string') {
           calls.set(block.id, { name: block.name, path: path.resolve(this.config.workspace, block.input.path),
             ...('content' in block.input && typeof block.input.content === 'string' ? { content: block.input.content } : {}) });
@@ -803,22 +930,23 @@ export class Session {
             event.result.is_error || !results.has(event.result.tool_use_id)) continue;
         const call = calls.get(event.result.tool_use_id);
         if (!call) continue;
+        const isRead = call.name === 'read_file' || call.name === 'notebook_read';
         if (event.kind === 'write_observation' && event.operation !== call.name) break;
         // Unknown aliases across a landed mutation: do not resurrect older entries.
         if (seen.has(call.path)) {
-          if (call.name !== 'read_file') break;
+          if (!isRead) break;
           continue;
         }
         // I_n, 40cepjpq [72739,75980), UTF-16; host persists fd identity because
         // source's timestamp-only write/edit reconstruction cannot satisfy inode binding.
         const landed = event.kind === 'write_observation' ? event.landed : event.host && 'landed' in event.host ? event.host.landed : undefined;
-        if ((call.name === 'write_file' || call.name === 'edit_file') && landed) {
+        if (!isRead && landed) {
           const key = landed.cacheKey ?? call.path;
           if (seen.has(key)) break;
           seen.add(call.path); seen.add(key);
           entries.push([key, { content: landed.content, timestamp: Math.floor(landed.mtimeMs),
             identity: landed.identity, realPath: landed.filePath, ...(landed.isPartialView ? { isPartialView: true } : {}),
-            ...(call.name === 'edit_file' ? { contentNotInModelContext: true } : {}) }]);
+            ...(call.name !== 'write_file' ? { contentNotInModelContext: true } : {}) }]);
         } else if (call.name === 'write_file' && call.content !== undefined && event.kind !== 'write_observation' && event.timestamp) {
           seen.add(call.path);
           entries.push([call.path, { content: call.content.replace(/^﻿/, '').replaceAll('\r\n', '\n'), timestamp: Date.parse(event.timestamp) }]);
@@ -829,7 +957,7 @@ export class Session {
             seen.add(call.path);
             entries.push([call.path, { content, timestamp, contentNotInModelContext: true }]);
           } catch { /* An unavailable edited file has no recoverable observation. */ }
-        } else if (call.name === 'read_file' && event.kind !== 'write_observation' && event.timestamp && event.host && 'kind' in event.host && event.host.kind === 'file_read') {
+        } else if (isRead && event.kind !== 'write_observation' && event.timestamp && event.host && 'kind' in event.host && event.host.kind === 'file_read') {
           const read = event.host;
           const key = read.cacheKey ?? call.path;
           if (seen.has(key)) continue;
@@ -838,7 +966,7 @@ export class Session {
             limit: read.limit, isPartialView: read.truncated || read.offset > 1 || read.content.split('\n').length >= read.limit,
             contentFromTranscript: true }]);
         }
-        if (call.name !== 'read_file') break;
+        if (!isRead) break;
       }
       for (const [file, entry] of entries.reverse()) cache.set(file, entry);
       this.liveReadCache = cache;
@@ -892,8 +1020,8 @@ export class Session {
 
   /** Destination buckets are session-owned; settings writes settle independently of memory. */
   permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
-  readonly permissionWriteResults: PermissionWriteResult[] = [];
-  readonly permissionIgnoreResults: PermissionIgnoreResult[] = [];
+  readonly permissionWriteResults: (PermissionWriteResult & { sessionId: string })[] = [];
+  readonly permissionIgnoreResults: (PermissionIgnoreResult & { sessionId: string })[] = [];
   /** The auto-mode classifier's recent refusals, the `/permissions` `recent` tab's list. */
   readonly autoModeDenials = new AutoModeDenialStore();
   private readonly pendingPermissionWrites = new Set<Promise<void>>();
@@ -908,6 +1036,8 @@ export class Session {
   // Host rewrite of Mk/eNe/Yg, 2bcyxj9q [214762,215541), UTF-16: source stores paths only.
   // Each opened or duplicated descriptor gets a new incarnation owned by this Session.
   private readonly directoryHandles = new Map<string, DirectoryReadHandle>();
+  private static readonly issuedDirectoryHandles = new WeakSet<DirectoryReadHandle>();
+  private readonly inheritedWriteHandles = new Map<string, { parent: DirectoryReadHandle; handle: DirectoryReadHandle; retire(): void }>();
   private readonly directoryHandleControllers = new Map<string, AbortController>();
   private readonly directoryOwnerController = new AbortController();
   private readonly unavailableDirectoryHandles = new Set<string>();
@@ -915,6 +1045,7 @@ export class Session {
   private directoryHandlesReleased = false;
 
   private releaseDirectoryHandles(): void {
+    for (const lease of this.inheritedWriteHandles.values()) lease.retire();
     for (const controller of this.directoryHandleControllers.values()) controller.abort();
     this.directoryHandleControllers.clear();
     for (const handle of this.directoryHandles.values()) fs.closeSync(handle.fd);
@@ -1108,11 +1239,13 @@ export class Session {
       : { ...this.permissionUpdates, mode: this.permissionUpdates.mode ?? this.config.permissions?.mode }),
       planFile: this.planMode?.filePath, planOwnership: this.planMode?.ownership }),
     workingDirectories: readOnly => this.workingDirectories(readOnly),
-    adoptUpdates: updates => this.adoptPermissionUpdates(updates),
+    adoptUpdates: (updates, origin) => this.adoptPermissionUpdates(updates, origin),
   };
 
   /** Rir sfn [2539631,2543941), eXn rgay [1086,1317), UTF-16. Both child lanes share session adoption. */
   inheritPermissionAdoption(owner: LivePermissionOwner): void {
+    if (this.permissionAdoptionOwner !== owner)
+      for (const lease of this.inheritedWriteHandles.values()) lease.retire();
     this.permissionAdoptionOwner = owner;
   }
 
@@ -1127,7 +1260,7 @@ export class Session {
     const { contentRuleOwner, ...state } = previous.permissionOwner.state();
     this.permissionUpdates = { ...structuredClone(state), contentRuleOwner };
     this.directoryObservations.clear();
-    this.copyDirectoryHandles(previous);
+    this.carryDirectoryAuthority(previous);
     for (const [directory, observations] of previous.directoryObservations) {
       this.directoryObservations.set(directory, [...observations]);
     }
@@ -1144,7 +1277,7 @@ export class Session {
       this.permissionUpdates.isBypassPermissionsModeAvailable = true;
     if (!preserveMode) delete this.permissionUpdates.mode;
     this.directoryObservations.clear();
-    this.copyDirectoryHandles(previous);
+    this.carryDirectoryAuthority(previous);
     for (const [directory, observations] of previous.directoryObservations) {
       if (this.permissionUpdates.additionalWorkingDirectories.has(directory)) this.directoryObservations.set(directory, observations);
     }
@@ -1152,14 +1285,58 @@ export class Session {
     this.workingDirectories(false);
   }
 
+  // HV, 24k7d6mw [348500,351100), and Rir, sfn1dbxq [2539631,2543941),
+  // half-open UTF-16. A branch of a scoped child retains the caller's live
+  // permission context. An independently owned session copies its own FDs.
+  private carryDirectoryAuthority(previous: Session): void {
+    if (!previous.permissionAdoptionOwner) return this.copyDirectoryHandles(previous);
+    if (previous.closed || previous.directoryHandlesReleased) throw new Error('Child directory authority retired');
+    if (previous.inheritedPermissions) this.inheritPermissions(previous.inheritedPermissions.owner, previous.inheritedPermissions.allowedTools);
+    else this.inheritPermissionAdoption(previous.permissionAdoptionOwner);
+  }
+
+  // Rir [2539631,2543941), uno [739599,743280), sfn1dbxq, UTF-16. A child
+  // uses the caller's live permission state and writes history under its own session.
+  private inheritedWriteHandle(parent: DirectoryReadHandle, root: string): DirectoryReadHandle | undefined {
+    if (!Session.issuedDirectoryHandles.has(parent) || parent.signal.aborted || parent.root !== root) return;
+    let fd: number | undefined;
+    try {
+      const named = fs.statSync(root, { bigint: true });
+      if (!named.isDirectory() || named.dev !== parent.dev || named.ino !== parent.ino) return;
+      const current = this.inheritedWriteHandles.get(root);
+      if (current?.parent === parent) return current.handle;
+      current?.retire();
+      fd = fs.openSync(`${process.platform === 'linux' ? '/proc/self/fd' : '/dev/fd'}/${parent.fd}`, fs.constants.O_RDONLY);
+      const stat = fs.fstatSync(fd, { bigint: true });
+      if (!stat.isDirectory() || stat.dev !== parent.dev || stat.ino !== parent.ino) return;
+      const controller = new AbortController();
+      const handle = Object.freeze({ ...parent, fd, owner: this.id, incarnation: randomUUID(), signal: controller.signal });
+      const retire = () => {
+        subscription[Symbol.dispose]();
+        this.inheritedWriteHandles.delete(root);
+        controller.abort();
+        fs.closeSync(handle.fd);
+      };
+      const subscription = addAbortListener(parent.signal, retire);
+      this.inheritedWriteHandles.set(root, { parent, handle, retire });
+      Session.issuedDirectoryHandles.add(handle);
+      fd = undefined;
+      return handle;
+    } catch { return; }
+    finally { if (fd !== undefined) fs.closeSync(fd); }
+  }
+
   workingDirectories(readOnly: boolean): string[] & WorkingDirectories {
     if (this.closed || this.directoryHandlesReleased) return [];
-    if (this.inheritedPermissions) {
-      const parent = this.inheritedPermissions.owner.workingDirectories(readOnly);
+    const directoryOwner = this.permissionAdoptionOwner;
+    if (directoryOwner) {
+      const parent = directoryOwner.workingDirectories(readOnly);
       const directories = [...parent];
       Object.defineProperty(directories, 'rootSpellings', { value: 'rootSpellings' in parent ? parent.rootSpellings : [] });
       Object.defineProperty(directories, 'readHandle', { value: (root: string) => {
-        const handle = this.closed || this.directoryHandlesReleased ? undefined : this.inheritedPermissions?.owner.workingDirectories(readOnly).readHandle?.(root);
+        const handle = this.closed || this.directoryHandlesReleased || this.permissionAdoptionOwner !== directoryOwner ? undefined :
+          directoryOwner.workingDirectories(readOnly).readHandle?.(root);
+        if (handle && !readOnly) return this.inheritedWriteHandle(handle, root);
         return handle && { ...handle, signal: AbortSignal.any([handle.signal, this.directoryOwnerController.signal]) };
       } });
       return directories;
@@ -1198,17 +1375,20 @@ export class Session {
       if (!handle) return undefined;
       try {
         const stat = fs.fstatSync(handle.fd, { bigint: true });
-        return stat.isDirectory() && stat.dev === handle.dev && stat.ino === handle.ino ? handle : undefined;
+        if (!stat.isDirectory() || stat.dev !== handle.dev || stat.ino !== handle.ino) return;
+        Session.issuedDirectoryHandles.add(Object.freeze(handle));
+        return handle;
       } catch { return undefined; }
     } });
     return directories;
   }
 
   /** CUt [3459,3835), O1 [199668,199720), UTF-16. Memory commits before queued persistence. */
-  adoptPermissionUpdates(updates: readonly PermissionUpdate[]): ReturnType<typeof applyPermissionUpdates> {
+  adoptPermissionUpdates(updates: readonly PermissionUpdate[],
+      origin: import('./permissions.js').PermissionWriteOrigin = { sessionId: this.id }): ReturnType<typeof applyPermissionUpdates> {
     if (this.closed) throw new Error('Session is closed');
     // sxr sfn [3317869,3319984), UTF-16. Reduce against latest shared authority, then persist there.
-    if (this.permissionAdoptionOwner?.adoptUpdates) return this.permissionAdoptionOwner.adoptUpdates(updates);
+    if (this.permissionAdoptionOwner?.adoptUpdates) return this.permissionAdoptionOwner.adoptUpdates(updates, origin);
     const outcome = applyPermissionUpdates(this.permissionUpdates, updates);
     if (outcome.blocked !== undefined) return outcome;
     this.permissionUpdates = outcome.state;
@@ -1234,19 +1414,30 @@ export class Session {
     }
     this.workingDirectories(false);
     bindPermissionOwner(this.config.permissions, this.permissionOwner);
-    const paths = permissionSettingsPaths(this.config.workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    const workspace = this.config.workspace;
+    const managedOnly = this.config.permissions?.managedOnly === true;
+    const paths = permissionSettingsPaths(workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    // O1, 2bcyxj9q [199668,199720), awaits each primary write in this adoption.
+    // us, x0dc37w9 [102833,105519), schedules Git ignore separately (UTF-16).
+    let previous: Promise<PermissionWriteResult> | undefined;
     for (const update of outcome.applied ?? []) {
-      const pending = persistPermissionUpdate(update, paths, this.config.permissions?.managedOnly === true, {
-        workspace: this.config.workspace,
+      let ignore: Promise<void> | undefined;
+      const persist = () => persistPermissionUpdate(update, paths, managedOnly, {
+        workspace,
         schedule: work => {
-          const pendingIgnore = work.then(result => { this.permissionIgnoreResults.push(result); })
-            .finally(() => { this.pendingPermissionWrites.delete(pendingIgnore); });
-          this.pendingPermissionWrites.add(pendingIgnore);
+          ignore = work.then(result => { this.permissionIgnoreResults.push({ ...result, sessionId: origin.sessionId }); });
         },
-      })
-        .then(result => { this.permissionWriteResults.push(result); })
-        .finally(() => { this.pendingPermissionWrites.delete(pending); });
+      });
+      const primary = previous ? previous.then(persist) : persist();
+      previous = primary;
+      const write = primary.then(async result => {
+        this.permissionWriteResults.push({ ...result, sessionId: origin.sessionId });
+        await ignore;
+        return result;
+      });
+      const pending = write.then(() => {}).finally(() => { this.pendingPermissionWrites.delete(pending); });
       this.pendingPermissionWrites.add(pending);
+      origin.onWrite?.(write);
     }
     for (const listener of this.permissionListeners) {
       try { listener(); } catch { /* UI observers do not own permission adoption or persistence. */ }
@@ -1259,6 +1450,35 @@ export class Session {
     return [...this.permissionWriteResults];
   }
   private fd: number;
+  private childJournalLimits?: SessionOpenOptions['childJournalLimits'];
+  private readonly pendingHistoryWitnesses = new Map<string,string>();
+
+  // OMe/Tle, sfn1dbxq [4543991,4544354), UTF-16. Host file replacement
+  // and its journal witness share the same synchronous publication path.
+  assertHistoryWitnessWritable(event: Extract<SessionEvent,{kind:'agent_history'}>): void {
+    if (this.closed) throw new Error('Session is closed');
+    if (this.journalFailed) throw new Error('Session journal write failed; close and reopen before appending');
+    this.assertChildJournalCapacity(event,historyWitnessBytes);
+  }
+
+  private assertChildJournalCapacity(event: SessionEvent, rowBytes: number): void {
+    if (!this.childJournalLimits) return;
+    const pending = this.pendingHistoryWitnesses;
+    const newIntent = event.kind === 'agent_history_intent' && !pending.has(event.id);
+    const witness = event.kind === 'agent_history' && pending.get(event.id) === event.digest;
+    const reserved = pending.size + Number(newIntent) - Number(witness);
+    const boundary = event.kind !== 'turn_end' && !witness;
+    if (this.events.length + 1 + reserved + Number(boundary) > this.childJournalLimits.maxJournalEvents ||
+        fs.fstatSync(this.fd).size + rowBytes + reserved * historyWitnessBytes +
+          (boundary ? 128 : 0) > this.childJournalLimits.maxJournalBytes)
+      throw new Error('Child journal limit reached');
+  }
+
+  private trackHistoryWitness(event: SessionEvent): void {
+    if (event.kind === 'agent_history_intent') this.pendingHistoryWitnesses.set(event.id,event.newDigest);
+    if (event.kind === 'agent_history' && this.pendingHistoryWitnesses.get(event.id) === event.digest)
+      this.pendingHistoryWitnesses.delete(event.id);
+  }
   private lock: string;
   private lockToken: string;
   private lockGate: SessionGateIdentity;
@@ -1280,6 +1500,19 @@ export class Session {
 
   get unknownNotifications(): ReadonlyArray<{ deliveryId: string; state: 'unknown' }> {
     return this.notificationCoordination;
+  }
+
+  // Wake router, rx2nah4x [229020,229780), UTF-16. The host receipt identifies
+  // the committed input while the root's active history identifies its receiver.
+  get pendingWorkerReceipt(): { parent: string; runId: string; deliveryId: string } | undefined {
+    const parent = this.config.parentSessionId;
+    const last = this.events.at(-1);
+    if (!parent || !this.config.childMode || last?.kind !== 'message' || last.notificationDelivery?.owner !== this.id) return;
+    const { deliveryId } = last.notificationDelivery;
+    if (this.modelIsolatedDeliveryIds.has(deliveryId)) return;
+    const intent = this.events.find(row => row.kind === 'notification_intent_v2' && row.deliveryId === deliveryId);
+    if (intent?.kind !== 'notification_intent_v2' || intent.batch.kind !== 'agent_events' || !intent.batch.receiverRunId) return;
+    return { parent, runId: intent.batch.receiverRunId, deliveryId };
   }
 
   private markNotificationUnknown(deliveryId: string): void {
@@ -1541,16 +1774,17 @@ export class Session {
 
   // Fet/rhe, sfn1dbxq [4731316,4732048)/[4728518,4730433), UTF-16:
   // the assistant parent and the user snapshot are separate message identities.
-  private directoryBackupMessageContext(toolUseId: string, before: number): DirectoryBackupMessageContext | undefined {
+  private directoryBackupMessageContext(toolUseId: string, before: number, editInputDigest?: string): DirectoryBackupMessageContext | undefined {
     const history = this.events.slice(0, before);
     const startIndex = history.findLastIndex(event => event.kind === 'tool_start' && event.id === toolUseId);
     const start = history[startIndex];
-    if (!start || start.kind !== 'tool_start' || start.name !== 'write_file' || !start.parentMessageId ||
+    if (!start || start.kind !== 'tool_start' || (editInputDigest ? !['edit_file','notebook_edit'].includes(start.name) : start.name !== 'write_file') ||
+        start.editInputDigest !== editInputDigest || !start.parentMessageId ||
         history.slice(startIndex + 1).some(event => (event.kind === 'tool_effect' || event.kind === 'tool_result') && event.result.tool_use_id === toolUseId)) return;
     const parentIndex = history.findLastIndex(event => event.kind === 'message' && event.messageId === start.parentMessageId);
     const parent = history[parentIndex];
     if (!parent || parent.kind !== 'message' || parent.message.role !== 'assistant' || parentIndex >= startIndex ||
-        !Array.isArray(parent.message.content) || parent.message.content.filter(block => block.type === 'tool_use' && block.id === toolUseId && block.name === 'write_file').length !== 1) return;
+        !Array.isArray(parent.message.content) || parent.message.content.filter(block => block.type === 'tool_use' && block.id === toolUseId && block.name === start.name).length !== 1) return;
     const boundary = history.slice(0, parentIndex).findLastIndex(event => event.kind === 'turn_end');
     const user = history.slice(boundary + 1, parentIndex).findLast(event => event.kind === 'message' && event.message.role === 'user' && !event.isMeta && !!event.messageId);
     if (!user || user.kind !== 'message' || !user.messageId ||
@@ -1562,6 +1796,7 @@ export class Session {
   // Host rewrite: uno/Fet/T$n, sfn1dbxq SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
   // UTF-16 [739599,743280)/[4731316,4732048)/[4739060,4739632), have no FD-bound journal or receipt.
   recordDirectoryBackup(input: { id: string; toolUseId: string; lexicalPath: string; grant: DirectoryReadHandle;
+    editInput?: unknown;
     destinationFd: number; bytes: number; sha256: string; source: { begin: BoundDirectoryFileObservation; end: BoundDirectoryFileObservation }; signal: AbortSignal }): void {
     const assertOwner = () => {
       input.signal.throwIfAborted();
@@ -1574,7 +1809,9 @@ export class Session {
     };
     assertOwner();
     const relative = path.relative(input.grant.root, input.lexicalPath);
-    const messageContext = this.directoryBackupMessageContext(input.toolUseId, this.events.length);
+    const edit = describeDirectoryEditInput(this, input.editInput);
+    if ('editInput' in input && (!edit || edit.lexicalPath !== input.lexicalPath)) throw new Error('Directory edit backup input mismatch');
+    const messageContext = this.directoryBackupMessageContext(input.toolUseId, this.events.length, edit?.digest);
     if (!path.isAbsolute(input.lexicalPath) || path.resolve(input.lexicalPath) !== input.lexicalPath || !relative ||
         relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative) ||
         !messageContext)
@@ -1589,6 +1826,7 @@ export class Session {
       throw new Error('Directory backup sidecar identity mismatch');
     const event = directoryBackupSchema.parse({ kind: 'directory_backup', id: input.id, owner: this.id,
       toolUseId: input.toolUseId, lexicalPath: input.lexicalPath, messageContext,
+      ...(edit ? { editInputDigest: edit.digest } : {}),
       grant: { root: input.grant.root, incarnation: input.grant.incarnation, dev: String(input.grant.dev), ino: String(input.grant.ino) },
       source, sidecar: { dev: String(file.dev), ino: String(file.ino), uid: String(file.uid) }, bytes: input.bytes, sha256: input.sha256 });
     if (this.events.some(row => (row.kind === 'directory_backup' || row.kind === 'directory_snapshot_file') && row.id === input.id) ||
@@ -1737,8 +1975,10 @@ export class Session {
       if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return { state: unknown };
       const earlier = this.events.slice(0, this.events.indexOf(event));
       if (event.kind === 'directory_backup') {
-        if (!earlier.some(row => row.kind === 'tool_start' && row.id === event.toolUseId && row.name === 'write_file') ||
-            (event.messageContext && JSON.stringify(event.messageContext) !== JSON.stringify(this.directoryBackupMessageContext(event.toolUseId, this.events.indexOf(event)))))
+        if (!earlier.some(row => row.kind === 'tool_start' && row.id === event.toolUseId &&
+              (event.editInputDigest ? ['edit_file','notebook_edit'].includes(row.name) : row.name === 'write_file')) ||
+            (event.editInputDigest && !event.messageContext) ||
+            (event.messageContext && JSON.stringify(event.messageContext) !== JSON.stringify(this.directoryBackupMessageContext(event.toolUseId, this.events.indexOf(event), event.editInputDigest))))
           return { state: unknown };
       } else {
         const intents = earlier.filter((row): row is DirectorySnapshotIntentEvent => row.kind === 'directory_snapshot_intent' && row.id === event.snapshotId);
@@ -2034,6 +2274,12 @@ export class Session {
     finally { checkpointBranchAuthorizations.delete(token); }
   }
 
+  hasCleanRewindBranch(): boolean {
+    const branch = this.events.at(-1);
+    return branch?.kind === 'branch' && branch.reason === 'rewind' &&
+      !fs.readdirSync(path.dirname(this.file)).some(name => name.startsWith(path.basename(this.file) + '.torn-'));
+  }
+
   // Host inheritance for Fet/Tke/Cwt and kHs, sfn1dbxq [4731316,4733481)/[4734814,4735645),
   // 24k7d6mw [45367,46476), UTF-16; the source has no cross-Session checkpoint receipt.
   inheritCheckpointWitnesses(source: Session): void {
@@ -2132,7 +2378,7 @@ export class Session {
     };
     let source: Session | undefined, owned = false, changed = false;
     try {
-      if (last.kind === 'branch' && !hasTornBranch()) return unknown;
+      if (last.kind === 'branch' && !this.hasCleanRewindBranch() && !hasTornBranch()) return unknown;
       return withIdleCheckpointStore(this.config.workspace, () => {
         if (last.kind === 'directory_checkpoint_torn_recovery') {
           if (!last.sourceLock || !isReconciledCheckpointTorn(this) || !inspectDirectoryCheckpointTornRecovery(this, last.candidate)) return unknown;
@@ -2141,14 +2387,20 @@ export class Session {
           source.checkpointGateIdentity(); this.checkpointGateIdentity();
           return inspectDirectoryCheckpointTornRecovery(this, last.candidate) ? { kind: 'reclaimed' } as const : unknown;
         }
-        if (last.kind !== 'branch' || !hasTornBranch()) return unknown;
+        if (last.kind !== 'branch') return unknown;
+        const torn = hasTornBranch();
+        if (!torn && (!this.hasCleanRewindBranch() || this.events.at(-1) !== last || !hasArchivedRewindCommit(this))) return unknown;
         if (options.source?.id === last.source && options.source.config.workspace === this.config.workspace) source = options.source;
         else {
           source = Session.openInternal(this.config.workspace, { id: last.source, recoverLock: options.recoverLock }, undefined, true);
           owned = true; changed = Boolean(options.recoverLock);
         }
         const previous = this.events.length;
-        try { return this.reconcileTornCheckpointInheritance(source); }
+        try {
+          if (torn) return this.reconcileTornCheckpointInheritance(source);
+          this.inheritCheckpointWitnesses(source);
+          return this.events.length > previous ? { kind: 'reconciled' } as const : unknown;
+        }
         finally { changed ||= this.events.length !== previous; }
       }) ?? unknown;
     } catch (error) {
@@ -2160,6 +2412,15 @@ export class Session {
         if (fs.existsSync(`${source.file}.lock`)) throw new Error('Checkpoint recovery source lock cleanup is unconfirmed');
       }
     }
+  }
+
+  // gft, 24k7d6mw [38766,45161), UTF-16. The host retains the source
+  // journal for checkpoint provenance across a committed branch handoff.
+  openCommittedRewindSource(archivedSource?: string): Session {
+    const branch = archivedSource ? this.events.findLast(row => row.kind === 'branch' && row.reason === 'rewind' && row.source === archivedSource) : this.events.at(-1);
+    if (branch?.kind !== 'branch' || branch.reason !== 'rewind' || branch.workspace !== this.config.workspace ||
+        branch.source === this.id) throw new Error('Committed rewind branch unavailable');
+    return Session.openInternal(branch.workspace, { id: branch.source, recoverLock: true }, undefined, true);
   }
 
   checkpointJournalBytes(): Buffer {
@@ -2248,15 +2509,18 @@ export class Session {
       const intents = this.events.filter((row): row is DirectoryPublicationIntentEvent => row.kind === 'directory_publication_intent' && row.id === id);
       const results = this.events.filter((row): row is DirectoryPublicationResultEvent => row.kind === 'directory_publication_result' && row.id === id);
       const intent = intents[0], result = results[0];
+      const edit = describeDirectoryEditInput(this, intent?.edit);
+      if (edit && (intent?.strategy !== 'retained' || edit.lexicalPath !== intent.lexicalPath)) return unknown;
       if (intents.length !== 1 || results.length !== 1 || !intent || !result || intent.owner !== this.id || result.owner !== this.id ||
           result.intent !== Session.notificationDigest(intent) || this.events.indexOf(result) <= this.events.indexOf(intent) ||
-          JSON.stringify(intent.messageContext) !== JSON.stringify(this.directoryBackupMessageContext(intent.toolUseId, this.events.indexOf(intent)))) return unknown;
+          JSON.stringify(intent.messageContext) !== JSON.stringify(this.directoryBackupMessageContext(intent.toolUseId, this.events.indexOf(intent), edit?.digest))) return unknown;
       const missing = 'kind' in intent.expected;
       if ((missing && (intent.overwrite === undefined || intent.strategy === 'retained')) || (!missing && intent.overwrite === false)) return unknown;
       const overwrite = intent.overwrite ?? true;
       const start = this.events.slice(0, this.events.indexOf(intent)).findLast(row => row.kind === 'tool_start' && row.id === intent.toolUseId);
-      if (!start || start.kind !== 'tool_start' || start.name !== 'write_file' || start.parentMessageId !== intent.messageContext.parentMessageId ||
-          start.writeInputDigest !== directoryWriteFingerprint({ lexicalPath: intent.lexicalPath, content: intent.content, overwrite })) return unknown;
+      if (!start || start.kind !== 'tool_start' || start.parentMessageId !== intent.messageContext.parentMessageId ||
+          (edit ? start.name !== edit.tool || start.editInputDigest !== edit.digest :
+            start.name !== 'write_file' || start.writeInputDigest !== directoryWriteFingerprint({ lexicalPath: intent.lexicalPath, content: intent.content, overwrite }))) return unknown;
       if (missing) {
         const backup = this.events.findLast(row => row.kind === 'directory_missing_backup' && row.id === intent.backupId);
         if (!backup || backup.kind !== 'directory_missing_backup' || !this.inspectDirectorySnapshot(backup) ||
@@ -2265,10 +2529,16 @@ export class Session {
             JSON.stringify(backup.parent) !== JSON.stringify(intent.expected.parent) || backup.createMode !== intent.expected.mode ||
             JSON.stringify(backup.writeInput) !== JSON.stringify({ content: intent.content, overwrite })) return unknown;
       } else {
-        const backup = this.inspectDirectoryBackup(intent.backupId).state;
+        const { state: backup, bytes } = this.inspectDirectoryBackup(intent.backupId, !!edit);
         if (backup.kind !== 'valid' || backup.witness.toolUseId !== intent.toolUseId || backup.witness.lexicalPath !== intent.lexicalPath ||
+            backup.witness.editInputDigest !== edit?.digest ||
             JSON.stringify(backup.witness.messageContext) !== JSON.stringify(intent.messageContext) ||
             JSON.stringify(backup.witness.grant) !== JSON.stringify(intent.grant) || JSON.stringify(backup.witness.source.end) !== JSON.stringify(intent.expected)) return unknown;
+        if (intent.edit) {
+          if (!bytes) return unknown;
+          const output = directoryEditContent(bytes, intent.edit);
+          if (output.length !== intent.content.bytes || createHash('sha256').update(output).digest('hex') !== intent.content.sha256) return unknown;
+        }
       }
       const history = this.reconstructDirectoryFileHistory(this.events.indexOf(intent)), snapshot = history.snapshots.at(-1);
       if (!snapshot || snapshot.messageId !== intent.messageContext.userMessageId || !snapshot.entries.some(entry =>
@@ -2331,8 +2601,18 @@ export class Session {
 
   // Host rewrite: RVr, sfn1dbxq [4740702,4743506), UTF-16; its backup has no retained owner/receipt.
   observeRetainedDirectoryPublication(input: { id: string; grant?: DirectoryReadHandle; signal: AbortSignal }): DirectoryRetainedObservation {
+    return this.checkRetainedPublication(input, false);
+  }
+
+  archiveRetainedDirectoryPublication(id: string, signal: AbortSignal): DirectoryRetainedObservation {
+    const intent = this.events.findLast((event): event is DirectoryPublicationIntentEvent => event.kind === 'directory_publication_intent' && event.id === id);
+    const grant = intent && this.workingDirectories(false).readHandle?.(intent.grant.root);
+    return this.checkRetainedPublication({ id, grant, signal }, true);
+  }
+
+  private checkRetainedPublication(input: { id: string; grant?: DirectoryReadHandle; signal: AbortSignal }, move: boolean): DirectoryRetainedObservation {
     const unknown: DirectoryRetainedObservation = { kind: 'unknown' };
-    let gateFd: number | undefined, backupFd: number | undefined;
+    let gateFd: number | undefined, backupFd: number | undefined, archiveFd: number | undefined;
     try {
       const grant = input.grant;
       if (!grant) return unknown;
@@ -2366,8 +2646,25 @@ export class Session {
       if (!openedGate.isFile() || !namedGate.isFile() || namedGate.isSymbolicLink() || openedGate.dev !== namedGate.dev ||
           openedGate.ino !== namedGate.ino || (openedGate.mode & 0o777n) !== 0o600n || !flock(gateFd, false)) return unknown;
       assertOwner();
+      const archivePath = `${this.file}.retained-archive`;
+      if (move) {
+        try { fs.mkdirSync(archivePath, { mode: 0o700 }); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+        syncDirectory(path.dirname(archivePath));
+      }
+      try { archiveFd = fs.openSync(archivePath, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW); }
+      catch (error) { if (move || (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+      const verifyArchive = () => {
+        if (archiveFd === undefined) return;
+        const named = fs.lstatSync(archivePath, { bigint: true }), opened = fs.fstatSync(archiveFd, { bigint: true });
+        if (!named.isDirectory() || named.dev !== opened.dev || named.ino !== opened.ino || (opened.mode & 0o7777n) !== 0o700n ||
+            opened.uid !== openedBackup.uid) throw new Error('Retained archive directory changed');
+      };
+      verifyArchive();
       const observed = observeRetainedDirectoryFile({ fd: grant.fd, relative: path.relative(grant.root, intent.lexicalPath),
-        expected: publication.retained.held, expectedFd: backupFd, transactionId: input.id, leaseFd: gateFd });
+        expected: publication.retained.held, expectedFd: backupFd, transactionId: input.id, leaseFd: gateFd,
+        ...(archiveFd === undefined ? {} : { archive: { fd: archiveFd, parent: publication.observation.parent, move } }) });
+      verifyArchive();
       const afterBackup = fs.fstatSync(backupFd, { bigint: true }), afterName = fs.lstatSync(sidecar, { bigint: true });
       const afterGate = fs.fstatSync(gateFd, { bigint: true }), afterGateName = fs.lstatSync(gatePath, { bigint: true });
       if (observed.kind !== 'observed' || !afterName.isFile() || afterName.isSymbolicLink() || afterName.dev !== openedBackup.dev ||
@@ -2380,7 +2677,7 @@ export class Session {
       assertOwner();
       return observed;
     } catch { return unknown; }
-    finally { if (backupFd !== undefined) fs.closeSync(backupFd); if (gateFd !== undefined) fs.closeSync(gateFd); }
+    finally { if (archiveFd !== undefined) fs.closeSync(archiveFd); if (backupFd !== undefined) fs.closeSync(backupFd); if (gateFd !== undefined) fs.closeSync(gateFd); }
   }
 
   // Host rewrite: Tke/Cwt, sfn1dbxq [4732048,4733481)/[4734814,4735645), UTF-16;
@@ -2484,7 +2781,7 @@ export class Session {
     const content = Buffer.from(input.content);
     const contentWitness = { bytes: content.length, sha256: createHash('sha256').update(content).digest('hex') };
     const authorization = consumeDirectoryPublicationAuthorization(input.authorization, { session: this, toolUseId: input.toolUseId, lexicalPath: input.lexicalPath,
-      content, signal: input.signal, authorizationSignal: input.authorizationSignal, approvalCall: input.approvalCall });
+      content, backupId: input.backupId, signal: input.signal, authorizationSignal: input.authorizationSignal, approvalCall: input.approvalCall });
     const assertOwner = () => {
       input.authorizationSignal.throwIfAborted();
       if (!input.approvalCall.isActive || input.approvalCall.providerId !== input.toolUseId) throw new Error('Directory publication call retired');
@@ -2494,7 +2791,10 @@ export class Session {
     const missing = this.events.findLast((row): row is DirectoryMissingBackupEvent => row.kind === 'directory_missing_backup' && row.id === input.backupId);
     const backup = missing ? undefined : this.inspectDirectoryBackup(input.backupId).state;
     const witness = missing ?? (backup?.kind === 'valid' ? backup.witness : undefined);
-    const messageContext = this.directoryBackupMessageContext(input.toolUseId, this.events.length);
+    const edit = describeDirectoryEditInput(this, authorization.edit);
+    if (edit && (input.strategy !== 'retained' || backup?.kind !== 'valid' || backup.witness.editInputDigest !== edit.digest))
+      throw new Error('Directory edit publication backup mismatch');
+    const messageContext = this.directoryBackupMessageContext(input.toolUseId, this.events.length, edit?.digest);
     if (!witness || !messageContext || witness.toolUseId !== input.toolUseId || witness.lexicalPath !== input.lexicalPath ||
         JSON.stringify(witness.messageContext) !== JSON.stringify(messageContext) || witness.grant.root !== input.grant.root ||
         witness.grant.incarnation !== input.grant.incarnation || witness.grant.dev !== String(input.grant.dev) ||
@@ -2506,8 +2806,9 @@ export class Session {
     if (this.events.some(row => row.kind === 'directory_publication_intent' && row.toolUseId === input.toolUseId &&
         JSON.stringify(row.messageContext) === JSON.stringify(messageContext))) throw new Error('Directory publication already attempted');
     const start = this.events.findLast(row => row.kind === 'tool_start' && row.id === input.toolUseId);
-    if (!start || start.kind !== 'tool_start' || start.name !== 'write_file' || start.parentMessageId !== messageContext.parentMessageId ||
-        start.writeInputDigest !== directoryWriteFingerprint(authorization))
+    if (!start || start.kind !== 'tool_start' || start.parentMessageId !== messageContext.parentMessageId ||
+        (edit ? start.name !== edit.tool || start.editInputDigest !== edit.digest :
+          start.name !== 'write_file' || start.writeInputDigest !== directoryWriteFingerprint(authorization)))
       throw new Error('Directory publication input witness mismatch');
     const expected: DirectoryPublicationExpected = missing && missing.kind === 'directory_missing_backup' && missing.createMode !== undefined
       ? { kind: 'missing', parent: missing.parent, mode: missing.createMode }
@@ -2526,6 +2827,7 @@ export class Session {
     const id = randomUUID(), intent = directoryPublicationIntentSchema.parse({ kind: 'directory_publication_intent', id, owner: this.id,
       toolUseId: input.toolUseId, messageContext, lexicalPath: input.lexicalPath, grant: witness.grant, backupId: input.backupId,
       expected, content: contentWitness, ...('kind' in expected ? { overwrite: authorization.overwrite } : {}),
+      ...(authorization.edit ? { edit: authorization.edit } : {}),
       ...(input.strategy ? { strategy: input.strategy } : {}) });
     const gatePath = `${this.lock}.gate`, gateFd = fs.openSync(gatePath, fs.constants.O_RDWR | fs.constants.O_NOFOLLOW);
     let backupFd: number | undefined, backupStat: fs.BigIntStats | undefined;
@@ -2808,6 +3110,12 @@ export class Session {
     if (meta?.kind !== 'metadata') throw new Error('Session metadata is missing');
     this.id = meta.id;
     this.config = structuredClone(meta.config);
+    // Ji/PPr/v4, 4bw62nzm UTF-16 [111491,111767)/[111344,111491)/[110769,110965),
+    // require plugin-origin metadata that old host snapshots discarded. Keep their
+    // pinned aggregate until explicit reload; do not classify by command equality.
+    if (meta.pluginHookOriginsVersion === undefined && this.config.plugins?.enabled &&
+        Object.values(this.config.hooks ?? {}).some(entries => entries?.some(entry => !('hooks' in entry) || entry.pluginOrigin === undefined)))
+      this.config.legacyPluginHookSnapshot = true;
     // RTe.kn/Bn, 24k7d6mw [1562359,1572850)/[1585446,1586735), UTF-16; replay only this configuration's accepted catalog.
     const catalog = events.findLast(event => event.kind === 'mcp_catalog');
     if (catalog?.kind === 'mcp_catalog') {
@@ -2825,6 +3133,7 @@ export class Session {
     this.lockToken = lockToken;
     this.lockGate = lockGate;
     this.reconcileNotifications();
+    if (events.some(event => event.kind === 'compact' && event.preservedMessages?.length)) void this.conversationEntries;
     this.liveSettingSources = this.config.settingSources === undefined ? undefined : structuredClone(this.config.settingSources);
     this.releaseSettingsWrites = subscribeSettingsWrites(write => this.observeSettingsWrite(write));
     this.startedAt = meta.startedAt ?? Math.min(Date.now(), fs.fstatSync(fd).birthtimeMs || Date.now());
@@ -2849,6 +3158,56 @@ export class Session {
 
   static open(workspace: string, options: SessionOpenOptions): Session {
     return Session.openInternal(workspace, options);
+  }
+
+  reclaimWorkerShutdown(intent: Extract<SessionEvent,{kind:'agent_history_intent'}>, finish: () => void): void {
+    if (!this.isOpen || !intent.continuationDeliveryId || !intent.shutdownLock || intent.parent !== this.id || intent.id === this.id ||
+        this.events.findLast(row => (row.kind === 'agent_history' || row.kind === 'agent_history_intent') && row.id === intent.id) !== intent)
+      throw new Error('Worker shutdown witness unavailable');
+    z.string().uuid().parse(intent.id);
+    this.assertDirectoryBackupLock();
+    const lock = path.join(path.dirname(this.file),intent.id+'.jsonl.lock');
+    const expected = intent.shutdownLock;
+    const fd = fs.openSync(lock+'.gate',fs.constants.O_RDWR | fs.constants.O_NOFOLLOW);
+    try {
+      const assertGate = () => {
+        const named = fs.lstatSync(lock+'.gate',{bigint:true}), held = fs.fstatSync(fd,{bigint:true});
+        if (!named.isFile() || named.dev !== held.dev || named.ino !== held.ino ||
+            String(held.dev) !== expected.gate.dev || String(held.ino) !== expected.gate.ino)
+          throw new Error('Worker shutdown gate changed');
+      };
+      assertGate();
+      if (!flock(fd,false)) throw new Error('Worker shutdown gate busy');
+      assertGate();
+      const journal = fs.openSync(path.join(path.dirname(this.file),intent.id+'.jsonl'),fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      try {
+        const stat = fs.fstatSync(journal);
+        if (!stat.isFile() || stat.size !== intent.journal.bytes) throw new Error('Worker shutdown journal changed');
+        verifyJournalWitness(fs.readFileSync(journal),intent.journal);
+      } finally { fs.closeSync(journal); }
+      Session.removeDeadLock(lock,expected.gate,assertGate,expected);
+      syncDirectory(path.dirname(lock));
+      finish();
+    } finally { fs.closeSync(fd); }
+  }
+
+  private static removeDeadLock(lock: string, lockGate: SessionGateIdentity, assertGate: () => void, expectedLock?: CheckpointSourceLock): void {
+    const before = fs.lstatSync(lock, { bigint: true });
+    if (!before.isFile() || before.isSymbolicLink()) throw new Error('Invalid session lock');
+    const lockBytes = fs.readFileSync(lock), owner = recoverableSessionLockSchema.parse(JSON.parse(lockBytes.toString('utf8')));
+    if (owner.gate && (owner.gate.dev !== lockGate.dev || owner.gate.ino !== lockGate.ino)) throw new Error('Session lock gate changed during recovery');
+    if (expectedLock && (String(before.dev) !== expectedLock.dev || String(before.ino) !== expectedLock.ino || String(before.uid) !== expectedLock.uid ||
+        String(before.mode) !== expectedLock.mode || String(before.size) !== expectedLock.size || String(before.mtimeNs) !== expectedLock.mtimeNs ||
+        String(before.ctimeNs) !== expectedLock.ctimeNs || before.nlink !== 1n || owner.pid !== expectedLock.pid || !owner.gate ||
+        owner.gate.dev !== expectedLock.gate.dev || owner.gate.ino !== expectedLock.gate.ino)) throw new Error('Checkpoint source lock changed');
+    try { process.kill(owner.pid, 0); throw new Error(`Session is active in process ${owner.pid}`); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+    const after = fs.lstatSync(lock, { bigint: true });
+    if (after.dev !== before.dev || after.ino !== before.ino || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs ||
+        !fs.readFileSync(lock).equals(lockBytes))
+      throw new Error('Session lock changed during recovery');
+    assertGate();
+    fs.unlinkSync(lock);
   }
 
   private static openInternal(workspace: string, options: SessionOpenOptions, held?: { fd: number; lockToken: string }, checkpointRecoverySource = false,
@@ -2914,24 +3273,7 @@ export class Session {
           owner.gate.dev !== lockGate.dev || owner.gate.ino !== lockGate.ino)
         throw new Error('Held session lock changed');
     } else {
-    if (options.recoverLock && fs.existsSync(lock)) {
-      const before = fs.lstatSync(lock, { bigint: true });
-      if (!before.isFile() || before.isSymbolicLink()) throw new Error('Invalid session lock');
-      const lockBytes = fs.readFileSync(lock), owner = recoverableSessionLockSchema.parse(JSON.parse(lockBytes.toString('utf8')));
-      if (owner.gate && (owner.gate.dev !== lockGate.dev || owner.gate.ino !== lockGate.ino)) throw new Error('Session lock gate changed during recovery');
-      if (expectedLock && (String(before.dev) !== expectedLock.dev || String(before.ino) !== expectedLock.ino || String(before.uid) !== expectedLock.uid ||
-          String(before.mode) !== expectedLock.mode || String(before.size) !== expectedLock.size || String(before.mtimeNs) !== expectedLock.mtimeNs ||
-          String(before.ctimeNs) !== expectedLock.ctimeNs || before.nlink !== 1n || owner.pid !== expectedLock.pid || !owner.gate ||
-          owner.gate.dev !== expectedLock.gate.dev || owner.gate.ino !== expectedLock.gate.ino)) throw new Error('Checkpoint source lock changed');
-      try { process.kill(owner.pid, 0); throw new Error(`Session is active in process ${owner.pid}`); }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
-      const after = fs.lstatSync(lock, { bigint: true });
-      if (after.dev !== before.dev || after.ino !== before.ino || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs ||
-          !fs.readFileSync(lock).equals(lockBytes))
-        throw new Error('Session lock changed during recovery');
-      assertGate();
-      fs.unlinkSync(lock);
-    }
+    if (options.recoverLock && fs.existsSync(lock)) Session.removeDeadLock(lock,lockGate,assertGate,expectedLock);
     lockFd = fs.openSync(temporary, 'wx', 0o600);
     const lockStat = fs.fstatSync(lockFd, { bigint: true }); lockIdentity = { dev: lockStat.dev, ino: lockStat.ino };
     fs.writeFileSync(lockFd, JSON.stringify({ pid: process.pid, token: lockToken, gate: lockGate }));
@@ -2978,6 +3320,17 @@ export class Session {
         if (events.some(event => event.kind === 'tool_start' && event.runtimeWriteOwner && event.runtimeWriteOwner.owner !== id))
           throw new Error('Runtime Write start owner mismatch');
         validateRuntimeWriteExecutions(events, id);
+        validateAsyncHookLifecycles(events.filter(event => event.kind === 'async_hook_lifecycle'), id);
+        toolResultObservations(events, id);
+        runtimeWrapperObservations(events, id);
+        hookResolverObservations(events, id);
+        hookToolExecutions(events, id);
+        hookCommandObservations(events, id);
+        agentDisplayObservations(events, id);
+        toolContextObservations(events, id);
+        approvalOperations(events, id);
+        classicHookChains(events, id);
+        classicHookModules(events, id);
         if (options.config && fingerprint(options.config) !== meta.fingerprint) throw new Error('Resume requires the original model, system, tools and runtime settings');
         fd = fs.openSync(file, fs.constants.O_RDWR | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
         if (boundary !== bytes.length) {
@@ -3048,7 +3401,7 @@ export class Session {
         const parent = options.childRoot?.parent;
         const inherited = parent?.isOpen && options.childRoot?.isOwner() && parent.id === options.config.parentSessionId &&
           options.config.childMode !== undefined && parent.config.workspace === root && storage === root ? parent.rootIdentity : undefined;
-        const meta: SessionEvent = { kind: 'metadata', version: 1, id, config: options.config,
+        const meta: SessionEvent = { kind: 'metadata', version: 1, pluginHookOriginsVersion: 1, id, config: options.config,
           fingerprint: fingerprint(options.config), startedAt: Math.min(options.startedAt ?? Date.now(), Date.now()),
           ...(options.config.parentSessionId === undefined && options.config.childMode === undefined ? { rootIdentity: { rootSessionId: id, originalCwd: root } } : inherited ? { rootIdentity: inherited } : {}) };
         const record = Buffer.from(JSON.stringify(meta) + '\n');
@@ -3056,7 +3409,14 @@ export class Session {
         fs.fsyncSync(fd);
         events = [structuredClone(meta)];
       }
+      if (events.some(event => event.kind === 'async_hook_lifecycle')) Session.syncHookLifecycleJournal(file, fd, events);
       const session = new Session(file, fd, lock, lockToken, lockGate, events);
+      if (options.childJournalLimits) {
+        session.childJournalLimits = options.childJournalLimits;
+        if (events.length > options.childJournalLimits.maxJournalEvents || fs.fstatSync(fd).size > options.childJournalLimits.maxJournalBytes)
+          throw new Error('Child journal limit reached');
+        for (const event of events) session.trackHistoryWitness(event);
+      }
       if (held) session.ownsLock = false;
       if (options.childRoot && events[0]?.kind === 'metadata' && events[0].rootIdentity && events[0].config.parentSessionId !== undefined) {
         const { parent, isOwner } = options.childRoot;
@@ -3097,11 +3457,61 @@ export class Session {
     return bytes;
   }
 
+  // Host S3 rewrite of Ole, chunk-sfn1dbxq.js SHA-256
+  // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+  // [4694145,4697475), zero-based half-open UTF-16: source fold/torn-tail
+  // observation has no host durability transaction. Re-establish it on recovery.
+  private static syncHookLifecycleJournal(file: string, fd: number, expected: readonly SessionEvent[]): void {
+    const named = fs.lstatSync(file), opened = fs.fstatSync(fd);
+    if (!named.isFile() || named.isSymbolicLink() || !opened.isFile() || opened.size > 100 * 1024 * 1024 ||
+        named.dev !== opened.dev || named.ino !== opened.ino) throw new Error('Async hook journal identity changed');
+    // New journals use a write-only append descriptor; verify through a pinned reader.
+    const reader = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    try {
+      const observed = fs.fstatSync(reader);
+      if (!observed.isFile() || observed.dev !== opened.dev || observed.ino !== opened.ino || observed.size !== opened.size)
+        throw new Error('Async hook journal reader changed');
+      const bytes = Session.readJournalBytes(reader, observed.size);
+      if (!bytes.length || bytes.at(-1) !== 10 ||
+          JSON.stringify(bytes.toString('utf8').trimEnd().split('\n').map(line => JSON.parse(line))) !== JSON.stringify(expected))
+        throw new Error('Async hook journal content changed');
+      fs.fsyncSync(fd);
+      syncDirectory(path.dirname(path.dirname(file))); syncDirectory(path.dirname(file));
+      const after = fs.lstatSync(file), current = fs.fstatSync(fd), readAfter = fs.fstatSync(reader);
+      if (!after.isFile() || after.isSymbolicLink() || after.dev !== opened.dev || after.ino !== opened.ino ||
+          current.dev !== opened.dev || current.ino !== opened.ino || current.size !== opened.size ||
+          current.mtimeMs !== opened.mtimeMs || current.ctimeMs !== opened.ctimeMs || readAfter.dev !== opened.dev ||
+          readAfter.ino !== opened.ino || readAfter.size !== opened.size || !Session.readJournalBytes(reader, readAfter.size).equals(bytes))
+        throw new Error('Async hook journal changed during sync');
+    } finally { fs.closeSync(reader); }
+  }
+
+  recordAsyncHookLifecycle(authorization: object): void {
+    const event = consumeAsyncHookLifecycle(authorization, this), write = {};
+    asyncHookLifecycleWrites.set(write, { session: this, event: structuredClone(event) });
+    try { this.append(event, undefined, undefined, undefined, write); }
+    finally { asyncHookLifecycleWrites.delete(write); }
+  }
+
   append(event: Exclude<SessionEvent, { kind: 'metadata' }>, authorization?: NotificationAuthorization, backupToken?: symbol,
-      runtimeWriteAuthorization?: RuntimeWriteAuthorization): void {
+      runtimeWriteAuthorization?: RuntimeWriteAuthorization, hookLifecycleAuthorization?: object): void {
     if (this.closed) throw new Error('Session is closed');
     if (this.journalFailed) throw new Error('Session journal write failed; close and reopen before appending');
+    const hookLifecycleWrite = hookLifecycleAuthorization && asyncHookLifecycleWrites.get(hookLifecycleAuthorization);
+    if (hookLifecycleAuthorization) asyncHookLifecycleWrites.delete(hookLifecycleAuthorization);
+    if (hookLifecycleAuthorization && (!hookLifecycleWrite || hookLifecycleWrite.session !== this || !isDeepStrictEqual(hookLifecycleWrite.event, event)))
+      throw new Error('Async hook lifecycle authorization invalid');
     const runtimeStart = runtimeWriteAuthorization === undefined ? undefined : consumeRuntimeWriteAuthorization(runtimeWriteAuthorization, this, event);
+    const observerWrite = consumeToolObserverWrite(this, event);
+    const wrapperWrite = consumeRuntimeWrapperWrite(this, event);
+    const resolverWrite = consumeHookResolverWrite(this, event);
+    const hookToolWrite = consumeHookToolWrite(this, event);
+    const hookCommandWrite = consumeHookCommandWrite(this, event);
+    const agentDisplayWrite = consumeAgentDisplayWrite(this, event);
+    const toolContextWrite = consumeToolContextWrite(this, event);
+    const approvalOperationWrite = consumeApprovalOperationWrite(this, event);
+    const classicWrite = consumeClassicChainWrite(this, event);
+    const classicModuleWrite = consumeClassicModuleWrite(this, event);
     if (utilTypes.isProxy(event) || (Object.getPrototypeOf(event) !== Object.prototype && Object.getPrototypeOf(event) !== null) ||
         Object.getOwnPropertyDescriptor(event, 'toJSON') !== undefined) throw new Error('Session event must be a plain object');
     const kind = Object.getOwnPropertyDescriptor(event, 'kind'), runtimeOwner = Object.getOwnPropertyDescriptor(event, 'runtimeWriteOwner');
@@ -3109,6 +3519,19 @@ export class Session {
       throw new Error('Runtime Write execution authorization invalid');
     if (!kind || !('value' in kind) || (runtimeOwner && !('value' in runtimeOwner)))
       throw new Error('Runtime Write start authorization invalid');
+    if (kind.value === 'async_hook_lifecycle' && !hookLifecycleWrite)
+      throw new Error('Async hook lifecycle authorization invalid');
+    if (kind.value === 'hook_observer') throw new Error('Legacy hook observer records are read-only');
+    if (kind.value === 'tool_result_observer' && !observerWrite) throw new Error('Tool result observer authorization invalid');
+    if (kind.value === 'runtime_wrapper_observer' && !wrapperWrite) throw new Error('Runtime wrapper observer authorization invalid');
+    if (kind.value === 'hook_resolver' && !resolverWrite) throw new Error('Hook resolver authorization invalid');
+    if (kind.value === 'classic_hook_chain' && !classicWrite) throw new Error('Classic chain write authorization invalid');
+    if (kind.value === 'hook_tool' && !hookToolWrite) throw new Error('Hook inner-tool write authorization invalid');
+    if (kind.value === 'hook_command_observer' && !hookCommandWrite) throw new Error('Command observer write authorization invalid');
+    if (kind.value === 'agent_display_observer' && !agentDisplayWrite) throw new Error('Display observer write authorization invalid');
+    if (kind.value === 'tool_context_observer' && !toolContextWrite) throw new Error('Tool context observer write authorization invalid');
+    if (kind.value === 'approval_operation' && !approvalOperationWrite) throw new Error('Approval operation write authorization invalid');
+    if (kind.value === 'classic_hook_module' && !classicModuleWrite) throw new Error('Classic module write authorization invalid');
     if (runtimeOwner && 'value' in runtimeOwner && runtimeOwner.value !== undefined && runtimeStart === undefined)
       throw new Error('Runtime Write start authorization invalid');
     if ((kind.value === 'tool_start' || kind.value === 'runtime_write_execution') && Reflect.ownKeys(event).some(key => {
@@ -3203,9 +3626,32 @@ export class Session {
       event = { ...event, feedbackBlocks: toolFeedbackBlocksSchema.parse(event.feedbackBlocks) };
     }
     eventSchema.parse(event);
+    if (event.kind === 'tool_result_observer') toolResultObservations([...this.events, event], this.id);
+    if (event.kind === 'runtime_wrapper_observer') runtimeWrapperObservations([...this.events, event], this.id);
+    if (event.kind === 'hook_resolver') hookResolverObservations([...this.events, event], this.id);
+    if (event.kind === 'hook_tool') hookToolExecutions([...this.events, event], this.id);
+    if (event.kind === 'hook_command_observer') hookCommandObservations([...this.events, event], this.id);
+    if (event.kind === 'agent_display_observer') agentDisplayObservations([...this.events, event], this.id);
+    if (event.kind === 'tool_context_observer') toolContextObservations([...this.events, event], this.id);
+    if (event.kind === 'approval_operation') approvalOperations([...this.events, event], this.id);
+    if (event.kind === 'classic_hook_chain') classicHookChains([...this.events, event], this.id);
+    if (event.kind === 'classic_hook_module') classicHookModules([...this.events, event], this.id);
+    if (event.kind === 'compact' && event.preservedMessages) this.selectCompactionEntries(this.conversationEntries, event.preservedMessages);
     let serialized: string, serializedEvent: unknown;
     try { serialized = JSON.stringify(event); serializedEvent = JSON.parse(serialized); }
     catch (error) { this.journalFailed = true; throw error; }
+    if (hookLifecycleWrite && !isDeepStrictEqual(serializedEvent, hookLifecycleWrite.event))
+      throw new Error('Async hook lifecycle authorization invalid');
+    if (observerWrite && !isDeepStrictEqual(serializedEvent, observerWrite)) throw new Error('Tool result observer authorization invalid');
+    if (wrapperWrite && !isDeepStrictEqual(serializedEvent, wrapperWrite)) throw new Error('Runtime wrapper observer authorization invalid');
+    if (resolverWrite && !isDeepStrictEqual(serializedEvent, resolverWrite)) throw new Error('Hook resolver authorization invalid');
+    if (classicWrite && !isDeepStrictEqual(serializedEvent, classicWrite)) throw new Error('Classic chain write authorization invalid');
+    if (hookToolWrite && !isDeepStrictEqual(serializedEvent, hookToolWrite)) throw new Error('Hook inner-tool write authorization invalid');
+    if (hookCommandWrite && !isDeepStrictEqual(serializedEvent, hookCommandWrite)) throw new Error('Command observer write authorization invalid');
+    if (agentDisplayWrite && !isDeepStrictEqual(serializedEvent, agentDisplayWrite)) throw new Error('Display observer write authorization invalid');
+    if (toolContextWrite && !isDeepStrictEqual(serializedEvent, toolContextWrite)) throw new Error('Tool context observer write authorization invalid');
+    if (approvalOperationWrite && !isDeepStrictEqual(serializedEvent, approvalOperationWrite)) throw new Error('Approval operation write authorization invalid');
+    if (classicModuleWrite && !isDeepStrictEqual(serializedEvent, classicModuleWrite)) throw new Error('Classic module write authorization invalid');
     const serializedRuntimeStart = typeof serializedEvent === 'object' && serializedEvent !== null &&
       'kind' in serializedEvent && (serializedEvent.kind === 'runtime_write_execution' ||
       serializedEvent.kind === 'tool_start' && 'runtimeWriteOwner' in serializedEvent && serializedEvent.runtimeWriteOwner !== undefined);
@@ -3214,6 +3660,7 @@ export class Session {
       throw new Error('Runtime Write start authorization invalid');
     // W385 host rewrite: ns/Si [226694,227794)/[233465,234179), OMe/Tle
     // [4543991,4544354), sfn1dbxq UTF-16, have no host journal receipt.
+    if (this.childJournalLimits) this.assertChildJournalCapacity(event,Buffer.byteLength(serialized)+1);
     try {
       if (event.kind === 'notification_intent_v2') {
         const state = { owner: event.owner, deliveryId: event.deliveryId, intent: Session.notificationDigest(event) };
@@ -3221,6 +3668,7 @@ export class Session {
       }
       Session.writeAll(this.fd, Buffer.from(serialized + '\n'));
       fs.fsyncSync(this.fd);
+      if (event.kind === 'async_hook_lifecycle') Session.syncHookLifecycleJournal(this.file, this.fd, [...this.events, event]);
       if (event.kind === 'message' && event.notificationDelivery) {
         const { owner, deliveryId } = event.notificationDelivery;
         const intent = this.events.find(row => row.kind === 'notification_intent_v2' && row.deliveryId === deliveryId);
@@ -3239,6 +3687,7 @@ export class Session {
       throw error;
     }
     this.events.push(structuredClone(event));
+    if (this.childJournalLimits) this.trackHistoryWitness(event);
     if (event.kind === 'notification_intent_v2') this.markNotificationUnknown(event.deliveryId);
     // Compaction discards the previous model context (sfn1dbxq UTF-16 [2526100,2526700)).
     if (event.kind === 'compact') this.liveReadCache?.clear();
@@ -3345,8 +3794,75 @@ export class Session {
       content: 'Directory read grant was revoked before delivery.', is_error: true };
   }
 
-  get messages(): Anthropic.MessageParam[] {
-    let messages: Anthropic.MessageParam[] = [];
+  // Adapt ne/se, 8a6bg1at SHA e34c7cbe744b07bcb28040e5434e9bd785af93f7a157e9ac60f904a2413e96df,
+  // [14524,17174)/[17210,19834), zero-based half-open UTF-16. Copy visible data, not host delivery authority.
+  branchMessage(event: Extract<SessionEvent, { kind: 'message' }>): Extract<SessionEvent, { kind: 'message' }> | undefined {
+    if (!this.events.includes(event)) throw new Error('Branch message must belong to its source session');
+    if (!event.notificationDelivery) return structuredClone(event);
+    const { owner, deliveryId } = event.notificationDelivery;
+    if (this.modelIsolatedDeliveryIds.has(deliveryId)) return;
+    const intent = this.events.find(row => row.kind === 'notification_intent_v2' && row.owner === owner && row.deliveryId === deliveryId);
+    if (owner !== this.id || intent?.kind !== 'notification_intent_v2') throw new Error('Branch notification has no source intent');
+    const { notificationDelivery: _delivery, ...message } = event;
+    return structuredClone({ ...message, inheritedNotification: { owner, deliveryId, batch: intent.batch } });
+  }
+
+  /** lnn/_yn adapter: visible startup contexts and receipted async outputs share conversation order. */
+  sessionStartAttachments(commandScope: string): Array<AsyncHookAttachment | ReturnType<typeof startupContextAttachments>[number]> {
+    const attachments: Array<AsyncHookAttachment | ReturnType<typeof startupContextAttachments>[number]> = [];
+    const intents = new Map<string, AsyncHookAttachment>();
+    for (const event of this.events) {
+      if (event.kind === 'notification_intent_v2' && event.batch.kind === 'async_hook' && event.batch.attachment && event.batch.commandScope === commandScope)
+        intents.set(event.deliveryId, event.batch.attachment);
+    }
+    for (const { source: event } of this.conversationEntries) {
+      if (!event) continue;
+      if (event.sessionStartContext) attachments.push(...startupContextAttachments(event.sessionStartContext));
+      const inherited = event.inheritedNotification?.batch;
+      if (inherited?.kind === 'async_hook' && inherited.commandScope === commandScope && inherited.attachment)
+        attachments.push(structuredClone(inherited.attachment));
+      if (!event.notificationDelivery) continue;
+      const attachment = intents.get(event.notificationDelivery.deliveryId);
+      if (attachment) attachments.push(structuredClone(attachment));
+    }
+    return attachments;
+  }
+
+  // Adapt PYe/A2r/P2r, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+  // [2564272,2564564)/[4624869,4626745), UTF-16. Host ordered-log references replace parent-chain UUIDs.
+  // A content mismatch fails closed; a missing notification receipt must not shift a reference to another message.
+  private selectCompactionEntries(entries: ConversationEntry[], references: CompactionReference[]): ConversationEntry[] {
+    return references.map(ref => {
+      const entry = entries[ref.index];
+      if (!entry || entry.sha256 !== ref.sha256) throw new Error('Preserved compaction message no longer matches conversation history');
+      return entry;
+    });
+  }
+
+  get compactionRecords(): Array<{ record: CompactionRecord; reference: CompactionReference }> {
+    return this.conversationEntries.map((entry, index) => {
+      const role = entry.message.role;
+      if (role === 'system') throw new Error('Compaction requires conversational message records');
+      return { reference: { index, sha256: entry.sha256 },
+      record: { type: role, uuid: String(index), message: { ...entry.message,
+        ...(entry.message.role === 'assistant' ? { id: entry.source?.response?.id ?? entry.source?.messageId ?? String(index) } : {}) },
+        ...(entry.source?.isMeta || entry.source?.notificationDelivery || entry.source?.inheritedNotification || !entry.source ? { isMeta: true } : {}) } };
+    });
+  }
+
+  /** Configuration successors may strip thinking while retaining the same visible message positions. */
+  rebaseCompaction(event: Extract<SessionEvent, { kind: 'compact' }>): Extract<SessionEvent, { kind: 'compact' }> {
+    if (!event.preservedMessages) return event;
+    const entries = this.conversationEntries;
+    return { ...event, preservedMessages: event.preservedMessages.map(ref => {
+      const entry = entries[ref.index];
+      if (!entry) throw new Error('Compaction successor lost a preserved message');
+      return { index: ref.index, sha256: entry.sha256 };
+    }) };
+  }
+
+  private get conversationEntries(): ConversationEntry[] {
+    let entries: ConversationEntry[] = [];
     const witnesses = new Map<string, ReadGrantWitness>();
     for (const event of this.events) {
       if ((event.kind === 'tool_effect' || event.kind === 'tool_result' || event.kind === 'read_observation') && event.readGrantWitness)
@@ -3358,17 +3874,37 @@ export class Session {
         else if (Array.isArray(message.content)) message.content = message.content.map(block =>
           block.type === 'tool_result' ? this.projectToolResult(block, witnesses.get(block.tool_use_id)) : block);
         markClassifierMessage(message, event.classifier ?? { origin: { kind: 'unknown' } });
-        messages.push(message);
+        entries.push({ message, source: event, sha256: createHash('sha256').update(JSON.stringify({
+          message: event.message, responseId: event.response?.id, isMeta: event.isMeta,
+          sessionStartContext: event.sessionStartContext })).digest('hex') });
       }
       // x/v, appb2dtz [16520,17235), UTF-16; source identities are in W317's port record.
       if (event.kind === 'scheduled_task_fire' && event.noOpStreak !== undefined) {
-        messages.push(markClassifierMessage({ role: 'user', content: loopNoopCompanion(event.noOpStreak) },
-          { origin: { kind: 'generated', source: 'loop-noop-companion' } }));
+        const message = markClassifierMessage({ role: 'user', content: loopNoopCompanion(event.noOpStreak) },
+          { origin: { kind: 'generated', source: 'loop-noop-companion' } });
+        entries.push({ message, sha256: createHash('sha256').update(JSON.stringify(message)).digest('hex') });
       }
-      if (event.kind === 'compact') { witnesses.clear(); messages = [markClassifierMessage({ role: 'user', content: `Session summary (prior conversation data):\n${event.summary}` }, { origin: { kind: 'summary' } })]; }
+      if (event.kind === 'compact') {
+        const retained = this.selectCompactionEntries(entries, event.preservedMessages ?? []);
+        witnesses.clear();
+        const message = markClassifierMessage({ role: 'user', content: renderCompactSummary(event.summary, retained.length > 0) }, { origin: { kind: 'summary' } });
+        entries = [{ message, sha256: createHash('sha256').update(JSON.stringify(message)).digest('hex') }, ...retained];
+      }
     }
-    return messages;
+    return entries;
   }
+
+  get messages(): Anthropic.MessageParam[] { return this.conversationEntries.map(entry => entry.message); }
+  get toolResultObservations() { return structuredClone(toolResultObservations(this.events, this.id)); }
+  get runtimeWrapperObservations() { return structuredClone(runtimeWrapperObservations(this.events, this.id)); }
+  get hookResolverObservations() { return structuredClone(hookResolverObservations(this.events, this.id)); }
+  get hookToolExecutions() { return structuredClone(hookToolExecutions(this.events, this.id)); }
+  get hookCommandObservations() { return structuredClone(hookCommandObservations(this.events, this.id)); }
+  get agentDisplayObservations() { return structuredClone(agentDisplayObservations(this.events, this.id)); }
+  get toolContextObservations() { return structuredClone(toolContextObservations(this.events, this.id)); }
+  get approvalOperations() { return structuredClone(approvalOperations(this.events, this.id)); }
+  get classicHookChains() { return structuredClone(classicHookChains(this.events, this.id)); }
+  get classicHookModules() { return structuredClone(classicHookModules(this.events, this.id)); }
 
   get awaitingResponse(): boolean {
     for (let i = this.events.length - 1; i >= 0; i--) {
@@ -3403,8 +3939,11 @@ export class Session {
     return undefined;
   }
 
-  close(): Promise<void> {
-    if (this.closed) return this.drainPermissionWrites().then(() => {});
+  close(onDrained?: (lock: CheckpointSourceLock) => void | Promise<void>): Promise<void> {
+    if (this.closed) {
+      if (onDrained) throw new Error('Worker shutdown requires its open session');
+      return this.drainPermissionWrites().then(() => {});
+    }
     this.closed = true;
     this.releaseDirectoryAuthority();
     this.closeController.abort();
@@ -3413,6 +3952,22 @@ export class Session {
     this.titleListeners.clear();
     this.permissionListeners.clear();
     fs.closeSync(this.fd);
+    // Ole, sfn1dbxq [4694145,4697475), UTF-16. The host continuation retains
+    // its lock until the drain and root intent have both finished.
+    if (onDrained) {
+      if (!this.ownsLock) throw new Error('Worker shutdown requires its owned lock');
+      const original = this.checkpointLockWitness();
+      const verify = () => {
+        if (JSON.stringify(this.checkpointLockWitness()) !== JSON.stringify(original)) throw new Error('Worker shutdown lock changed');
+      };
+      return this.drainPermissionWrites().then(() => {
+        verify();
+        return onDrained(original);
+      }).finally(() => {
+        verify();
+        fs.unlinkSync(this.lock);
+      });
+    }
     if (this.ownsLock) {
       const owner = sessionLockSchema.safeParse(JSON.parse(fs.readFileSync(this.lock, 'utf8')));
       let gate: fs.BigIntStats | undefined;
@@ -3420,7 +3975,9 @@ export class Session {
       catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
       if (owner.success && owner.data.pid === process.pid && owner.data.token === this.lockToken &&
           owner.data.gate.dev === this.lockGate.dev && owner.data.gate.ino === this.lockGate.ino && gate?.isFile() && !gate.isSymbolicLink() &&
-          String(gate.dev) === this.lockGate.dev && String(gate.ino) === this.lockGate.ino) fs.unlinkSync(this.lock);
+          String(gate.dev) === this.lockGate.dev && String(gate.ino) === this.lockGate.ino) {
+        fs.unlinkSync(this.lock);
+      }
     }
     return this.drainPermissionWrites().then(() => {});
   }

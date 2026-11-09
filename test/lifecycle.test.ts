@@ -216,6 +216,8 @@ test('resume startup context follows recovered tool results without replaying ef
     assertPaired(session.messages);
     const batch = session.messages[2]!.content; assert.ok(Array.isArray(batch));
     assert.equal(batch[0]!.type, 'tool_result'); assert.equal(session.messages[3]!.role, 'user');
+    assert.equal(session.events.filter(event => event.kind === 'message' && event.sessionStartContext?.includes('resume context')).length, 1);
+    assert.deepEqual(session.sessionStartAttachments('any'), [{ type: 'hook_additional_context', hookEvent: 'SessionStart', content: ['resume context'] }]);
   } finally { session.close(); f.cleanup(); }
 });
 
@@ -365,6 +367,8 @@ test('manual compaction consumes pre instructions and displays post output', asy
   const session = Session.open(f.workspace, { config: f.config });
   try {
     session.append({ kind: 'message', message: { role: 'user', content: 'task' } });
+    // Manual D -> DXr -> lSe rejects a one-group history (qy8qtapj [15263,19143), UTF-16).
+    session.append({ kind: 'message', message: { role: 'assistant', content: [{ type: 'text', text: 'prior answer' }] } });
     session.append({ kind: 'turn_end', reason: 'end_turn' });
     const statuses: string[] = [];
     await new Agent(session, f.provider, [f.tool], { status: text => statuses.push(text) }).compactContext();

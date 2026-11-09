@@ -1,0 +1,95 @@
+{
+  "sources": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Ikt",
+      "range": [
+        562773,
+        563154
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "06f2fb8ec68222e64b8038eba5bd0ba6c5d6ae07b964500d0172cfa6ad2096a9"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "Okn/P9r/Hkn/I9r/dze",
+      "range": [
+        3062119,
+        3064190
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "bf1e0f8f4a50d9d2d3ce727625bd2aaa30795248640788a60530d954224e0c9b"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "classifier-only caller",
+      "range": [
+        2288685,
+        2289127
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "7a3bc024858d5d0c95d2727e3c6afb0eab776a0303fd672d6f1a615371fa7873"
+    }
+  ],
+  "cli": [
+    {
+      "cut": "normal",
+      "records": 8,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "cut": "failure",
+      "records": 8,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "cut": "chain_admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "cut": "module_admitted",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "cut": "module_fulfilled",
+      "records": 3,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "cut": "chain_fulfilled",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "identity": "1ee301306fdf65df758efa9e52121053010c95886a53b25d228c2c0ba100acf0",
+  "driverSha256": "53d29db09b4db141476f44cfd9431f8f09c7e231370b590bdac828ee8bcf3bfa",
+  "distinctAffectedTests": 66,
+  "initialBroader": {
+    "passed": 42,
+    "failed": 2,
+    "reason": "noncanonical test workspace paths"
+  },
+  "finalPermissionSuite": {
+    "passed": 15,
+    "failed": 0
+  },
+  "upstream": 0,
+  "entrypointsExecuted": 0
+}

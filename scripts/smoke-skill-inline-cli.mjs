@@ -12,6 +12,26 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cliIndex = process.argv.indexOf("--cli");
 const installedCli = cliIndex >= 0 ? path.resolve(process.argv[cliIndex + 1]) : undefined;
 const compiled = process.argv.includes("--compiled") || installedCli !== undefined;
+const nestedCut = process.argv.find(arg => arg.startsWith('--nested-cut='))?.split('=')[1];
+const finalizationCut = process.argv.find(arg => arg.startsWith('--nested-finalize='))?.split('=')[1];
+const siblings = process.argv.find(arg => arg.startsWith('--nested-siblings='))?.split('=')[1];
+const stopTool = process.argv.includes('--nested-stop-tool');
+const deepStop = process.argv.includes('--nested-stop-tree');
+const settledLeaf = process.argv.includes('--nested-settled-leaf');
+const incompleteLeaf = process.argv.includes('--nested-incomplete-leaf');
+const parkCrash = process.argv.find(arg => arg.startsWith('--nested-park-crash='))?.split('=')[1];
+if (parkCrash) assert.ok(siblings === 'first' && ['before','after'].includes(parkCrash));
+if (siblings) {
+  const stages = {first:['settled','commit'],last:['settled'],queued:['selected']};
+  assert.ok(stages[siblings]?.includes(nestedCut) && process.argv.includes('--nested-owner-first'));
+}
+const ignoreCut = ['ignore-pending','ignore-written'].includes(finalizationCut);
+const batchCut = ['permission-pending','permission-between','permission-flushed'].includes(finalizationCut);
+if (finalizationCut) assert.ok(nestedCut === 'commit' && (ignoreCut || batchCut || ['turn-end','hook-start','hook-return','hook-result','before-intent','close','close-reject','close-changed','publish-changed','permission-error'].includes(finalizationCut)));
+const terminalApproval = process.argv.find(arg => arg.startsWith('--nested-approval='))?.split('=')[1];
+if (terminalApproval) assert.ok(['allow','deny'].includes(terminalApproval) && process.argv.includes('--nested-terminal-recovery'));
+if (nestedCut) assert.ok(compiled && !installedCli && process.argv.includes('--nested-background') && ['settled','selected','intent','commit'].includes(nestedCut));
+if (nestedCut === 'selected') assert.ok(process.argv.includes('--nested-owner-first'));
 const retryKill = process.argv.find(arg => arg.startsWith('--effect-retry-kill='))?.split('=')[1];
 if (retryKill) assert.ok(compiled && ['shell-start', 'side-effect', 'finished-write', 'finished-sync'].includes(retryKill));
 const quoted = process.argv.includes("--quoted");
@@ -35,9 +55,9 @@ let layerCrashHeld = false;
 run: try {
   fs.mkdirSync(path.join(workspace, "user"));
   fs.mkdirSync(path.join(workspace, ".harness/skills"), { recursive: true });
-  const writeSkill = (name, body) => {
+  const writeSkill = (name, body, metadata = '') => {
     fs.mkdirSync(path.join(workspace, ".harness/skills", name));
-    fs.writeFileSync(path.join(workspace, ".harness/skills", name, "SKILL.md"), `---\nname: ${name}\ndescription: Owned inline fixture\n${aliases && name === "inline" ? "aliases: [fixture:inline]\n" : ""}${named ? "arguments: target\n" : ""}---\n${body}\n`);
+    fs.writeFileSync(path.join(workspace, ".harness/skills", name, "SKILL.md"), `---\nname: ${name}\ndescription: Owned inline fixture\n${aliases && name === "inline" ? "aliases: [fixture:inline]\n" : ""}${named ? "arguments: target\n" : ""}${metadata}---\n${body}\n`);
   };
   writeSkill("inline", `value= !\`printf %s '${named ? "$target" : extended ? "$0" : "$ARGUMENTS[0]"}'\` missing=$ARGUMENTS[12]${named ? " escaped=\\$target" : extended ? " escaped=\\$ARGUMENTS" : ""}`);
   writeSkill("preflight", "!`touch preflight-marker` !`printf denied`");
@@ -57,7 +77,8 @@ run: try {
   }
   if (process.argv.includes('--child-skill')) writeSkill('child-execution', process.argv.includes('--child-abort')
     ? '!`touch child-abort-started; sleep 30; touch child-abort-finished`' : process.argv.includes('--child-persistence')
-    ? '!`printf begin; head -c 40000 /dev/zero | tr "\\0" x; printf end`' : '!`printf CHILD_SKILL_EXECUTED`');
+    ? '!`printf begin; head -c 40000 /dev/zero | tr "\\0" x; printf end`' : '!`printf CHILD_SKILL_EXECUTED`',
+    process.argv.includes('--nested-fork') ? 'context: fork\n' : '');
   if (process.argv.includes('--persistence')) writeSkill('persistence', '!`printf begin; head -c 100000 /dev/zero | tr "\\0" x; printf end`');
   if (process.argv.includes('--output-map')) {
     writeSkill('output-map', "before !`printf 'ERR1\\n' >&2; printf 'OUT1\\n'; printf 'ERR2\\n' >&2; printf 'OUT2\\n'` after !`touch output-sibling`");
@@ -87,13 +108,30 @@ run: try {
     const env = { ...process.env, LLM_API_KEY: "owned-inline-fixture", LLM_MODEL: "smoke/inline",
       LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" };
     if (omitHome) delete env.HOME;
+    if (ignoreCut) Object.assign(env, { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', XDG_CONFIG_HOME: path.join(workspace,'xdg') });
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, ...(flags.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...flags, ...(flags.includes("--interactive") || flags.includes('--continue') ? [] : [prompt])], {
       cwd: root, stdio: [flags.includes("--interactive") ? "pipe" : "ignore", "pipe", "pipe"], env
     });
     let output = "", errors = "";
     child.stdout.on("data", chunk => { output += chunk; });
     child.stderr.on("data", chunk => { errors += chunk; });
-    if (flags.includes("--interactive")) child.stdin.end(input ?? `${aliases ? "/skills\n/fixture:inline" : "/inline"} interactive\n/exit\n`);
+    if (flags.includes("--interactive") && terminalApproval) {
+      const terminal = child;
+      let answered = false, finished = false;
+      const respond = () => {
+        if (!answered && (output+errors).includes('Allow once? [y/N]')) {
+          answered = true;
+          terminal.stdin.write(terminalApproval === 'allow' ? 'yes\n' : 'no\n');
+        }
+        if (!finished && /Worker [0-9a-f-]+: (completed|failed)/.test(errors)) {
+          finished = true;
+          terminal.stdin.end('/exit\n');
+        }
+      };
+      terminal.stdout.on('data',respond);
+      terminal.stderr.on('data',respond);
+      terminal.stdin.write('/continue\n');
+    } else if (flags.includes("--interactive")) child.stdin.end(input ?? `${aliases ? "/skills\n/fixture:inline" : "/inline"} interactive\n/exit\n`);
     const interrupt = process.argv.includes('--child-abort') ? setInterval(() => {
       if (fs.existsSync(path.join(workspace, 'child-abort-started'))) { clearInterval(interrupt); child?.kill('SIGINT'); }
     }, 10) : undefined;
@@ -108,6 +146,11 @@ run: try {
     req.on("data", chunk => { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) req.destroy(); else chunks.push(chunk); });
     req.on("end", async () => {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
+      if (process.argv.includes('--nested-provider-crash') && String(body.messages.at(-1).content).startsWith('Child agent events')) {
+        child.kill('SIGKILL');
+        res.destroy();
+        return;
+      }
       if (process.argv.includes('--output-map') && JSON.stringify(body.messages).includes('Shell command failed for pattern')) {
         const completed = path.join(workspace, 'output-fail-completed');
         assert.equal(fs.existsSync(completed), false, 'failure must reach the model before the sibling finishes');
@@ -126,6 +169,33 @@ run: try {
       const coldRead = body.messages.at(-1).content === 'read saved output after restart';
       const childLaunch = body.messages.at(-1).content === 'launch child skill';
       const childSkill = body.messages.at(-1).content === 'execute child skill';
+      const nestedBackground = process.argv.includes('--nested-background');
+      const last = body.messages.at(-1).content;
+      const toolResult = id => Array.isArray(last) && last.some(block => block.type === 'tool_result' && block.tool_use_id === id);
+      const launchSibling = siblings && toolResult('repeat-skill');
+      const third = String(last).trim() === 'Third inner';
+      if (settledLeaf && toolResult('deep-skill')) return;
+      const holdReceiver = siblings === 'queued' && toolResult('sibling-skill');
+      if (nestedBackground && (String(last).trim() === 'Second inner' || (third && !stopTool && !deepStop) || holdReceiver)) {
+        const dir = path.join(workspace, '.agent'), deadline = Date.now() + 5000;
+        for (;;) {
+          if (res.destroyed) return;
+          const journals = fs.readdirSync(dir).filter(name => name.endsWith('.jsonl')).map(name => {
+            const bytes = fs.readFileSync(path.join(dir, name), 'utf8');
+            return bytes.slice(0, bytes.lastIndexOf('\n')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+          });
+          const outer = journals.find(rows => rows[0]?.config.spawnDepth === 1);
+          const returned = outer?.findIndex(row => row.kind === 'tool_result' && row.result.tool_use_id === (siblings ? 'sibling-skill' : 'repeat-skill')) ?? -1;
+          const commits = outer?.filter(row => row.kind === 'agent_history_intent').length ?? 0;
+          const leafReady = !settledLeaf || (incompleteLeaf && fs.existsSync(path.join(workspace,'pending-leaf.json'))) || journals.some(rows=>rows[0]?.config.spawnDepth === 2 &&
+            rows.some((row,i)=>row.kind === 'agent_history' && rows[i-1]?.kind === 'agent_history_intent'));
+          if (returned >= 0 && leafReady && (!stopTool || fs.existsSync(path.join(workspace,'stop-tool-hook'))) && (siblings === 'queued' ? commits >= (holdReceiver ? 2 : third ? 0 : 1) :
+              outer.slice(returned + 1).filter(row => row.kind === 'turn_end').length >= (third ? 2 : 1))) break;
+          assert.ok(Date.now() < deadline, 'outer turn must finish before nested completion');
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+      }
+      const repeatSkill = (nestedBackground || process.argv.includes('--background-repeat')) && String(body.messages.at(-1).content).trim() === 'Repeat outer';
       const layerStart = body.messages.at(-1).content === 'load permission layer';
       const layerWrite = process.argv.includes('--permission-layer') && JSON.stringify(body.messages.at(-1).content).includes('LAYER_INSTRUCTIONS');
       const layerFresh = (process.argv.includes('--permission-layer-crash') || process.argv.includes('--permission-layer-inline-crash')) && body.messages.at(-1).content === 'fresh layer turn';
@@ -137,8 +207,17 @@ run: try {
       }
       const persistedPath = (process.argv.includes('--persistence') || process.argv.includes('--child-persistence')) && /persistence-tool|child-skill/.test(JSON.stringify(body.messages.at(-1)))
         ? /Full output saved to: ([^\s]+)/.exec(messageText())?.[1] : undefined;
-      const useTool = layerStart || layerWrite || layerFresh || layerInline || childLaunch || childSkill || coldRead || persistedPath || persistenceTool || preloadTool || sourceTool || failedTool || releaseTool || classifierTool || shellMatrixTool || body.messages.at(-1).content === "load inline skill";
-      const block = layerStart ? { type: 'tool_use', id: 'layer-skill', name: 'skill', input: { name: 'layer' } }
+      const resumedWrite = terminalApproval && String(body.messages.at(-1).content).startsWith('Child agent events') &&
+        body.messages.some(message => JSON.stringify(message.content).includes('repeat-skill'));
+      const deepLaunch = deepStop && third;
+      const interruptedWrite = stopTool && (deepStop ? String(last).trim() === 'Leaf inner' : third);
+      const useTool = deepLaunch || interruptedWrite || launchSibling || resumedWrite || repeatSkill || layerStart || layerWrite || layerFresh || layerInline || childLaunch || childSkill || coldRead || persistedPath || persistenceTool || preloadTool || sourceTool || failedTool || releaseTool || classifierTool || shellMatrixTool || body.messages.at(-1).content === "load inline skill";
+      const block = interruptedWrite ? {type:'tool_use',id:'stop-write',name:'write_file',input:{path:'stop-write.txt',content:'effect'}}
+        : deepLaunch ? {type:'tool_use',id:'deep-skill',name:'skill',input:{name:'leaf',args:'inner'}}
+        : resumedWrite ? {type:'tool_use',id:'resumed-write',name:'write_file',input:{path:'resumed.txt',content:'resumed'}}
+        : launchSibling ? {type:'tool_use',id:'sibling-skill',name:'skill',input:{name:'third',args:'inner'}}
+        : repeatSkill ? { type:'tool_use', id:'repeat-skill', name:'skill', input:{name:nestedBackground ? 'second' : 'repeat',args:'inner'} }
+        : layerStart ? { type: 'tool_use', id: 'layer-skill', name: 'skill', input: { name: 'layer' } }
         : layerWrite || layerFresh ? { type: 'tool_use', id: layerFresh ? 'fresh-layer-write' : 'layer-write', name: 'write_file', input: { path: 'layer-result', content: 'LAYER_EFFECT' } }
         : layerInline ? { type: 'tool_use', id: `layer-inline-${requests.length}`, name: 'skill', input: { name: 'layer-inline' } }
         : childLaunch ? { type: 'tool_use', id: 'child-spawn', name: 'agent', input: { prompt: 'execute child skill', mode: 'general' } }
@@ -167,6 +246,858 @@ run: try {
   const shell = ["--allow-shell", "--permission-mode", "bypass"];
   const messageText = () => requests.at(-1).messages.map(message => typeof message.content === "string" ? message.content : message.content.map(block => block.text ?? (typeof block.content === "string" ? block.content : "")).join("\n")).join("\n");
   settings(true);
+  if (process.argv.includes('--background-repeat') || process.argv.includes('--nested-background')) {
+    const marker = path.join(workspace, 'nested-cut');
+    const ignoreFile = path.join(workspace,'xdg/git/ignore');
+    if (ignoreCut) assert.equal(spawnSync('git',['init','-q',workspace]).status,0);
+    if (nestedCut) {
+      const probe = path.join(workspace, 'probe.mjs');
+      fs.writeFileSync(probe, `
+        import fs from 'node:fs';
+        import path from 'node:path';
+        import {Session} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/session.js')).href)};
+        import {AgentHistoryStore} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/agent-history.js')).href)};
+        import {queuePermissionSettingsWrite} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/permission-settings.js')).href)};
+        const stop = () => { fs.writeFileSync(${JSON.stringify(marker)}, 'reached'); process.kill(process.pid,'SIGKILL'); };
+        const stage = ${JSON.stringify(nestedCut)};
+        const finalization = ${JSON.stringify(finalizationCut)};
+        const isReceiver = session => session.config.spawnDepth === 1 && session.events.some(row => row.notificationDelivery);
+        const close = Session.prototype.close;
+        const settingsFile = ${JSON.stringify(path.join(workspace,'.harness/settings.json'))};
+        Session.prototype.close = function(...args) {
+          if (isReceiver(this) && args[0] && finalization === 'permission-error') {
+            fs.writeFileSync(${JSON.stringify(path.join(workspace,'.harness/settings.local.json'))},'{broken');
+            this.adoptPermissionUpdates([{type:'addRules',behavior:'deny',destination:'localSettings',rules:[{toolName:'fixture_shutdown_rule'}]}]);
+          }
+          if (isReceiver(this) && args[0] && ${ignoreCut}) {
+            const writes = [];
+            const writeFile = fs.promises.writeFile;
+            fs.promises.writeFile = async function(file,...rest) {
+              if (file !== ${JSON.stringify(ignoreFile)}) return writeFile.call(this,file,...rest);
+              await writes[1];
+              if (finalization === 'ignore-written') await writeFile.call(this,file,...rest);
+              stop();
+            };
+            this.adoptPermissionUpdates([
+              {type:'addRules',behavior:'deny',destination:'localSettings',rules:[{toolName:'fixture_shutdown_rule'}]},
+              {type:'addRules',behavior:'deny',destination:'projectSettings',rules:[{toolName:'fixture_later_rule'}]},
+            ],{sessionId:this.id,onWrite:work => writes.push(work)});
+          }
+          if (isReceiver(this) && args[0] && ${batchCut}) {
+            const lock = this.file+'.lock';
+            queuePermissionSettingsWrite(settingsFile,async () => {
+              await new Promise(resolve => setTimeout(resolve,50));
+              if (!fs.existsSync(lock)) throw new Error('worker lock released during pending settings write');
+              if (finalization === 'permission-pending') stop();
+            });
+            if (this.config.configSources?.userDir !== ${JSON.stringify(path.join(workspace,'user'))}) throw new Error('fixture user settings escaped the workspace');
+            const writes = [];
+            if (finalization === 'permission-between') {
+              queuePermissionSettingsWrite(${JSON.stringify(path.join(workspace,'user/settings.json'))},async () => {
+                await writes[0];
+                stop();
+              });
+            }
+            this.adoptPermissionUpdates([
+              {type:'addRules',behavior:'deny',destination:'projectSettings',rules:[{toolName:'fixture_shutdown_rule'}]},
+              {type:'addRules',behavior:'deny',destination:'userSettings',rules:[{toolName:'fixture_later_rule'}]},
+            ],{sessionId:this.id,onWrite:work => writes.push(work)});
+          }
+          if (isReceiver(this) && finalization === 'close-changed' && args[0]) {
+            const onClosed = args[0];
+            args[0] = lock => { fs.appendFileSync(this.file,'torn'); return onClosed(lock); };
+          }
+          const result = close.apply(this,args);
+          if (isReceiver(this) && finalization === 'publish-changed') return result.then(() => { fs.appendFileSync(this.file,'torn'); });
+          if (!isReceiver(this) || !['close','close-reject'].includes(finalization)) return result;
+          return result.then(async () => {
+            await new Promise(resolve=>setImmediate(resolve));
+            if (finalization === 'close') stop();
+            throw new Error('fixture rejected the child close drain');
+          });
+        };
+        const write = AgentHistoryStore.prototype.write;
+        let selectedWorker;
+        AgentHistoryStore.prototype.write = function(record) {
+          if (${incompleteLeaf} && record.state.kind === 'settled' && record.state.config.spawnDepth === 3) {
+            fs.writeFileSync(${JSON.stringify(path.join(workspace,'pending-leaf.json'))},JSON.stringify(record));
+            return;
+          }
+          if (record.state.parkedDelivery && ${parkCrash === 'before'}) stop();
+          if (stage === 'selected' && selectedWorker === record.id && record.state.kind === 'active' && !record.state.readyDelivery) stop();
+          const result = write.call(this, record);
+          if (record.state.parkedDelivery && ${parkCrash === 'after'}) stop();
+          if (record.state.readyDelivery) selectedWorker = record.id;
+          if (${process.argv.includes('--nested-claim-crash')} && record.state.continuingDeliveryId) stop();
+          if (${process.argv.includes('--nested-prepared-crash')} && record.state.preparedDeliveryId) stop();
+          if (stage === 'settled' && ${!siblings} && record.state.kind === 'settled' && record.state.config.spawnDepth === 2) stop();
+          return result;
+        };
+        const append = Session.prototype.append;
+        let settlingWorker;
+        Session.prototype.append = function(row, ...args) {
+          if (finalization === 'before-intent' && row.kind === 'agent_history_intent' && row.continuationDeliveryId) stop();
+          if (${process.argv.includes('--nested-legacy-settlement')} && row.kind === 'agent_history_intent' && row.continuationDeliveryId) {
+            fs.writeFileSync(path.join(path.dirname(this.file),'subagents',this.id,row.id+'.meta.json.settlement'),
+              JSON.stringify(row.terminalRecord));
+            delete row.terminalRecord;
+          }
+          if (finalization === 'hook-return' && isReceiver(this) && row.event === 'SessionEnd' && row.kind === 'hook_result') stop();
+          if (row.kind === 'agent_history' && row.id === settlingWorker && ${process.argv.includes('--nested-final-witness-crash')}) stop();
+          const result = append.call(this, row, ...args);
+          if (stage === 'settled' && this.config.spawnDepth === 1 && row.kind === 'agent_history' &&
+              this.events.at(-2)?.kind === 'agent_history_intent' && this.events.at(-2).id === row.id &&
+              this.events.filter(event => event.kind === 'agent_history_intent').length === ${siblings === 'last' ? 2 : 1}) stop();
+          if (isReceiver(this) && ((finalization === 'turn-end' && row.kind === 'turn_end') ||
+              (row.event === 'SessionEnd' && ((finalization === 'hook-start' && row.kind === 'hook_start') ||
+                (finalization === 'hook-result' && row.kind === 'hook_result'))))) stop();
+          if (row.kind === 'agent_history_intent' && row.continuationDeliveryId) {
+            if (finalization === 'permission-error') {
+              const failures = this.permissionWriteResults.filter(result => result.outcome === 'error');
+              if (failures.length !== 1 || failures[0].sessionId !== row.id || failures[0].destination !== 'localSettings')
+                throw new Error('missing worker settings failure at settlement');
+            }
+            if (finalization === 'permission-flushed') {
+              if (!JSON.parse(fs.readFileSync(settingsFile)).permissions?.deny.includes('fixture_shutdown_rule')) throw new Error('early worker settlement');
+              stop();
+            }
+            settlingWorker = row.id;
+            if (${process.argv.includes('--nested-settlement-intent-crash')}) stop();
+          }
+          if (this.config.spawnDepth === 1 && ((stage === 'intent' && row.kind === 'notification_intent_v2' && row.batch.kind === 'agent_events') ||
+              (stage === 'commit' && row.kind === 'message' && row.notificationDelivery))) stop();
+          return result;
+        };`);
+      launcher.unshift('--import', pathToFileURL(probe).href);
+    }
+    settings(true, {features:{subagents:true, agentMessaging:true, agentTypes:true},
+      ...(finalizationCut || siblings === 'first' ? {hooks:{SessionEnd:[{command:"cat >> end-hooks.jsonl; printf '\\n' >> end-hooks.jsonl; printf '{}'"}],
+        ...(stopTool ? {PostToolUse:[{matcher:'write_file',command:"printf x >> stop-tool-hook; sleep 3; printf '{}'"}]} : {})}} : {}),
+      ...(terminalApproval ? {permissions:{ask:['write_file']}} : {})});
+    writeSkill('repeat', 'Repeat $ARGUMENTS', `context: fork\nbackground: true\nallowed-tools: ${terminalApproval || stopTool ? 'skill, write_file' : 'skill'}\n`);
+    if (process.argv.includes('--nested-background')) writeSkill('second','Second $ARGUMENTS','context: fork\nbackground: true\n');
+    if (siblings) writeSkill('third','Third $ARGUMENTS','context: fork\nbackground: true\n');
+    if (deepStop) writeSkill('leaf','Leaf $ARGUMENTS','context: fork\nbackground: true\n');
+    const result = await run('/repeat outer', terminalApproval ? ['--allow-shell','--permission-mode','ask'] : shell);
+    assert.equal(result.code, nestedCut ? null : 0, result.errors);
+    if (nestedCut) assert.equal(fs.readFileSync(marker,'utf8'), 'reached');
+    const dir = path.join(workspace, '.agent');
+    const journals = fs.readdirSync(dir).filter(name => name.endsWith('.jsonl')).map(name =>
+      fs.readFileSync(path.join(dir,name), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line)));
+    const outer = journals.find(rows => rows.some(row => row.kind === 'tool_start' && row.id === 'repeat-skill'));
+    assert.ok(outer, 'background worker must invoke the skill');
+    const returned = outer.find(row => row.kind === 'tool_result' && row.result.tool_use_id === 'repeat-skill');
+    assert.ok(returned && !returned.result.is_error, JSON.stringify(returned));
+    const inner = JSON.parse(returned.result.content);
+    if (process.argv.includes('--nested-background')) {
+      assert.equal(inner.id, inner.session_id);
+      if (nestedCut) {
+        if (process.argv.includes('--nested-owner-first')) {
+          const rootId = outer[0].config.parentSessionId;
+          const flags = ['--resume',rootId,'--recover-lock','--continue'];
+          const before = requests.length;
+          if (parkCrash) {
+            const interrupted = await run('',flags);
+            assert.equal(interrupted.code,null,interrupted.errors);
+            assert.equal(requests.length,before+1);
+            launcher.splice(0,2);
+            const retry = await run('',flags);
+            assert.equal(retry.code,2,retry.errors);
+            assert.match(retry.errors,parkCrash === 'before' ? /unresolved continuation for delivery/ : /processed delivery .* and is waiting for/);
+            assert.equal(requests.length,before+1);
+            console.log('Sibling parking interruption verified',parkCrash);
+            break run;
+          }
+          if (finalizationCut) {
+            const interrupted = await run('',flags);
+            const historyFile = path.join(dir,'subagents',rootId,outer[0].id+'.meta.json');
+            const history = JSON.parse(fs.readFileSync(historyFile,'utf8'));
+            if (process.argv.includes('--stop-finalizing-delivery')) {
+              assert.equal(interrupted.code,null,interrupted.errors);
+              launcher.splice(0,2);
+              const id = outer[0].id, lock = path.join(dir,id+'.jsonl.lock'), original = fs.readFileSync(lock);
+              const calls = requests.length;
+              const refused = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,`/tasks stop ${id}\n/exit\n`);
+              assert.match(refused.errors,/already entered finalization/);
+              assert.deepEqual(fs.readFileSync(lock),original);
+              assert.deepEqual(JSON.parse(fs.readFileSync(historyFile)),history);
+              assert.equal(requests.length,calls);
+              console.log('Finalizing worker retained its lock');
+              break run;
+            }
+            const hookCount = () => fs.readFileSync(path.join(workspace,'end-hooks.jsonl'),'utf8')
+              .split('\n').filter(Boolean).map(line=>JSON.parse(line)).filter(row=>row.session_id === outer[0].id).length;
+            if (ignoreCut || batchCut) {
+              const flushed = finalizationCut === 'permission-flushed';
+              assert.equal(interrupted.code,null,interrupted.errors);
+              const lock = path.join(dir,outer[0].id+'.jsonl.lock');
+              assert.ok(fs.existsSync(lock));
+              const checkFiles = () => {
+                const settings = path.join(workspace,'.harness',ignoreCut ? 'settings.local.json' : 'settings.json');
+                const rules = JSON.parse(fs.readFileSync(settings)).permissions?.deny ?? [];
+                assert.equal(rules.includes('fixture_shutdown_rule'),ignoreCut || flushed || finalizationCut === 'permission-between');
+                const later = path.join(workspace,ignoreCut ? '.harness/settings.json' : 'user/settings.json');
+                const laterRules = fs.existsSync(later) ? JSON.parse(fs.readFileSync(later)).permissions?.deny ?? [] : [];
+                assert.equal(laterRules.includes('fixture_later_rule'),ignoreCut || flushed);
+                if (ignoreCut) assert.equal(fs.existsSync(ignoreFile) ? fs.readFileSync(ignoreFile,'utf8') : '',finalizationCut === 'ignore-written' ? '**/.harness/settings.local.json\n' : '');
+              };
+              checkFiles();
+              launcher.splice(0,2);
+              const second = await run('',flags);
+              assert.equal(second.code,flushed ? 0 : 2,second.errors);
+              assert.equal(fs.existsSync(lock),!flushed);
+              checkFiles();
+              if (ignoreCut) {
+                assert.match(second.errors,/unresolved continuation/);
+                assert.deepEqual(JSON.parse(fs.readFileSync(historyFile)),history);
+              }
+              assert.equal(hookCount(),1);
+            } else if (finalizationCut === 'close-changed' || finalizationCut === 'publish-changed') {
+              assert.equal(interrupted.code,2,interrupted.errors);
+              assert.match(interrupted.errors,/journal changed during shutdown|Child journal continuity mismatch/);
+              assert.equal(history.state.kind,'active');
+              assert.equal(hookCount(),1);
+              launcher.splice(0,2);
+              const retried = await run('',flags);
+              assert.notEqual(retried.code,0);
+              assert.deepEqual(JSON.parse(fs.readFileSync(historyFile,'utf8')),history);
+              assert.equal(hookCount(),1);
+            } else if (finalizationCut === 'permission-error') {
+              assert.equal(interrupted.code,0,interrupted.errors);
+              assert.equal(history.state.status,'completed');
+              assert.equal(history.state.summary,'inline complete');
+              assert.equal(fs.readFileSync(path.join(workspace,'.harness/settings.local.json'),'utf8'),'{broken');
+              assert.equal(hookCount(),1);
+            } else if (finalizationCut === 'close-reject') {
+              assert.equal(interrupted.code,2,interrupted.errors);
+              assert.equal(history.state.status,'failed');
+              assert.match(history.state.error,/fixture rejected the child close drain/);
+            } else {
+              assert.equal(interrupted.code,null,interrupted.errors);
+              assert.equal(history.state.kind,'active');
+              const effects = ['close','hook-result','hook-return','before-intent'].includes(finalizationCut) ? 1 : 0;
+              if (finalizationCut === 'before-intent') {
+                assert.equal(fs.existsSync(historyFile+'.settlement'),false);
+                assert.equal(fs.readFileSync(path.join(dir,rootId+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse)
+                  .some(row => row.kind === 'agent_history_intent' && row.continuationDeliveryId && row.id === outer[0].id),false);
+              }
+              assert.equal(hookCount(),effects);
+              launcher.splice(0,2);
+              const second = await run('',flags);
+              if (finalizationCut === 'close') {
+                assert.equal(second.code,0,second.errors);
+                const settled = JSON.parse(fs.readFileSync(historyFile,'utf8'));
+                assert.equal(settled.state.status,'completed');
+                assert.equal(settled.state.runId,history.state.runId);
+                assert.equal(settled.state.summary,'inline complete');
+                assert.ok(second.output.includes(settled.state.summary));
+                await run('',flags);
+              } else {
+                assert.ok(second.errors.includes('unresolved continuation'),second.errors);
+                assert.ok(second.errors.includes('worker journal records turn_end'),second.errors);
+                assert.equal(second.errors.includes('records SessionEnd hook start'),['hook-start','hook-return'].includes(finalizationCut));
+                assert.equal(second.errors.includes('matching SessionEnd hook result'),['hook-result','before-intent'].includes(finalizationCut));
+              }
+              assert.equal(hookCount(),effects);
+            }
+            assert.equal(requests.length,before+1);
+            console.log('Worker finalization verified at',finalizationCut);
+            break run;
+          }
+          const preparedCrash = process.argv.includes('--nested-prepared-crash');
+          const providerCrash = process.argv.includes('--nested-provider-crash');
+          if (process.argv.includes('--nested-settlement-intent-crash') || process.argv.includes('--nested-final-witness-crash')) {
+            const interrupted = await run('',flags);
+            assert.equal(interrupted.code,null,interrupted.errors);
+            assert.equal(requests.length,before+1);
+            const target = path.join(dir,'subagents',rootId,outer[0].id+'.meta.json');
+            const partial = JSON.parse(fs.readFileSync(target,'utf8'));
+            const staged = process.argv.includes('--nested-settlement-intent-crash');
+            assert.equal(partial.state.kind,staged ? 'active' : 'settled');
+            const rootFile = path.join(dir,rootId+'.jsonl');
+            const rows = fs.readFileSync(rootFile,'utf8').trimEnd().split('\n').map(JSON.parse);
+            const publication = rows.findLast(row => row.kind === 'agent_history_intent' && row.id === outer[0].id);
+            const legacy = process.argv.includes('--nested-legacy-settlement');
+            const proposed = legacy ? JSON.parse(fs.readFileSync(target+'.settlement')) : publication.terminalRecord;
+            assert.equal(proposed.state.runId,partial.state.runId);
+            assert.equal(fs.existsSync(target+'.settlement'),legacy);
+            const corrupt = process.argv.includes('--nested-corrupt-settlement');
+            const changedJournal = process.argv.includes('--nested-changed-journal');
+            const replacedLock = process.argv.includes('--nested-replaced-lock');
+            const lock = path.join(dir,outer[0].id+'.jsonl.lock');
+            if (staged) assert.ok(fs.existsSync(lock));
+            if (replacedLock) {
+              fs.renameSync(lock,lock+'.original');
+              fs.copyFileSync(lock+'.original',lock);
+            }
+            if (corrupt) {
+              const altered = {...proposed,state:{...proposed.state,summary:'altered'}};
+              if (legacy) fs.writeFileSync(target+'.settlement',JSON.stringify(altered));
+              else {
+                publication.terminalRecord = altered;
+                fs.writeFileSync(rootFile,rows.map(row=>JSON.stringify(row)).join('\n')+'\n');
+              }
+            }
+            if (changedJournal) fs.appendFileSync(path.join(dir,outer[0].id+'.jsonl'),'{"kind":"turn_end","reason":"later"}\n');
+            launcher.splice(0,2);
+            const recovered = await run('',flags);
+            assert.equal(requests.length,before+1);
+            const rootRows = fs.readFileSync(path.join(dir,rootId+'.jsonl'),'utf8').trimEnd().split('\n').map(line=>JSON.parse(line));
+            const intent = rootRows.findLast(row=>row.kind === 'agent_history_intent' && row.id === outer[0].id);
+            const matching = rootRows.filter(row=>row.kind === 'agent_history' && row.id === outer[0].id && row.digest === intent.newDigest);
+            if (corrupt || changedJournal || replacedLock) {
+              assert.notEqual(recovered.code,0);
+              if (staged) assert.ok(fs.existsSync(lock));
+              assert.equal(matching.length,0);
+              assert.deepEqual(JSON.parse(fs.readFileSync(target,'utf8')),partial);
+            } else {
+              assert.equal(recovered.code,0,recovered.errors);
+              assert.equal(matching.length,1);
+              assert.ok(recovered.output.includes(proposed.state.summary));
+              assert.deepEqual(JSON.parse(fs.readFileSync(target,'utf8')),proposed);
+              assert.ok(!fs.existsSync(target+'.settlement'));
+              await run('',flags);
+              assert.equal(requests.length,before+1);
+            }
+            console.log('Cold worker settlement verified');
+            break run;
+          }
+          if (preparedCrash || providerCrash || process.argv.includes('--nested-claim-crash')) {
+            assert.ok(nestedCut === 'commit' || nestedCut === 'settled');
+            const original = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json')));
+            const claimed = await run('',flags);
+            assert.equal(claimed.code,null,claimed.errors);
+            const active = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'),'utf8'));
+            const deliveryId = original.state.readyDelivery?.deliveryId ?? outer.find(row => row.kind === 'notification_intent_v2').deliveryId;
+            assert.equal(preparedCrash ? active.state.preparedDeliveryId : active.state.continuingDeliveryId,deliveryId);
+            launcher.splice(0,2);
+            if (process.argv.includes('--stop-interrupted-delivery')) {
+              const calls = requests.length, id = outer[0].id;
+              if (process.argv.includes('--changed-stop-boundary')) {
+                const file = path.join(dir,id+'.jsonl');
+                const original = fs.readFileSync(file);
+                fs.appendFileSync(file,JSON.stringify({kind:'turn_end',reason:'external'})+'\n');
+                const refused = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,`/tasks stop ${id}\n/exit\n`);
+                assert.match(refused.errors,/no verified dispatch boundary/);
+                assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,id+'.meta.json'))),active);
+                assert.equal(requests.length,calls);
+                fs.writeFileSync(file,original);
+              }
+              const stopped = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,`/tasks stop ${id}\n/exit\n`);
+              assert.equal(stopped.code,0,stopped.errors);
+              assert.ok((stopped.output+stopped.errors).includes('Stopped agent '+id),stopped.errors);
+              const settled = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,id+'.meta.json')));
+              assert.equal(settled.state.status,'cancelled');
+              assert.equal(settled.state.runId,active.state.runId);
+              const workerRows = fs.readFileSync(path.join(dir,id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+              const consumed = workerRows.some(row=>row.kind === 'notification_intent_v2' && row.deliveryId === deliveryId);
+              assert.deepEqual(settled.state.redirectedEvents.map(event=>event.agent.id),consumed ? [] : [inner.id]);
+              await run('',flags);
+              assert.equal(requests.length,calls);
+              console.log('Stopped interrupted delivery',deliveryId);
+              break run;
+            }
+            const retried = await run('',flags);
+            if (preparedCrash) {
+              assert.equal(retried.code,0,retried.errors);
+              const settled = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'),'utf8'));
+              assert.equal(settled.state.status,'completed');
+              assert.equal(settled.state.runId,active.state.runId);
+              const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+              const notices = rows.filter(row => row.notificationDelivery?.deliveryId === deliveryId);
+              assert.equal(notices.length,1);
+              assert.equal(requests.at(-1).messages.at(-1).content,notices[0].message.content);
+              await run('',flags);
+            } else {
+              assert.notEqual(retried.code,0);
+              assert.ok((retried.errors+retried.output).includes('unresolved continuation for delivery '+deliveryId),retried.errors);
+            }
+            assert.equal(requests.length,before + (preparedCrash || providerCrash ? 1 : 0));
+            console.log('Second restart checked at',preparedCrash ? 'preparation' : 'execution');
+            break run;
+          }
+          launcher.splice(0,2);
+          if (process.argv.includes('--nested-damaged-descendant')) {
+            assert.equal(nestedCut,'settled');
+            const file = path.join(dir,inner.id+'.jsonl'), bytes = fs.readFileSync(file);
+            fs.appendFileSync(file,'incomplete row');
+            const refused = await run('',flags);
+            assert.notEqual(refused.code,0);
+            assert.match(refused.errors,/journal continuity mismatch/i);
+            assert.equal(requests.length,before);
+            fs.writeFileSync(file,bytes);
+          }
+          const terminalRecovery = process.argv.includes('--nested-terminal-recovery');
+          const resumed = terminalRecovery
+            ? await run('',['--interactive','--resume',rootId,'--recover-lock'],false,'/continue\n/exit\n')
+            : await run('',flags);
+          const history = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'),'utf8'));
+          if (siblings) {
+            const result = outer.find(row => row.kind === 'tool_result' && row.result.tool_use_id === 'sibling-skill');
+            const sibling = JSON.parse(result.result.content);
+            assert.notEqual(sibling.id,inner.id);
+            if (siblings === 'first') {
+              assert.equal(resumed.code,2,resumed.errors);
+              assert.ok(resumed.errors.includes(sibling.id),resumed.errors);
+              const parked = history.state.parkedDelivery;
+              const active = JSON.parse(fs.readFileSync(path.join(dir,'subagents',outer[0].id,sibling.id+'.meta.json')));
+              assert.equal(history.state.kind,'active');
+              assert.deepEqual(parked.waitingFor,[{id:sibling.id,runId:active.state.runId}]);
+              const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+              const receipts = rows.filter(row => row.notificationDelivery);
+              assert.equal(receipts.length,1);
+              assert.equal(receipts[0].notificationDelivery.deliveryId,parked.deliveryId);
+              assert.equal(requests.at(-1).messages.at(-1).content,receipts[0].message.content);
+              assert.ok(receipts[0].message.content.includes(inner.id));
+              assert.ok(!receipts[0].message.content.includes(sibling.id));
+              const ends = fs.readFileSync(path.join(workspace,'end-hooks.jsonl'),'utf8').trimEnd().split('\n').filter(Boolean).map(JSON.parse);
+              assert.ok(!ends.some(event => event.session_id === outer[0].id));
+            } else {
+              assert.equal(resumed.code,0,resumed.errors);
+              assert.equal(history.state.status,'completed');
+              const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+              const batches = rows.filter(row => row.kind === 'notification_intent_v2');
+              assert.deepEqual(batches.map(row => row.batch.events.map(event => event.agent.id)),
+                siblings === 'queued' ? [[sibling.id,inner.id]] : [[inner.id],[sibling.id]]);
+              assert.deepEqual(batches.flatMap(row => row.batch.events.map(event => event.sequence)),[1,2]);
+              assert.deepEqual(rows.filter(row => row.notificationDelivery).map(row => row.notificationDelivery.deliveryId),batches.map(row=>row.deliveryId));
+            }
+            const retried = await run('',flags);
+            if (siblings === 'first') {
+              assert.equal(retried.code,2,retried.errors);
+              assert.ok(retried.errors.includes(sibling.id),retried.errors);
+              assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'))),history);
+            }
+            assert.equal(requests.length,before+1);
+            if (process.argv.includes('--nested-user-stop')) {
+              assert.equal(siblings,'first');
+              const crash = process.argv.includes('--nested-user-stop-crash');
+              const stopOwner = process.argv.includes('--nested-stop-owner');
+              const finalWitness = process.argv.includes('--nested-stop-final-witness');
+              const stopId = stopOwner ? outer[0].id : sibling.id;
+              const leaf = deepStop ? journals.find(rows=>rows[0].config.parentSessionId === sibling.id)?.[0].id : sibling.id;
+              assert.ok(leaf);
+              if (incompleteLeaf) {
+                const beforeReplace = process.argv.includes('--nested-before-replace');
+                const legacyStage = process.argv.includes('--nested-corrupt-leaf');
+                const writer = path.join(workspace,'publish-leaf.mjs');
+                fs.writeFileSync(writer,`import fs from 'node:fs';
+                  import {Session} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/session.js')).href)};
+                  import {AgentHistoryStore} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/agent-history.js')).href)};
+                  const record = JSON.parse(fs.readFileSync(${JSON.stringify(path.join(workspace,'pending-leaf.json'))}));
+                  const parent = Session.open(${JSON.stringify(workspace)},{id:record.parent,recoverLock:true});
+                  const append = parent.append.bind(parent);
+                  parent.append = row => {
+                    if (process.argv.includes('--before-intent') && row.kind === 'agent_history_intent')
+                      process.kill(process.pid,'SIGKILL');
+                    if (${legacyStage} && row.kind === 'agent_history_intent' && row.id === record.id) {
+                      fs.writeFileSync(${JSON.stringify(path.join(dir,'subagents',sibling.id,leaf+'.meta.json.settlement'))},JSON.stringify(row.terminalRecord));
+                      delete row.terminalRecord;
+                    }
+                    if (!${beforeReplace} && row.kind === 'agent_history' && row.id === record.id) process.kill(process.pid,'SIGKILL');
+                    const result = append(row);
+                    if (${beforeReplace} && row.kind === 'agent_history_intent' && row.id === record.id) process.kill(process.pid,'SIGKILL');
+                    return result;
+                  };
+                  const store = new AgentHistoryStore(parent,16*1024*1024,100);
+                  if (process.argv.includes('--orphan')) {
+                    const file = ${JSON.stringify(path.join(dir,'subagents',sibling.id,leaf+'.meta.json'))};
+                    const active = JSON.parse(fs.readFileSync(file));
+                    fs.writeFileSync(file+'.settlement',JSON.stringify(record));
+                    if (!store.read().warnings.some(w => w.includes('Unclaimed worker settlement'))) throw Error('orphan accepted');
+                    for (const conflict of [{...active,state:{...active.state,runId:'000000000-abcdef12'}},{...record,state:{...record.state,summary:'changed'}}]) {
+                      try { store.write(conflict); throw Error('overwrote orphan'); }
+                      catch (error) { if (!String(error).includes('Unclaimed worker settlement')) throw error; }
+                    }
+                    if (fs.readFileSync(file+'.settlement','utf8') !== JSON.stringify(record)) throw Error('orphan changed');
+                    process.kill(process.pid,'SIGKILL');
+                  }
+                  store.write(record);`);
+                if (process.argv.includes('--nested-before-intent')) {
+                  const ownerFile = path.join(dir,sibling.id+'.jsonl');
+                  const file = path.join(dir,'subagents',sibling.id,leaf+'.meta.json');
+                  const previous = [ownerFile,file].map(p => fs.readFileSync(p));
+                  const stopped = spawnSync(process.execPath,[writer,'--before-intent'],{encoding:'utf8',timeout:10000});
+                  assert.equal(stopped.signal,'SIGKILL',stopped.stderr);
+                  assert.deepEqual([ownerFile,file].map(p => fs.readFileSync(p)),previous);
+                  assert.equal(fs.existsSync(file+'.settlement'),false);
+                }
+                if (process.argv.includes('--nested-orphan-leaf')) {
+                  const orphan = spawnSync(process.execPath,[writer,'--orphan'],{encoding:'utf8',timeout:10000});
+                  assert.equal(orphan.signal,'SIGKILL',orphan.stderr);
+                }
+                const writerExit = spawnSync(process.execPath,[writer],{encoding:'utf8',timeout:10000});
+                assert.equal(writerExit.signal,'SIGKILL',writerExit.stderr);
+                const journal = fs.readFileSync(path.join(dir,sibling.id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+                assert.equal(journal.at(-1).kind,'agent_history_intent');
+                assert.equal(journal.at(-1).id,leaf);
+                const target = path.join(dir,'subagents',sibling.id,leaf+'.meta.json');
+                const state = JSON.parse(fs.readFileSync(target)).state;
+                if (beforeReplace) {
+                  assert.equal(state.kind,'active');
+                  assert.equal(journal.at(-1).stagedRunId,state.runId);
+                  const staged = legacyStage ? fs.readFileSync(target+'.settlement') : Buffer.from(JSON.stringify(journal.at(-1).terminalRecord));
+                  assert.deepEqual(staged,fs.readFileSync(path.join(workspace,'pending-leaf.json')));
+                  if (!legacyStage && !process.argv.includes('--nested-orphan-leaf')) assert.equal(fs.existsSync(target+'.settlement'),false);
+                  if (process.argv.includes('--nested-corrupt-leaf')) {
+                    const altered = JSON.parse(staged);
+                    altered.state.summary += ' changed';
+                    fs.writeFileSync(target+'.settlement',JSON.stringify(altered));
+                    try {
+                      const refused = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,`/tasks stop ${stopId}\n/exit\n`);
+                      assert.match(refused.errors,/descendant history is incomplete/i);
+                      assert.deepEqual(JSON.parse(fs.readFileSync(target)).state,state);
+                      assert.deepEqual(fs.readFileSync(path.join(dir,sibling.id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse),journal);
+                    } finally { fs.writeFileSync(target+'.settlement',staged); }
+                  }
+                } else assert.equal(state.status,'completed');
+                if (process.argv.includes('--nested-leaf-lock')) {
+                  const {Session} = await import('../dist/session.js');
+                  const held = Session.open(workspace,{id:leaf});
+                  try {
+                    const lock = fs.readFileSync(held.file+'.lock');
+                    const refused = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,`/tasks stop ${stopId}\n/exit\n`);
+                    assert.match(refused.errors,/descendant journal is active/i);
+                    assert.deepEqual(fs.readFileSync(held.file+'.lock'),lock);
+                    assert.deepEqual(fs.readFileSync(path.join(dir,sibling.id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse),journal);
+                  } finally { await held.close(); }
+                }
+              }
+              if (crash) {
+                const cancelProbe = path.join(workspace,'stop-probe.mjs');
+                fs.writeFileSync(cancelProbe,`import {Session} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/session.js')).href)};
+                  import {AgentHistoryStore} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/agent-history.js')).href)};
+                  if (${process.argv.includes('--nested-legacy-stop')}) {
+                    const prepare = AgentHistoryStore.prototype.prepareWrite;
+                    AgentHistoryStore.prototype.prepareWrite = function(record,...args) {
+                      if (record.id === ${JSON.stringify(stopId)}) delete record.state.redirectedEvents;
+                      return prepare.call(this,record,...args);
+                    };
+                  }
+                  const append = Session.prototype.append;
+                  Session.prototype.append = function(row) {
+                    if (${process.argv.includes('--nested-stop-before-intent')} && row.kind === 'agent_history_intent' &&
+                        row.cancelledRunId && row.id === ${JSON.stringify(stopId)}) process.kill(process.pid,'SIGKILL');
+                    const result = append.call(this,row);
+                    if (${finalWitness} && row.kind === 'agent_history' && row.id === ${JSON.stringify(stopId)} &&
+                        this.events.at(-2)?.cancelledRunId) process.kill(process.pid,'SIGKILL');
+                    if (!${finalWitness} && row.kind === 'agent_history_intent' && row.cancelledRunId &&
+                        row.id === ${JSON.stringify(process.argv.includes('--nested-stop-owner-intent') ? stopId :
+                          process.argv.includes('--nested-stop-leaf-intent') ? leaf : sibling.id)}) process.kill(process.pid,'SIGKILL');
+                    return result;
+                  };`);
+                launcher.unshift('--import',pathToFileURL(cancelProbe).href);
+              }
+              const terminal = await run('',['--interactive','--resume',rootId,'--recover-lock'],false,
+                `/tasks stop ${stopId}\n/exit\n`);
+              if (crash) {
+                launcher.splice(0,2);
+                assert.equal(terminal.code,null,terminal.errors);
+                if (process.argv.includes('--nested-stop-before-intent')) {
+                  const file = path.join(dir,'subagents',rootId,stopId+'.meta.json');
+                  assert.equal(JSON.parse(fs.readFileSync(file)).state.kind,'active');
+                  assert.equal(fs.existsSync(file+'.settlement'),false);
+                  assert.equal(fs.readFileSync(path.join(dir,rootId+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse)
+                    .some(row => row.kind === 'agent_history_intent' && row.id === stopId && row.cancelledRunId),false);
+                }
+              } else {
+                assert.equal(terminal.code,0,terminal.errors);
+                assert.ok((terminal.output+terminal.errors).includes('Stopped agent '+stopId),terminal.output+terminal.errors);
+              }
+              assert.equal(requests.length,before+1);
+              const wake = await run('',flags);
+              if (incompleteLeaf) {
+                const target = path.join(dir,'subagents',sibling.id,leaf+'.meta.json');
+                assert.deepEqual(fs.readFileSync(target),fs.readFileSync(path.join(workspace,'pending-leaf.json')),wake.errors);
+                assert.equal(fs.existsSync(target+'.settlement'),false);
+              }
+              if (stopOwner) {
+                if (crash && !finalWitness) {
+                  assert.equal(wake.code,0,wake.errors);
+                  assert.ok(wake.errors.includes('Worker '+stopId+': cancelled'),wake.errors);
+                }
+                const metadata = (owner,id) => JSON.parse(fs.readFileSync(path.join(dir,'subagents',owner,id+'.meta.json')));
+                assert.equal(metadata(rootId,stopId).state.status,'cancelled',wake.errors);
+                assert.equal(metadata(stopId,sibling.id).state.status,'cancelled');
+                if (deepStop) assert.equal(metadata(sibling.id,leaf).state.status,settledLeaf ? 'completed' : 'cancelled');
+                assert.equal(metadata(stopId,inner.id).state.status,'completed');
+              } else {
+                assert.equal(wake.code,0,wake.errors);
+                if (deepStop) assert.equal(JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'))).state.status,'completed');
+              }
+              const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+              assert.deepEqual(rows.filter(row => row.kind === 'notification_intent_v2').flatMap(row =>
+                row.batch.events.map(event => [event.agent.id,event.agent.status])),stopOwner ? [[inner.id,'completed']] : [[inner.id,'completed'],[sibling.id,'cancelled']]);
+              await run('',flags);
+              assert.equal(requests.length,before+(stopOwner ? 1 : 2));
+              if ((stopOwner || deepStop) && process.argv.includes('--nested-stop-redirect')) {
+                const redirectedId = stopOwner ? sibling.id : leaf;
+                const rootRows = () => fs.readFileSync(path.join(dir,rootId+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+                const resume = () => run('',['--interactive','--resume',rootId,'--recover-lock'],false,'');
+                if (process.argv.includes('--nested-legacy-stop')) {
+                  const ownerFile = path.join(dir,'subagents',rootId,stopId+'.meta.json');
+                  assert.equal(JSON.parse(fs.readFileSync(ownerFile)).state.redirectedEvents,undefined);
+                  const sidecar = path.join(dir,'subagents',stopId,sibling.id+'.meta.json');
+                  const original = fs.readFileSync(sidecar);
+                  const altered = JSON.parse(original);
+                  altered.state.notificationAgent.summary = 'unwitnessed replacement';
+                  fs.writeFileSync(sidecar,JSON.stringify(altered));
+                  try {
+                    const refused = await resume();
+                    const diagnostic = JSON.stringify(requests.at(-1)?.messages) + refused.output + refused.errors;
+                    assert.ok(diagnostic.includes('Descendant history no longer matches its publication'),refused.errors);
+                    assert.ok(!diagnostic.includes('unwitnessed replacement'));
+                    assert.ok(!rootRows().some(row=>row.kind === 'notification_intent_v2' && row.batch.kind === 'agent_events' &&
+                      row.batch.events.some(event=>event.agent.id === sibling.id)));
+                  } finally { fs.writeFileSync(sidecar,original); }
+                }
+                const count = requests.length;
+                const interruptIntent = process.argv.includes('--nested-redirect-intent-crash');
+                if (interruptIntent) {
+                  const probe = path.join(workspace,'redirect-intent.mjs');
+                  fs.writeFileSync(probe,`import {Session} from ${JSON.stringify(pathToFileURL(path.join(root,'dist/session.js')).href)};
+                    const append = Session.prototype.append;
+                    Session.prototype.append = function(row,...args) {
+                      const result = append.call(this,row,...args);
+                      if (row.owner === ${JSON.stringify(rootId)} && row.kind === 'notification_intent_v2' &&
+                          row.batch.events?.some(event=>event.agent?.id === ${JSON.stringify(redirectedId)})) process.kill(process.pid,'SIGKILL');
+                      return result;
+                    };`);
+                  launcher.unshift('--import',pathToFileURL(probe).href);
+                  const interrupted = await resume();
+                  launcher.splice(0,2);
+                  assert.equal(interrupted.code,null,interrupted.errors);
+                }
+                const delivered = await resume();
+                assert.equal(delivered.code,0,delivered.errors);
+                const intents = rootRows().filter(row=>row.kind === 'notification_intent_v2' && row.batch.kind === 'agent_events' &&
+                  row.batch.events.some(event=>event.agent.id === redirectedId));
+                assert.equal(intents.length,1,delivered.errors);
+                assert.deepEqual(intents[0].batch.events.map(event=>[event.agent.id,event.agent.status]),
+                  stopOwner ? [[stopId,'cancelled'],[sibling.id,'cancelled'],...(deepStop ? [[leaf,settledLeaf ? 'completed' : 'cancelled']] : [])] :
+                    [[leaf,settledLeaf ? 'completed' : 'cancelled']]);
+                if (interruptIntent) assert.ok((delivered.output+delivered.errors).includes(intents[0].deliveryId),delivered.errors);
+                assert.equal(rootRows().filter(row=>row.notificationDelivery?.deliveryId === intents[0].deliveryId).length,interruptIntent ? 0 : 1,delivered.errors);
+                assert.equal(requests.length,count+(interruptIntent ? 0 : 1));
+                await resume();
+                assert.equal(requests.length,count+(interruptIntent ? 0 : 1));
+              }
+              if (stopTool) {
+                assert.equal(fs.readFileSync(path.join(workspace,'stop-write.txt'),'utf8'),'effect');
+                assert.equal(fs.readFileSync(path.join(workspace,'stop-tool-hook'),'utf8'),'x');
+                const childRows = fs.readFileSync(path.join(dir,leaf+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+                const result = childRows.filter(row=>row.kind === 'tool_result' && row.result.tool_use_id === 'stop-write');
+                assert.equal(result.length,1);
+                assert.equal(result[0].result.is_error,true);
+                assert.match(result[0].result.content,/post-hook result was interrupted/);
+                assert.deepEqual(childRows.filter(row=>row.kind === 'message' && Array.isArray(row.message.content))
+                  .flatMap(row=>row.message.content).filter(block=>block.tool_use_id === 'stop-write'),[result[0].result]);
+              }
+            }
+            if (process.argv.includes('--nested-late-settlement')) {
+              assert.equal(siblings,'first');
+              // Controlled later producer: close the interrupted fixture turn as cancelled
+              // and publish through the same two-phase store used by the live registry.
+              const {Session} = await import('../dist/session.js');
+              const {AgentHistoryStore} = await import('../dist/agent-history.js');
+              const {createHash} = await import('node:crypto');
+              const receiver = Session.open(workspace,{id:outer[0].id,recoverLock:true});
+              const store = new AgentHistoryStore(receiver,16*1024*1024,100);
+              const pending = store.read().records.find(record => record.id === sibling.id);
+              assert.equal(pending.state.kind,'active');
+              const worker = Session.open(workspace,{id:sibling.id,recoverLock:true});
+              const config = worker.config;
+              worker.append({kind:'turn_end',reason:'aborted'});
+              await worker.close();
+              const bytes = fs.readFileSync(worker.file);
+              const summary = 'Later sibling cancellation';
+              const agent = {id:sibling.id,session_id:sibling.id,name:pending.name,status:'cancelled',mode:config.childMode,
+                model:config.model,summary,error:null,reason:'aborted',model_calls:0,queued_messages:0};
+              const cut = process.argv.find(arg => arg.startsWith('--late-cut='))?.split('=')[1];
+              if (cut === 'intent') {
+                // Old publishers wrote the intent before retaining any proposed metadata.
+                const append = receiver.append.bind(receiver);
+                receiver.append = (row,...args) => {
+                  if (row.kind === 'agent_history_intent') { delete row.stagedRunId; delete row.terminalRecord; }
+                  return append(row,...args);
+                };
+              }
+              const publish = store.prepareWrite({...pending,state:{kind:'settled',status:agent.status,summary,error:null,
+                reason:agent.reason,modelCalls:0,endedAt:Date.now(),config,runId:cut === 'wrong-run' ? '000000000-abcdef12' : pending.state.runId,notificationAgent:agent,
+                journal:{bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')}}});
+              if (cut === 'metadata') {
+                const append = receiver.append.bind(receiver);
+                receiver.append = (row,...args) => {
+                  if (row.kind === 'agent_history' && row.id === sibling.id) throw new Error('fixture unwitnessed metadata');
+                  return append(row,...args);
+                };
+                assert.throws(publish,/fixture unwitnessed metadata/);
+              } else if (cut !== 'intent') publish();
+              else fs.rmSync(path.join(dir,'subagents',receiver.id,sibling.id+'.meta.json.settlement'),{force:true});
+              await receiver.close();
+              const wake = await run('',flags);
+              if (cut === 'intent' || cut === 'wrong-run') {
+                assert.equal(wake.code,2,wake.errors);
+                assert.match(wake.errors,cut === 'intent' ? /no verified settlement/ : /does not match its waiting run/);
+                assert.equal(requests.length,before+1);
+                assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'))),history);
+                console.log('Incomplete sibling publication retained');
+                break run;
+              }
+              assert.equal(wake.code,0,wake.errors);
+              assert.equal(requests.length,before+2);
+              const final = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json')));
+              assert.equal(final.state.status,'completed');
+              const rows = fs.readFileSync(receiver.file,'utf8').trimEnd().split('\n').map(JSON.parse);
+              assert.deepEqual(rows.filter(row => row.kind === 'notification_intent_v2').flatMap(row =>
+                row.batch.events.map(event => [event.agent.id,event.sequence,event.agent.status])),
+                [[inner.id,1,'completed'],[sibling.id,2,'cancelled']]);
+              assert.ok(requests.at(-1).messages.at(-1).content.includes(summary));
+              await run('',flags);
+              assert.equal(requests.length,before+2);
+            }
+            console.log('Sibling delivery verified at',siblings);
+            break run;
+          }
+          if (nestedCut !== 'intent') {
+            assert.equal(resumed.code,0,resumed.errors);
+            assert.equal(history.state.status,'completed');
+            const saved = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(JSON.parse);
+            const notices = saved.filter(row => row.kind === 'message' && row.notificationDelivery);
+            assert.equal(notices.length,1);
+            if (nestedCut !== 'commit') {
+              assert.ok(!outer.some(row => row.kind === 'notification_intent_v2'));
+              const after = requests.length;
+              await run('',flags);
+              assert.equal(requests.length,after);
+            }
+            const notice = notices[0];
+            assert.equal(requests.slice(before).filter(req => req.messages.at(-1).content === notice.message.content).length,1);
+            if (terminalRecovery) assert.ok(resumed.errors.includes('Worker '+outer[0].id+': completed'),resumed.errors);
+            else assert.equal(requests.length,before+1);
+            if (terminalApproval) {
+              const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(line=>JSON.parse(line));
+              const result = rows.find(row=>row.kind === 'tool_result' && row.result.tool_use_id === 'resumed-write');
+              assert.ok((resumed.output+resumed.errors).includes('Allow once? [y/N]'),JSON.stringify({result,errors:resumed.errors,tools:rows[0].config.tools.map(tool=>tool.name)}));
+              assert.equal(fs.existsSync(path.join(workspace,'resumed.txt')),terminalApproval === 'allow');
+              assert.equal(Boolean(result?.result.is_error),terminalApproval === 'deny');
+              assert.ok(result);
+            }
+          } else {
+            assert.equal(history.state.kind,'active');
+            assert.equal(requests.length,before);
+            assert.match(resumed.errors,/no committed message for delivery/);
+          }
+          console.log('Direct root restart checked at',nestedCut);
+          break run;
+        }
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const read = spawnSync(process.execPath, ['--input-type=module','-e', `
+            import assert from 'node:assert/strict';
+            import fs from 'node:fs';
+            import {createHash} from 'node:crypto';
+            import {Session} from './dist/session.js';
+            import {AgentHistoryStore} from './dist/agent-history.js';
+            const [workspace,owner,id,stage] = process.argv.slice(1);
+            const session = Session.open(workspace,{id:owner,recoverLock:true});
+            try {
+              const {records,warnings} = new AgentHistoryStore(session,16*1024*1024,100).read();
+              assert.deepEqual(warnings,[]);
+              const state = records.find(record => record.id === id).state;
+              assert.equal(state.status,'completed');
+              assert.match(state.runId,/^[0-9a-z]{9,}-[0-9a-f]{8}$/);
+              const rootSession = Session.open(workspace,{id:session.config.parentSessionId,recoverLock:true});
+              try {
+                const history = new AgentHistoryStore(rootSession,16*1024*1024,100).read();
+                assert.deepEqual(history.warnings,[]);
+                const active = history.records.find(record => record.id === owner).state;
+                assert.equal(active.kind,'active');
+                assert.match(active.runId,/^[0-9a-z]{9,}-[0-9a-f]{8}$/);
+                assert.notEqual(active.runId,state.runId);
+                const intent = session.events.find(row => row.kind === 'notification_intent_v2');
+                if (stage !== 'settled') assert.equal(intent.batch.receiverRunId,active.runId);
+                assert.deepEqual(session.pendingWorkerReceipt, stage === 'commit'
+                  ? {parent:rootSession.id,runId:active.runId,deliveryId:intent.deliveryId} : undefined);
+              } finally { await rootSession.close(); }
+              assert.equal(session.awaitingResponse,stage === 'commit');
+              const journal = fs.readFileSync(workspace+'/.agent/'+id+'.jsonl');
+              assert.deepEqual(state.journal,{bytes:journal.length,sha256:createHash('sha256').update(journal).digest('hex')});
+              const intents = session.events.filter(row => row.kind === 'notification_intent_v2');
+              const receipts = session.events.filter(row => row.kind === 'message' && row.notificationDelivery);
+              assert.equal(intents.length,stage === 'settled' ? 0 : 1);
+              assert.equal(receipts.length,stage === 'commit' ? 1 : 0);
+              if (intents.length) {
+                assert.deepEqual(intents[0].batch.events.map(event => [event.agent.id,event.runId]),[[id,state.runId]]);
+              }
+              if (receipts.length) assert.equal(receipts[0].notificationDelivery.deliveryId,intents[0].deliveryId);
+              assert.deepEqual(session.notificationCoordination,stage === 'intent' ? [{deliveryId:intents[0].deliveryId,state:'unknown'}] : []);
+            } finally { await session.close(); }`,workspace,outer[0].id,inner.id,nestedCut], {cwd:root,encoding:'utf8'});
+          assert.equal(read.status,0,read.stderr);
+        }
+        launcher.splice(0,2);
+        const resumeFlags = ['--resume',outer[0].id,'--recover-lock','--continue'];
+        const before = requests.length;
+        const resumed = await run('',resumeFlags);
+        assert.equal(resumed.code,2,resumed.errors);
+        if (nestedCut === 'commit') {
+          const intent = outer.find(row => row.kind === 'notification_intent_v2');
+          assert.ok(resumed.errors.includes(`Parent session ${outer[0].config.parentSessionId} owns run ${intent.batch.receiverRunId} with pending delivery ${intent.deliveryId}`),resumed.errors);
+          const receiptFile = path.join(dir,outer[0].id+'.jsonl.notification-'+intent.deliveryId+'.receipt');
+          const savedReceipt = fs.readFileSync(receiptFile);
+          fs.unlinkSync(receiptFile);
+          const missing = await run('',resumeFlags);
+          assert.equal(missing.code,2);
+          assert.ok(missing.errors.includes('Notification delivery status unknown: '+intent.deliveryId),missing.errors);
+          assert.match(missing.errors,/Session tool schemas changed/);
+          assert.ok(!missing.errors.includes('owns run '+intent.batch.receiverRunId));
+          assert.equal(requests.length,before);
+          fs.writeFileSync(receiptFile,savedReceipt);
+          const rootId = outer[0].config.parentSessionId;
+          const recoveryFlags = ['--resume',rootId,'--recover-lock','--continue'];
+          const recovered = await run('',recoveryFlags);
+          assert.equal(recovered.code,0,recovered.errors);
+          const rows = fs.readFileSync(path.join(dir,outer[0].id+'.jsonl'),'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+          const admitted = rows.filter(row => row.kind === 'message' && row.notificationDelivery);
+          assert.equal(admitted.length,1);
+          assert.equal(requests.slice(before).filter(req => req.messages.at(-1).content === admitted[0].message.content).length,1);
+          const history = JSON.parse(fs.readFileSync(path.join(dir,'subagents',rootId,outer[0].id+'.meta.json'),'utf8'));
+          assert.equal(history.state.status,'completed');
+          assert.equal(history.state.runId,intent.batch.receiverRunId);
+          const after = requests.length;
+          await run('',recoveryFlags);
+          assert.equal(requests.length,after);
+        } else assert.match(resumed.errors,/Session tool schemas changed/);
+        if (nestedCut !== 'commit') assert.equal(requests.length,before);
+        console.log('Nested handoff history and standalone CLI admission checked at',nestedCut);
+        break run;
+      }
+      const notices = outer.filter(row => row.kind === 'message' && row.notificationDelivery);
+      assert.equal(notices.length, 1);
+      const notice = notices[0];
+      assert.ok(notice, JSON.stringify(outer.filter(row => row.kind === 'turn_end')));
+      assert.equal(notice.notificationDelivery.owner, outer[0].id);
+      assert.equal(notice.classifier.origin.source, 'task-notification');
+      assert.ok(notice.message.content.includes(inner.id) && notice.message.content.includes('inline complete'));
+      assert.ok(requests.some(request => request.messages.at(-1).content === notice.message.content));
+      if (compiled) {
+        const reader = spawnSync(process.execPath, ['--input-type=module', '-e', `
+          import {Session} from './dist/session.js';
+          const session = Session.open(process.argv[1], {id:process.argv[2]});
+          try {
+            const receipts = session.events.filter(row => row.kind === 'message' && row.notificationDelivery);
+            console.log(JSON.stringify([receipts.map(row => row.notificationDelivery), session.notificationCoordination]));
+          } finally { await session.close(); }`, workspace, outer[0].id], {cwd:root, encoding:'utf8'});
+        assert.equal(reader.status, 0, reader.stderr);
+        assert.deepEqual(JSON.parse(reader.stdout), [[notice.notificationDelivery], []]);
+      }
+    } else assert.equal(inner.text, 'inline complete');
+    const nested = journals.find(rows => rows[0].id === inner.session_id);
+    assert.equal(nested[0].config.parentSessionId, outer[0].id);
+    assert.equal(nested[0].config.spawnDepth, 2);
+    assert.equal(journals.length, 3);
+    process.stdout.write(process.argv.includes('--nested-background') ? 'compiled nested background delivery passed\n' : 'compiled background skill repeat passed\n');
+    break run;
+  }
   const checkHeadlessSkillResults = async () => {
     for (const [name, metadata, body] of [
       ['headless-text', 'allowed-tools: Bash', 'RESULT TEXT'],
@@ -460,6 +1391,18 @@ run: try {
       }
       fs.rmSync(saved, { force: true });
     } else assert.ok(requests.some(request => JSON.stringify(request.messages).includes('CHILD_SKILL_EXECUTED')), 'child model must receive executed output');
+    if (process.argv.includes('--nested-fork')) {
+      const dir = path.join(workspace, '.agent');
+      const logs = fs.readdirSync(dir).filter(name => name.endsWith('.jsonl')).map(name =>
+        fs.readFileSync(path.join(dir, name), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line)));
+      const main = logs.find(rows => !rows[0].config.childMode);
+      const child = logs.find(rows => rows[0].config.parentSessionId === main[0].id);
+      const fork = logs.find(rows => rows[0].config.parentSessionId === child[0].id);
+      assert.equal(child[0].config.spawnDepth, 1);
+      assert.equal(fork[0].config.spawnDepth, 2);
+      const returned = child.find(row => row.kind === 'tool_result' && row.result.tool_use_id === 'child-skill');
+      assert.equal(JSON.parse(returned.result.content).session_id, fork[0].id);
+    }
     const effects = fs.readdirSync(path.join(workspace, '.agent', 'skill-effects')).filter(name => name.endsWith('.jsonl'));
     assert.equal(effects.length, 1);
     assert.match(fs.readFileSync(path.join(workspace, '.agent', 'skill-effects', effects[0]), 'utf8'), /"finished"/);

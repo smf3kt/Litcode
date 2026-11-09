@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "sha256": "58e683a20b1748b544ae8a39026a311ade8b9b7dcb5cc0518dbc21b4d801fc8e",
+    "inputs": {
+      "sha256": "a992c6450c92e187d4e0eb75246540d66a94d25303596a05b68c5e0a6d34e1c7",
+      "files": 1054
+    },
+    "validation": {
+      "sha256": "c888cc1e674f6769ba6d95b74a6da37aadb2826e25055034a2dc2600c5a5aa3d",
+      "files": 415
+    },
+    "build": {
+      "sha256": "dff2dacc4edf0c107207fd06e0f0efc999904becfe10db92dce3740a6b7ccadd",
+      "files": 729
+    }
+  },
+  "cases": [
+    {
+      "cut": "skill-admitted",
+      "callbackEffect": false,
+      "skillEffect": false,
+      "skill": "admitted",
+      "coldReaders": 4
+    },
+    {
+      "cut": "registry-before",
+      "callbackEffect": false,
+      "skillEffect": false,
+      "skill": "admitted",
+      "registry": "admitted",
+      "coldReaders": 4
+    },
+    {
+      "cut": "registry-after",
+      "callbackEffect": true,
+      "skillEffect": false,
+      "skill": "admitted",
+      "registry": "admitted",
+      "coldReaders": 4
+    },
+    {
+      "cut": "registry-fulfilled",
+      "callbackEffect": true,
+      "skillEffect": false,
+      "skill": "admitted",
+      "registry": "fulfilled",
+      "coldReaders": 4
+    },
+    {
+      "cut": "skill-fulfilled",
+      "callbackEffect": true,
+      "skillEffect": false,
+      "skill": "fulfilled",
+      "registry": "fulfilled",
+      "coldReaders": 4
+    },
+    {
+      "cut": "normal",
+      "callbackEffect": true,
+      "skillEffect": true,
+      "skill": "fulfilled",
+      "registry": "fulfilled",
+      "coldReaders": 4
+    },
+    {
+      "cut": "deny",
+      "callbackEffect": true,
+      "skillEffect": false,
+      "skill": "rejected",
+      "registry": "fulfilled",
+      "coldReaders": 4
+    }
+  ],
+  "upstreamCalls": 0
+}

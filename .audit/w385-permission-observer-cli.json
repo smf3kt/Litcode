@@ -1,0 +1,113 @@
+{
+  "identity": {
+    "sha256": "70679bc024aedd5c775d1c0409f78e25bbad060ac3169683e773eb506fc88d3f",
+    "inputs": {
+      "sha256": "c1397073eba709c9fda394e74b7e4ea5f505aaf91002e00af362c705598ee354",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "a27ba969f1bdb88ff2902ffc44ad231995bd914e226a71af5a54f5e5c801d19d",
+      "files": 414
+    },
+    "build": {
+      "sha256": "d6d03b4eb7add754e149b1bfcce5a8afc346910fee1f8d998a22bbe20eb5cb42",
+      "files": 728
+    }
+  },
+  "cases": [
+    {
+      "cut": "lookup-before",
+      "lookupEffect": false,
+      "approvalEffect": false,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "admitted"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "lookup-after",
+      "lookupEffect": true,
+      "approvalEffect": false,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "admitted"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "before",
+      "lookupEffect": true,
+      "approvalEffect": false,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "operation": {
+        "phase": "admitted"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "after",
+      "lookupEffect": true,
+      "approvalEffect": true,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "operation": {
+        "phase": "admitted"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "settled",
+      "lookupEffect": true,
+      "approvalEffect": true,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "operation": {
+        "phase": "settled",
+        "outcome": "fulfilled"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "normal",
+      "lookupEffect": true,
+      "approvalEffect": true,
+      "toolEffect": true,
+      "lookup": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "operation": {
+        "phase": "settled",
+        "outcome": "fulfilled"
+      },
+      "coldReaders": 2
+    },
+    {
+      "cut": "deny",
+      "lookupEffect": true,
+      "approvalEffect": true,
+      "toolEffect": false,
+      "lookup": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "operation": {
+        "phase": "settled",
+        "outcome": "fulfilled"
+      },
+      "coldReaders": 2
+    }
+  ],
+  "upstreamCalls": 0
+}

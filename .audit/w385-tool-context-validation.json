@@ -1,0 +1,80 @@
+{
+  "identity": {
+    "sha256": "3ffb8e2d5dd215a09292e0f21a82485f49187bd2a5abca59b5612039d569952c",
+    "inputs": {
+      "sha256": "eef9735373fbb8b1eaaea4ab103ad0f1a8b899537522b564efea9208f6067da7",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "05488d40ef4a57f72691e57f59125eaa0eed784e375c5faa82a2c4655d346e63",
+      "files": 412
+    },
+    "build": {
+      "sha256": "983953139a0bfc6541451f1e4e661e0d24da3b5357c1531090abf158d307e1b7",
+      "files": 728
+    }
+  },
+  "check": "pass",
+  "build": "pass",
+  "finalFocused": {
+    "pass": 11,
+    "fail": 0
+  },
+  "finalWriteRegressions": {
+    "pass": 5,
+    "fail": 0
+  },
+  "cli": {
+    "cases": 5,
+    "coldReaders": 10,
+    "evidence": ".audit/w385-write-context-observed.json"
+  },
+  "broaderInitial": {
+    "tests": 163,
+    "pass": 151,
+    "fail": 7,
+    "skip": 5
+  },
+  "broaderNote": "Product inputKind changed during the initial broad run; it is not a final-identity full-suite result. Final focused, Write and CLI results are bound to final identity.",
+  "sevenTargeted": {
+    "pass": 1,
+    "fail": 6
+  },
+  "isolatedPriorProduct": {
+    "inputs": "aeb7782c05c48ae432fb7ca7d36db32920eb515b6fcc3cba3854e5a94750b7d4",
+    "files": 1052,
+    "targetedPass": 1,
+    "targetedFail": 6
+  },
+  "remainingFailures": [
+    "explicit tool cancellation concurrent sibling",
+    "standalone child cold output path",
+    "ordinary child skill output path messaging true",
+    "ordinary child skill output path messaging false",
+    "messaging owner cleanup error expectation",
+    "theme live watcher"
+  ],
+  "logs": [
+    "/private/tmp/w385-context-final-focused.log",
+    "/private/tmp/w385-context-write-regressions.log",
+    "/private/tmp/w385-context-suite.log",
+    "/private/tmp/w385-context-seven.log",
+    "/private/tmp/w385-context-baseline-seven.log",
+    "/private/tmp/w385-context-cli-final.log",
+    "/private/tmp/w385-context-check-final2.log",
+    "/private/tmp/w385-context-build-final.log"
+  ],
+  "upstreamCalls": 0,
+  "limitations": [
+    "observations are not arbitrary-effect proofs",
+    "other context callbacks and internal Session calls remain outside this observer",
+    "retired callbacks may run unobserved without writing to a successor",
+    "no source-lock reclamation expansion"
+  ],
+  "artifacts": {
+    ".audit/w385-write-context-probe.mjs": "b5eccf2520ff102d2ab31e61ab1c800f02dc68a72f93c4b17328cb0e1a408063",
+    ".audit/w385-write-context-observed.json": "ae48f7a70f612824ec3a02788877d01972d90ab668e4e8f94ba23e529bf5a958",
+    "src/tool-context-observer.ts": "41ccbaaccb13d8c5d931f023f65bbbd3787586f1b182328948b3700c7338bb1e",
+    "test/tool-context-observer.test.ts": "36e97f7578702b9923cfc2dbfb752b076e714c140bb395541978be320f41dab2"
+  }
+}

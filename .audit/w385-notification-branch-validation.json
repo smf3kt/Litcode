@@ -1,0 +1,65 @@
+{
+  "unit": "W385 #43 inherited notification history",
+  "identity": "7bd60725f6fd82fed72dd06491ad54150c1fd7e8215613d3d270cc42b91a1a38",
+  "inputs": "a0ab00ca576872617d44e01a70b9d7d8444baa7a6619d6fef18bdc4b1b9db45e",
+  "validation": "5fd2e9a1eb61e3a1b43ce57497c78d99a4fa671635cd1db6655da5c79dd57d4d",
+  "build": "f4e9a90a2f4f3223090a2ac52516cc92aa037b3d057d6b26ea827ead8eeed7b2",
+  "source": [
+    {
+      "module": "chunk-8a6bg1at.js",
+      "sha256": "e34c7cbe744b07bcb28040e5434e9bd785af93f7a157e9ac60f904a2413e96df",
+      "symbols": {
+        "ne": [
+          14524,
+          17174
+        ],
+        "se": [
+          17210,
+          19834
+        ]
+      }
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbols": {
+        "vM": [
+          4539259,
+          4539288
+        ]
+      }
+    },
+    {
+      "module": "chunk-y9e5d83w.js",
+      "sha256": "99515915b6a3f863e5c254b7ae432e26fc0d445b14e3bd312cfd69a076025ad1",
+      "symbols": {
+        "Mgr": [
+          19857,
+          19927
+        ],
+        "nt": [
+          19802,
+          19856
+        ]
+      }
+    }
+  ],
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "affected": 100,
+    "red": "Notification delivery owner mismatch in real async receipted fork",
+    "live": "fork/descendant/rewind retain visible notification and async history, no intents or delivery authority",
+    "cold": "two independent readers preserve branch; missing source receipt isolates its message; mismatched inherited content rejected",
+    "cli": "node .audit/w385-notification-branch-cli.mjs",
+    "commandRuns": 1,
+    "locksReleased": true,
+    "modelUpstreamRequests": 0
+  },
+  "remaining": [
+    "notification-specific config successor end-to-end validation",
+    "durable process/callback provenance",
+    "legacy untagged plugin compatibility"
+  ]
+}

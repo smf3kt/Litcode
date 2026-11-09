@@ -12,6 +12,14 @@
 // pre-gate and the dispatch where `Ikt` passes `void 0` to the gate (that origin reaches only the
 // pre-gate's diagnostic text), and the module handlers are the only middle arm this product has.
 import { FDe, Q_t, die, fe, gkt, h7n, znr } from './plugin-chain-classic-raise-source.js';
+import { randomUUID } from 'node:crypto';
+import { withClassicModuleScope } from './classic-module-observer.js';
+import type { ClassicChainObservation, ClassicChainObserver } from './classic-hook-observer.js';
+const observations = new WeakMap<object, { observer: ClassicChainObserver; event: ClassicChainObservation }>();
+export function consumeClassicChainObservation(authorization: object, observer: ClassicChainObserver): ClassicChainObservation | undefined {
+  const saved = observations.get(authorization); observations.delete(authorization);
+  return saved?.observer === observer ? { ...saved.event } : undefined;
+}
 
 /** The classic event names this product raises on the tool path; `FDe` prefixes them with `classic.`
  *  and they are the bare names of the source's own event list (`Ewr`). */
@@ -41,6 +49,7 @@ export type ClassicHookRecord = {
 };
 
 export type ClassicEventRaise = {
+  observeChain?: ClassicChainObserver;
   /** The bare event name, as the source hands it to `Ikt` (`PostToolUse`, `SessionStart`, …). */
   event: string;
   hookInput: Record<string, unknown>;
@@ -82,7 +91,7 @@ export function classicEventHooked(event: string): boolean {
  *  the plugin-module handlers; the outer two are the inputs a caller supplies. */
 export async function raiseClassicEvent(options: ClassicEventRaise): Promise<ClassicEventAnswer> {
   const name = FDe(options.event);
-  const answer = (await znr({
+  const answer = await runObservedClassicChain(options.event, options.observeChain, () => znr({
     hookInput: options.hookInput,
     managed: options.managed,
     core: options.core,
@@ -90,4 +99,21 @@ export async function raiseClassicEvent(options: ClassicEventRaise): Promise<Cla
     origin: options.origin,
   })) as Record<string, unknown>;
   return { records: h7n([], answer, { event: options.event, command: `${name} hook` }) as ClassicHookRecord[], answer, block: gkt(answer) };
+}
+
+/** Shared host journal seam around Ikt/znr and m_t/$go, before their answer folds. */
+export async function runObservedClassicChain<T>(event: string, observer: ClassicChainObserver | undefined, body: () => T): Promise<Awaited<T>> {
+  const invocationId = randomUUID();
+  const record = (phase: ClassicChainObservation['phase']) => {
+    if (!observer) return;
+    const authorization = {};
+    observations.set(authorization, { observer, event: { invocationId, event, phase } });
+    try { observer(authorization); } finally { observations.delete(authorization); }
+  };
+  record('admitted');
+  let answer: Awaited<T>;
+  try { answer = await withClassicModuleScope(observer, invocationId, event, body); }
+  catch (error) { record('rejected'); throw error; }
+  record('fulfilled');
+  return answer;
 }

@@ -11,6 +11,10 @@
 import { P0, aJ } from './plugin-chain-records.js';
 import { Jl } from './plugin-chain-relay-source.js';
 import { Mo, RFe, $go, mDe, rIt } from './plugin-chain-tool-raise-source.js';
+import { runObservedClassicChain } from './plugin-chain-classic-raise.js';
+import type { ClassicChainObserver } from './classic-hook-observer.js';
+import { Cro } from './plugin-chain-classic-raise-source.js';
+import { Ke, l } from './plugin-chain-source.js';
 
 /** The chain name the classic tool-call hooks answer under (source `Ua`'s `event`). */
 export const CLASSIC_PRE_TOOL_USE = 'classic.PreToolUse';
@@ -57,6 +61,7 @@ export type ClassicPreToolUseAnswer = {
  *  does: the envelope first, then `$go` with the module handlers, then `mDe`'s mapping. `managed` and
  *  `settingsCore` are the source's `M` and `X` slots, which this product's own hook layer fills. */
 export async function raiseClassicPreToolUse(options: {
+  observeChain?: ClassicChainObserver;
   tool: string;
   toolUseId?: string;
   input: unknown;
@@ -66,16 +71,28 @@ export async function raiseClassicPreToolUse(options: {
   settingsCore?: unknown;
   bottom?: unknown;
 }): Promise<ClassicPreToolUseAnswer> {
-  const envelope = rIt(options.tool, options.toolUseId, options.input);
-  const handlers = [
-    ...(options.managed !== undefined ? [options.managed] : []),
-    ...P0(CLASSIC_PRE_TOOL_USE, options.origin),
-    ...(options.settingsCore !== undefined ? [options.settingsCore] : []),
-  ];
-  const answer = (await $go(envelope, handlers, {
-    signal: options.signal,
-    origin: aJ(options.origin),
-    ...(options.bottom !== undefined && {bottom: options.bottom}),
-  })) as Record<string, unknown>;
+  // Adapt m_t [504681,505531), UTF-16, sfn1dbxq SHA
+  // 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da.
+  // Retry under the same host observation; collect the replacement modules only after Cro.
+  const dispatch = async (): Promise<Pick<ClassicPreToolUseAnswer, 'envelope' | 'answer'>> => {
+    const envelope = rIt(options.tool, options.toolUseId, options.input);
+    const waiting = Cro({ event: CLASSIC_PRE_TOOL_USE, e: envelope, origin: options.origin }, options.signal);
+    if (waiting !== undefined) {
+      const failure = await waiting.then(() => undefined, (error: unknown) => Ke(error) ? Promise.reject(error) : error);
+      return failure !== undefined ? { envelope, answer: { deny: l(failure) } } : dispatch();
+    }
+    const handlers = [
+      ...(options.managed !== undefined ? [options.managed] : []),
+      ...P0(CLASSIC_PRE_TOOL_USE, options.origin),
+      ...(options.settingsCore !== undefined ? [options.settingsCore] : []),
+    ];
+    const answer = await $go(envelope, handlers, {
+      signal: options.signal,
+      origin: aJ(options.origin),
+      ...(options.bottom !== undefined && {bottom: options.bottom}),
+    }) as Record<string, unknown>;
+    return { envelope, answer };
+  };
+  const { envelope, answer } = await runObservedClassicChain('PreToolUse', options.observeChain, dispatch);
   return {envelope, answer, permission: mDe(answer as never) as ClassicPermission};
 }

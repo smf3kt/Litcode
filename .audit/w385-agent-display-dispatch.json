@@ -1,0 +1,107 @@
+{
+  "file": "src/agent.ts",
+  "sha256": "81495e46da35723b9fc25d0e27331af76e985d07f3a7622e05a5d7daae573cef",
+  "unit": "zero-based UTF-16 offsets, one-based lines",
+  "calls": [
+    {
+      "callback": "progress",
+      "offset": 32620,
+      "line": 476
+    },
+    {
+      "callback": "status",
+      "offset": 33118,
+      "line": 486
+    },
+    {
+      "callback": "terminalSequence",
+      "offset": 44683,
+      "line": 653
+    },
+    {
+      "callback": "status",
+      "offset": 45382,
+      "line": 665
+    },
+    {
+      "callback": "status",
+      "offset": 50692,
+      "line": 749
+    },
+    {
+      "callback": "status",
+      "offset": 57706,
+      "line": 869
+    },
+    {
+      "callback": "status",
+      "offset": 70519,
+      "line": 1052
+    },
+    {
+      "callback": "status",
+      "offset": 93672,
+      "line": 1383
+    },
+    {
+      "callback": "progress",
+      "offset": 93728,
+      "line": 1384
+    },
+    {
+      "callback": "status",
+      "offset": 110635,
+      "line": 1623
+    },
+    {
+      "callback": "status",
+      "offset": 118354,
+      "line": 1744
+    },
+    {
+      "callback": "status",
+      "offset": 119842,
+      "line": 1763
+    },
+    {
+      "callback": "status",
+      "offset": 126946,
+      "line": 1868
+    },
+    {
+      "callback": "status",
+      "offset": 127695,
+      "line": 1880
+    },
+    {
+      "callback": "progress",
+      "offset": 129841,
+      "line": 1920
+    },
+    {
+      "callback": "progress",
+      "offset": 140028,
+      "line": 2055
+    },
+    {
+      "callback": "progress",
+      "offset": 140180,
+      "line": 2057
+    },
+    {
+      "callback": "progress",
+      "offset": 140286,
+      "line": 2058
+    },
+    {
+      "callback": "status",
+      "offset": 140723,
+      "line": 2066
+    },
+    {
+      "callback": "progress",
+      "offset": 144454,
+      "line": 2122
+    }
+  ]
+}

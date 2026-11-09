@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import http from 'node:http';
 import { test } from "node:test";
 import {
   HookLifecycle, hookDefinitionSchema, hooksSchema, runHooks,
@@ -9,6 +10,28 @@ import {
 } from "../src/hooks.js";
 
 const signal = () => new AbortController().signal;
+
+test('HTTP hooks are excluded from SessionStart and Setup before transport or once admission', async () => {
+  const received: string[] = [];
+  const server = http.createServer((request, response) => {
+    let input = ''; request.on('data', chunk => { input += chunk; });
+    request.on('end', () => { received.push(JSON.parse(input).hook_event_name); response.end('{}'); });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address === 'object');
+  const definition = { type: 'http' as const, url: `http://127.0.0.1:${address.port}/hook`, once: true };
+  const lifecycle = new HookLifecycle();
+  try {
+    for (const event of ['SessionStart', 'Setup'] as const) {
+      const result = await runHooks({ [event]: [definition] }, event, {}, signal(), { lifecycle });
+      assert.deepEqual(received, []);
+      assert.deepEqual(lifecycle.snapshot(), []);
+      assert.deepEqual(result, { blocked: false, additionalContext: [] });
+    }
+    await runHooks({ Notification: [definition] }, 'Notification', {}, signal(), { lifecycle });
+    assert.deepEqual(received, ['Notification']); assert.equal(lifecycle.snapshot().length, 1);
+  } finally { server.closeAllConnections(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+});
 
 test("transport schemas retain absent fields and script hooks are refused without execution", async () => {
   const callback: CallbackHookDefinition = { type: "callback", name: "check" };

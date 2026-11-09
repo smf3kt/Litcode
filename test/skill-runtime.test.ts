@@ -21,6 +21,7 @@ import { Session } from '../src/session.js';
 import { readSkillScope, readSkillScopeWitness } from '../src/skill-scope.js';
 import { listSessions } from '../src/sessions.js';
 import { createTools, type ToolDefinition } from '../src/tools.js';
+import { directoryWriteInputSchema } from '../src/directory-publication-authorization.js';
 import '../src/plugin-chain-registry.js';
 import { clearChainRecords } from '../src/plugin-chain-host.js';
 import { createChainRun, loadChainModuleFileInto } from '../src/plugin-chain-loader.js';
@@ -254,6 +255,32 @@ test('fork pins model and tools in an isolated child and leaves parent config un
     finally { reopened.close(); }
     } finally { parent.close(); }
   }, async value => { request = value; return response([{ type: 'text', text: 'Summary' }]); });
+});
+
+test('a background skill beyond the spawn limit runs its foreground fork under the immediate parent', async () => {
+  await fixture(async options => {
+    const previous = process.env.LITCODE_MAX_SUBAGENT_SPAWN_DEPTH;
+    process.env.LITCODE_MAX_SUBAGENT_SPAWN_DEPTH = '2';
+    const parent = Session.open(options.config.workspace, {config:{...options.config, childMode:'general', spawnDepth:2}});
+    try {
+      const registry = new AgentRegistry({source:parent.config, tools:options.tools, provider:options.provider});
+      try {
+        await assert.rejects(registry.launch({prompt:'another agent'}), /nesting limit reached \(depth 2 of 2\)/);
+      } finally { await registry.close(); }
+      const result = JSON.parse(await executeSkill(skill({context:'fork', background:true}), '',
+        {...options, config:parent.config, session:() => parent}));
+      const fork = Session.open(parent.config.workspace, {id:result.session_id});
+      try {
+        assert.equal(fork.config.spawnDepth, 3);
+        assert.equal(fork.config.parentSessionId, parent.id);
+        assert.equal(result.text, 'Summary');
+      } finally { await fork.close(); }
+    } finally {
+      await parent.close();
+      if (previous === undefined) delete process.env.LITCODE_MAX_SUBAGENT_SPAWN_DEPTH;
+      else process.env.LITCODE_MAX_SUBAGENT_SPAWN_DEPTH = previous;
+    }
+  });
 });
 
 test('fork skill snapshots paired history, drops bound thinking and persists seeds before startup without replay', async () => {
@@ -596,6 +623,31 @@ test('skill approval uses the child plan family and preserves live deny and ask'
       await assert.rejects(approve(write, input, options.signal, options.config.workspace, owner), /denied/i);
       assert.equal(prompts, 1);
     } finally { parent.close(); }
+  });
+});
+
+test('foreground fork skill rejects a parsed Write redirect after approval', async () => {
+  let calls = 0, prompts = 0, result = '';
+  await fixture(async options => {
+    const parse = directoryWriteInputSchema.parse;
+    options.config.permissions = { mode: 'default', allow: [], deny: [], ask: ['write_file'] };
+    try {
+      await executeSkill(skill({ context: 'fork', allowedTools: ['write_file'] }), '', { ...options,
+        requestPermission: async () => {
+          prompts++;
+          directoryWriteInputSchema.parse = (...args) => ({ ...parse(...args), path: 'redirected' });
+          return { decision: 'allow' };
+        },
+      });
+    } finally { directoryWriteInputSchema.parse = parse; }
+    assert.equal(prompts, 1);
+    assert.equal(fs.existsSync(path.join(options.config.workspace, 'redirected')), false);
+    assert.equal(fs.existsSync(path.join(options.config.workspace, 'approved')), false);
+    assert.match(result, /input changed after permission checking/i);
+  }, async request => {
+    if (++calls === 1) return response([{ type: 'tool_use', id: 'write', name: 'write_file', input: { path: 'approved', content: 'value' } }], 'tool_use');
+    result = JSON.stringify(request.messages.at(-1)?.content);
+    return response([{ type: 'text', text: 'done' }]);
   });
 });
 
@@ -1900,9 +1952,9 @@ test('skill HTTP hook overlay uses the local configured transport without shell 
   try {
     await fixture(async options => {
       const before = JSON.stringify(options.config);
-      const result = JSON.parse(await executeSkill(skill({ hooks: { SessionStart: [{ type: 'http', url: `http://127.0.0.1:${address.port}/hook` }] } }), '', options));
+      const result = JSON.parse(await executeSkill(skill({ hooks: { UserPromptSubmit: [{ type: 'http', url: `http://127.0.0.1:${address.port}/hook` }] } }), '', options));
       assert.equal(result.text, 'Summary'); assert.equal(payloads.length, 1);
-      assert.equal(payloads[0]!.hook_event_name, 'SessionStart');
+      assert.equal(payloads[0]!.hook_event_name, 'UserPromptSubmit');
       assert.equal(JSON.stringify(options.config), before);
     }, async request => {
       assert.match(JSON.stringify(request.messages), /HTTP skill context/);
@@ -1945,6 +1997,110 @@ test('background skill model hook overlay uses the registry provider and complet
       verdicts++; return response([{ type: 'text', text: '{"ok":true}' }]);
     }
     assert.equal(verdicts, 1); return response([{ type: 'text', text: 'Summary' }]);
+  });
+});
+
+test('concurrent invocations of a live background skill return one task and one foreground result', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await fixture(async options => {
+    const definition = skill({context:'fork', background:true});
+    const registry = new AgentRegistry({source:options.config, tools:options.tools, provider:options.provider});
+    try {
+      const results = await Promise.all(['first','second'].map(args =>
+        executeSkill(definition, args, {...options, source:'model', registry}).then(text => JSON.parse(text))));
+      const task = results.find(result => result.id);
+      const foreground = results.find(result => result.text);
+      assert.ok(task);
+      assert.equal(foreground?.text, 'finished second');
+      assert.notEqual(foreground.session_id, task.id);
+      assert.equal(registry.list().length, 1);
+      release();
+      assert.equal((await registry.get(task.id, {waitMs:5000})).summary, 'finished first');
+      const again = JSON.parse(await executeSkill(definition, 'third', {...options, source:'model', registry}));
+      assert.ok(again.id && again.id !== task.id);
+      assert.equal((await registry.get(again.id, {waitMs:5000})).summary, 'finished third');
+    } finally { release(); await registry.close(); }
+  }, async request => {
+    const args = String(request.messages.at(-1)?.content).split(' ').at(-1);
+    if (args === 'first') await gate;
+    return response([{type:'text', text:'finished ' + args}]);
+  });
+});
+
+test('a background skill invoking itself delivers the foreground result to its own Agent', async () => {
+  const requests: ModelRequest[] = [];
+  await fixture(async options => {
+    options.config.features = { tasks:false, subagents:true, agentMessaging:true };
+    options.config.skills = [skill({context:'fork', background:true, allowedTools:['skill']})];
+    options.config.permissions = {mode:'bypass', allow:[], deny:[]};
+    const runtime = await createRuntime(options.config, options.provider, options.signal);
+    options.config.tools = runtime.tools.map(tool => ({...tool.schema, eager_input_streaming:true}));
+    const parent = Session.open(options.config.workspace, {config:options.config});
+    try {
+      await runtime.bindSession!(parent);
+      const tools = runtime.buildTools(parent.config, parent.id);
+      const context = {workspace:parent.config.workspace, session:parent, signal:options.signal, allowShell:false, maxOutputBytes:24000};
+      const outer = JSON.parse(await tools.find(tool => tool.schema.name === 'skill')!.execute({name:'fixture',args:'outer'}, context));
+      const done = JSON.parse(await tools.find(tool => tool.schema.name === 'get_agent')!.execute({id:outer.id,wait_ms:5000}, context));
+      assert.equal(done.summary, 'outer finished');
+      const last = requests.at(-1)!.messages.at(-1)!.content;
+      assert.ok(Array.isArray(last));
+      const result = last.find(block => block.type === 'tool_result');
+      assert.ok(result?.type === 'tool_result' && !result.is_error, JSON.stringify(last));
+      const returned = JSON.parse(String(result.content));
+      assert.equal(returned.text, 'inner finished');
+      const nested = Session.open(parent.config.workspace, {id:returned.session_id});
+      try {
+        assert.equal(nested.config.parentSessionId, outer.id);
+        assert.equal(nested.config.spawnDepth, 2);
+      } finally { await nested.close(); }
+      const notifications = runtime.drainEvents!(parent.id, parent).filter(event => event.kind === 'agent_events');
+      assert.deepEqual(notifications.flatMap(event => event.events.map(entry => entry.agent.id)), [outer.id]);
+    } finally { await runtime.close(); await parent.close(); }
+  }, async request => {
+    requests.push(structuredClone(request));
+    const prompt = request.messages.at(-1)?.content;
+    if (prompt === 'Task outer') return response([{type:'tool_use',id:'repeat',name:'skill',input:{name:'fixture',args:'inner'}}], 'tool_use');
+    return response([{type:'text',text:prompt === 'Task inner' ? 'inner finished' : 'outer finished'}]);
+  });
+});
+
+test('stopping a worker waiting on a nested background skill aborts the nested provider', async () => {
+  let entered!: () => void;
+  const pending = new Promise<void>(resolve => { entered = resolve; });
+  let aborted = false;
+  await fixture(async options => {
+    options.config.features = {tasks:false, subagents:true, agentMessaging:true};
+    options.config.skills = [skill({background:true, context:'fork', allowedTools:['skill']}),
+      skill({name:'second', background:true, context:'fork'})];
+    options.config.permissions = {mode:'bypass', allow:[], deny:[]};
+    const runtime = await createRuntime(options.config, options.provider, options.signal);
+    options.config.tools = runtime.tools.map(tool => ({...tool.schema, eager_input_streaming:true}));
+    const parent = Session.open(options.config.workspace, {config:options.config});
+    try {
+      await runtime.bindSession!(parent);
+      const tools = runtime.buildTools(parent.config, parent.id);
+      const context = {workspace:parent.config.workspace, session:parent, signal:options.signal, allowShell:false, maxOutputBytes:24000};
+      const outer = JSON.parse(await tools.find(tool => tool.schema.name === 'skill')!.execute({name:'fixture',args:'outer'}, context));
+      await pending;
+      const stopped = JSON.parse(await tools.find(tool => tool.schema.name === 'stop_agent')!.execute({id:outer.id}, context));
+      assert.equal(stopped.status, 'cancelled');
+      assert.equal(aborted, true);
+      const notices = runtime.drainEvents!(parent.id, parent).filter(event => event.kind === 'agent_events');
+      assert.deepEqual(notices.flatMap(batch => batch.events.map(event => event.agent.id)), [outer.id]);
+      const sessions = listSessions(parent.config.workspace).filter(session => session.id !== parent.id);
+      assert.equal(sessions.length, 2);
+      assert.ok(sessions.every(session => !session.active));
+    } finally { await runtime.close(); await parent.close(); }
+  }, async (request, signal) => {
+    const prompt = request.messages.at(-1)?.content;
+    if (prompt === 'Task outer') return response([{type:'tool_use',id:'spawn',name:'skill',input:{name:'second',args:'inner'}}], 'tool_use');
+    if (prompt === 'Task inner') {
+      entered();
+      await new Promise<void>(resolve => signal!.addEventListener('abort', () => { aborted = true; resolve(); }, {once:true}));
+    }
+    return response([{type:'text',text:'done'}]);
   });
 });
 
@@ -2241,13 +2397,19 @@ test('real fork skill rejects a replaced owner after worktree preparation', asyn
       const deadline = Date.now() + 5000;
       while (!fs.existsSync(ready) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
       assert.ok(fs.existsSync(ready), 'worktree factory reached barrier');
+      const worktree = parent.hookResolverObservations.filter(row => row.event.event === 'WorktreeCreate');
+      assert.equal(worktree.length, 1); assert.equal(worktree[0]?.resolver, 'pending'); assert.equal(worktree[0]?.runner, undefined);
       parent.close();
       reopened = Session.open(root, { id: parent.id });
+      const beforeCleanup = fs.readFileSync(reopened.file, 'utf8');
       await assert.rejects(runtime.bindSession!(reopened), /another session instance/);
       fs.writeFileSync(gate, 'go\n');
       await assert.rejects(running, /Session is closed/);
       assert.equal(childCalls, 0);
       assert.ok(fs.existsSync(removed));
+      assert.equal(fs.readFileSync(reopened.file, 'utf8'), beforeCleanup);
+      assert.deepEqual(reopened.hookResolverObservations.filter(row => row.event.event === 'WorktreeCreate'), worktree);
+      assert.equal(reopened.events.some(row => row.kind === 'hook_start' && row.event === 'WorktreeRemove'), false);
       assert.equal(listSessions(root).length, 1);
       await runtime.releaseSession!(parent.id);
       await runtime.bindSession!(reopened);

@@ -28,7 +28,7 @@ import path from "node:path";
 import ignore from "ignore";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
-import { discoverInstalledPluginComponents, pluginConfigSchema, type InstalledPluginComponents, type PluginConfig } from "./plugins.js";
+import { discoverInstalledPluginComponents, installedPluginHooks, pluginConfigSchema, type InstalledPluginComponents, type PluginConfig } from "./plugins.js";
 import { loadPluginComponents, parseToolNames, type ComponentDiagnostic } from './plugin-components.js';
 import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
@@ -1618,13 +1618,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     // `a_e`, chunk-sfn1dbxq.js [2385002,2389680), UTF-16: a failed module does not end startup.
     if (options.pluginHooks !== 'preview') void applyPluginHooks(installedComponents).catch(() => {});
     // Plugin hooks run first; each explicit layer keeps its actual precedence.
-    const pluginHooks: Record<string, unknown[]> = {};
+    const pluginHooks: Record<string, unknown[]> = installedPluginHooks(installedComponents);
     const pluginServers = Object.fromEntries(installedComponents.flatMap(item => Object.entries(item.mcpServers ?? {})));
-    for (const item of installedComponents) {
-      for (const [event, entries] of Object.entries(item.hooks ?? {})) {
-        pluginHooks[event] = [...(pluginHooks[event] ?? []), ...entries];
-      }
-    }
     const hasPluginHooks = installedComponents.some(item => item.hooks !== undefined);
     const hasPluginServers = installedComponents.some(item => item.mcpServers !== undefined);
     if (hasPluginHooks) {

@@ -734,10 +734,11 @@ test('separate durable batches retain complete events and legacy intent across c
     assert.ok(background?.kind === 'background' && agent?.kind === 'agent_events');
     assert.ok(background.deliveryId && agent.deliveryId && background.deliveryId !== agent.deliveryId);
     assert.deepEqual(background.events.map(event => event.job_id), jobs);
-    assert.ok(agent.events.some(event => event.agent.id === childId && event.agent.status === 'completed'));
+    const completion = agent.events.find(event => event.agent.id === childId && event.agent.status === 'completed');
+    assert.match(completion?.runId ?? '', /^[0-9a-z]{9}-[0-9a-f]{8}$/);
     assert.equal(prompts.length, 2);
     assert.ok(prompts.some(prompt => jobs.every(id => prompt.includes(id))));
-    assert.ok(prompts.some(prompt => prompt.includes(childId)));
+    assert.ok(prompts.some(prompt => prompt.includes(childId) && prompt.includes(completion!.runId!)));
     const intents = session.events.filter(event => event.kind === 'notification_intent_v2');
     assert.equal(intents.length, 2);
     for (const event of [background, agent]) {

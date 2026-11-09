@@ -1,0 +1,162 @@
+{
+  "sources": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "m_t",
+      "range": [
+        504681,
+        505531
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "731d02d93259e381016a37833f96c462ecf6cc8bdd90e06f8cdd7bfeb63dbae2"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "moduleSha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "symbol": "iOn/N5t/Cro",
+      "range": [
+        38557,
+        39124
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "5fb714a5827ef76b4a9d8ecb2868833eeb195da3e0e0979dbd0846094d9504a7"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "moduleSha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "symbol": "Ke",
+      "range": [
+        3000,
+        3163
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "4929aa4bf41477d215f8daebaadbf2b3fb764604a09006e9ba5f70ed062e181a"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "moduleSha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "symbol": "l",
+      "range": [
+        4754,
+        4814
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "2f921ed78ffeed39032d7e9c4783e05c294cba2ce61cc5ac20466ece27a81075"
+    }
+  ],
+  "reloadCLI": [
+    {
+      "pre": true,
+      "cut": "reload_success",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "reload_error",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "reload_abort",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "reload_wait",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "preCLI": [
+    {
+      "pre": true,
+      "cut": "normal",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "failure",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "denial",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "rewrite",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "chain_admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "module_admitted",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "module_fulfilled",
+      "records": 3,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "chain_fulfilled",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "acceptance": {
+    "copiedGateWaited": true,
+    "hostInvokedBeforeReload": false,
+    "gateSettledAfterRelease": true,
+    "hostSettledAfterRelease": true,
+    "status": "verified",
+    "upstream": 0,
+    "entrypointsExecuted": 0
+  },
+  "identity": "c2d6b5b50cef3b3635a2151941bd5c493bdbb372e138d8807f1236be7da0736f",
+  "affectedTests": 25,
+  "focusedRetryRerun": 1,
+  "cliDriverSha256": "cd91dc409414a75c600d63b996688f79a42aa594ff96453c5985440469a6b358",
+  "acceptanceDriverSha256": "ef6b9c5e5c5fa451a8fc1938728317f79b39be862fb807b8662f167f339a7707"
+}

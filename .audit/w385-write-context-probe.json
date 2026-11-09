@@ -1,0 +1,72 @@
+{
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "algorithm": "sha256",
+    "manifestEncoding": "UTF-8 JSON array of sorted path/bytes/sha256 records",
+    "inputs": {
+      "sha256": "aeb7782c05c48ae432fb7ca7d36db32920eb515b6fcc3cba3854e5a94750b7d4",
+      "files": 1052
+    },
+    "validation": {
+      "sha256": "edd2b69da86cb59fab356034759ae4a760cef2002ef6cb8bb2cc1bb7f9bb097c",
+      "files": 411
+    },
+    "build": {
+      "sha256": "fa720a6b1af30e82d967c5d513446a4eb5b0c65665c4448e8d836fe791c1e327",
+      "files": 727
+    },
+    "sha256": "49d62836991bf43de89e25aed9e63ffcebfaa1ff57b523755aa7e216f920c6e5"
+  },
+  "source": [
+    {
+      "module": "chunk-hwpb27as.js",
+      "sha256": "c5f6d5b8fb187a14de3db7aebcb5615a3632aa34a0e174c54d38607e7c5ead8e",
+      "start": 121053,
+      "end": 123737,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "3264590a60017e7d4e4eac5674a2664961a98ce5ed4c3349c871d5c39214145e"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "start": 739599,
+      "end": 743280,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "df63c9e2f785bb91b417b3e28077126194204b62b3455dd8a0185b3f83f6e4a7"
+    }
+  ],
+  "cases": [
+    {
+      "changed": false,
+      "actualContextEffect": false,
+      "execution": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "completed",
+          "outcome": "blocked-additional-directory"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "actualContextEffect": true,
+      "execution": [
+        {
+          "phase": "entered"
+        },
+        {
+          "phase": "completed",
+          "outcome": "blocked-additional-directory"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    }
+  ],
+  "conclusion": "Builtin execution boundaries do not attest Session workingDirectories callback effects. No reclamation expansion is justified.",
+  "upstreamCalls": 0
+}

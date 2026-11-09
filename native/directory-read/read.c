@@ -153,6 +153,97 @@ done:
   free(copy);
   return result;
 }
+/* Host recovery adaptation of EVr/RVr, sfn1dbxq
+ * 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+ * UTF-16 [4739632,4743506): sync and recheck every opened/named component
+ * before admitting an interrupted write's surviving file as durable. */
+/* Read-only legacy-pair evidence. EVr/RVr's ordinary hardlink refusal stays
+ * intact; the host's old link/unlink publication needs both names witnessed.
+ * Source coordinates and digest above; this does not authorize restoration. */
+static int linked_verify(int parent, const char *alias, int fd, const struct stat *expected) {
+  struct stat opened, named;
+  return fstat(fd, &opened) || fstatat(parent, alias, &named, AT_SYMLINK_NOFOLLOW) ||
+    !same_stat(expected, &opened) || !same_stat(expected, &named) ? -1 : 0;
+}
+
+static int synced_observation(const char *target, int mode, const char *alias) {
+  int missing = mode == 1, metadata = mode == 2;
+  struct checkpoint_node nodes[1024];
+  size_t count = 0;
+  char *copy = NULL, *part, *slash;
+  struct stat after;
+  int result = 1, alias_fd = -1;
+  if (alias && (missing || metadata || !*alias || strchr(alias, '/') || !strcmp(alias, ".") || !strcmp(alias, ".."))) goto done;
+  if (!target || !target[0] || target[0] == '/' || strlen(target) > 4096) goto done;
+  copy = strdup(target);
+  if (!copy) goto done;
+  nodes[0].fd = dup(3); nodes[0].name = NULL;
+  if (nodes[0].fd < 0) goto done;
+  count = 1;
+  if (fstat(nodes[0].fd, &nodes[0].before) || !S_ISDIR(nodes[0].before.st_mode)) goto done;
+  part = copy;
+  for (;;) {
+    slash = strchr(part, '/'); if (slash) *slash = '\0';
+    if (!*part || !strcmp(part, ".") || !strcmp(part, "..") || count >= 1024) goto done;
+    if (!slash && (missing || metadata)) break;
+    int fd = openat(nodes[count-1].fd, part, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC | (slash ? O_DIRECTORY : 0));
+    if (fd < 0) goto done;
+    nodes[count].fd = fd; nodes[count].name = part; count++;
+    if (fstat(fd, &nodes[count-1].before) || (slash ? !S_ISDIR(nodes[count-1].before.st_mode) :
+        (!S_ISREG(nodes[count-1].before.st_mode) || nodes[count-1].before.st_nlink != (alias ? 2 : 1)))) goto done;
+    if (!slash) break;
+    part = slash + 1;
+  }
+  if (alias) {
+    if (!strcmp(part, alias)) goto done;
+    alias_fd = openat(nodes[count-2].fd, alias, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+    if (alias_fd < 0 || linked_verify(nodes[count-2].fd, alias, alias_fd, &nodes[count-1].before)) goto done;
+  }
+  if (checkpoint_verify(nodes, count)) goto done;
+  for (size_t i = count; i > 0; i--) if (fsync(nodes[i-1].fd)) goto done;
+  if (checkpoint_verify(nodes, count) || (alias && linked_verify(nodes[count-2].fd, alias, alias_fd, &nodes[count-1].before))) goto done;
+  if (metadata) {
+    /* EVr, same source/range above: named metadata only, not an opened leaf
+     * or verified bytes. Parent descriptors are synced and checked throughout. */
+    struct stat named;
+    if (fstatat(nodes[count-1].fd, part, &named, AT_SYMLINK_NOFOLLOW) ||
+        !S_ISREG(named.st_mode) || named.st_nlink != 1 || named.st_size < 0 ||
+        status_line("metadata_begin", &named, &nodes[count-1].before)) goto done;
+#ifdef DIRECTORY_READ_TEST
+    char control;
+    if (write_all(4, "test metadata_before_final\n", 27) || read(5, &control, 1) != 1 || control != 'c') goto done;
+#endif
+    if (checkpoint_verify(nodes, count) || fstatat(nodes[count-1].fd, part, &after, AT_SYMLINK_NOFOLLOW) ||
+        !same_stat(&named, &after) || status_line("metadata_stable", &named, &nodes[count-1].before)) goto done;
+  } else if (missing) {
+    if (fstatat(nodes[count-1].fd, part, &after, AT_SYMLINK_NOFOLLOW) == 0 || errno != ENOENT ||
+        checkpoint_verify(nodes, count) || status_line("missing", &nodes[count-1].before, NULL)) goto done;
+  } else {
+    if (status_line(alias ? "linked_begin" : "begin", &nodes[count-1].before, &nodes[count-2].before)) goto done;
+    char bytes[16384];
+    for (;;) {
+      ssize_t n = read(nodes[count-1].fd, bytes, sizeof(bytes));
+      if (n < 0 && errno == EINTR) continue;
+      if (n < 0) goto done;
+      if (!n) break;
+      if (write_all(1, bytes, (size_t)n)) goto done;
+    }
+#ifdef DIRECTORY_READ_TEST
+    if (alias) {
+      char control;
+      if (write_all(4, "test linked_before_final\n", 25) || read(5, &control, 1) != 1 || control != 'c') goto done;
+    }
+#endif
+    if (checkpoint_verify(nodes, count) || (alias && linked_verify(nodes[count-2].fd, alias, alias_fd, &nodes[count-1].before)) ||
+        status_line(alias ? "linked_stable" : "stable", &nodes[count-1].before, &nodes[count-2].before)) goto done;
+  }
+  result = 0;
+done:
+  if (alias_fd >= 0) close(alias_fd);
+  while (count) close(nodes[--count].fd);
+  free(copy);
+  return result;
+}
 #endif
 
 int main(int argc, char **argv) {
@@ -163,6 +254,11 @@ int main(int argc, char **argv) {
   int current = -1, file = -1, parent = -1, result = 1;
   char *copy = NULL;
   struct stat st, before, after, parent_before, parent_after;
+  if (argc == 3 && (!strcmp(argv[1], "--sync-backup") || !strcmp(argv[1], "--sync-probe-missing")))
+    return synced_observation(argv[2], !strcmp(argv[1], "--sync-probe-missing"), NULL);
+  if (argc == 3 && !strcmp(argv[1], "--sync-named-metadata")) return synced_observation(argv[2], 2, NULL);
+  if (argc == 5 && !strcmp(argv[1], "--sync-linked-pair") && !strcmp(argv[4], "--observe"))
+    return synced_observation(argv[2], 0, argv[3]);
   if (argc == 4 && !strcmp(argv[1], "--checkpoint-bracket") && !strcmp(argv[3], "--execute")) {
     signal(SIGPIPE, SIG_IGN);
     return checkpoint_bracket(argv[2]);

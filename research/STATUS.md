@@ -1,3 +1,309 @@
+W385 active worker metadata survives witness quota rejection. [Evidence](ports/W385-declaration-prefix-preflight.md#active-worker-history-at-the-owner-journal-limit).
+
+W385 nested journal terminal-witness headroom verified. [Evidence](ports/W385-declaration-prefix-preflight.md#nested-journal-headroom-for-terminal-witnesses).
+
+W385 cancellation and continuation publication. [Evidence](ports/W385-declaration-prefix-preflight.md#cancellation-and-continuation-publication).
+
+W385 ordinary background publication and pre-intent recovery. [Evidence](ports/W385-declaration-prefix-preflight.md#ordinary-background-publication-before-the-intent).
+
+Ordinary background workers retain their terminal metadata before publishing an intent. Nested stop and wake recovery can finish publication after writer death before sidecar replacement; legacy intent-only records remain unresolved when the original payload is absent. Next examine writer death after staging but before the intent, including stage ownership on retry and cleanup when a later run uses the same task ID. [Evidence](ports/W385-declaration-prefix-preflight.md#ordinary-background-result-before-metadata-replacement).
+
+Ancestor cancellation can now finish a descendant's interrupted terminal publication and deliver its original result. Recovery respects a live lock and uses the shutdown witness for a dead writer. Next cover the earlier ordinary background publication cut, after intent and before metadata replacement, when old records have no staged result. [Evidence](ports/W385-declaration-prefix-preflight.md#finishing-descendant-publication-during-ancestor-stop).
+
+An owner can cancel an interrupted worker during notification preparation or execution. The task controls distinguish pending, claimed and finalizing deliveries using the run and worker journal. Next verify the collision between ancestor cancellation and a deeper receiver's interrupted terminal publication or shutdown, including lock ownership and the final status delivered. [Evidence](ports/W385-declaration-prefix-preflight.md#stopping-interrupted-notification-deliveries).
+
+An explicit stop of an intermediate subtree survives worker death without cancelling its parked parent. The parent receives the intermediate cancellation, while root inherits unclaimed deeper results, including completed ones. Next cover deeper descendants with prepared or executing notification deliveries when an ancestor stops. [Evidence](ports/W385-declaration-prefix-preflight.md#stopping-a-subtree-with-a-surviving-parent).
+
+A parked owner's stop now settles active nested background skill runs from the leaves up and retains their cancellation notices through root delivery. Next cover stopping only the intermediate subtree with a surviving parent, and deeper descendants already settled with undelivered results. [Evidence](ports/W385-declaration-prefix-preflight.md#cancellation-through-intermediate-workers).
+
+A legacy stopped owner without redirectedEvents can recover undelivered descendant results from its witnessed settlement suffix and the original active park digest. The root retains existing delivery claims. Next handle deeper active subtrees and their notification ownership, including interruption while settling intermediate owners. [Evidence](ports/W385-declaration-prefix-preflight.md#legacy-stopped-owner-notifications).
+
+Stopping a parked owner retains its eligible descendant notices for the root interactive queue. A recorded root delivery intent prevents a repeat after restart, including when the outcome is unknown. Next cover deeper active subtrees and their notification ownership, plus recovery evidence available in older settlements without a retained redirect list. [Evidence](ports/W385-declaration-prefix-preflight.md#redirecting-descendant-notifications-after-owner-stop).
+
+A root can stop a parked worker by ID. Its durable command settles verified waiting leaves before the owner and resumes after either cancellation intent. Next cover redirection of undelivered descendant notifications to the root when the owner stops, including a crash after final publication. Deeper active subtrees remain unresolved. [Evidence](ports/W385-declaration-prefix-preflight.md#stopping-the-parked-owner).
+
+Owner cancellation now pairs interrupted calls from the worker journal before settling the run. A compiled CLI write survived two writer deaths, with its interrupted post-hook recorded once and no tool replay. Next trace cancellation of a parked worker that itself owns active descendants or nested resources. [Evidence](ports/W385-declaration-prefix-preflight.md#cancelling-a-worker-during-a-tool-call).
+
+W385 now supports owner cancellation through /tasks stop after restart, including recovery after the cancellation intent. Interrupted tool calls with uncertain effects remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#owner-cancellation-of-an-interrupted-descendant).
+
+Verified a second wake from a controlled late cancellation, recovery after metadata publication and refusal of intent-only or wrong-run results. [Evidence](ports/W385-declaration-prefix-preflight.md#second-wake-from-a-late-descendant-settlement).
+
+W385 verified partial sibling delivery, deferred SessionEnd and durable keepalive across a second restart. [Evidence](ports/W385-declaration-prefix-preflight.md#partial-sibling-delivery-and-cold-keepalive).
+
+W385 verified interrupted sibling settlement, separate deliveries and one reverse-completion-order batch across root restarts. [Evidence](ports/W385-declaration-prefix-preflight.md#sibling-results-at-park-and-queue-selection).
+
+Recovered an unconsumed nested result at descendant settlement and batch selection through the compiled root CLI. Registry suite 63/63. [Evidence](ports/W385-declaration-prefix-preflight.md#parked-worker-delivery-before-the-notification-intent).
+
+W385 fixed a reproduced out-of-order cross-file permission write and verified the three process-death boundaries with the compiled CLI. [Evidence](ports/W385-declaration-prefix-preflight.md#ordered-permission-batches).
+
+Verified permission write attribution across nested sessions, resumed CLI workers and a terminal panel after an unrelated error. [Evidence](ports/W385-declaration-prefix-preflight.md#permission-write-results-by-origin).
+
+W385 verified both Git ignore crash boundaries with the compiled CLI and isolated Git configuration. [Evidence](ports/W385-declaration-prefix-preflight.md#local-permission-settings-and-git-ignore-on-worker-death).
+
+W385 tested an actual blocked project permission update, persisted denial, exact dead-lock reclamation and rejection of a byte-identical replacement lock. [Evidence](ports/W385-declaration-prefix-preflight.md#permission-drain-and-dead-worker-lock).
+
+W385 recovered an interrupted close-return handoff with one SessionEnd side effect and no repeated model call. Changed journals before or after root intent blocked publication. [Evidence](ports/W385-declaration-prefix-preflight.md#settlement-at-the-child-close-boundary).
+
+W385 exercised five shutdown interruption boundaries with a real SessionEnd hook and verified failed settlement on asynchronous close rejection. [Evidence](ports/W385-declaration-prefix-preflight.md#worker-shutdown-before-settlement).
+
+W385 recovered two interrupted worker settlement writes with one root witness and zero replay calls. Altered settlement data and changed child journals were rejected. [Evidence](ports/W385-declaration-prefix-preflight.md#settlement-after-a-receipted-worker-continuation).
+
+W385 verified a second process death during preparation and after gateway receipt, plus terminal approval and denial of a resumed write. [Evidence](ports/W385-declaration-prefix-preflight.md#prepared-continuations-and-terminal-recovery).
+
+W385 verified root-owned headless continuation after worker receipt, refusal before receipt and duplicate prevention on a second process death. [Evidence](ports/W385-declaration-prefix-preflight.md#root-owned-continuation-of-a-receipted-skill-turn).
+
+W385 verified cold receiving-run attribution and standalone CLI diagnostics at all three crash boundaries, including a missing receipt. [Evidence](ports/W385-declaration-prefix-preflight.md#receiving-invocation-in-a-committed-handoff).
+
+W385 verified the root's active worker run ID across three crash boundaries and reproduced standalone continuation refusal before any model call. [Evidence](ports/W385-declaration-prefix-preflight.md#active-receiving-worker-identity).
+
+W385 verified nested skill handoff at three process-death boundaries using two independent cold readers per boundary. [Evidence](ports/W385-declaration-prefix-preflight.md#nested-handoff-interruption).
+
+W385 verified nested background skill completion, owner cancellation and cold readback of the receiving worker's delivery receipt. [Evidence](ports/W385-declaration-prefix-preflight.md#distinct-nested-background-skill-delivery).
+
+W385 verified concurrent and recursive calls to a live background skill, foreground return ownership, and later background readmission. [Evidence](ports/W385-declaration-prefix-preflight.md#live-background-skill-duplicate).
+
+W385 verified nested skill lineage and depth in two compiled CLI modes; ordinary spawn and background skill fallback use the source depth limit. [Evidence](ports/W385-declaration-prefix-preflight.md#nested-fork-owner-and-depth).
+
+W385 verified distinct run IDs on child resume and carried terminal run identity through real CLI delivery. [Evidence](ports/W385-declaration-prefix-preflight.md#child-run-identity-through-notification-delivery).
+
+W385 repaired a reproduced archive-holder replacement during intent sync. Native cases and four cold CLI readers pass on Darwin. [Evidence](ports/W385-declaration-prefix-preflight.md#archive-capture-after-intent-sync).
+
+W385 #35 closed the direct scoped edit regrant gap and verified cold child overwrite. [Evidence](ports/W385-declaration-prefix-preflight.md#scoped-edit-directory-regrant).
+
+W385 #35 verified edit handler selection across approval, runtime callbacks and child dispatch. [Evidence](ports/W385-declaration-prefix-preflight.md#edit-implementation-selection).
+
+W385 #35 fixed a reproducible scoped edit redirect and verified external notebook replace/delete. [Evidence](ports/W385-declaration-prefix-preflight.md#edit-input-selection-and-notebook-replace-delete).
+
+W385 #35 verified external notebook insertion and byte-exact rewind and repaired inherited file-read schema selection. [Evidence](ports/W385-declaration-prefix-preflight.md#granted-notebook-publication-and-rewind).
+
+W385 #35 verified NotebookEdit read validation and two cold reopens. [Evidence](ports/W385-declaration-prefix-preflight.md#notebookedit-prior-read-and-session-reopen).
+
+W385 #35 verified NotebookEdit positional IDs, encoded writes and target-replacement refusal. [Evidence](ports/W385-declaration-prefix-preflight.md#notebookedit-cell-transformation-and-pinned-read).
+
+W385 #35 verified external Edit publication, two cold receipt inspections and file checkpoint rewind. [Evidence](ports/W385-declaration-prefix-preflight.md#external-edit-publication-and-rewind).
+
+W385 #35 verified external Edit matching from a UTF-16LE backup. [Evidence](ports/W385-declaration-prefix-preflight.md#external-edit-matching-from-backup).
+
+W385 #35 verified cold recovery of external Edit backup bytes and call identity. [Evidence](ports/W385-declaration-prefix-preflight.md#external-edit-original-bytes).
+
+W385 #35 recorded external Edit argument identity across session reopen. [Evidence](ports/W385-declaration-prefix-preflight.md#external-edit-call-identity).
+
+W385 #35 workspace Edit preserves encoding and newline style. [Evidence](ports/W385-declaration-prefix-preflight.md#edit-matching-and-encoded-publication).
+
+W385 fixed scoped child forks retaining revoked Write access or losing an active grant. [Record](ports/W385-declaration-prefix-preflight.md#ordinary-fork-of-a-scoped-child).
+
+W385 fixed the inherited directory grant handoff on scoped child rewind and verified restored bytes, mode and parent revocation. [Record](ports/W385-declaration-prefix-preflight.md#child-overwrite-and-rewind).
+
+W385 verified child-owned external file creation under a revocable parent grant, including cold skill continuation. [Record](ports/W385-declaration-prefix-preflight.md#scoped-child-external-directory-write).
+
+W385 closed the post-approval path redirect in resumed and foreground fork skills. [Record](ports/W385-declaration-prefix-preflight.md#cold-and-foreground-skill-write).
+
+W385 fixed path substitution during a child argument grant and verified registered parent tool identity on the reopened child journal. [Record](ports/W385-declaration-prefix-preflight.md#live-scoped-child-write).
+
+W385 recorded Write factory identity across borrowed and own wrapper calls and cold reopening. [Record](ports/W385-declaration-prefix-preflight.md#registered-write-factory).
+
+W385 verified raw Write handler substitution and two-session grant use. [Evidence](ports/W385-declaration-prefix-preflight.md#raw-write-dispatch)
+
+W385 fixed post-authorization Write redirection. Compiled CLI cases cover both directions between the workspace and a granted external directory and a normal publication. [Record](ports/W385-declaration-prefix-preflight.md#write-grant-preflight-observation-result).
+
+W385 #35 verified post-hook Write admission across three operations and three process-death cuts per operation. [Record](ports/W385-declaration-prefix-preflight.md#write-grant-preflight-observation-result).
+
+W385 persisted and verified archive intent and completion across native process death, directory substitution and cold reopen. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+W385 verified terminal mixed rewind archival by transaction UUID across deletion, replacement, live rollback, cold compensation and a missing commit marker. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+W385 verified mixed rewind hold inventory in committed and compensated CLI sessions, and native capture of removal holds. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+W385 verified explicit same-volume archive of completed retained writes through the CLI, including native process death after capture and cold regrant. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+W385 reproduced live stage substitution deleting a foreign file, corrected the writer, and verified actual CLI retained publication and regrant. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+W385 verified interactive uncommitted successor handoff, compensation, interrupted inverse and changed-transaction refusal. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified direct and restarted post-commit checkpoint inheritance with two compiled CLI runs. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified committed successor recovery through the compiled CLI with an explicit regrant. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified owner-assisted post-rename recovery of mode-0000 files in both directions. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified forward/reverse linked normalization after complete and interrupted native errors, including continuation receipt binding and compiled CLI recovery. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified recovery of ordinary replace/remove failures before target change, with independent target/preparation checks. Twelve new scenarios and both compiled CLI directions passed. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 verified continuation of captured replacements after a complete or torn native error. Forward/reverse CLI recovery and staged/held conflict cases passed. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385 recovered published replacement and removal after a native error or interrupted error report. Four forward/reverse scenarios and two compiled CLI chains passed. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: partial native creation error/exit records now reconcile against phase-consistent grammar and independent physical proof. Check/build, 39 cold tests, 42 native cases and three compiled CLI chains pass. Other operation error families remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: cold creation recovery now retains independently verified staging after a torn mode report, including forward 0000 metadata-only evidence. Check/build, 25 cold tests, 42 native cases and two compiled CLI chains pass. Partial terminal errors remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: verified metadata-only retention and cold recovery for pre-publication unreadable 0000 staging. Check/build, 33 Agent tests, native drivers and two compiled CLI chains pass. Published unreadable targets remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: cold creation recovery now handles phase-consistent complete error receipts and readable post-chmod staging, preserving full evidence and physical checks. Check/build, 31 affected Agent tests, 42 native cases and three compiled CLI chains pass. Inaccessible and partial-error states remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: forward/inverse creation now saves attempt plus both receipt bindings together, closing the unbound first-save window. Check/build, 29 affected tests and two compiled CLI persistence-cut recovery chains pass; access/error/lifecycle work remains Partial. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: normal mixed creation now persists separate preparation/publication evidence and supports cold no-effect/published reconciliation in both directions. Final checks, native/checkpoint coverage, Agent matrix plus sleep-interrupted linked retry, and five compiled CLI chains pass. Remaining access/error/lifecycle boundaries stay Partial. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: retained create now keeps 0600 staging and applies separately bound target mode through the publisher's open FD; 0000/read-only/executable publication and 42 native cases pass. Durable integration and cold post-chmod inaccessible states remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: retained create preparation/publication commands and typed adapters pass 32 actual native cases plus product regressions. Durable mixed producers/readers are not integrated yet. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: early/torn ordinary replace/remove intents recover through preserved snapshots and fresh inverse IDs; 73 Agent, 45 checkpoint/rewind, binding/native and four CLI chains pass. Create pre-intent staging provenance remains next. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: torn staged normalization frames now verify exact prefixes before retry; both CLI directions survive 20 real deaths and reject contradictory archived prefixes. Related cold/live/checkpoint/native checks pass. Original-operation incomplete intents remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: early normalization now retains observed preparation snapshots and recovers seven consecutive deaths in both CLI directions, including one-byte staging; 124 related checks and native drivers pass. Truncated staged-frame/original-operation intents remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: complete-intent normalization preparation now survives repeated pre-capture deaths, preserving prior receipts/staging; both CLI directions and 124 related checks pass. Earlier incomplete intent remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: bound v2 legacy linked transactions now normalize and recover forward/reverse across capture/publication/cleanup deaths; earlier preparation remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: linked retained observation, captured continuation and typed adapters verified; durable checkpoint integration remains next. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: native legacy pair normalization verified without unlinking old aliases; automatic recovery still awaits durable continuation. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: legacy pair receipt/grant binding verified; observation retains transactions pending recovery continuation. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: separate read-only linked-pair observation verified; automatic legacy recovery remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: atomic missing-leaf rename verified through native, Agent and CLI recovery; legacy two-link recovery stays open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: bound-intent pre-effect recovery now preserves abandoned forward/reverse evidence and supports fresh inverse retries. 65 Agent/45 checkpoint-rewind cases and both actual CLI chains pass. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: forward/reverse captured-state continuation now integrated through durable intent, repeated death, compensation and actual CLI recovery. 55 Agent/45 checkpoint-rewind cases and check/build pass. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: captured-publication native continuation and typed adapter verified with 26 native cases and 47 existing Agent cases. Checkpoint orchestration remains pending. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: native death after published/quarantined effects now recovers from v2 pre-effect evidence; forward/reverse actual CLI chains and 47 Agent/45 checkpoint-rewind cases pass. Earlier intermediate states remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: pre-effect identity receipts verified at eight real native kill cuts; complete v2 and legacy-v1 cold recovery pass. Partial-attempt reconciliation remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: native receipts bound before mixed forward/reverse effects now recover complete lost results after independent cold checks. 39 focused/45 checkpoint-rewind cases, check/build and two actual CLI recovery chains pass. Partial receipts and retained-object cleanup remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: native durable result-receipt primitive verified under closed pipe, invalid FD and real publication-time kill. Native drivers, three adapters, 14 Agent cases and check/build pass. Checkpoint receipt binding/reconciliation remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: cold pending recovery now executes compensation for complete forward outcomes, sharing live inverse logic. Two-file partial compensation resumes safely. 18 cold/14 live cases, 45 checkpoint-rewind regressions, check/build and actual CLI pass. Unknown attempts and retained-object cleanup remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: mixed rollback retains exact branch proof before deleting its live name; repeated exits before/after unlink now recover. 13 cold/14 live cases, 45 checkpoint-rewind regressions, check/build and actual twice-restarted CLI pass. Broader cold compensation/unknown effects remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: cold pending recovery now handles proven unattempted or fully compensated external states. 27 focused/45 checkpoint-rewind cases, check/build and compiled CLI cold rollback/continuation pass. Unknown and uncompensated effects plus interrupted final cleanup remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: committed mixed transactions recover after real child exit with explicit source-session regrant and native landed/held verification. 19 focused/45 checkpoint-rewind cases, check/build and compiled CLI restart/regrant/recovery/continuation pass. Pending/unknown cold effects remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: live compensation after known mixed rewind effects verified, with persisted reverse outcomes and receipt archive. 14 focused/45 checkpoint-rewind tests, check/build and actual compiled CLI recovery/continuation/cold read pass. Cold reconciliation remains open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: live mixed rewind verified through default Write, checkpoint, compiled CLI apply and cold read; bytes/modes/removal, refusal rollback and uncertain-effect retention pass. Post-effect rollback/cold reconciliation remain open. [Record](ports/W385-declaration-prefix-preflight.md#live-mixed-restore).
+
+2026-11-07 W385: mixed transaction record codec and cold recovery boundary verified; 26 tests and check/build pass. Live producer/apply/reconciliation remain open. [Record](ports/W385-declaration-prefix-preflight.md#mixed-transaction-evidence).
+
+2026-11-07 W385: mode-aware retained restore primitive verified, including 0000 and original inode preservation. Mixed restore integration remains open. [Record](ports/W385-declaration-prefix-preflight.md#retained-restore-mode).
+
+2026-11-07 W385: checkpoint-bound external rewind planner implemented; four test groups and check/build pass. Actual mixed restore/CLI remain open. [Record](ports/W385-declaration-prefix-preflight.md#checkpoint-bound-rewind-plan).
+
+2026-11-07 W385: corrected mixed-rewind acceptance to require checkpoint-time external evidence and default Write. Present/missing scenarios fail at absent external preview operations; four controls and check pass. [Record](ports/W385-declaration-prefix-preflight.md#mixed-rewind-acceptance).
+
+2026-11-07 W385: default external Write connected and verified with 65 passing tests plus check/build; feature remains Partial. [Record](ports/W385-declaration-prefix-preflight.md#default-write-dispatch-implementation).
+
+W385 shared Write pre-read guard and landed result/cache projection extracted and verified, seven test groups including compiled CLI pass. External dispatch remains unconnected. [Evidence](ports/W385-declaration-prefix-preflight.md#shared-write-guard-and-result).
+
+W385 default external Write remains red while four transaction controls pass; source/host integration sequence mapped. [Evidence](ports/W385-declaration-prefix-preflight.md#default-external-write-integration-map).
+
+W385 checkpoint phase authority verified through four compiled CLI resumes and 21 cold readers; committed prepared fallback works, orphan filename promotion stays unknown. [Evidence](ports/W385-declaration-prefix-preflight.md#checkpoint-phase-disposition).
+
+W385 third/fourth-generation recovery enabled under shared work/evidence budget; actual Session/cold and 22-mode compiled CLI groups pass. [Evidence](ports/W385-declaration-prefix-preflight.md#bounded-deep-recovery-result).
+
+W385 third-recovery acceptance probe is red; isolated cap-only experiment and unchanged default baseline pass. Product behavior unchanged. [Diagnosis](ports/W385-declaration-prefix-preflight.md#deep-recovery-acceptance-diagnosis).
+
+W385 nullable/empty citation text suffix recovery verified with the complete 21-scenario CLI recovery group. [Evidence](ports/W385-declaration-prefix-preflight.md#empty-citation-text-recovery).
+
+W385 ordinary compaction revalidated at 4877f664; stale top-level open-gap claims corrected. [Audit](ports/W385-declaration-prefix-preflight.md#current-state-compaction-reconciliation).
+
+W385 Write grant preflight observation verified; ten tests plus ten compiled CLI cases/twenty cold readers. [Evidence](ports/W385-declaration-prefix-preflight.md#write-grant-preflight-observation-result).
+
+W385 registry/skill approval observations verified; 21 tests and seven CLI/28 cold readers pass. [Evidence](ports/W385-declaration-prefix-preflight.md#registry-and-skill-approval-observation-result).
+
+W385 #35 command result callbacks verified (2026-11-07): check/build, 106 affected cases, six compiled CLI cases and twelve independent cold readers/no-replay resumes pass at `d789b20ae31a314d591c922f6745a32cdce86c33a1e1f118096cc478ddb62d74`. Other observers and broader effect proof remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-command-result-observer).
+
+W385 Agent permission observation verified (2026-11-07): callback lookup and complete awaited operation retain owner/call identity; 37 related passes/one skip and seven CLI/fourteen cold readers pass. Other approval entrypoints and arbitrary effects remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#agent-permission-observation-result).
+
+W385 child progress/clear observation verified (2026-11-07): captured-owner transitions cover both actual child modes; 89 related passes/five skips, sixteen CLI cases/32 cold readers and check/build pass. Child payload stays explicitly unobserved. [Evidence](ports/W385-declaration-prefix-preflight.md#child-display-observation-result).
+
+W385 cold-history baseline repaired (2026-11-07): isolated output fixtures, source-aligned cancellation results and exact cleanup fence; 75 passing cold-history tests, five worker skips, both compiled child-persistence modes and native theme watcher pass. Product/build unchanged. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-write-context-effect-probe).
+
+W385 tool context observations verified as a bounded unit (2026-11-07): actual Agent/model-hook callbacks now retain owner/call-bound transitions; five CLI cases/ten cold readers, eleven focused and five Write regressions pass. Six broader failures reproduce on exact prior product inputs. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-write-context-effect-probe).
+
+W385 Write context effect probe (2026-11-07): two actual CLI cases/four cold readers confirm builtin receipts do not attest context callback effects. Product unchanged. See [W385](ports/W385-declaration-prefix-preflight.md#w385-write-context-effect-probe).
+
+W385 #35 direct worktree configured-hook journal path verified against captured parent ownership. Check/build, 87 affected passes plus retired-owner assertion rerun, six CLI death cuts and 14 cold readers/no-replay resumes pass at `c20e04d10d002a083512af50764aae95aba133a86d5cbf2afb6975c89e7b9ee2`. Closed-owner cleanup remains unobserved; classic and other effect paths stay open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 child provenance audit passed: 24 compiled CLI scenarios/20 deaths, 48 independent readers/96 parent-child journal recoveries, fork skill bindings and three targeted tests. Direct worktree CLI gap confirmed, not fixed. Check/build pass; runtime build unchanged at identity `3b574aed997c2853e78bf4e7253edb8bf29c6bbaf464a4b273cdd27e44cb0be8`. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 actual header-adopted command/job association and failed-transfer foreground cancellation verified. Check/build, 76+32 passing executions (106 unique cases), four CLI death cuts and ten cold readers/no-replay resumes pass at `2d7df223e672ff4cf7686496113c2cd0f76a229a75cb69c0a160ae066eb9c9d2`. Direct worktree/child/inner-tool/factory/observer coverage remains under audit. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 configured async original-call/process/job association verified through one-use request grants and strict cold validation. Check/build, 187 passes/one existing skip, four CLI death cuts and ten cold readers/no-replay resumes pass at `374b00ce40896e91d8ed59da3d6298bc9c71bd20d7bade7adc68acf965cb64b9`. Adopted job and remaining effect paths stay open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 foreground/adopted command admission, process settlement and foreground return now persist separately. Check/build, 168 affected passes plus expanded command-case rerun, five CLI death cuts and 12 cold readers/no-replay resumes pass at `20997a151484822968c83de851ff16ba038a24b55005a75f1e179c2850378abc`. Configured-async association and remaining effects stay open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 HTTP transport boundaries verified: admission precedes fetch; local request/body/cancel settlement and runner return persist separately, without remote-effect claims. Check/build, 203 passes/one existing skip, three CLI SIGKILL cuts, eight cold readers and no-replay resume pass at `9749246e80471e8abdb51768a5ce9f257fba70ecc22998ebbd89a9be3e14d4de`. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 HTTP startup source filter verified: SessionStart/Setup skip HTTP without once admission; supported HTTP and commands pass actual CLI/resume/two cold readers. Check/build, 198 affected passes/one existing skip across runs; identity `6bb297b3f7ddbc932316d23b25ed5665ee9c952916d09cb357cf7c226714531b`. Broader lifecycle provenance remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 actual resolver selection/admission/settlement verified separately from timeout/abort return. Check/build, 246 affected cases, five CLI death cuts and 12 cold readers pass at `b1870131c85fb804b2dc636248eb3965be27cffd86ba19f69bc71a1898d0c49c`. Foreground command/HTTP/classic and remaining effects stay open; no reclamation relaxation. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 source correction: agent PermissionRequest hooks now follow Bkr's rejection without model execution; normal approval remains. Check/build, 135 affected cases, eight source ranges/six copied controls and actual CLI allow/deny/cold checks pass at `904542e897412007eefaf0594ead0f75b795dcbb456f4dfffd35191d58e2470a`. Per-handler provenance and #35/#34/#7/#11 remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 runtime-wrapper dispatch observation verified: actual checks and native Promise settlement bind to the original Session/call; unknown work is not replayed. Check/build, 317 affected passes/3 existing skips, six CLI SIGKILL cuts and 14 independent cold reads pass at `8392c5b3447f0cb5d5f673c417d2b4a99043dd19860e9945a03cc183cb410f7b`. Other hook/callback paths and #34/#7/#11 stay open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #35 main-Agent toolResult lifecycle verified: original-owner admission/return/throw/Promise settlement, no recovery replay, detached work unknown. Check/build, 273 affected tests with three existing skips, five compiled CLI death cuts and 12 independent cold readers pass at `0be25fe71de3ab2f15174328032349d4657d6d85f79c24e9b36f77c3f6eb8f80`. Wrapper/other hooks and #34/#7/#11 remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 original acceptance audited and satisfied; #35 is next. Fresh attachment/resume source fixtures pass seven groups; nine precompute declarations verify four default-off entries. Enabled variants remain unported. Only product edit is correction of unrelated observer citation; build identity `334ffd41e2021f735e0ef5bda3e130f8169763837aa40b3d36e8c1bfa15c31d1`, no new runtime test claim. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 compaction follow-up: source-aligned cancellation result handling, actual child-hook completion barrier, default control prompt and retained async/read-grant/reload coverage pass. Check/build, 333 affected cases with three existing skips, four CLI cold readers/forks and two final extensions pass at `fd484337edd47cfa090e29b7e2c533cd87cb699efda6253c7c6b94e23a640590`. Summary compaction remains Partial; final #43 acceptance reconciliation and #35/#34/#7/#11 remain. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 reactive compaction: copied group/retry selection and content-bound retention now reach Agent, journal, visible hook history and successors. Actual CLI/cold/fork chain passes; cancellation regression remains reproducible and child CLI has one concurrent failure with isolated pass. Check/build identity `042f4014a54e14bf562f52f215ff2d4d4dfab7dfa13cbdb539acb65711acc1a2`. Partial, not package completion. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 resume source: seven copied-source groups pass and expose missing retained-group compaction in the current host; Summary compaction is Partial. Strict effect-journal parsing remains distinct from native transcript repair/import. Product unchanged. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 child death/release acceptance: ten compiled CLI death cuts, 40 root/child cold recoveries and real child cancellation/root rebind pass without replay; eight affected delivery cases and check/build pass, product unchanged. Resume parity outside the ordinary fixture remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 child hook delivery: root attachment routing now includes registry/legacy, fork skills and memory children; two actual CLIs, cold readers, queue-retirement unknowns, check/build and 268 unique affected cases pass with one existing skip. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 legacy plugin hooks: reproduced bae duplication repaired by preserving ambiguous old snapshots until explicit reload; new origin-aware metadata, fork/child/cold preservation, disable and renewed live updates verified. Check/build, 185 cases and two actual CLI migration paths pass. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 lifecycle durability: real fault matrix found missing directory sync and unsynced cold admission; live/recovery pinned-journal sync now passes 18 faults, mutation controls, check/build and 209 cases plus actual child CLI. Legacy untagged plugin compatibility is next. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 nested observers: actual-job capability and one-use lifecycle writes replace ordinary child rows; retirement/duplicate/index/cold corruption controls, check/build, 188 affected cases and three actual child CLI normal/death cases pass. Full durability/reconciliation remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 registry lifecycle: root release cancellation remains journaled under original Session; exact-record one-use writes, cold ordering, admission failure/foreground ownership and pending callback cuts verified. Check/build and 186 cases including six compiled CLI scenarios pass. Nested observer authorization remains next. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 child observers: actual pending/returned/threw journaling, intent-failure effect fence and no post-retirement journal writes verified by check/build, 87 cases, compiled probe and independent cold readers. Authenticated lifecycle receipts remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 successor verification: actual /reload and /model preserve confirmed notification history and isolate missing receipts in four cases/eight cold reads. Child lifecycle probe now demonstrates indistinguishable observer return/throw/pending journals and post-close effect; repair remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 inherited notifications: real fork owner mismatch repaired by copying visible data without live delivery authority; descendants/rewind/cold/tamper controls and actual CLI pass, check/build and 100 cases green. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 mixed live catalogs: source-backed live-state handling removes false owner/Agent invalidation; real skill/child execution, preserved scheduler and three-turn CLI pass with check/build and 164 affected cases. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 live classic hooks: source-shaped replacement, retained explicit/child behavior and hook-only runtime compatibility verified with actual three-turn CLI and 97 cases; check/build pass. Mixed tool-catalog migration remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 local plugin origin: cross-plugin suppression repaired across installed config, cold/child snapshots and actual async completion; header adoption pins source ID. Check/build, 48 cases and compiled CLI pass. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 plugin origin: actual two-plugin install/async probe reproduces cross-plugin suppression after origin loss; source qCn registration and downstream identity chain recovered. Repair remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 startup-context filtering: source vhe/h$t/lHe and p9 port verified through real Agent, compiled CLI cold resume and 61 affected cases across two runs; check/build pass. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 mixed startup visibility: synchronous message association and late async dedup verified through Agent, compiled CLI, fork/cold readers and 125 affected cases; check/build pass. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 response semantics: ordinary source attachment schema/salvage, silent-success suppression and confirmed async SessionStart history verified with HOME isolation; check/build, 117 cases and offline package pass. Mixed synchronous history and lifecycle provenance remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 root async-hook delivery: distinct persisted intent/message association, queue-loss recovery and actual CLI death/retry verified; source payload parity and lifecycle proof remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 live-command binding: original spawn/request admission and pinned completion/teardown verified through real processes, compiled CLI and 106 affected tests. Durable association remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+W385 #43 source follow-up: obtainable ordinary async attachment → local JSONL chain, 39 exact body identities and three copied-body fixture groups verified; absence rationale rejected, draft remains inactive. [Evidence and remaining scope](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
 W385 local checkpoint: child journal authorization forwarding, 111 related passes, compiled child/transcript CLI, inactive async-journal prototype and source-mapping handoff. See [handoff](HANDOFF-2026-11-06.md) and [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
 
 W385 async process/callback state separation, real late return/throw, compiled CLI and installed evidence: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
@@ -3910,3 +4216,22 @@ W385 compiled directory grant PTY: real `/add-dir`, Read, Workspace removal, reg
 W385 directory retarget focused test now passes; compiled direct-grant replacement PTY passes. Details and limits: [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-read-follow-up-2026-11-05-in-progress).
 
 # W385 native publication slice: standalone helper and local process tests; production Write remains blocked. See [W385](ports/W385-declaration-prefix-preflight.md#directory-grant-write-probe-2026-11-05-open).
+W385 #43 foreground-transfer correction: rejected async header adoption keeps its original cancellation/deadline; real red/green, 103 affected passes and actual compiled capacity-rejection CLI verified. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 classic worktree whole-chain observations verified; per-module provenance remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 classic module boundary probe verifies four actual loaded-module/cold cases, including chain success after module failure and real rejected recovery. Product unchanged; per-module implementation remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 actual in-process classic module admission/settlement verified independently of chain fallback/budget. 64 distinct affected cases, nine CLI cases and 18 cold readers pass; nested ownership and broader #35 remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 generic Agent classic ownership and nested/continuation bindings verified; 66 distinct affected tests and six CLI cases/twelve cold readers pass. Separate PreToolUse and broader #35 remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 classic PreToolUse observation verified; 61 tests and fourteen CLI cases/28 cold readers pass. New real-module counterexample confirms source reload-gate ordering gap, next ready work. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 PreToolUse reload-ordering gap resolved from source m_t; 25 tests and twelve CLI cases/24 cold readers pass. Probe converted to acceptance; broader #35 remains open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+
+2026-11-07 W385 default model/MCP hook inner-tool observations verified with 100 distinct tests, real model Read and stdio MCP CLI/failure cuts and sixteen cold readers. Remaining observers and source parity stay open. [Evidence](ports/W385-declaration-prefix-preflight.md#async-attachment-storage-follow-up-2026-11-06-in-progress).
+W385 #35 display preflight (2026-11-07): six actual CLI before/after callback deaths and six cold readers confirm missing display settlement records; actual Agent progress exception leaves busy and blocks retry. No product change; source turn-finalization mapping and repair next. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-display-observer-preflight).
+W385 #35 progress failure cleanup verified (2026-11-07). QH/Bi lifetime adaptation clears busy despite a throwing finish observer; actual same-Agent CLI retry, check/build and 201 distinct affected tests across runs pass with three existing skips. Display records remain open. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-progress-failure-cleanup).
+W385 #35 display callback journal implemented (2026-11-07), recovery integration incomplete. All20 Agent sites, final check/build,125 affected passes,12 CLI cases/24 cold readers; two lifecycle recovery acceptance failures remain because callback records do not prove no-effect suffixes. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-display-callback-journal).
+W385 #35 inert display absence recovery verified (2026-11-07). Both previously failing CLI recovery groups now pass; only descriptor-proven absence is traversable, and an effectful getter returning undefined retains unknown state/source lock. Check/build,198 distinct affected passes across runs and12 display CLI cases/24 cold readers. [Evidence](ports/W385-declaration-prefix-preflight.md#w385-inert-display-absence-recovery).

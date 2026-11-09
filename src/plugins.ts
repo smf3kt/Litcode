@@ -608,6 +608,20 @@ export function installedPluginCatalogIdentity(workspace: string, config?: Plugi
 }
 
 /** Explicit, inert discovery of declared components in verified installed snapshots. */
+export function installedPluginHooks(components: readonly InstalledPluginComponents[]): HooksConfig {
+  const result: Record<string, unknown[]> = {};
+  // Adapt qCn, sfn1dbxq SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
+  // [2464463,2465314), zero-based half-open UTF-16. Local installed slot replaces source marketplace ID.
+  for (const item of components) for (const [event, entries] of Object.entries(item.hooks ?? {})) {
+    const pluginOrigin = { id: `local:${item.directory}`, name: item.plugin.manifest.name, root: item.directory };
+    result[event] = [...(result[event] ?? []), ...entries.map(entry => ({
+      ...('hooks' in entry ? entry : { hooks: [entry] }), pluginOrigin,
+    }))];
+  }
+  return hooksSchema.parse(result);
+}
+
+/** Explicit, inert discovery of declared components in verified installed snapshots. */
 export function discoverInstalledPluginComponents(workspace: string, config?: PluginConfig): InstalledPluginComponents[] {
   const options = pluginConfigSchema.parse(config ?? {});
   if (!options.enabled) return [];

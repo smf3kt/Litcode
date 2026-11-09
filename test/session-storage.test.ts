@@ -75,7 +75,8 @@ function journal(file: string): { bytes: Buffer; events: SessionEvent[] } {
   const bytes = fs.readFileSync(file);
   assert.equal(bytes.at(-1), 10);
   const events = bytes.toString("utf8").trimEnd().split("\n").map(line => JSON.parse(line) as SessionEvent);
-  assert.ok(events.length <= 64, "Fixture journal exceeded its event budget");
+  assert.ok(events.filter(event => event.kind !== 'agent_display_observer').length <= 64, "Fixture journal exceeded its non-display event budget");
+  assert.ok(events.length <= 256, "Fixture journal exceeded its total event budget");
   return { bytes, events };
 }
 function result(session: ParentSession, id: string): Anthropic.ToolResultBlockParam {

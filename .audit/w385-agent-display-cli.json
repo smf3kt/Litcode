@@ -1,0 +1,102 @@
+{
+  "identity": "c72fc2115607f9e40e41d304418f17a36fb91fa0ab6da9edc0e427cded843edf",
+  "cases": [
+    {
+      "callback": "status",
+      "cut": "before",
+      "phase": "admitted",
+      "actualEffect": false,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "status",
+      "cut": "after",
+      "phase": "admitted",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "status",
+      "cut": "returned",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "status",
+      "cut": "normal",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "progress",
+      "cut": "before",
+      "phase": "admitted",
+      "actualEffect": false,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "progress",
+      "cut": "after",
+      "phase": "admitted",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "progress",
+      "cut": "returned",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "progress",
+      "cut": "normal",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "before",
+      "phase": "admitted",
+      "actualEffect": false,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "after",
+      "phase": "admitted",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "returned",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    },
+    {
+      "callback": "terminalSequence",
+      "cut": "normal",
+      "phase": "returned",
+      "actualEffect": true,
+      "coldReaders": 2,
+      "noReplay": true
+    }
+  ],
+  "upstreamCalls": 0
+}

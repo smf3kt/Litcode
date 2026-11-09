@@ -42,7 +42,7 @@ test('the command carries the internal spelling of the next mode', () => {
 });
 
 test('a launch-granted bypass availability survives a live mode change', () => {
-  const workspace = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w238-cycle-'));
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w238-cycle-')));
   const config = (mode: 'bypass' | 'auto' | 'default') => ({ ...defaultConfig(workspace, []), model: 'fixture',
     permissions: { mode, allow: [], deny: [] } });
   const first = Session.open(workspace, { config: config('bypass') });
@@ -54,7 +54,7 @@ test('a launch-granted bypass availability survives a live mode change', () => {
 });
 
 test('carrying from a non-bypass session does not grant bypass availability', () => {
-  const workspace = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w238-cycle-'));
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w238-cycle-')));
   const config = (mode: 'bypass' | 'auto' | 'default') => ({ ...defaultConfig(workspace, []), model: 'fixture',
     permissions: { mode, allow: [], deny: [] } });
   const first = Session.open(workspace, { config: config('default') });

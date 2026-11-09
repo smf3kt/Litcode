@@ -1,0 +1,10 @@
+{
+  "identity": "f661cfcb578036d5b941247ca7c3465bbc141eccba9b78dafe2e271946b353df",
+  "budget": { "sharedSteps": 4096, "chargedEvidenceBytes": 104857600, "scope": "per verification root, including recursive branches and final rereads" },
+  "check": { "exit": 0, "log": "/private/tmp/w385-deep-budget-check-final.log" },
+  "build": { "exit": 0, "log": "/private/tmp/w385-deep-budget-build.log" },
+  "focused": { "exit": 0, "passed": 3, "log": "/private/tmp/w385-deep-budget-focused.log" },
+  "recovery": { "exit": 0, "completeGroups": 2, "compiledCliModes": 22, "minimumAcceptedRecoveryGenerations": 4, "budgetExhaustionLeavesNoPartialProof": true, "log": "/private/tmp/w385-deep-budget-recovery.log" },
+  "upstreamCalls": 0,
+  "remaining": ["budget-exhausted graphs remain unknown", "nonempty-snapshot effect provenance", "precommit/orphan recovery", "mixed workspace/external rewind", "issues 7 and 11"]
+}

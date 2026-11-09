@@ -18,8 +18,8 @@ import type { HookCommandHome, HookRunOptions } from './hooks.js';
 
 export type ChildHookOptions = {
   hookOptions?: (config: SessionConfig, sessionId: string) => HookRunOptions;
-  onHookCompletion?: (sessionId: string, completion: AsyncHookCompletion) => void;
-  terminalSequence?: (sessionId: string, sequence: string) => void;
+  onHookCompletion?: (sessionId: string, completion: AsyncHookCompletion) => void | Promise<void>;
+  terminalSequence?: (sessionId: string, sequence: string) => void | Promise<void>;
   instructionFiles?: (workspace: string, paths: string[]) => void;
   /** Stop/SubagentStop live background jobs and session cron tasks. */
   stopState?: () => StopRuntimeState;
@@ -149,7 +149,10 @@ export function createChildHookLifecycle(session: Session, options: ChildHookOpt
   let journalError: unknown;
   let closing: Promise<void> | undefined;
   const bounded = (text: string) => capChildOutput(text, session.config.maxOutputBytes);
-  const hooks = new AsyncHookRegistry({ workspace: session.config.workspace, onResult: completion => {
+  // W385 host rewrite of gc/WLe/CXo, chunk-sfn1dbxq.js UTF-16
+  // [621218,621853)/[626248,626520)/[630237,630565): synchronous source
+  // publication needs S3 journal-before-effect/retirement tracking for host Promises.
+  const hooks = new AsyncHookRegistry({ workspace: session.config.workspace, journalOwner: session, onResult: async (completion, observe) => {
     const result = completion.result;
     const context = bounded(JSON.stringify({ state: completion.state, additionalContext: result.additionalContext }));
     let recorded = false;
@@ -160,10 +163,14 @@ export function createChildHookLifecycle(session: Session, options: ChildHookOpt
         ...(result.terminalSequences?.length ? { terminalSequences: result.terminalSequences } : {}) });
       recorded = true;
     } catch (error) { journalError ??= error; }
-    if (recorded) for (const sequence of result.terminalSequences ?? []) {
-      try { options.terminalSequence?.(session.id, sequence); } catch { /* Observer owns its failures. */ }
+    if (!recorded) return;
+    const observers: Promise<void>[] = [];
+    const terminal = options.terminalSequence, completed = options.onHookCompletion;
+    if (terminal) for (const [index, sequence] of (result.terminalSequences ?? []).entries()) {
+      observers.push(observe({ kind: 'terminal', index }, () => terminal(session.id, sequence)));
     }
-    try { options.onHookCompletion?.(session.id, completion); } catch { /* Observer owns its failures. */ }
+    if (completed) observers.push(observe({ kind: 'completion' }, () => completed(session.id, completion)));
+    await Promise.all(observers);
   } });
   try {
     const supplied = options.hookOptions?.(session.config, session.id) ?? {};
@@ -191,7 +198,7 @@ export function createChildHookLifecycle(session: Session, options: ChildHookOpt
         return closing;
       },
     };
-  } catch (error) { void hooks.close(); throw error; }
+  } catch (error) { void hooks.close().catch(() => {}); throw error; }
 }
 
 const PARENT_CONTROLS = new Set(['agent', 'list_agents', 'send_message', 'get_agent', 'stop_agent', 'poll_agents',
@@ -218,6 +225,25 @@ export function instructionEndMarkers(config: { skills?: readonly SkillInfo[]; a
   return [skillsSection(config.skills ?? []), agentTypesSection(config.agentTypes ?? [])].filter(marker => marker !== '');
 }
 
+// Xu, bk5ct2gw [480059,480125); ordinary launch, wj6fycw8 [28295,28328), UTF-16.
+export function childSpawnDepth(config: SessionConfig): number {
+  return (config.childMode ? config.spawnDepth ?? 0 : 0) + 1;
+}
+
+// _E, bqbdppwe [700,1182); environment parser, yvnhkg35 [59269,59305), UTF-16.
+export function maxSubagentSpawnDepth(): number {
+  const value = process.env.LITCODE_MAX_SUBAGENT_SPAWN_DEPTH;
+  const limit = Number(value);
+  return value && /^\d+$/.test(value) && Number.isSafeInteger(limit) && limit >= 1 ? limit : 3;
+}
+
+export function assertAgentSpawnDepth(parent: SessionConfig): void {
+  const depth = childSpawnDepth(parent) - 1;
+  const limit = maxSubagentSpawnDepth();
+  // Agent.call, wj6fycw8 [16320,16730), half-open UTF-16.
+  if (depth >= limit) throw new Error(`Subagent nesting limit reached (depth ${depth} of ${limit})`);
+}
+
 export function childConfig(config: SessionConfig, tools: ToolDefinition[], options: {
   mode: 'explore' | 'general'; max_turns: number; model?: string; effort?: ChildLaunchOptions['effort']; type?: AgentTypeInfo; fork?: boolean; isolation?: 'worktree';
 }): SessionConfig {
@@ -233,7 +259,7 @@ export function childConfig(config: SessionConfig, tools: ToolDefinition[], opti
         ...(config.policyHelperText === undefined ? {} : { policyHelperText: config.policyHelperText }) },
       suffix, instructionEndMarkers(config), true)
     : undefined;
-  const child: SessionConfig = { ...structuredClone(config), maxTurns: options.max_turns, childMode: options.mode,
+  const child: SessionConfig = { ...structuredClone(config), maxTurns: options.max_turns, childMode: options.mode, spawnDepth: childSpawnDepth(config),
     ...(options.model ? { model: options.model } : {}),
     ...(options.effort ? { effort: options.effort } : {}),
     allowShell: options.mode === 'general' && config.allowShell,
@@ -283,6 +309,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
       context.signal.throwIfAborted();
       const args = input.parse(raw);
       const config = typeof source === 'function' ? source() : source;
+      assertAgentSpawnDepth(config);
       const launch = resolveChildLaunch(config, args as ChildLaunchOptions, options);
       const messages = forkMessages(context.conversation, launch.fork);
       let selected = selectChildTools(tools, launch.mode, launch.type?.tools)

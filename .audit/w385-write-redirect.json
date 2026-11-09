@@ -1,0 +1,94 @@
+{
+  "identity": {
+    "sha256": "9f36d04f08c62f9693e6e015dcd5722ec696d21b1f3696d21f2273b796130076",
+    "inputs": {
+      "sha256": "e7abe41c6e06b206fc8338f0232a004ae1b877a08b58860d882aac92b4604806",
+      "files": 1076
+    },
+    "validation": {
+      "sha256": "d90138ef78d1567f34430f4a880c73e18c696de2a1b1898b58bb4dc1c0fef97f",
+      "files": 416
+    },
+    "build": {
+      "sha256": "51942338721094b8782c8ced6d896d08a6838c5074761c19babdbbddca98d57d",
+      "files": 744
+    }
+  },
+  "source": [
+    {
+      "module": "chunk-hwpb27as.js",
+      "sha256": "c5f6d5b8fb187a14de3db7aebcb5615a3632aa34a0e174c54d38607e7c5ead8e",
+      "start": 121053,
+      "end": 123737,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "3264590a60017e7d4e4eac5674a2664961a98ce5ed4c3349c871d5c39214145e"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "start": 739599,
+      "end": 743280,
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "df63c9e2f785bb91b417b3e28077126194204b62b3455dd8a0185b3f83f6e4a7"
+    }
+  ],
+  "cases": [
+    {
+      "changed": false,
+      "cut": "normal",
+      "actualContextEffect": false,
+      "execution": [],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        },
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    },
+    {
+      "changed": true,
+      "cut": "normal",
+      "actualContextEffect": false,
+      "execution": [],
+      "contextTransitions": [
+        {
+          "phase": "admitted"
+        },
+        {
+          "phase": "returned",
+          "mode": "sync"
+        }
+      ],
+      "coldReaders": 2,
+      "coldGrant": false
+    }
+  ],
+  "conclusion": "Both redirected paths were refused before the filesystem effect.",
+  "upstreamCalls": 0
+}

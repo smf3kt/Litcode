@@ -1,0 +1,11 @@
+{
+  "identity": "58e683a20b1748b544ae8a39026a311ade8b9b7dcb5cc0518dbc21b4d801fc8e",
+  "check": { "exit": 0, "log": "/private/tmp/w385-approval-operation-check-final.log" },
+  "build": { "exit": 0, "log": "/private/tmp/w385-approval-operation-build.log" },
+  "focused": { "exit": 0, "passed": 6, "log": "/private/tmp/w385-approval-operation-focused.log" },
+  "regressions": { "exit": 0, "passed": 15, "log": "/private/tmp/w385-approval-operation-regressions.log" },
+  "cli": { "exit": 0, "cases": 7, "coldReaders": 28, "evidence": ".audit/w385-approval-operation-cli.json" },
+  "fixtureCorrections": ["Enable skillInlineCommands", "Use actual child-skill callback route; root model skill supplies no registry callback"],
+  "upstreamCalls": 0,
+  "remaining": ["owner resolver and outer skill grant checks", "other context and Session effects", "factory and effective-input provenance", "arbitrary effect proof and lock reclamation"]
+}

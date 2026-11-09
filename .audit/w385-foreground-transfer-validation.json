@@ -1,0 +1,29 @@
+{
+  "scope": "W385 #43 rejected async header adoption retains foreground control",
+  "date": "2026-11-06",
+  "identity": "a97b577c5a5b53bfd87ffba702698691be4d57279338a457cb5607d1c13e7abb",
+  "inputs": "3410217314defefb57362b3d5bd9815f6c51d42c915dff20db47b86292ec1f59",
+  "validation": "3d35072fb15b89a29c88cad2aa7edbd33b8a328b7327c978c04efa0515c7f4e9",
+  "build": "bf52022f9dc5e19b18f9fc39d97390572381aaf62301496005e4d3ecfe49b08e",
+  "source": {
+    "module": "chunk-sfn1dbxq.js",
+    "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "coordinates": "zero-based half-open UTF-16",
+    "UF": [2969279, 2980094],
+    "Axe": [82919, 87427],
+    "m5e": [2955889, 2958184],
+    "mode": "adapt"
+  },
+  "results": {
+    "before": "new real-process regression fails: raw.aborted is false after owner rejects and cancels",
+    "after": "cancellation/deadline rejection and existing adoption controls pass, 4/4",
+    "check": 0,
+    "build": 0,
+    "related_sandboxed": { "tests": 103, "pass": 99, "fail": 4, "cause": "three loopback listen EPERM and one scheduler process-start EPERM" },
+    "related_normal_permissions": { "tests": 103, "pass": 103, "fail": 0, "skip": 0 },
+    "compiled_cli": "real runtime has 16 running async jobs, header command entered, rejected seventeenth remains deadline-bound, no late marker, main Write succeeds and locks release",
+    "archive_verifier": "expected baseline mismatch at src/hooks.ts; archive remains immutable and inactive",
+    "upstream_requests": 0,
+    "package": "not_run: no packaging change"
+  }
+}

@@ -41,6 +41,26 @@ function response(content: Anthropic.Message['content'], reason: Anthropic.Messa
       cache_creation: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null } };
 }
 
+test('consolidation forwards child async attachment completion to its owning callback', async () => {
+  const workspace = temporary(), controller = new AbortController();
+  const tools = [...createTools(), ...createMemoryTools()];
+  const config = defaultConfig(workspace, tools);
+  config.model = 'fixture'; config.autoMemory = true; config.autoMemoryConsolidation = true;
+  config.features = { tasks: false, subagents: false, memory: true };
+  config.hooks = { SessionStart: [{ command: `printf '{"systemMessage":"MEMORY_CHILD_OUTPUT"}'`, async: true }] };
+  const outputs: string[] = [];
+  const runner = new MemoryConsolidation({ config, tools, signal: controller.signal, owner: randomUUID(),
+    provider: { count: async () => 1, complete: async request => {
+      assert.equal(JSON.stringify(request.messages).includes('MEMORY_CHILD_OUTPUT'), false);
+      return response([{ type: 'text', text: 'No memory changes.', citations: null }]);
+    } }, onHookCompletion: (_id, completion) => { outputs.push(JSON.stringify(completion.delivery)); } });
+  try {
+    seed(workspace, 5);
+    await runner.tryStart(); await runner.settle();
+    assert.equal(outputs.length, 1); assert.match(outputs[0]!, /MEMORY_CHILD_OUTPUT/);
+  } finally { await runner.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('consolidation lease is exclusive and commits only a successful acquisition stamp', () => {
   const workspace = temporary();
   try {

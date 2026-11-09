@@ -1,0 +1,188 @@
+{
+  "identity": {
+    "sha256": "d496cc775b55fdfa568e68e74edb001dd0fab0f4439f698624b35f8510435472",
+    "inputs": {
+      "sha256": "c790d64596674a47bc8f3abfb09116f46903cf1652364caaa05b47b290b53284",
+      "files": 1053
+    },
+    "validation": {
+      "sha256": "8f8b3a175d58d3c6ec5144a975c5c6bbfe425e8e6d7d7db88b9944511b788d0a",
+      "files": 413
+    },
+    "build": {
+      "sha256": "c0acaa284d47ac8410d2edb534252bfd9a2b0bdd7d444e0c294b2ade39d8d372",
+      "files": 728
+    }
+  },
+  "cases": [
+    {
+      "messaging": false,
+      "callback": "agentProgress",
+      "cut": "before",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": false,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "agentProgress",
+      "cut": "after",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "agentProgress",
+      "cut": "returned",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "agentProgress",
+      "cut": "normal",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "clearAgentProgress",
+      "cut": "before",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": false,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "clearAgentProgress",
+      "cut": "after",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "clearAgentProgress",
+      "cut": "returned",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": false,
+      "callback": "clearAgentProgress",
+      "cut": "normal",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "agentProgress",
+      "cut": "before",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": false,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "agentProgress",
+      "cut": "after",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "agentProgress",
+      "cut": "returned",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "agentProgress",
+      "cut": "normal",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "clearAgentProgress",
+      "cut": "before",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": false,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "clearAgentProgress",
+      "cut": "after",
+      "transition": {
+        "phase": "admitted"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "clearAgentProgress",
+      "cut": "returned",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    },
+    {
+      "messaging": true,
+      "callback": "clearAgentProgress",
+      "cut": "normal",
+      "transition": {
+        "phase": "returned",
+        "mode": "sync"
+      },
+      "actualEffect": true,
+      "coldReaders": 2
+    }
+  ],
+  "upstreamCalls": 0
+}

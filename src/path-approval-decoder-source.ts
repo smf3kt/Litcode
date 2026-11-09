@@ -15,7 +15,7 @@ function WGn(n){let e=0,r=0;for(let i=0;i<n.length;i++)if(n[i]===`
 // chunk-gyf58rwf.js ID [80736,81001), UTF-16; sha256 e7146358ec5b918ea27922d588c8199b4c49f675e3d63afe2c9d7d32cf26ad04
 async function ID(e,n,r){let s=r!==void 0?r==="file":(await e.stat()).isFile(),i=[],o=0;while(o<n){let a=Buffer.allocUnsafe(Math.min(65536,n-o)),{bytesRead:u}=await e.read(a,0,a.length,s?o:null);if(u===0)break;i.push(a.subarray(0,u)),o+=u}return Buffer.concat(i,o)}
 // chunk-0hm793yn.js lwe [2923,3214), UTF-16; sha256 4b0f5b96154ee229cb33ab9808ef27ebca8bda249ccee6c636840ce39811a9b5
-async function lwe(n,e,r){SPe(await n.stat(),e,r);let i=r===void 0?await n.readFile():await ID(n,r+1,"file");NRr(i.length,e,r);let s=jGn(i.subarray(0,4096)),o=i.toString(s),c=WGn(o.slice(0,4096));return{content:o.replaceAll(`\r
-`,`
-`),encoding:s,lineEndings:c,...lTo(i,s)&&{lossyDecode:!0}}}
-export { lwe };
+async function lwe(n,e,r){SPe(await n.stat(),e,r);let i=r===void 0?await n.readFile():await ID(n,r+1,"file");NRr(i.length,e,r);return decodeFileBytes(i)}
+// Byte-decoding portion of lwe [2923,3214), shared with an authenticated backup.
+function decodeFileBytes(i: Buffer){let s=jGn(i.subarray(0,4096)),o=i.toString(s),c=WGn(o.slice(0,4096));return{content:o.replaceAll('\r\n','\n'),encoding:s,lineEndings:c,...lTo(i,s)&&{lossyDecode:!0}}}
+export { lwe, decodeFileBytes };

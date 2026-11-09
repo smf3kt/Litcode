@@ -143,6 +143,7 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   setHeldSkills(next, loaded.conditionalSkills);
   if (next.features.subagents && next.features.agentTypes) next.system += agentTypesSection(next.agentTypes);
   next.hooks = settings.hooks ?? {};
+  delete next.legacyPluginHookSnapshot;
   // fl/Kt, chunk-hwpb27as.js [120818,120979)/[121053,123737), UTF-16: absent settings restore the enabled default.
   next.allowShell = overrides.allowShell ?? settings.allowShell ?? DEFAULT_ALLOW_SHELL;
   next.mcpServers = settings.mcpServers ?? {};

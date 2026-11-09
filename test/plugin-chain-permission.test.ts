@@ -80,6 +80,29 @@ const probeTool = (execute: ToolDefinition['execute']): ToolDefinition => ({
   execute,
 });
 
+test('classic classifier denial records its actual owner without executing the denied tool', async () => {
+  const workspace = tmpDir(), tools = createTools(), seen = tempFile('classifier-denied');
+  const loaded = await loadChainModuleFileInto(createChainRun(), { pluginName: 'classifier-denied',
+    modulePath: moduleFile('classic.PermissionDenied', '{}', seen) });
+  const session = Session.open(workspace, { config: { ...defaultConfig(workspace, tools), model: 'test-model',
+    permissions: { mode: 'auto', allow: [], deny: [] } } });
+  let sent = false;
+  const provider: ModelProvider = { count: async () => 1, complete: async request => {
+    if (typeof request.system === 'string' && request.system.startsWith('You are a security monitor')) {
+      return serverMessage([{ type: 'text', text: '<block>yes</block><category>Irreversible Local Destruction</category><reason>owned denial</reason>' }], 'end_turn');
+    }
+    if (!sent) { sent = true; return serverMessage([{ type: 'tool_use', id: 'denied', name: 'write_file', input: { path: 'marker', content: 'owned' } }], 'tool_use'); }
+    return serverMessage([{ type: 'text', text: 'done' }], 'end_turn');
+  } };
+  try {
+    await new Agent(session, provider, tools).run('write marker');
+    assert.equal(fs.existsSync(path.join(workspace, 'marker')), false);
+    assert.equal(seenInputs(seen).length, 1);
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PermissionDenied', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PermissionDenied', 'fulfilled']]);
+  } finally { loaded.unload(); session.close(); }
+});
+
 /** The approval path of `permissions.mode === 'ask'` with nothing pre-allowed. */
 function askConfig(workspace: string, tools: ToolDefinition[]): SessionConfig {
   return { ...defaultConfig(workspace, tools), model: 'test-model', system: 'test-system', maxOutputBytes: 64_000,
@@ -170,6 +193,8 @@ test('classic permission: PermissionRequest joins the approval path on the sourc
       const session = Session.open(workspace, { config: askConfig(workspace, tools) });
       const agent = new Agent(session, turns(), tools, { permission: async () => { prompts += 1; return true; }, status: () => {} });
       await agent.run('go');
+      assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PermissionRequest', 'fulfilled']]);
+      assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PermissionRequest', 'fulfilled']]);
       return { prompts, pair: session.messages.at(-2), input: seenInputs(seen)[0]! };
     } finally {
       loaded.unload();
@@ -392,6 +417,8 @@ test('classic permission: a permission-rule denial raises nothing, whatever hook
     ]), tools, { permission: async () => true, status: () => {} });
     await agent.run('go');
     assert.equal(seenInputs(seen).length, 0, 'a rule denial raises no classic.PermissionDenied');
+    assert.equal(session.classicHookChains.length, 0);
+    assert.equal(session.classicHookModules.length, 0);
     assert.deepEqual(session.messages.at(-2), { role: 'user', content: [
       { type: 'tool_result', tool_use_id: 't1', content: 'Tool denied by permission rule: probe', is_error: true },
     ] });

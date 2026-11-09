@@ -1,0 +1,48 @@
+{
+  "unit": "W385 #43 local installed-plugin origin",
+  "identity": "132c4650ba43009711ad7695e2d0de44c75d921675562020a0f0ad48a524dab5",
+  "inputs": "1c3bd19713c3e389519b451de06317c05e241496afc11b00c2a3ecdee6b7f6cd",
+  "validation": "ab1626cd259e641f8d9566ec8f86c4129a291a965858b1b6e38a0caf45416ef3",
+  "build": "46fa40d1fc0407a9faa0eb4a773996a86077f853b78d9ab5536385288e5e5f49",
+  "source": {
+    "module": "chunk-sfn1dbxq.js",
+    "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "coordinates": "zero-based half-open UTF-16",
+    "symbols": {
+      "qCn": [
+        2464463,
+        2465314
+      ],
+      "m5e": [
+        2955889,
+        2958184
+      ],
+      "kbt": [
+        625629,
+        626248
+      ],
+      "_yn": [
+        3630962,
+        3631285
+      ]
+    }
+  },
+  "adapter": "local: plus verified absolute installed directory; stable installed-slot ID, no marketplace or permission claim",
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "affected": "47/47 then plugin suite 5/5 including one additional group; total 48 unique passing cases",
+    "probe": ".audit/w385-plugin-origin-probe.mjs",
+    "before": "identical merged entries, null IDs, crossPluginSuppressed true",
+    "after": "distinct IDs, same HOME, crossPluginSuppressed false; same-plugin comparator true",
+    "actualCli": "two distinct plugin intents; cold session config retains IDs",
+    "updateDisableChild": "ID stable after real plugin update; disabled reload removes hooks; child config real command retains captured ID",
+    "adoption": "changed pluginId rejected before transfer; original ID retained after request mutation",
+    "modelUpstreamRequests": 0
+  },
+  "remaining": [
+    "automatic classic-hook catalog replacement in existing root sessions",
+    "notification-bearing branch owner association",
+    "durable process and callback provenance"
+  ]
+}

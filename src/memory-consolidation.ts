@@ -111,6 +111,7 @@ export class MemoryConsolidation {
       this.controller.signal.throwIfAborted();
       this.registry = new AgentRegistry({ source: child, tools: selected, provider: this.options.provider,
         signal: this.controller.signal, hookOptions: this.options.hookOptions,
+        onHookCompletion: this.options.onHookCompletion,
         terminalSequence: this.options.terminalSequence, instructionFiles: this.options.instructionFiles,
         limits: { maxConcurrency: 1, maxHistory: 4 }, onChange: this.options.onChange });
       const runningLease = lease;

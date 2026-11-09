@@ -8,7 +8,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { defaultConfig } from '../src/agent.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { createRuntime, parseSettings, pinToolSchemas, type Runtime } from '../src/runtime.js';
-import { Session, type SessionConfig } from '../src/session.js';
+import { Session, readSessionJournal, type SessionConfig } from '../src/session.js';
 import { createTools, type ToolContext, type ToolDefinition } from '../src/tools.js';
 
 const gitEnv: NodeJS.ProcessEnv = {
@@ -343,7 +343,7 @@ async function hookFixture(hookPath: string, removeMarker: string, workspace = f
   const session = Session.open(workspace, { config });
   await runtime.bindSession!(session);
   const tools = runtime.buildTools(session.config, session.id);
-  return { workspace, runtime,
+  return { workspace, runtime, session,
     invoke: (name: string, input: unknown) => tool(tools, name).execute(input, context(workspace)),
     async cleanup() { await runtime.close(); session.close(); fs.rmSync(workspace, { recursive: true, force: true }); } };
 }
@@ -359,7 +359,47 @@ test('WorktreeCreate hooks supply and remove the isolated child checkout outside
     assert.equal(child.workspace, checkout);
     await f.invoke('stop_agent', { id: child.id });
     assert.ok(fs.existsSync(path.join(parent, 'removed.txt')));
+    const executions = f.session.hookResolverObservations;
+    assert.deepEqual(executions.map(row => row.event.event), ['WorktreeCreate', 'WorktreeRemove']);
+    assert.ok(executions.every(row => row.event.owner === f.session.id && row.resolver === 'fulfilled' && row.runner === 'completed'));
+    assert.deepEqual(readSessionJournal(parent, f.session.id, { maxBytes: 1000000, maxEvents: 1000 }), f.session.events);
   } finally { await f.cleanup(); fs.rmSync(checkout, { recursive: true, force: true }); }
+});
+
+test('worktree cleanup after parent close remains unobserved and never writes to a reopened owner', async () => {
+  const checkout = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-child-')));
+  const parent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
+  const marker = path.join(parent, 'removed.txt');
+  const f = await hookFixture(checkout, marker, parent);
+  let replacement: Session | undefined;
+  try {
+    const child = JSON.parse(await f.invoke('agent', { prompt: 'inspect', isolation: 'worktree' })) as Child;
+    assert.equal(child.status, 'completed');
+    const id = f.session.id, before = structuredClone(f.session.events); f.session.close();
+    replacement = Session.open(parent, { id });
+    await f.runtime.releaseSession!(id);
+    assert.equal(fs.existsSync(marker), true);
+    assert.deepEqual(replacement.events, before);
+    assert.deepEqual(readSessionJournal(parent, id, { maxBytes: 1000000, maxEvents: 1000 }), before);
+    assert.deepEqual(replacement.hookResolverObservations.map(row => row.event.event), ['WorktreeCreate']);
+  } finally { replacement?.close(); await f.cleanup(); fs.rmSync(checkout, { recursive: true, force: true }); }
+});
+
+test('worktree command admission journal failure prevents its actual create effect', async () => {
+  const checkout = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-child-')));
+  const parent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
+  const f = await hookFixture(checkout, path.join(parent, 'removed.txt'), parent);
+  const marker = path.join(parent, 'started');
+  f.session.config.hooks!.WorktreeCreate = [{ command: `touch '${marker}'; printf '%s\\n' '${checkout}'` }];
+  const write = fs.writeSync;
+  try {
+    fs.writeSync = new Proxy(write, { apply(target, receiver, args) {
+      if (Buffer.isBuffer(args[1]) && args[1].includes('"kind":"hook_resolver"') && args[1].includes('"phase":"admitted"')) throw Error('worktree admission fixture');
+      return Reflect.apply(target, receiver, args);
+    } });
+    await assert.rejects(f.invoke('agent', { prompt: 'inspect', isolation: 'worktree' }), /worktree admission fixture|journal write failed/);
+    assert.equal(fs.existsSync(marker), false);
+  } finally { fs.writeSync = write; await f.cleanup(); fs.rmSync(checkout, { recursive: true, force: true }); }
 });
 
 test('a non-git workspace without WorktreeCreate hooks takes the source advisory', async () => {

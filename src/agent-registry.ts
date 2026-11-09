@@ -1,20 +1,22 @@
-import { randomUUID, createHash } from 'node:crypto';
+import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
+import { observeApprovalOperation } from './approval-operation-observer.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Agent, assertPaired, type AgentEvents } from './agent.js';
-import { Session, fingerprint, readSessionJournal, type SessionConfig } from './session.js';
+import { Agent, assertPaired, recoverPendingToolResults, type AgentEvents, type RunResult } from './agent.js';
+import { Session, fingerprint, fingerprintOf, readSessionJournal, renderNotificationBatch, type NotificationBatch, type SessionConfig } from './session.js';
+import { issueNotificationAuthorization } from './notification-authorization.js';
 import { instructionSources, loadProjectConfig, loadSkillsFromDirectories, rebaseChildInstructions, type SkillInfo } from './config.js';
-import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
+import { AgentHistoryStore, type AgentHistoryHeader, type AgentHistoryRecord, type ReadyWorkerDelivery, type ParkedWorkerDelivery } from './agent-history.js';
 import { readSkillScope, readSkillScopeWitness, writeSkillScope, type SkillScope } from './skill-scope.js';
 import type { ModelProvider } from './provider.js';
-import type { ToolContext, ToolDefinition } from './tools.js';
+import { bindScopedChildTool, type ToolContext, type ToolDefinition } from './tools.js';
 import type { HookCommandHome } from './hooks.js';
 import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, childPermissionState, bindPermissionOwner, type LivePermissionOwner, type PermissionDecision } from './permissions.js';
 import { prepareSkillHooks, skillToolApproval } from './skill-runtime.js';
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
-import { capChildOutput, childConfig, childPromptSuffix, instructionEndMarkers, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
+import { assertAgentSpawnDepth, capChildOutput, childConfig, childPromptSuffix, instructionEndMarkers, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
   resolveChildLaunch, forkMessages, preloadAgentSkills, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
 import { scrubSubagentOutput } from './subagent-output-scrub.js';
@@ -36,7 +38,7 @@ export type AgentDescriptor = {
   workspace?: string; subagent_type?: string; cleanup_error?: string;
   structured_output?: JsonValue; structured_error?: string;
 };
-export type AgentNotification = { kind: 'agent'; sequence: number; agent: AgentDescriptor;
+export type AgentNotification = { kind: 'agent'; sequence: number; agent: AgentDescriptor; runId?: string;
   subscription?: { id: string; state: 'idle' | 'expired' } };
 export type AgentPollResult = { revision: number; changed: boolean; agents: { id: string; status: AgentStatus }[] };
 export type AgentIdleSubscription = { id: string; agent_id: string; expires_ms: number };
@@ -128,7 +130,25 @@ function createStructuredOutputTool(schema: unknown, state: StructuredOutputStat
 }
 
 type MailboxMessage = { text: string; origin: MessageOrigin; displayId?: string };
+function witnessEvents(events: Session['events']): {bytes:number; sha256:string} {
+  const hash = createHash('sha256');
+  let bytes = 0;
+  for (const event of events) {
+    const line = JSON.stringify(event) + '\n';
+    bytes += Buffer.byteLength(line);
+    hash.update(line);
+  }
+  return {bytes,sha256:hash.digest('hex')};
+}
 type Child = {
+  coldKeepalive?: ParkedWorkerDelivery['waitingFor'];
+  parked?: boolean;
+  stagedWake?: ReadyWorkerDelivery;
+  continuingDeliveryId?: string;
+  readyDelivery?: ReadyWorkerDelivery;
+  nested?: AgentRegistry;
+  forkedSkillName?: string;
+  runId?: string;
   view: AgentDescriptor; config: SessionConfig; readonly resumeConfig: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
   mailbox: MailboxMessage[]; mailboxBytes: number; accepted: number; session?: Session;
   transcript: AgentTranscriptRecord[]; inProgressToolUseIDs: Set<string>; viewLeases: Set<symbol>; activeInput?: string;
@@ -150,6 +170,7 @@ export class AgentRegistry {
   private events: AgentNotification[] = [];
   private eventBytes = 0;
   private dropped = 0;
+  private deliveredNestedDrops = 0;
   private sequence = 0;
   private revision = 0;
   private changes = new Set<() => void>();
@@ -158,12 +179,17 @@ export class AgentRegistry {
   private preparing = new Set<Promise<void>>();
   private preparations = new Set<AbortController>();
   private reservedNames = new Set<string>();
+  private preparingSkills = new Map<AbortController, string>();
   private closed = false;
+  private parentRegistry?: AgentRegistry;
   private closing?: Promise<void>;
   private history?: AgentHistoryStore;
   private historyParent?: string;
   private historySession?: Session;
-  private approval?: { callback: SessionApproval; controller: AbortController };
+  private recoveredSettlements: AgentDescriptor[] = [];
+  private interruptedDescendants = new Map<string,{receiver:string;runId:string}>();
+  private parkedOwners = new Set<string>();
+  private approval?: { callback: SessionApproval; controller: AbortController; id: string };
   private readonly onAbort = () => { void this.close(); };
 
   constructor(private readonly options: AgentRegistryOptions) {
@@ -182,24 +208,58 @@ export class AgentRegistry {
 
   // Host ownership adaptation for source iye, sfn1dbxq [3368429,3370821), UTF-16.
   childSkillTools(session: Session, parent: Session): ToolDefinition[] | undefined {
-    const child = this.children.get(session.id);
+    return this.skillWorker(session, parent)?.tools;
+  }
+
+  private skillWorker(session: Session, parent: Session): Child | undefined {
     if (this.closed || !parent.isOpen || !session.isOpen || this.historySession !== parent ||
-        this.options.sessionOwner?.() !== parent || child?.session !== session || child.controller.signal.aborted) return undefined;
-    return child.tools;
+        this.options.sessionOwner?.() !== parent) return;
+    const child = this.children.get(session.id);
+    if (child?.session === session && !child.controller.signal.aborted) return child;
+    for (const worker of this.children.values()) {
+      if (!worker.session || worker.controller.signal.aborted) continue;
+      const found = worker.nested?.skillWorker(session, worker.session);
+      if (found) return found;
+    }
+  }
+
+  // zyn [1892,4679), UTF-16: the invoking worker owns the task and its cancellation.
+  nestedSkillRegistry(session: Session, parent: Session): AgentRegistry {
+    const worker = this.skillWorker(session, parent);
+    if (!worker) throw new Error('Child skill session owner released');
+    if (worker.nested) return worker.nested;
+    const nested = new AgentRegistry({ ...this.options, source: () => session.config,
+      parentSessionId: session.id, sessionOwner: () => worker.session, requireSessionOwner: true,
+      tools: worker.tools, signal: AbortSignal.any([worker.controller.signal, session.closeSignal]),
+      onChange: () => this.changed(), onNotification: undefined });
+    try {
+      nested.parentRegistry = this;
+      nested.bindHistory(session);
+      worker.nested = nested;
+      return nested;
+    } catch (error) { void nested.close(); throw error; }
+  }
+
+  // zyn, 9dhv0d4w [1892,4679), UTF-16. Worktree preparation can yield before registration.
+  hasLiveForkedSkill(name: string): boolean {
+    return [...this.preparingSkills.values()].includes(name) || [...this.children.values()].some(child =>
+      (child.forkedSkillName === name && (child.view.status === 'queued' || child.view.status === 'running')) ||
+      child.nested?.hasLiveForkedSkill(name));
   }
 
   // zyn, 9dhv0d4w [1892,4679), UTF-16: the child receives its caller's live permission callback.
   bindApproval(callback: SessionApproval): () => void {
     this.assertOpen();
     this.approval?.controller.abort();
-    const binding = { callback, controller: new AbortController() };
+    const binding = { callback, controller: new AbortController(), id: randomUUID() };
     this.approval = binding;
     return () => { if (this.approval === binding) { this.approval = undefined; binding.controller.abort(); } };
   }
 
   captureApprovalGeneration(): () => boolean {
     const binding = this.approval;
-    return () => !this.closed && this.approval === binding;
+    const parentLive = this.parentRegistry?.captureApprovalGeneration();
+    return () => !this.closed && this.approval === binding && (parentLive?.() ?? true);
   }
 
   private requireApprovalGeneration(): () => boolean {
@@ -210,7 +270,8 @@ export class AgentRegistry {
   async requestApproval(tool: ToolDefinition, input: unknown, decision: PermissionDecision, signal: AbortSignal): Promise<PermissionDecision> {
     const binding = this.approval;
     if (this.closed || signal.aborted || !binding) return { decision: 'deny', reason: 'Session approval unavailable' };
-    const result = await binding.callback(tool, input, decision, AbortSignal.any([signal, binding.controller.signal]));
+    const result = await observeApprovalOperation(this.historySession, { kind: 'registry', bindingId: binding.id },
+      async () => await binding.callback(tool, input, decision, AbortSignal.any([signal, binding.controller.signal])));
     return this.closed || signal.aborted || this.approval !== binding
       ? { decision: 'deny', reason: 'Session approval unavailable' } : result;
   }
@@ -241,16 +302,63 @@ export class AgentRegistry {
     }
     if (parent.config.workspace !== this.source().workspace) throw new Error('Child history parent workspace mismatch');
     const store = new AgentHistoryStore(parent, this.limits.maxJournalBytes, this.limits.maxHistory);
-    const { records, warnings, candidates } = store.read();
     this.history = store; this.historyParent = parent.id; this.historySession = parent;
+    const warnings = this.importSettledHistory(parent,store);
+    const requests = new Set<string>();
+    for (const row of parent.events) {
+      if (row.kind === 'subtree_stop_request' && row.parent === parent.id) requests.add(row.requestId);
+      if (row.kind === 'subtree_stop_redirect' && row.parent === parent.id && requests.delete(row.requestId))
+        this.queueRootNotices(parent,row.events);
+    }
+    return warnings;
+  }
+
+  private queueRootNotices(parent: Session, notices: ReadonlyArray<Pick<AgentNotification,'agent'|'runId'>>): void {
+    const claimed = new Set<string>();
+    for (const row of parent.events) if (row.kind === 'notification_intent_v2' && row.owner === parent.id &&
+        row.batch.kind === 'agent_events' && !row.batch.receiverRunId)
+      for (const event of row.batch.events) if (!event.subscription) claimed.add(event.agent.id+'/'+event.runId);
+    for (const event of this.events) if (!event.subscription) claimed.add(event.agent.id+'/'+event.runId);
+    for (const notice of notices) {
+      const key = notice.agent.id+'/'+notice.runId;
+      if (!notice.runId || claimed.has(key)) continue;
+      claimed.add(key);
+      this.enqueueNotification({kind:'agent',agent:notice.agent,runId:notice.runId,sequence:++this.sequence});
+    }
+  }
+
+  private importSettledHistory(parent: Session, store: AgentHistoryStore, recoverCandidates?: ReadonlySet<string>): string[] {
+    const { records, warnings, candidates } = store.read();
+    this.interruptedDescendants.clear();
+    this.parkedOwners.clear();
+    for (const record of records) if (record.state.kind === 'active' &&
+      (record.state.parkedDelivery || record.state.preparedDeliveryId || record.state.continuingDeliveryId)) {
+      this.parkedOwners.add(record.id);
+      for (const waiting of record.state.parkedDelivery?.waitingFor ?? [])
+        this.interruptedDescendants.set(waiting.id,{receiver:record.id,runId:waiting.runId});
+    }
     const existingNames = new Set([...this.children.values()].flatMap(child => child.view.name ? [child.view.name] : []));
     for (const record of records) {
-      if (record.state.kind !== 'settled' || this.children.has(record.id) || this.children.size >= this.limits.maxHistory) continue;
+      if (record.state.kind !== 'settled' || (recoverCandidates && !recoverCandidates.has(record.id)) ||
+          this.children.has(record.id) || this.children.size >= this.limits.maxHistory) continue;
       try {
         const events = readSessionJournal(parent.config.workspace, record.id, {
           maxBytes: this.limits.maxJournalBytes, maxEvents: this.limits.maxJournalEvents,
         }, record.state.journal);
         const meta = events[0], state = record.state;
+        let redirectedEvents = state.redirectedEvents;
+        if (redirectedEvents || (state.status === 'cancelled' && state.notificationAgent && state.runId)) {
+          const intent = parent.events.findLast(row => row.kind === 'agent_history_intent' && row.id === record.id);
+          const stopped = intent?.kind === 'agent_history_intent' && intent.parent === parent.id && state.runId &&
+            intent.cancelledRunId === state.runId && intent.newDigest === fingerprintOf(record) &&
+            parent.events.some(row => row.kind === 'parked_agent_stop' && row.parent === parent.id &&
+              row.id === record.id && row.activeDigest === intent.oldDigest);
+          if (!stopped && redirectedEvents) throw new Error('Redirected notifications have no matching owner stop');
+          if (stopped && state.runId && !redirectedEvents) {
+            try { redirectedEvents = this.legacyStopNotices(store,record,events,state.runId,intent.oldDigest); }
+            catch (error) { warnings.push(`${record.id}: ${error instanceof Error ? error.message : String(error)}`); }
+          }
+        }
         if (meta?.kind === 'metadata' && meta.config.parentPlanId !== record.parentPlanId) {
           throw new Error('Child history parent plan witness mismatch');
         }
@@ -261,9 +369,6 @@ export class AgentRegistry {
             dynamicSkillDirs: meta.config.dynamicSkillDirs, system: meta.config.system }) !== meta.fingerprint) {
           throw new Error('Child history configuration mismatch');
         }
-        if (fs.existsSync(path.join(path.dirname(parent.file), `${record.id}.jsonl.lock`))) {
-          throw new Error('Child journal is active');
-        }
         if (events.findLast(event => event.kind === 'turn_end' || event.kind === 'message' || event.kind === 'compact')?.kind !== 'turn_end') {
           throw new Error('Child journal has an unfinished turn');
         }
@@ -271,7 +376,14 @@ export class AgentRegistry {
         const messages = events.flatMap(event => event.kind === 'message' ? [event.message] : []);
         assertPaired(messages);
         const tools = this.restoredTools(meta.config);
-        if (candidates.has(record.id)) store.commitCandidate(record);
+        let continued = false;
+        if (fs.existsSync(path.join(path.dirname(parent.file), `${record.id}.jsonl.lock`))) {
+          const intent = parent.events.findLast(row => (row.kind === 'agent_history' || row.kind === 'agent_history_intent') && row.id === record.id);
+          if (!candidates.has(record.id) || intent?.kind !== 'agent_history_intent' || !intent.continuationDeliveryId || !intent.shutdownLock)
+            throw new Error('Child journal is active');
+          if (!recoverCandidates?.has(record.id)) continue;
+          continued = this.commitDescendantPublication(parent,store,record,events);
+        } else if (candidates.has(record.id)) continued = store.commitCandidate(record);
         const controller = new AbortController();
         if (state.status !== 'completed') controller.abort();
         const progress = createAgentProgress();
@@ -279,7 +391,7 @@ export class AgentRegistry {
         const name = record.name !== null && !existingNames.has(record.name) ? record.name : null;
         if (name !== null) existingNames.add(name);
         const { state: _state, ...history } = record;
-        this.children.set(record.id, {
+        const child: Child = {
           view: { id: record.id, session_id: record.id, name, status: state.status, mode: meta.config.childMode,
             model: meta.config.model, summary: state.summary, error: state.error, reason: state.reason,
             model_calls: state.modelCalls, queued_messages: 0,
@@ -291,13 +403,315 @@ export class AgentRegistry {
           transcript: events.filter(transcriptEvent), inProgressToolUseIDs: new Set(), viewLeases: new Set(),
           liveOwner: this.livePermissionOwner(), adoptionOnly: false,
           prompt: record.prompt, startedAt: record.startedAt, endedAt: state.endedAt, progress, streamedChars: 0,
+          ...(state.runId ? { runId: state.runId } : {}),
           backgrounded: record.backgrounded, fork: record.fork, history, coldJournal: state.journal,
-          ...(coldSkillScope ? { coldSkillScope } : {}),
+          ...(coldSkillScope ? { coldSkillScope, forkedSkillName: coldSkillScope.skillName } : {}),
           journalEvents: events.length, journalBytes: events.reduce((sum, event) => sum + Buffer.byteLength(JSON.stringify(event)) + 1, 0),
-        });
+        };
+        this.children.set(record.id,child);
+        if (continued) this.recoveredSettlements.push(this.snapshot(child));
+        if (redirectedEvents && state.notificationAgent && state.runId && state.status === 'cancelled') {
+          // vEe, sfn1dbxq [4228134,4228512), UTF-16. The root owns the
+          // stopped worker notice followed by its unconsumed descendant results.
+          this.queueRootNotices(parent,[{agent:state.notificationAgent,runId:state.runId},...redirectedEvents]);
+        } else if (continued) this.notify(child);
       } catch (error) { warnings.push(`${record.id}: ${error instanceof Error ? error.message : String(error)}`); }
     }
     return warnings;
+  }
+
+  // vEe, sfn1dbxq [4228134,4228512), UTF-16. Legacy stops retained the
+  // original park digest and publication order but omitted the queued descriptors.
+  private legacyStopNotices(store: AgentHistoryStore, record: AgentHistoryRecord, rows: Session['events'],
+    runId: string, activeDigest: string): AgentNotification[] {
+    let boundary = rows.length;
+    while (boundary >= 2 && rows[boundary-1]?.kind === 'agent_history' && rows[boundary-2]?.kind === 'agent_history_intent') boundary -= 2;
+    const count = (rows.length-boundary)/2;
+    if (!count || count > Math.min(100,this.limits.maxEvents)) throw new Error('Legacy stop has no bounded publication suffix');
+    const prefix = rows.slice(0,boundary);
+    const receipt = prefix.findLast(row => row.kind === 'message' && row.notificationDelivery);
+    if (receipt?.kind !== 'message' || receipt.notificationDelivery?.owner !== record.id)
+      throw new Error('Legacy stop has no worker delivery receipt');
+    const deliveryId = receipt.notificationDelivery.deliveryId;
+    const intent = prefix.findLast(row => row.kind === 'notification_intent_v2' && row.deliveryId === deliveryId);
+    if (intent?.kind !== 'notification_intent_v2' || intent.owner !== record.id || intent.batch.kind !== 'agent_events' ||
+        intent.batch.receiverRunId !== runId) throw new Error('Legacy stop receipt does not match the receiving run');
+    const waiting = [], notices: AgentNotification[] = [];
+    for (let i = boundary; i < rows.length; i += 2) {
+      const settlement = rows[i], witness = rows[i+1];
+      if (settlement?.kind !== 'agent_history_intent' || settlement.parent !== record.id ||
+          witness?.kind !== 'agent_history' || witness.id !== settlement.id || witness.digest !== settlement.newDigest)
+        throw new Error('Legacy stop publication pair does not match');
+      const position = prefix.findLastIndex(row => row.kind === 'agent_history' && row.id === witness.id);
+      const prior = prefix[position];
+      const item = store.readPublishedDescendant(record.id,witness.id,witness.digest), state = item.state;
+      if (prior?.kind !== 'agent_history' || prior.digest !== settlement.oldDigest || !item.backgrounded ||
+          state.kind !== 'settled' || !state.runId || state.journal.bytes !== settlement.journal.bytes ||
+          state.journal.sha256 !== settlement.journal.sha256 || state.notificationAgent?.id !== item.id ||
+          state.notificationAgent.session_id !== item.id || state.notificationAgent.status !== state.status)
+        throw new Error('Legacy stop has no matching descendant result');
+      waiting.push({id:item.id,runId:state.runId,startedAt:item.startedAt,position});
+      notices.push({kind:'agent',sequence:notices.length+1,runId:state.runId,agent:state.notificationAgent});
+    }
+    // AgentHistoryStore.read sorts newest launches first, with reverse witness
+    // order as its stable tie breaker. The original digest verifies the order.
+    const waitingFor = waiting.sort((a,b)=>b.startedAt-a.startedAt || b.position-a.position).map(({id,runId})=>({id,runId}));
+    const parkedDelivery = {deliveryId,journal:witnessEvents(prefix),waitingFor};
+    if (fingerprintOf({...record,state:{kind:'active',runId,parkedDelivery}}) !== activeDigest)
+      throw new Error('Legacy stop does not match the recorded park');
+    return notices;
+  }
+
+  // SessionEnd raiser uvt, sfn1dbxq [2943750,2944030), UTF-16. Report only
+  // the hook boundaries present after this delivery; execution can precede its result.
+  private describeWorkerFinalization(parent: Session, worker: AgentHistoryHeader, deliveryId: string, runId: string): string {
+    let observed = '';
+    try {
+      const journal = readSessionJournal(parent.config.workspace,worker.id,{
+        maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents,
+      });
+      const meta = journal[0];
+      const intent = journal.findIndex(row => row.kind === 'notification_intent_v2' &&
+        row.owner === worker.id && row.deliveryId === deliveryId &&
+        row.batch.kind === 'agent_events' && row.batch.receiverRunId === runId);
+      const receipt = journal.findIndex(row => row.kind === 'message' &&
+        row.notificationDelivery?.owner === worker.id && row.notificationDelivery.deliveryId === deliveryId);
+      if (meta?.kind === 'metadata' && meta.config.parentSessionId === parent.id && meta.fingerprint === worker.fingerprint &&
+          intent >= 0 && receipt > intent) {
+        const after = journal.slice(receipt+1);
+        const end = after.findLastIndex(row => row.kind === 'turn_end');
+        if (end >= 0) {
+          observed = ' The worker journal records turn_end.';
+          const shutdown = after.slice(end+1);
+          const hook = shutdown.findLast(row => row.kind === 'hook_start' && row.event === 'SessionEnd');
+          if (hook?.kind === 'hook_start') {
+            const paired = shutdown.slice(shutdown.indexOf(hook)+1).some(row => row.kind === 'hook_result' &&
+              row.event === 'SessionEnd' && row.id === hook.id);
+            observed += paired ? ' It also records the matching SessionEnd hook result.' : ' It also records SessionEnd hook start.';
+          }
+        }
+      }
+    } catch { /* The parent claim still identifies the unresolved delivery when its child journal is unreadable. */ }
+    return observed;
+  }
+
+  // fQo, sfn1dbxq [4234807,4235398); kn, qw2csqy5 [22571,24971); wake router,
+  // rx2nah4x [229020,229780), UTF-16. Host recovery retains the receiving invocation.
+  async continueWorkerDeliveries(parent: Session, signal: AbortSignal, onUncertain: (message: string) => void): Promise<AgentDescriptor[]> {
+    this.assertCaller(parent);
+    if (!this.history || this.historySession !== parent || !parent.isOpen) throw new Error('Child recovery requires its owning session');
+    const { records, candidates } = this.history.read();
+    signal.throwIfAborted();
+    if (candidates.size) for (const warning of this.importSettledHistory(parent,this.history,candidates)) onUncertain(warning);
+    const recovered = this.recoveredSettlements.splice(0);
+    for (const record of records) {
+      signal.throwIfAborted();
+      this.assertCaller(parent);
+      const { state, ...history } = record;
+      if (state.kind !== 'active' || !state.runId || !record.skillName ||
+          !record.backgrounded || this.children.has(record.id)) continue;
+      if (this.hasParkedStop(parent,record)) {
+        await this.stopInterruptedTask(parent,record.id);
+        const stopped = this.children.get(record.id);
+        if (stopped) recovered.push(this.snapshot(stopped));
+        continue;
+      }
+      if (state.parkedDelivery) {
+        const digest = fingerprintOf(record);
+        const completed = new Set(parent.events.flatMap(row => row.kind === 'subtree_stop_redirect' && row.parent === parent.id ? [row.requestId] : []));
+        for (const row of parent.events.slice()) if (row.kind === 'subtree_stop_request' && row.parent === parent.id &&
+            row.receiver === record.id && row.activeDigest === digest && !completed.has(row.requestId) &&
+            state.parkedDelivery.waitingFor.some(item=>item.id === row.id && item.runId === row.runId))
+          await this.stopInterruptedTask(parent,row.id);
+      }
+      if (state.continuingDeliveryId) {
+        const observed = this.describeWorkerFinalization(parent,history,state.continuingDeliveryId,state.runId);
+        onUncertain(`Worker ${record.id} has an unresolved continuation for delivery ${state.continuingDeliveryId} (run ${state.runId}).${observed}`);
+        continue;
+      }
+      const events = readSessionJournal(parent.config.workspace, record.id,
+        {maxBytes:this.limits.maxJournalBytes, maxEvents:this.limits.maxJournalEvents});
+      const meta = events[0], tail = events.at(-1);
+      if (meta?.kind !== 'metadata' || meta.config.parentSessionId !== parent.id || !meta.config.childMode ||
+          meta.fingerprint !== record.fingerprint || meta.config.parentPlanId !== record.parentPlanId) continue;
+      const journal = witnessEvents(events);
+      if (state.parkedDelivery && journal.bytes <= state.parkedDelivery.journal.bytes) {
+        const parked = state.parkedDelivery;
+        if (journal.bytes !== parked.journal.bytes || journal.sha256 !== parked.journal.sha256 ||
+            fs.statSync(path.join(path.dirname(parent.file),record.id+'.jsonl')).size !== parked.journal.bytes)
+          onUncertain(`Worker ${record.id} journal changed after parking for delivery ${parked.deliveryId}.`);
+        else onUncertain(`Worker ${record.id} processed delivery ${parked.deliveryId} and is waiting for ${parked.waitingFor.map(item => item.id+' (run '+item.runId+')').join(', ')}.`);
+        continue;
+      }
+      let ready = state.readyDelivery?.journal.bytes === journal.bytes && state.readyDelivery.journal.sha256 === journal.sha256
+        ? state.readyDelivery : undefined;
+      if (ready && (ready.batch.receiverRunId !== state.runId || ready.batch.dropped || !ready.batch.events.length ||
+          ready.batch.events.some(event => !event.runId || event.subscription))) continue;
+      if (!ready && !state.parkedDelivery && !(tail?.kind === 'message' && tail.notificationDelivery?.owner === record.id)) {
+        if (state.readyDelivery) onUncertain(`Worker ${record.id} journal does not match selected delivery ${state.readyDelivery.deliveryId}.`);
+        else if (tail?.kind === 'notification_intent_v2' && tail.batch.kind === 'agent_events' && tail.batch.receiverRunId === state.runId)
+          onUncertain(`Worker ${record.id} has no committed message for delivery ${tail.deliveryId}.`);
+        continue;
+      }
+      const session = Session.open(parent.config.workspace, {id:record.id, config:meta.config, recoverLock:true,
+        expectedJournal:journal,childJournalLimits:this.limits});
+      try {
+        const store = new AgentHistoryStore(session,this.limits.maxJournalBytes,this.limits.maxHistory);
+        if (state.parkedDelivery) ready = this.parkedWake(session,state.runId,state.parkedDelivery,store);
+        const descendants = store.read();
+        const receipt = session.pendingWorkerReceipt;
+        if (!ready && (receipt?.runId !== state.runId || receipt.parent !== parent.id)) continue;
+        const deliveryId = ready?.deliveryId ?? receipt?.deliveryId;
+        if (!deliveryId || (state.preparedDeliveryId && state.preparedDeliveryId !== deliveryId) ||
+            (state.readyDelivery && state.readyDelivery.deliveryId !== deliveryId)) continue;
+        if (ready && (session.notificationCoordination.length || session.awaitingResponse)) continue;
+        // IX, 40cepjpq [110300,111850), UTF-16: the receiver stays alive for its
+        // other descendants. Their result queues must also have survived the crash.
+        const waitingFor = descendants.records.flatMap(item => item.backgrounded && item.state.kind === 'active' && item.state.runId
+          ? [{id:item.id,runId:item.state.runId}] : []);
+        const received = new Map<string,string>();
+        for (const row of session.events) {
+          if (row.kind !== 'message' || !row.notificationDelivery) continue;
+          const batch = session.branchMessage(row)?.inheritedNotification?.batch;
+          if (batch?.kind !== 'agent_events' || batch.receiverRunId !== state.runId) continue;
+          for (const event of batch.events) if (event.runId) received.set(event.agent.id,event.runId);
+        }
+        if (ready) {
+          if (ready.batch.events.some(event => received.get(event.agent.id) === event.runId)) continue;
+          for (const event of ready.batch.events) received.set(event.agent.id,event.runId!);
+        }
+        if (descendants.warnings.length || descendants.candidates.size || !received.size ||
+            descendants.records.some(item => item.backgrounded && (!item.state.runId ||
+              (item.state.kind === 'settled' && received.get(item.id) !== item.state.runId)))) continue;
+        if ([...received].some(([id,runId]) => !descendants.records.some(item => item.id === id &&
+            item.state.kind === 'settled' && item.state.runId === runId))) continue;
+        if (ready) for (const event of ready.batch.events) {
+          const item = descendants.records.find(candidate => candidate.id === event.agent.id);
+          if (!item || !item.backgrounded || item.state.kind !== 'settled' || item.state.runId !== event.runId || item.state.status !== event.agent.status ||
+              fs.existsSync(path.join(path.dirname(session.file),item.id+'.jsonl.lock')))
+            throw new Error('Selected notification requires a settled descendant');
+          const rows = readSessionJournal(parent.config.workspace,item.id,
+            {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents},item.state.journal);
+          if (rows[0]?.kind !== 'metadata' || rows[0].config.parentSessionId !== session.id || rows[0].fingerprint !== item.fingerprint)
+            throw new Error('Selected notification descendant identity mismatch');
+        }
+        const scope = this.validateColdSkillScope(session.file,record.skillName);
+        if (!scope) throw new Error('Child skill scope is missing');
+        const tools = this.restoredTools(meta.config);
+        this.capacity();
+        const progress = createAgentProgress();
+        let modelCalls = 0;
+        for (const row of events) if (row.kind === 'message' && row.response) { observeAgentResponse(progress,row.response); modelCalls++; }
+        const child: Child = {view:{id:record.id,session_id:record.id,name:record.name,status:'queued',mode:meta.config.childMode,
+          model:meta.config.model,summary:'',error:null,reason:null,model_calls:modelCalls,queued_messages:0},
+          session, config:structuredClone(session.config), resumeConfig:structuredClone(meta.config), tools,
+          controller:new AbortController(), mailbox:[], mailboxBytes:0,
+          accepted:events.filter(row => row.kind === 'message' && row.message.role === 'user' && !row.isMeta &&
+            (row.classifier?.origin.kind === 'human' || row.classifier?.origin.kind === 'peer')).length,
+          transcript:events.filter(transcriptEvent),inProgressToolUseIDs:new Set(),viewLeases:new Set(),
+          liveOwner:this.livePermissionOwner(),adoptionOnly:true,prompt:record.prompt,startedAt:record.startedAt,
+          progress,streamedChars:0,backgrounded:true,history,fork:record.fork,coldSkillScope:scope,
+          forkedSkillName:record.skillName,runId:state.runId,continuingDeliveryId:deliveryId,readyDelivery:ready,
+          ...(waitingFor.length ? {coldKeepalive:waitingFor} : {}),
+          journalEvents:events.length,journalBytes:fs.statSync(session.file).size};
+        // OMe/Tle, sfn1dbxq [4543991,4544354), UTF-16. A prepared record has
+        // not entered hooks or the model. Reopening it requires all receipt checks again.
+        if (!state.preparedDeliveryId) this.history.write({...history,state:{kind:'active',runId:state.runId,preparedDeliveryId:deliveryId,
+          ...(ready ? {readyDelivery:ready} : {})}});
+        this.children.set(record.id,child);
+        const abort = () => child.controller.abort(signal.reason);
+        signal.addEventListener('abort', abort, {once:true});
+        try {
+          if (signal.aborted) abort();
+          this.start(child);
+          await child.worker;
+        } finally { signal.removeEventListener('abort',abort); }
+        this.parkedOwners.delete(record.id);
+        for (const [id,target] of this.interruptedDescendants) if (target.receiver === record.id) this.interruptedDescendants.delete(id);
+        if (child.coldKeepalive && child.view.status === 'running') {
+          this.parkedOwners.add(record.id);
+          for (const waiting of waitingFor) this.interruptedDescendants.set(waiting.id,{receiver:record.id,runId:waiting.runId});
+          onUncertain(`Worker ${record.id} processed delivery ${deliveryId} and is waiting for ${waitingFor.map(item => item.id+' (run '+item.runId+')').join(', ')}.`);
+        } else recovered.push(this.snapshot(child));
+      } finally { if (session.isOpen) await session.close(); }
+    }
+    return recovered;
+  }
+
+  // IX, 40cepjpq [110300,111850); wake router, rx2nah4x [229020,229780), UTF-16.
+  // Recover the publication order only from settlement pairs appended after the parked turn.
+  private parkedWake(session: Session, receiverRunId: string, parked: ParkedWorkerDelivery, store: AgentHistoryStore): ReadyWorkerDelivery {
+    const descendants = store.read();
+    let count = 0, bytes = 0;
+    while (count < session.events.length && bytes < parked.journal.bytes)
+      bytes += Buffer.byteLength(JSON.stringify(session.events[count++])) + 1;
+    const prefix = session.events.slice(0,count), suffix = session.events.slice(count);
+    const previous = prefix.findLast(row => row.kind === 'message' && row.notificationDelivery?.deliveryId === parked.deliveryId);
+    const prior = previous?.kind === 'message' ? session.branchMessage(previous)?.inheritedNotification?.batch : undefined;
+    const last = suffix.at(-1);
+    const candidate = last?.kind === 'agent_history_intent' && descendants.candidates.size === 1 && descendants.candidates.has(last.id)
+      ? descendants.records.find(item => item.id === last.id) : undefined;
+    if (candidate) suffix.push({kind:'agent_history',id:candidate.id,digest:fingerprintOf(candidate)});
+    if (bytes !== parked.journal.bytes || witnessEvents(prefix).sha256 !== parked.journal.sha256 ||
+        prior?.kind !== 'agent_events' || prior.receiverRunId !== receiverRunId || !prior.events.length ||
+        descendants.warnings.length || (descendants.candidates.size && !candidate) || !suffix.length || suffix.length % 2)
+      throw new Error('Parked worker has no verified settlement after its recorded turn');
+    const waiting = new Map(parked.waitingFor.map(item => [item.id,item.runId]));
+    const events: AgentNotification[] = [];
+    let sequence = prior.events.at(-1)!.sequence;
+    for (let i = 0; i < suffix.length; i += 2) {
+      const intent = suffix[i], published = suffix[i+1];
+      if (intent?.kind !== 'agent_history_intent' || intent.parent !== session.id ||
+          published?.kind !== 'agent_history' || published.id !== intent.id || published.digest !== intent.newDigest)
+        throw new Error('Parked worker settlement pair is incomplete or unrelated');
+      const old = prefix.findLast(row => row.kind === 'agent_history' && row.id === intent.id);
+      const item = descendants.records.find(record => record.id === intent.id);
+      const state = item?.state, runId = waiting.get(intent.id);
+      if (!item?.backgrounded || !runId || state?.kind !== 'settled' || state.runId !== runId ||
+          old?.kind !== 'agent_history' || old.digest !== intent.oldDigest || fingerprintOf(item) !== published.digest ||
+          state.journal.bytes !== intent.journal.bytes || state.journal.sha256 !== intent.journal.sha256 ||
+          !state.notificationAgent || state.notificationAgent.id !== item.id || state.notificationAgent.session_id !== item.id ||
+          state.notificationAgent.status !== state.status)
+        throw new Error('Parked worker settlement does not match its waiting run');
+      waiting.delete(item.id);
+      events.push({kind:'agent', sequence:++sequence, runId, agent:state.notificationAgent});
+    }
+    if ([...waiting].some(([id,runId]) => !descendants.records.some(item => item.id === id && item.state.kind === 'active' && item.state.runId === runId)) ||
+        events.length > Math.min(100,this.limits.maxEvents) || events.reduce((sum,event) => sum+Buffer.byteLength(JSON.stringify(event)),0) > this.limits.maxEventBytes)
+      throw new Error('Parked worker result queue cannot be reconstructed');
+    if (candidate) this.commitDescendantPublication(session,store,candidate);
+    return {deliveryId:randomUUID(), journal:witnessEvents(session.events), batch:{kind:'agent_events',receiverRunId,events,dropped:0,maxOutputBytes:session.config.maxOutputBytes}};
+  }
+
+  // OMe/Tle, sfn1dbxq [4543991,4544354), UTF-16. Finish the original
+  // terminal publication under its owner before cancelling any enclosing run.
+  private commitDescendantPublication(owner: Session, store: AgentHistoryStore, record: AgentHistoryRecord,
+    verifiedRows?: Session['events']): boolean {
+    const intent = owner.events.findLast(row=>(row.kind === 'agent_history' || row.kind === 'agent_history_intent') && row.id === record.id);
+    const {state,...header} = record;
+    if (intent?.kind !== 'agent_history_intent' || intent.parent !== owner.id || state.kind !== 'settled' ||
+        !state.runId || intent.newDigest !== fingerprintOf(record) ||
+        (intent.cancelledRunId && (intent.cancelledRunId !== state.runId || state.status !== 'cancelled')))
+      throw new Error('Descendant terminal publication changed');
+    const rows = verifiedRows ?? readSessionJournal(owner.config.workspace,record.id,
+      {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents},state.journal);
+    const meta = rows[0], terminal = rows.findLast(row=>row.kind === 'turn_end' || row.kind === 'message' || row.kind === 'compact');
+    if (meta?.kind !== 'metadata' || meta.config.parentSessionId !== owner.id || meta.fingerprint !== record.fingerprint ||
+        terminal?.kind !== 'turn_end') throw new Error('Descendant terminal journal mismatch');
+    if (!intent.cancelledRunId && !intent.continuationDeliveryId &&
+        fingerprintOf({...header,state:{kind:'active',runId:state.runId}}) !== intent.oldDigest)
+      throw new Error('Descendant terminal publication has no matching active run');
+    if (intent.continuationDeliveryId && !intent.cancelledRunId &&
+        !rows.some(row=>row.kind === 'notification_intent_v2' && row.owner === record.id &&
+          row.deliveryId === intent.continuationDeliveryId && row.batch.kind === 'agent_events' && row.batch.receiverRunId === state.runId))
+      throw new Error('Descendant terminal publication has no matching delivery');
+    if (fs.existsSync(path.join(path.dirname(owner.file),record.id+'.jsonl.lock'))) {
+      if (!intent.shutdownLock || !intent.continuationDeliveryId) throw new Error('Late descendant journal is active');
+      let continued = false;
+      owner.reclaimWorkerShutdown(intent,()=>{ continued = store.commitCandidate(record); });
+      return continued;
+    }
+    return store.commitCandidate(record);
   }
 
   // kn, qw2csqy5 [11500,19000), UTF-16: retain scoped history before binding its live owner.
@@ -335,9 +749,39 @@ export class AgentRegistry {
   }
 
   // ad/Tle/kn, 40cepjpq [120014,120794), sfn1dbxq [4544058,4544310), qw2csqy5 [9345,31492), UTF-16.
-  private saveHistory(child: Child, active = false): void {
+  private saveHistory(child: Child, active = false, activeRunId?: string): void {
     if (!this.history || !child.history || child.historyInvalid) return;
-    if (active) { this.history.write({ ...child.history, state: { kind: 'active' } }); return; }
+    if (active) {
+      this.history.write({ ...child.history, state: { kind: 'active', ...(activeRunId ? { runId: activeRunId } : {}),
+        ...(child.continuingDeliveryId ? { continuingDeliveryId:child.continuingDeliveryId,
+          ...(child.session ? {claimedJournal:witnessEvents(child.session.events)} : {}) } : {}) } });
+      return;
+    }
+    const record = this.settledHistory(child, child.history);
+    const parent = this.parentRegistry, receiver = parent?.children.get(record.parent);
+    if (parent?.history && receiver?.parked && receiver.history && receiver.runId && receiver.session === this.historySession &&
+        !this.preparing.size && !this.dropped && !this.subscriptions.size && child.runId &&
+        !receiver.controller.signal.aborted && !receiver.mailbox.length && child.backgrounded) {
+      // IX [110300,111850), 40cepjpq; wake router [229020,229780), rx2nah4x (UTF-16).
+      // The descendant's final history witness is the last row needed to wake its parked receiver.
+      const publish = this.history.prepareWrite(record);
+      const event: AgentNotification = { kind:'agent',sequence:this.sequence+1,agent:this.snapshot(child),runId:child.runId };
+      // Match notify's FIFO append only while the entire projected batch fits one delivery.
+      if (this.events.length < Math.min(100,this.limits.maxEvents) &&
+          this.eventBytes + Buffer.byteLength(JSON.stringify(event)) <= this.limits.maxEventBytes &&
+          this.events.every(queued => queued.runId && !queued.subscription)) {
+        const journal = witnessEvents([...this.historySession!.events,{kind:'agent_history',id:record.id,digest:fingerprintOf(record)}]);
+        const ready: ReadyWorkerDelivery = {deliveryId:randomUUID(),journal,batch:{kind:'agent_events',receiverRunId:receiver.runId,
+          events:[...this.events,event],dropped:0,maxOutputBytes:receiver.config.maxOutputBytes}};
+        parent.history.write({...receiver.history,state:{kind:'active',runId:receiver.runId,readyDelivery:ready}});
+        receiver.stagedWake = ready;
+      }
+      publish();
+    } else this.history.write(record);
+    child.coldJournal = record.state.journal;
+  }
+
+  private settledHistory(child: Child, header: AgentHistoryHeader): AgentHistoryHeader & {state: Extract<AgentHistoryRecord['state'], {kind:'settled'}>} {
     const status = child.view.status;
     if (status === 'queued' || status === 'running') throw new Error('Child history requires a terminal state');
     const journalFile = path.join(this.source().workspace, '.agent', `${child.view.id}.jsonl`);
@@ -349,11 +793,13 @@ export class AgentRegistry {
     } finally { fs.closeSync(fd); }
     const boundary = journal.lastIndexOf(10) + 1;
     const witness = { bytes: boundary, sha256: createHash('sha256').update(journal.subarray(0, boundary)).digest('hex') };
-    this.history.write({ ...child.history, state: { kind: 'settled', status, summary: child.view.summary,
+    return { ...header, state: { kind: 'settled', status, summary: child.view.summary,
       error: child.view.error, reason: child.view.reason, modelCalls: child.view.model_calls,
       endedAt: child.endedAt ?? Date.now(), config: child.config,
-      journal: witness } });
-    child.coldJournal = witness;
+      // aB/LP, bk5ct2gw [267620,268165), UTF-16: retain the last known run for the next admission.
+      ...(child.runId ? { runId: child.runId } : {}),
+      ...(this.parentRegistry && child.backgrounded ? {notificationAgent:this.snapshot(child)} : {}),
+      journal: witness } };
   }
 
   private assertOpen(signal?: AbortSignal): void {
@@ -387,9 +833,237 @@ export class AgentRegistry {
   // CE/IC/dne, 24k7d6mw [674264,674472), sfn1dbxq [4222190,4222263)/[4233793,4234807), UTF-16.
   backgroundTasks(): import('./tasks-panel.js').BackgroundTaskSnapshot['agents'] {
     if (this.closed || this.options.signal?.aborted) return [];
-    return [...this.children.values()]
+    const live = [...this.children.values()]
       .filter(child => child.view.status === 'running' || child.backgrounded && child.view.status === 'completed')
       .map(child => ({ id: child.view.id, name: child.view.name, status: child.view.status, startedAt: child.startedAt }));
+    return [...live,...Array.from(this.parkedOwners,id => ({id,status:'interrupted'})),
+      ...Array.from(this.interruptedDescendants.keys(),id => ({id,status:'interrupted'}))];
+  }
+
+  // _k/Cfr, sfn1dbxq [4228512,4230112), dxp0113e [2037,2191), UTF-16.
+  // _k/Cfr, sfn1dbxq [4228512,4230112), dxp0113e [2037,2191), UTF-16.
+  private hasParkedStop(parent: Session, record: AgentHistoryRecord): boolean {
+    const digest = fingerprintOf(record);
+    return parent.events.some(row => row.kind === 'parked_agent_stop' && row.parent === parent.id &&
+      row.id === record.id && row.activeDigest === digest);
+  }
+
+  async stopInterruptedTask(parent: Session, id: string): Promise<boolean> {
+    const target = this.interruptedDescendants.get(id);
+    const receiverId = target?.receiver ?? id;
+    const history = this.history;
+    if (!history || (!target && !this.parkedOwners.has(id))) return false;
+    this.assertOpen();
+    this.assertCaller(parent);
+    const receiverRecord = history.read().records.find(item => item.id === receiverId);
+    const state = receiverRecord?.state;
+    if (this.historySession !== parent || !parent.isOpen || !receiverRecord || state?.kind !== 'active' ||
+        !state.runId) throw new Error('Interrupted task no longer belongs to this parked run');
+    if (!target && (state.preparedDeliveryId || state.continuingDeliveryId)) {
+      await this.cancelOwnedTree(parent,history,receiverRecord,state.runId,true);
+      this.importSettledHistory(parent,history);
+      this.changed();
+      return true;
+    }
+    if (!state.parkedDelivery) throw new Error('Interrupted task has no parked delivery');
+    const parked = state.parkedDelivery;
+    const limits = {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents};
+    const journal = witnessEvents(readSessionJournal(parent.config.workspace,receiverId,limits));
+    const receiver = Session.open(parent.config.workspace,{id:receiverId,recoverLock:true,expectedJournal:journal,childJournalLimits:this.limits});
+    try {
+      if (receiver.config.parentSessionId !== parent.id || fingerprint(receiver.config) !== receiverRecord.fingerprint)
+        throw new Error('Parked receiver identity changed');
+      const store = new AgentHistoryStore(receiver,this.limits.maxJournalBytes,this.limits.maxHistory);
+      // A stop may be retried after a prior descendant's durable publication.
+      // Only the original park or its verified settlement suffix can authorize it.
+      const published = new Set<string>();
+      if (journal.bytes !== parked.journal.bytes || journal.sha256 !== parked.journal.sha256) {
+        const batch = this.parkedWake(receiver,state.runId,parked,store).batch;
+        const previous = target && batch.events.find(event => event.agent.id === id);
+        if (previous && previous.agent.status !== 'cancelled') {
+          this.interruptedDescendants.delete(id);
+          this.changed();
+          return false;
+        }
+        for (const event of batch.events) published.add(event.agent.id);
+      }
+      const selected = target ? parked.waitingFor.filter(item => item.id === id && item.runId === target.runId) : parked.waitingFor;
+      if (!selected.length) throw new Error('Interrupted descendant run changed');
+      if (!target) {
+        const owned = store.read();
+        if (owned.warnings.length || owned.candidates.size || owned.records.some(record => record.state.kind === 'active' &&
+            !parked.waitingFor.some(waiting => waiting.id === record.id && waiting.runId === record.state.runId)))
+          throw new Error('Parked receiver owns an unverified descendant');
+      }
+      if (!target && !this.hasParkedStop(parent,receiverRecord))
+        parent.append({kind:'parked_agent_stop',parent:parent.id,id,activeDigest:fingerprintOf(receiverRecord)});
+      let requestId: string | undefined;
+      if (target) {
+        const activeDigest = fingerprintOf(receiverRecord);
+        const prior = parent.events.findLast(row=>row.kind === 'subtree_stop_request' && row.parent === parent.id &&
+          row.receiver === receiver.id && row.activeDigest === activeDigest && row.id === id && row.runId === target.runId);
+        if (prior?.kind === 'subtree_stop_request') requestId = prior.requestId;
+        else {
+          requestId = randomUUID();
+          parent.append({kind:'subtree_stop_request',requestId,parent:parent.id,receiver:receiver.id,activeDigest,id,runId:target.runId});
+        }
+      }
+      for (const waiting of selected) {
+        if (published.has(waiting.id)) continue;
+        const {records,warnings,candidates} = store.read();
+        const child = records.find(item => item.id === waiting.id);
+        if (warnings.length || candidates.size || !child?.backgrounded || child.state.kind !== 'active' || child.state.runId !== waiting.runId)
+          throw new Error('Interrupted descendant run changed');
+        await this.cancelOwnedTree(receiver,store,child,waiting.runId);
+      }
+      if (requestId) {
+        const witness = receiver.events.findLast(row=>row.kind === 'agent_history' && row.id === id);
+        if (witness?.kind !== 'agent_history') throw new Error('Missing stopped subtree publication');
+        const child = store.readPublishedDescendant(receiver.id,id,witness.digest);
+        if (child.state.kind !== 'settled' || child.state.status !== 'cancelled' || child.state.runId !== target?.runId)
+          throw new Error('Stopped subtree run changed');
+        const events = child.state.subtreeEvents ?? [];
+        if (!parent.events.some(row=>row.kind === 'subtree_stop_redirect' && row.parent === parent.id && row.requestId === requestId))
+          parent.append({kind:'subtree_stop_redirect',requestId,parent:parent.id,events});
+        this.queueRootNotices(parent,events);
+      } else {
+        const ready = this.parkedWake(receiver,state.runId,parked,store);
+        if (ready.batch.events.length !== parked.waitingFor.length || receiver.awaitingResponse)
+          throw new Error('Parked receiver still owns unfinished tasks');
+        assertPaired(receiver.messages);
+        const notices = ready.batch.events.flatMap(event => {
+          const witness = receiver.events.findLast(row=>row.kind === 'agent_history' && row.id === event.agent.id);
+          if (witness?.kind !== 'agent_history') throw new Error('Missing descendant publication');
+          const settled = store.readPublishedDescendant(receiver.id,event.agent.id,witness.digest);
+          return [event,...(settled.state.kind === 'settled' ? settled.state.subtreeEvents ?? [] : [])];
+        });
+        await this.publishInterruptedStop(receiver,history,receiverRecord,state.runId,{redirectedEvents:notices});
+        this.importSettledHistory(parent,history);
+      }
+      for (const waiting of selected) this.interruptedDescendants.delete(waiting.id);
+      this.changed();
+      return true;
+    } finally { if (receiver.isOpen) await receiver.close(); }
+  }
+
+  // _k/vEe, sfn1dbxq [4228134,4230112), UTF-16. Hold each immediate
+  // owner's journal lock while settling the runs recorded in its registry.
+  private async cancelOwnedTree(owner: Session, store: AgentHistoryStore, child: AgentHistoryRecord, runId: string,
+    rootStop = false): Promise<void> {
+    const limits = {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents};
+    const latest = owner.events.findLast(row=>(row.kind === 'agent_history' || row.kind === 'agent_history_intent') && row.id === child.id);
+    if (latest?.kind !== 'agent_history' || latest.digest !== fingerprintOf(child))
+      throw new Error('Interrupted worker has an unresolved history publication');
+    const rows = readSessionJournal(owner.config.workspace,child.id,limits);
+    const meta = rows[0];
+    if (meta?.kind !== 'metadata' || meta.config.parentSessionId !== owner.id || meta.fingerprint !== child.fingerprint)
+      throw new Error('Interrupted descendant identity changed');
+    if (child.state.kind !== 'active' || child.state.runId !== runId) throw new Error('Interrupted worker run changed');
+    const deliveryId = child.state.preparedDeliveryId ?? child.state.continuingDeliveryId;
+    if (deliveryId) {
+      const receipt = rows.find(row=>row.kind === 'message' && row.notificationDelivery?.owner === child.id &&
+        row.notificationDelivery.deliveryId === deliveryId);
+      const intent = rows.find(row=>row.kind === 'notification_intent_v2' && row.owner === child.id && row.deliveryId === deliveryId);
+      const snapshot = child.state.readyDelivery?.journal ?? child.state.claimedJournal;
+      let exact = false;
+      if (snapshot) {
+        let count = 0, bytes = 0;
+        while (count < rows.length && bytes < snapshot.bytes) bytes += Buffer.byteLength(JSON.stringify(rows[count++]))+1;
+        if (bytes !== snapshot.bytes || witnessEvents(rows.slice(0,count)).sha256 !== snapshot.sha256)
+          throw new Error('Interrupted delivery journal prefix changed');
+        exact = count === rows.length;
+        if (!exact && !intent && this.hasParkedStop(owner,child)) {
+          // After an authorized stop, child settlements may extend this prefix
+          // before a crash. Each publication still needs its own run witness.
+          exact = rows.slice(count).every(row=>
+            (row.kind === 'parked_agent_stop' && row.parent === child.id) ||
+            (row.kind === 'agent_history_intent' && row.parent === child.id && !!row.cancelledRunId) ||
+            row.kind === 'agent_history');
+        }
+      }
+      if (intent?.kind === 'notification_intent_v2') {
+        if (intent.batch.kind !== 'agent_events' || intent.batch.receiverRunId !== runId)
+          throw new Error('Interrupted notification has no matching receiving run');
+        if (receipt && rows.slice(rows.indexOf(receipt)+1).some(row=>
+            row.kind === 'turn_end' && row.reason !== 'aborted' || row.kind === 'hook_start' && row.event === 'SessionEnd'))
+          throw new Error('Interrupted delivery already entered finalization');
+      } else if (!exact) throw new Error('Interrupted delivery has no verified dispatch boundary');
+    }
+    const worker = Session.open(owner.config.workspace,{id:child.id,recoverLock:true,expectedJournal:witnessEvents(rows),childJournalLimits:this.limits});
+    try {
+      if (deliveryId) {
+        const receipt = worker.events.find(row=>row.kind === 'message' && row.notificationDelivery?.deliveryId === deliveryId);
+        if (receipt?.kind === 'message' && !worker.branchMessage(receipt)) throw new Error('Interrupted notification receipt is isolated');
+      }
+      if (rootStop && !this.hasParkedStop(owner,child))
+        owner.append({kind:'parked_agent_stop',parent:owner.id,id:child.id,activeDigest:fingerprintOf(child)});
+      const nested = new AgentHistoryStore(worker,this.limits.maxJournalBytes,this.limits.maxHistory);
+      const history = nested.read();
+      if (history.warnings.length || new Set(worker.events.flatMap(row=>row.kind === 'agent_history' ? [row.id] : [])).size !== history.records.length)
+        throw new Error('Interrupted descendant history is incomplete');
+      for (const item of history.records) {
+        if (item.state.kind === 'active') {
+          if (!item.backgrounded || !item.state.runId)
+            throw new Error('Interrupted descendant still owns unresolved tasks');
+          if (!this.hasParkedStop(worker,item))
+            worker.append({kind:'parked_agent_stop',parent:worker.id,id:item.id,activeDigest:fingerprintOf(item)});
+          await this.cancelOwnedTree(worker,nested,item,item.state.runId);
+        }
+        if (history.candidates.has(item.id)) this.commitDescendantPublication(worker,nested,item);
+      }
+      // vEe moves pending results in queue order. An existing delivery intent
+      // already claimed that invocation, even if its receipt was interrupted.
+      const publications = new Map<string,string>(), claimed = new Set<string>();
+      for (const row of worker.events) {
+        if (row.kind === 'agent_history') {
+          publications.delete(row.id);
+          publications.set(row.id,row.digest);
+        }
+        if (row.kind === 'notification_intent_v2' && row.owner === worker.id && row.batch.kind === 'agent_events')
+          for (const event of row.batch.events) if (!event.subscription && event.runId) claimed.add(event.agent.id+'/'+event.runId);
+      }
+      const notices: AgentNotification[] = [];
+      for (const [id,digest] of publications) {
+        const record = nested.readPublishedDescendant(worker.id,id,digest), settled = record.state;
+        if (!record.backgrounded || settled.kind !== 'settled' || !settled.runId || claimed.has(id+'/'+settled.runId)) continue;
+        const agent = settled.notificationAgent;
+        if (!agent || agent.id !== id || agent.session_id !== id || agent.status !== settled.status)
+          throw new Error('Missing witnessed descendant notification');
+        if (fs.existsSync(path.join(path.dirname(worker.file),id+'.jsonl.lock'))) throw new Error('Descendant result journal is active');
+        const journal = readSessionJournal(worker.config.workspace,id,limits,settled.journal);
+        const meta = journal[0], terminal = journal.findLast(row=>row.kind === 'turn_end' || row.kind === 'message' || row.kind === 'compact');
+        if (meta?.kind !== 'metadata' || meta.config.parentSessionId !== worker.id || meta.fingerprint !== record.fingerprint ||
+            terminal?.kind !== 'turn_end') throw new Error('Descendant result journal does not match its owner');
+        notices.push({kind:'agent',sequence:notices.length+1,agent,runId:settled.runId},...(settled.subtreeEvents ?? []));
+      }
+      if (worker.awaitingResponse) {
+        recoverPendingToolResults(worker);
+        worker.append({kind:'turn_end',reason:'aborted'});
+      } else {
+        const last = worker.events.findLast(row=>row.kind === 'turn_end' || row.kind === 'message' || row.kind === 'compact');
+        if (last?.kind !== 'turn_end' || (!deliveryId && !notices.length && last.reason !== 'aborted'))
+          throw new Error('Interrupted task has no recoverable turn boundary');
+        assertPaired(worker.messages);
+      }
+      await this.publishInterruptedStop(worker,store,child,runId,rootStop ? {redirectedEvents:notices} :
+        notices.length ? {subtreeEvents:notices} : {});
+    } finally { if (worker.isOpen) await worker.close(); }
+  }
+
+  private async publishInterruptedStop(worker: Session, store: AgentHistoryStore, child: AgentHistoryRecord, runId: string,
+    notices: {redirectedEvents?: AgentNotification[]; subtreeEvents?: AgentNotification[]}): Promise<void> {
+    const config = worker.config, id = worker.id;
+    if (!config.childMode) throw new Error('Interrupted task has no child mode');
+    const modelCalls = worker.events.filter(row => row.kind === 'message' && row.response).length;
+    const agent: AgentDescriptor = {id,session_id:id,name:child.name,status:'cancelled',mode:config.childMode,
+      model:config.model,summary:'',error:null,reason:'aborted',model_calls:modelCalls,queued_messages:0,
+      ...(this.options.enableAdvanced ? {workspace:config.workspace,...(child.subagentType ? {subagent_type:child.subagentType} : {})} : {})};
+    await worker.close();
+    const journal = witnessEvents(worker.events);
+    if (fs.existsSync(worker.file+'.lock')) throw new Error('Interrupted task journal is active');
+    readSessionJournal(config.workspace,id,{maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents},journal);
+    store.prepareWrite({...child,state:{kind:'settled',status:'cancelled',summary:'',error:null,reason:'aborted',
+      modelCalls,endedAt:Date.now(),config,runId,notificationAgent:agent,...notices,journal}},undefined,runId)();
   }
 
   /** kG/dne, 24k7d6mw [633300,637661), sfn1dbxq [4233793,4234807), UTF-16: passive retained task fields. */
@@ -507,7 +1181,15 @@ export class AgentRegistry {
   }
 
   private capacity(): void {
-    if (this.active >= this.limits.maxConcurrency) throw new Error('Child agent concurrency limit reached');
+    let root: AgentRegistry = this;
+    while (root.parentRegistry) root = root.parentRegistry;
+    if (root.activeWorkers() >= root.limits.maxConcurrency) throw new Error('Child agent concurrency limit reached');
+  }
+
+  private activeWorkers(): number {
+    let total = this.active;
+    for (const child of this.children.values()) total += child.nested?.activeWorkers() ?? 0;
+    return total;
   }
 
   // N4.submitToAgent/tqt/eqt, 24k7d6mw [1497670,1498885), sfn1dbxq [4223404,4224352), UTF-16.
@@ -579,6 +1261,7 @@ export class AgentRegistry {
     if (Buffer.byteLength(initialPrompt) > this.limits.maxMessageBytes) throw new Error('Child message byte limit exceeded');
     const parent = this.source();
     let supplied = this.options.tools;
+    if (!execution?.skillScope) assertAgentSpawnDepth(parent);
     if (execution) {
       if (execution.config.workspace !== parent.workspace) throw new Error('Child execution workspace must match parent');
       if (execution.tools.some(tool => !this.options.tools.includes(tool)) ||
@@ -645,6 +1328,8 @@ export class AgentRegistry {
     if (callerSignal?.aborted) onCallerAbort();
     this.active++;
     if (args.name) this.reservedNames.add(args.name);
+    const preparingSkill = execution?.skillScope?.skillName;
+    if (preparingSkill) this.preparingSkills.set(controller, preparingSkill);
     this.preparations.add(controller);
     let finishPreparation!: () => void;
     const preparation = new Promise<void>(resolve => { finishPreparation = resolve; });
@@ -693,14 +1378,10 @@ export class AgentRegistry {
           }
           await beforeTool?.(tool, input, context.signal, config.workspace, plan);
           context.signal.throwIfAborted();
-          return { ...context, ...(liveOwner ? { workingDirectories: liveOwner.workingDirectories } : {}), workspace: config.workspace, allowShell: context.allowShell && allowShell };
+          return { ...context, workingDirectories: context.workingDirectories ?? liveOwner.workingDirectories,
+            workspace: config.workspace, allowShell: context.allowShell && allowShell };
         };
-        return { ...tool,
-          async execute(input: unknown, context: ToolContext) { return tool.execute(input, await authorize(input, context)); },
-          ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
-            return tool.executeBlocks!(input, await authorize(input, context));
-          } } : {}),
-        };
+        return bindScopedChildTool(tool, authorize);
       });
       const metadataBytes = Buffer.byteLength(JSON.stringify({ kind: 'metadata', version: 1,
         id: '00000000-0000-4000-8000-000000000000', config, fingerprint: fingerprint(config) })) + 1;
@@ -712,7 +1393,7 @@ export class AgentRegistry {
       const seedBoundaryBytes = seedBoundary ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: seedBoundary })) + 1 : 0;
       if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + preloads.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
       const identityParent = !environment && !seededFork && !execution && this.options.requireSessionOwner ? this.historySession : undefined;
-      session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}),
+      session = Session.open(config.workspace, { config, childJournalLimits:this.limits, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}),
         ...(identityParent ? { childRoot: { parent: identityParent, isOwner: () => !this.closed &&
           this.historySession === identityParent && this.options.sessionOwner?.() === identityParent } } : {}) });
       if (execution?.skillScope) writeSkillScope(session.file, execution.skillScope);
@@ -737,6 +1418,7 @@ export class AgentRegistry {
         ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
         ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
       child = {
+        ...(preparingSkill ? { forkedSkillName: preparingSkill } : {}),
         view: { id: session.id, session_id: session.id, name: args.name ?? null, status: 'queued',
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
@@ -762,7 +1444,7 @@ export class AgentRegistry {
     } catch (error) {
       try { await hooks?.close(); }
       finally {
-        try { session?.close(); }
+        try { await session?.close(); }
         finally {
           try { await environment?.close(); }
           catch (cleanup) { throw new AggregateError([error, cleanup], `Child setup failed; cleanup failed at ${config.workspace}`); }
@@ -773,6 +1455,7 @@ export class AgentRegistry {
       callerSignal?.removeEventListener('abort', onCallerAbort);
       this.preparations.delete(controller);
       if (args.name) this.reservedNames.delete(args.name);
+      if (preparingSkill) this.preparingSkills.delete(controller);
       if (!started) this.active--;
       this.preparing.delete(preparation); finishPreparation();
     }
@@ -813,7 +1496,7 @@ export class AgentRegistry {
       }
       const transcriptLength = child.transcript.length;
       this.enqueue(child, message, options.human);
-      try { this.saveHistory(child, true); }
+      try { this.saveHistory(child, true, child.view.status === 'running' ? child.runId : undefined); }
       catch (error) {
         child.mailbox.pop(); child.mailboxBytes -= Buffer.byteLength(message); child.accepted--;
         child.transcript.length = transcriptLength;
@@ -843,6 +1526,7 @@ export class AgentRegistry {
       await this.releaseEnvironment(child);
       return this.snapshot(child);
     }
+    this.retireStagedWake(child);
     child.controller.abort();
     child.mailbox = []; child.mailboxBytes = 0;
     if (child.worker) await child.worker;
@@ -860,6 +1544,7 @@ export class AgentRegistry {
     }).finally(async () => {
       if (child.controller.signal.aborted || child.view.status === 'failed') await this.releaseEnvironment(child);
       this.active--; child.worker = undefined;
+      if (child.forkedSkillName) this.changed();
       this.deliverIdle(child);
       if (child.mailbox.length && !child.worker && !this.closed && !child.controller.signal.aborted && child.view.status !== 'failed') this.start(child);
       await this.trimHistory();
@@ -892,12 +1577,6 @@ export class AgentRegistry {
     session.append = (...args: Parameters<Session['append']>) => {
       const [event] = args;
       const bytes = Buffer.byteLength(JSON.stringify(event)) + 1;
-      // Reserve one record and enough bytes to commit a failed turn boundary.
-      const boundary = event.kind === 'turn_end';
-      if (child.journalEvents + 1 > this.limits.maxJournalEvents - (boundary ? 0 : 1) ||
-          child.journalBytes + bytes > this.limits.maxJournalBytes - (boundary ? 0 : 128)) {
-        throw new Error('Child journal limit reached');
-      }
       append(...args);
       child.journalEvents++; child.journalBytes += bytes;
       if (transcriptEvent(event)) {
@@ -923,6 +1602,14 @@ export class AgentRegistry {
 
   // IX, 40cepjpq [104577,115399); iYr/nsr, sfn1dbxq [4232306,4233793), UTF-16: owned run and terminal time.
   private async run(child: Child): Promise<void> {
+    const resumedDelivery = child.continuingDeliveryId;
+    let suspend = false;
+    let publishSettlement: (() => void) | undefined;
+    // LP, bk5ct2gw [267620,268165); un, j8hqhz0c [39120,41080), UTF-16.
+    // Each worker invocation follows the preceding terminal notification, including reentrant resumes.
+    const previous = child.runId?.match(/^[0-9a-z]{9}(?=-)/)?.[0];
+    const timestamp = Math.max(Date.now(), previous === undefined ? 0 : parseInt(previous, 36) + 1);
+    if (!child.continuingDeliveryId || !child.runId) child.runId = timestamp.toString(36).padStart(9, '0') + '-' + randomBytes(4).toString('hex');
     const signal = child.controller.signal;
     let started = false;
     let coldPermission: AgentEvents['permission'];
@@ -963,6 +1650,8 @@ export class AgentRegistry {
         bindPermissionOwner(config.permissions, parentOwner);
         const options = { config, provider: this.options.provider, tools: this.options.tools, signal, source: 'user' as const,
           requestPermission: this.requestApproval.bind(this) };
+        // kn, qw2csqy5 [22571,24971), UTF-16. Fence external work before hook approval.
+        if (child.continuingDeliveryId) this.saveHistory(child, true, child.runId);
         const prepared = await prepareSkillHooks(currentSkill, options, valid);
         if (!valid()) throw new Error('Session approval unavailable');
         const checkedScope = this.validateColdSkillScope(path.join(this.source().workspace, '.agent', `${child.view.id}.jsonl`), scope.skillName);
@@ -989,21 +1678,15 @@ export class AgentRegistry {
           return !!approval && valid() && !identity.signal.aborted && !context.signal.aborted &&
             approval.signal === context.signal && approval.tool === tool.schema.name && approval.input === JSON.stringify(input);
         };
-        child.tools = this.restoredTools(child.resumeConfig).map(tool => ({
-          ...tool,
-          async execute(input, context) {
-            if (!valid()) throw new Error('Session approval unavailable');
-            await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership, takeApproval(tool, input, context));
-            if (!valid()) throw new Error('Session approval unavailable');
-            return tool.execute(input, { ...context, workingDirectories: parentOwner.workingDirectories, allowShell: context.allowShell && config.allowShell });
-          },
-          ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
-            if (!valid()) throw new Error('Session approval unavailable');
-            await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership, takeApproval(tool, input, context));
-            if (!valid()) throw new Error('Session approval unavailable');
-            return tool.executeBlocks!(input, { ...context, workingDirectories: parentOwner.workingDirectories, allowShell: context.allowShell && config.allowShell });
-          } } : {}),
-        }));
+        // kn [22571,24971), Kt [121053,123737), UTF-16: rebuild the tool pool
+        // for the resumed child and keep the checked input through dispatch.
+        child.tools = this.restoredTools(child.resumeConfig).map(tool => bindScopedChildTool(tool, async (input, context) => {
+          if (!valid()) throw new Error('Session approval unavailable');
+          await beforeTool(tool, input, context.signal, context.workspace, context.planMode?.ownership, takeApproval(tool, input, context));
+          if (!valid()) throw new Error('Session approval unavailable');
+          return { ...context, workingDirectories: context.workingDirectories ?? parentOwner.workingDirectories,
+            allowShell: context.allowShell && config.allowShell };
+        }, 'after-approval'));
         child.liveOwner = owner;
         child.hookHomes = prepared.hookHomes;
         child.config.hooks = prepared.hooks;
@@ -1011,7 +1694,7 @@ export class AgentRegistry {
           approvalValid: valid, update: next => { currentSkill = next; } };
         delete child.coldSkillScope;
       }
-      const resumed = !child.session;
+      const resumed = !child.agent;
       if (resumed) {
         // kn, qw2csqy5 [22571,24971)/[25405,27805), UTF-16; journal identity and live skill context have separate owners.
         try {
@@ -1024,7 +1707,7 @@ export class AgentRegistry {
                 return child.coldRootVerified === true && !current.candidates.has(child.view.id) &&
                   record?.parent === parent.id && record.state.kind === 'active';
               } } : undefined;
-          child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig,
+          child.session ??= Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig, childJournalLimits:this.limits,
             ...(child.coldJournal ? { expectedJournal: child.coldJournal } : {}),
             ...(childRoot ? { childRoot } : {}),
             ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
@@ -1049,20 +1732,54 @@ export class AgentRegistry {
           ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
       }
       this.boundJournal(child);
+      // zUn/LP, bk5ct2gw [267620,268165), UTF-16: publish this invocation before its hooks or model turn.
+      if (!child.continuingDeliveryId) this.saveHistory(child, true, child.runId);
       delete child.endedAt;
       child.view.status = 'running'; this.changed();
       prepareSkill();
-      await child.agent!.startSession(resumed ? 'resume' : child.fork ? 'fork' : 'startup', signal);
+      if (!child.continuingDeliveryId) await child.agent!.startSession(resumed ? 'resume' : child.fork ? 'fork' : 'startup', signal);
       started = true;
       let firstPrompt = true;
-      while (child.mailbox.length) {
+      while (true) {
         signal.throwIfAborted();
+        const nested = child.nested;
+        const continuing = firstPrompt && child.continuingDeliveryId !== undefined;
+        const prompt = continuing ? undefined : child.mailbox.shift();
+        const delivery = prompt ? undefined : nested?.pendingWorkerBatch(child.config.maxOutputBytes, child.runId);
+        if (!prompt && !delivery && !continuing) {
+          if (!nested?.active) break;
+          // IX, 40cepjpq [110300,111850), UTF-16: withhold the owner's terminal
+          // notification while its descendants run. Mailbox and task changes wake it.
+          child.parked = true;
+          try { await this.poll({waitMs:30000, signal}); } finally { child.parked = false; }
+          continue;
+        }
         if (!firstPrompt) prepareSkill();
         firstPrompt = false;
-        const prompt = child.mailbox.shift()!;
-        child.mailboxBytes -= Buffer.byteLength(prompt.text);
-        child.activeInput = prompt.displayId;
-        const result = await child.agent!.run(prompt.text, signal, undefined, undefined, [], undefined, prompt.origin);
+        child.activeInput = prompt?.displayId;
+        let result: RunResult;
+        if (continuing) {
+          if (child.readyDelivery) {
+            const ready = child.readyDelivery;
+            const registry = this.nestedSkillRegistry(child.session!,this.historySession!);
+            for (const event of ready.batch.events) {
+              const descendant = registry.children.get(event.agent.id);
+              if (!descendant || descendant.runId !== event.runId || descendant.view.status !== event.agent.status)
+                throw new Error('Nested delivery no longer matches settled history');
+            }
+            registry.events = structuredClone(ready.batch.events);
+            registry.eventBytes = registry.events.reduce((size,event) => size + Buffer.byteLength(JSON.stringify(event)),0);
+            registry.sequence = registry.events.at(-1)!.sequence;
+            result = await registry.deliverWorkerBatch(child,ready.batch,signal,ready.deliveryId);
+            delete child.readyDelivery;
+          } else result = await child.agent!.run(undefined,signal);
+          delete child.continuingDeliveryId;
+        } else if (prompt) {
+          child.mailboxBytes -= Buffer.byteLength(prompt.text);
+          result = await child.agent!.run(prompt.text, signal, undefined, undefined, [], undefined, prompt.origin);
+        } else {
+          result = await nested!.deliverWorkerBatch(child, delivery!, signal);
+        }
         child.view.reason = field(result.reason, this.limits.maxOutputBytes);
         child.view.summary = field(result.text, this.limits.maxOutputBytes);
         if (child.structured !== undefined) {
@@ -1089,7 +1806,10 @@ export class AgentRegistry {
           throw new Error('Child journal limit reached');
         }
       }
-      child.view.status = signal.aborted ? 'cancelled' : 'completed';
+      // IX, 40cepjpq [110300,111850), UTF-16: defer terminal reporting while
+      // another descendant owns a keepalive. Its old provider call cannot be resumed here.
+      suspend = !!child.coldKeepalive && !signal.aborted;
+      child.view.status = signal.aborted ? 'cancelled' : suspend ? 'running' : 'completed';
     } catch (error) {
       child.view.status = signal.aborted ? 'cancelled' : 'failed';
       child.view.error = field(error instanceof Error ? error.message : String(error), this.limits.maxOutputBytes);
@@ -1099,8 +1819,17 @@ export class AgentRegistry {
         catch { /* Preserve the original failure if the journal itself failed. */ }
       }
     } finally {
+      this.retireStagedWake(child);
+      if (child.nested) {
+        try { await child.nested.close(); }
+        catch (error) {
+          child.view.status = 'failed';
+          child.view.error = field(error instanceof Error ? error.message : String(error), this.limits.maxOutputBytes);
+        }
+        child.nested = undefined;
+      }
       child.mailbox = []; child.mailboxBytes = 0;
-      try { if (started) await child.agent?.endSession(signal.aborted ? 'interrupt' : 'other'); }
+      try { if (started && !suspend) await child.agent?.endSession(signal.aborted ? 'interrupt' : 'other'); }
       catch (error) {
         if (!signal.aborted) {
           child.view.status = 'failed';
@@ -1112,28 +1841,120 @@ export class AgentRegistry {
           child.view.status = 'failed';
           child.view.error = field(error instanceof Error ? error.message : String(error), this.limits.maxOutputBytes);
         } finally {
-          try { child.session?.close(); }
+          // IX, 40cepjpq [114500,115399), UTF-16. Host session shutdown
+          // also drains pending permission writes before publishing the result.
+          try {
+            const store = this.history, header = child.history, session = child.session;
+            await session?.close(resumedDelivery && store && header && !child.historyInvalid ? async lock => {
+              try {
+                // Child permission adoption delegates persistence to the live parent.
+                await this.historySession!.drainPermissionWrites();
+                child.endedAt = Date.now();
+                const journal = witnessEvents(session.events);
+                if (suspend) {
+                  if (child.view.status !== 'running') throw new Error(child.view.error ?? 'Worker could not park');
+                  readSessionJournal(session.config.workspace,session.id,
+                    {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents},journal);
+                  store.park(header,child.runId!,{deliveryId:resumedDelivery,journal,waitingFor:child.coldKeepalive!});
+                  return;
+                }
+                const record = this.settledHistory(child, header);
+                if (journal.bytes !== record.state.journal.bytes || journal.sha256 !== record.state.journal.sha256 ||
+                    fs.statSync(session.file).size !== journal.bytes)
+                  throw new Error('Child journal changed during shutdown');
+                const publish = store.prepareWrite(record,lock);
+                publishSettlement = () => {
+                  if (fs.existsSync(session.file + '.lock')) throw new Error('Child journal is active');
+                  readSessionJournal(session.config.workspace,session.id,
+                    {maxBytes:this.limits.maxJournalBytes,maxEvents:this.limits.maxJournalEvents},journal);
+                  publish();
+                  child.coldJournal = journal;
+                };
+              } catch (error) {
+                child.historyInvalid = true;
+                throw error;
+              }
+            } : undefined);
+          }
           catch (error) {
+            publishSettlement = undefined;
+            if (resumedDelivery && child.session && fs.existsSync(child.session.file+'.lock')) child.historyInvalid = true;
             child.view.status = 'failed';
             child.view.error = field(error instanceof Error ? error.message : String(error), this.limits.maxOutputBytes);
           }
           child.session = undefined; child.agent = undefined; child.hooks = undefined;
         }
       }
-      child.endedAt = Date.now();
-      try { this.saveHistory(child); }
-      catch (error) {
-        child.view.status = 'failed';
-        child.view.error = field(`Child history commit failed: ${error instanceof Error ? error.message : String(error)}`, this.limits.maxOutputBytes);
+      if (suspend) {
+        this.children.delete(child.view.id);
+      } else {
+        if (!publishSettlement) child.endedAt = Date.now();
+        try { if (publishSettlement) publishSettlement(); else this.saveHistory(child); }
+        catch (error) {
+          child.view.status = 'failed';
+          child.view.error = field(`Child history commit failed: ${error instanceof Error ? error.message : String(error)}`, this.limits.maxOutputBytes);
+        }
+        this.notify(child);
       }
-      this.notify(child);
     }
   }
 
+  private pendingWorkerBatch(maxOutputBytes: number, receiverRunId: string): Extract<NotificationBatch, {kind:'agent_events'}> | undefined {
+    if (!this.events.length && this.dropped === this.deliveredNestedDrops) return;
+    // aB/zUn, bk5ct2gw [267620,268165), and wake router, rx2nah4x [229020,229780), UTF-16.
+    return {kind:'agent_events', receiverRunId, ...this.peekNotifications(), maxOutputBytes};
+  }
+
+  // wake router, rx2nah4x [229020,229780), UTF-16: consume only the commands
+  // selected for this delivery, after the receiving worker commits its prompt.
+  private async deliverWorkerBatch(child: Child, batch: Extract<NotificationBatch, {kind:'agent_events'}>,
+      signal: AbortSignal, deliveryId: string = randomUUID()): Promise<RunResult> {
+    const session = child.session!, owner = session.id;
+    const live = () => !signal.aborted && session.isOpen && child.session === session && child.nested === this &&
+      child.runId === batch.receiverRunId;
+    const count = batch.events.length;
+    // Wake router, rx2nah4x [229020,229780), UTF-16. Preserve its exact selected
+    // commands under the root before the receiving journal or prompt hooks run.
+    if (!child.continuingDeliveryId && child.history && this.parentRegistry?.history &&
+        !this.active && !this.preparing.size && !this.subscriptions.size && !this.dropped &&
+        batch.events.length === this.events.length && batch.events.every(event => event.runId && !event.subscription)) {
+      const journal = witnessEvents(session.events);
+      if (child.stagedWake?.journal.sha256 === journal.sha256 && fingerprintOf(child.stagedWake.batch) === fingerprintOf(batch))
+        deliveryId = child.stagedWake.deliveryId;
+      else this.parentRegistry.history.write({ ...child.history, state:{kind:'active',runId:child.runId,
+        readyDelivery:{deliveryId,batch,journal}} });
+      // Retire the pre-dispatch proof before entering delivery. A later truncated
+      // worker journal must never turn an already attempted prompt back into ready work.
+      this.parentRegistry.saveHistory(child,true,child.runId);
+      delete child.stagedWake;
+    } else if (child.stagedWake) this.parentRegistry?.retireStagedWake(child);
+    session.append({kind:'notification_intent_v2', owner, deliveryId, batch});
+    const authorization = issueNotificationAuthorization(session, deliveryId, batch, live, () => ({
+      ...batch, events:count ? this.peekNotifications(count).events : [],
+    }));
+    let committed = false;
+    const result = await child.agent!.run(renderNotificationBatch(batch), signal, undefined, undefined, [], undefined,
+      {kind:'generated', source:'task-notification'}, undefined, () => {
+        const consumed = new Set(batch.events.map(event => event.sequence));
+        this.events = this.events.filter(event => {
+          if (!consumed.has(event.sequence)) return true;
+          this.eventBytes -= Buffer.byteLength(JSON.stringify(event));
+          return false;
+        });
+        this.deliveredNestedDrops = batch.dropped;
+        committed = true;
+      }, undefined, {owner, deliveryId}, authorization);
+    if (!committed) throw new Error('Nested task notification was not committed');
+    return result;
+  }
+
   private notify(child: Child, subscription?: AgentNotification['subscription'], agent = this.snapshot(child)): void {
-    this.changed();
-    const event: AgentNotification = { kind: 'agent', sequence: ++this.sequence, agent,
-      ...(subscription ? { subscription } : {}) };
+    this.enqueueNotification({ kind: 'agent', sequence: ++this.sequence, agent,
+      ...(!subscription && child.runId ? { runId: child.runId } : {}),
+      ...(subscription ? { subscription } : {}) });
+  }
+
+  private enqueueNotification(event: AgentNotification): void {
     const size = Buffer.byteLength(JSON.stringify(event));
     if (size <= this.limits.maxEventBytes) {
       while (this.events.length >= this.limits.maxEvents || this.eventBytes + size > this.limits.maxEventBytes) {
@@ -1141,6 +1962,7 @@ export class AgentRegistry {
       }
       this.events.push(event); this.eventBytes += size;
     } else this.dropped++;
+    this.changed();
     try { this.options.onNotification?.(structuredClone(event)); }
     catch { /* Observer failures do not replace the child result. */ }
   }
@@ -1175,6 +1997,12 @@ export class AgentRegistry {
     });
   }
 
+  private retireStagedWake(child: Child): void {
+    if (!child.stagedWake) return;
+    this.saveHistory(child,true,child.runId);
+    delete child.stagedWake;
+  }
+
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true;
@@ -1185,6 +2013,7 @@ export class AgentRegistry {
     const children = [...this.children.values()];
     for (const controller of this.preparations) controller.abort();
     for (const child of children) {
+      this.retireStagedWake(child);
       child.controller.abort(); child.mailbox = []; child.mailboxBytes = 0;
     }
     this.closing = (async () => {

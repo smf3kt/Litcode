@@ -1,0 +1,91 @@
+{
+  "source": {
+    "module": "chunk-sfn1dbxq.js",
+    "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "symbol": "Mln",
+    "range": [
+      2910556,
+      2915370
+    ],
+    "coordinates": "zero-based half-open UTF-16",
+    "bodySha256": "d7e379ef615a9425b26fca39170e9c299bb58c96f7124a4eecc78b154166e812"
+  },
+  "agentCLI": [
+    {
+      "mcp": false,
+      "cut": "normal",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": false,
+      "cut": "admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": false,
+      "cut": "fulfilled",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": false,
+      "cut": "resolver_returned",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "mcpCLI": [
+    {
+      "mcp": true,
+      "cut": "normal",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": true,
+      "cut": "admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": true,
+      "cut": "fulfilled",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "mcp": true,
+      "cut": "resolver_returned",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "identity": "42c866ccdc29925c9506c8f0f8ea38b5ecd5ba6c5f4c6bbe2c3824ea2b8d4c5d",
+  "driverSha256": "1eacd656c423bebcfa262147c93a5a712f1e27be6c929670b53694b22524cbce",
+  "tests": {
+    "focused": 34,
+    "transportSuite": 69,
+    "overlap": 3,
+    "distinct": 100
+  },
+  "upstream": 0,
+  "entrypointsExecuted": 0
+}

@@ -21,6 +21,9 @@ import { relocateSession } from '../src/workspace-session.js';
 import { checkpointConversation, checkpointConversationWithDirectoryWitness, inspectDirectoryCheckpointWitness,
   readDirectoryCheckpointBackup, previewRewind, applyRewind, applyRewindAfterRelease } from '../src/rewind.js';
 import { verifyDirectoryCheckpointTornCandidate } from '../src/directory-checkpoint.js';
+import { planDirectoryRewind } from '../src/directory-rewind-plan.js';
+import { directoryRewindEvidenceSchema, encodeDirectoryRewindPlan, verifyDirectoryRewindObjects } from '../src/directory-rewind-evidence.js';
+import { readStableDirectoryFile } from '../src/directory-file-state.js';
 import { recoverCheckpoint } from '../src/checkpoints.js';
 import { permissionDecision } from '../src/permissions.js';
 import { executeSkill } from '../src/skill-runtime.js';
@@ -33,7 +36,7 @@ import { createSubagentTool } from '../src/subagents.js';
 import { Session, type SessionConfig, type ToolResult } from "../src/session.js";
 import { listSessions } from "../src/sessions.js";
 import type { ModelProvider, ModelRequest } from "../src/provider.js";
-import { bindRuntimeTool, createTools, type ToolDefinition } from "../src/tools.js";
+import { bindRuntimeTool, bindScopedChildTool, createTools, executeAgentTool, type ToolDefinition } from "../src/tools.js";
 import { createTaskTools, readTaskRecord, readTaskRecords } from "../src/tasks.js";
 import { StatusLine } from '../src/tui-statusline.js';
 import { createNotebookTools } from '../src/notebooks.js';
@@ -308,9 +311,9 @@ test("agent model hook reads real workspace evidence through exactly the read-to
     assert.match(JSON.stringify(request.messages), /ACTUAL_WORKSPACE_EVIDENCE/);
     return verdict();
   }]);
-  const session = Session.open(root, { config: config(root, tools, { hooks: { PermissionRequest: [{ type: "agent", prompt: "AGENT_HOOK_FIXTURE" }] } }) });
+  const session = Session.open(root, { config: config(root, tools, { hooks: { PreToolUse: [{ type: "agent", prompt: "AGENT_HOOK_FIXTURE" }] } }) });
   try {
-    const result = await new Agent(session, provider, tools).emitHook("PermissionRequest", {});
+    const result = await new Agent(session, provider, tools).emitHook("PreToolUse", {});
     assert.equal(result.blocked, false);
     assert.equal(provider.requests.length, 2);
     assert.equal(provider.counts.length, 2);
@@ -561,9 +564,9 @@ test("agent hook pairs denied read input and attempted write as errors without e
       return verdict();
     },
   ]);
-  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: "default", allow: [], deny: [], inputRules: [{ tool: "read_file", path: "blocked.txt", decision: "deny" }] }, hooks: { PermissionRequest: [{ type: "agent", prompt: "check inputs" }] } }) });
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: "default", allow: [], deny: [], inputRules: [{ tool: "read_file", path: "blocked.txt", decision: "deny" }] }, hooks: { PreToolUse: [{ type: "agent", prompt: "check inputs" }] } }) });
   try {
-    await new Agent(session, provider, tools).emitHook("PermissionRequest", {});
+    await new Agent(session, provider, tools).emitHook("PreToolUse", {});
     assert.deepEqual(mutable.inputs, []);
     assert.deepEqual(safe.inputs, [{ path: "." }]);
     assert.equal(fs.existsSync(path.join(root, "effect.txt")), false);
@@ -582,13 +585,13 @@ test("Agent main loop invokes configured model hook read loop and keeps hook too
     request => { assert.equal(hookRequest(request), false); return response([call("main-call", "mutate", { path: "a" })], "tool_use"); },
     request => {
       assert.equal(hookRequest(request), true);
-      assert.match(String(request.messages[0]!.content), /CONFIGURED_PERMISSION_HOOK/);
+      assert.match(String(request.messages[0]!.content), /CONFIGURED_PRE_TOOL_HOOK/);
       return response([call("hook-read", "read_file", { path: "evidence.txt" })], "tool_use");
     },
     request => { assert.equal(hookRequest(request), true); assert.match(JSON.stringify(request.messages), /MAIN_LOOP_HOOK_EVIDENCE/); return verdict(); },
     request => { assert.equal(hookRequest(request), false); return done(); },
   ]);
-  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: "ask", allow: [], deny: [] }, hooks: { PermissionRequest: [{ type: "agent", prompt: "CONFIGURED_PERMISSION_HOOK" }] } }) });
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: "ask", allow: [], deny: [] }, hooks: { PreToolUse: [{ type: "agent", prompt: "CONFIGURED_PRE_TOOL_HOOK" }] } }) });
   let approved = 0;
   try {
     const result = await new Agent(session, provider, tools, { permission: async () => { approved++; return true; } }).run("main task");
@@ -604,6 +607,29 @@ test("Agent main loop invokes configured model hook read loop and keeps hook too
   } finally { session.close(); }
 });
 
+test('unsupported permission agent hook never calls the model and never replaces human approval', async () => {
+  for (const allowed of [false, true]) {
+    const root = workspace(), effect = spy('mutate');
+    const provider = new ScriptedProvider([
+      response([call('main-call', 'mutate', { path: 'a' })], 'tool_use'),
+      request => { assert.equal(hookRequest(request), false); return done(); },
+    ]);
+    let session = Session.open(root, { config: config(root, [effect.tool], { permissions: { mode: 'ask', allow: [], deny: [] },
+      hooks: { PermissionRequest: [{ type: 'agent', prompt: 'must not authorize this call' }] } }) });
+    let approvals = 0;
+    try {
+      await new Agent(session, provider, [effect.tool], { permission: async () => { approvals++; return allowed; } }).run('task');
+      assert.equal(approvals, 1); assert.equal(provider.requests.length, 2);
+      assert.equal(effect.inputs.length, allowed ? 1 : 0);
+      const id = session.id; session.close(); session = Session.open(root, { id });
+      const result = session.events.find(event => event.kind === 'hook_result' && event.event === 'PermissionRequest');
+      assert.ok(result?.kind === 'hook_result'); assert.equal(result.blocked, false);
+      assert.ok(result.additionalContext.some(text => text.includes('agent-type hooks are not supported for PermissionRequest')));
+      assert.equal(resultBatches(session)[0]?.[0]?.is_error, allowed ? undefined : true);
+    } finally { session.close(); }
+  }
+});
+
 test("agent hook accepts exactly 32 tool calls and counts the paired context again", async () => {
   const root = workspace();
   const read = spy("read_file", true);
@@ -617,9 +643,9 @@ test("agent hook accepts exactly 32 tool calls and counts the paired context aga
       return verdict();
     },
   ]);
-  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PermissionRequest: [{ type: "agent", prompt: "batch boundary" }] } }) });
+  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PreToolUse: [{ type: "agent", prompt: "batch boundary" }] } }) });
   try {
-    const result = await new Agent(session, provider, [read.tool]).emitHook("PermissionRequest", {});
+    const result = await new Agent(session, provider, [read.tool]).emitHook("PreToolUse", {});
     assert.equal(result.blocked, false);
     assert.equal(read.inputs.length, 32);
     assert.equal(provider.counts.length, 2);
@@ -631,11 +657,11 @@ test("agent hook context budget is counted before any model request or tool effe
   const root = workspace();
   const read = spy("read_file", true);
   const provider = new ScriptedProvider([]);
-  const cfg = config(root, [read.tool], { hooks: { PermissionRequest: [{ type: "agent", prompt: "budget fixture" }] } });
+  const cfg = config(root, [read.tool], { hooks: { PreToolUse: [{ type: "agent", prompt: "budget fixture" }] } });
   provider.countFn = () => cfg.compactAt;
   const session = Session.open(root, { config: cfg });
   try {
-    const result = await new Agent(session, provider, [read.tool]).emitHook("PermissionRequest", {});
+    const result = await new Agent(session, provider, [read.tool]).emitHook("PreToolUse", {});
     assert.equal(provider.counts.length, 1);
     assert.equal(provider.requests.length, 0);
     assert.deepEqual(read.inputs, []);
@@ -651,9 +677,9 @@ test("agent hook stops at eight counted calls even when model keeps requesting r
     assertPaired(request.messages);
     return response([call(`read-${index}`, "read_file", { path: "evidence.txt" })], "tool_use");
   }));
-  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PermissionRequest: [{ type: "agent", prompt: "call budget" }] } }) });
+  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PreToolUse: [{ type: "agent", prompt: "call budget" }] } }) });
   try {
-    const result = await new Agent(session, provider, [read.tool]).emitHook("PermissionRequest", {});
+    const result = await new Agent(session, provider, [read.tool]).emitHook("PreToolUse", {});
     assert.equal(provider.requests.length, 8);
     assert.equal(provider.counts.length, 8);
     assert.equal(read.inputs.length, 8);
@@ -666,9 +692,9 @@ test("agent hook rejects batches beyond 32 tool calls before executing any tool"
   const root = workspace();
   const read = spy("read_file", true);
   const provider = new ScriptedProvider([response(Array.from({ length: 33 }, (_, index) => call(`read-${index}`, "read_file", { path: "evidence.txt" })), "tool_use")]);
-  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PermissionRequest: [{ type: "agent", prompt: "tool batch cap" }] } }) });
+  const session = Session.open(root, { config: config(root, [read.tool], { hooks: { PreToolUse: [{ type: "agent", prompt: "tool batch cap" }] } }) });
   try {
-    const result = await new Agent(session, provider, [read.tool]).emitHook("PermissionRequest", {});
+    const result = await new Agent(session, provider, [read.tool]).emitHook("PreToolUse", {});
     assert.equal(provider.requests.length, 1);
     assert.deepEqual(read.inputs, []);
     assert.ok(result.additionalContext.some(text => text.includes("resolver failed")));
@@ -821,6 +847,35 @@ test('compiled CLI preserves tool hook correlation and runtime async job ids acr
     const cold: childProcess.SpawnSyncReturns<string> = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', reader, root, journal.slice(0, -6)],
       { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
     assert.equal(cold.status, 0, cold.stderr); assert.deepEqual(JSON.parse(cold.stdout), { calls, jobs });
+  }
+});
+
+test('built-in text and notebook edits recheck a hook-selected target before execution', async () => {
+  for (const notebook of [false, true]) {
+    const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
+    const name = notebook ? 'notebook_edit' : 'edit_file';
+    const original = notebook ? 'original.ipynb' : 'original.txt';
+    const selected = notebook ? 'selected.ipynb' : 'selected.txt';
+    const initial = notebook ? JSON.stringify({ nbformat:4, nbformat_minor:5, cells:[{id:'a',cell_type:'markdown',source:'before'}] }) : 'before';
+    for (const file of [original, selected]) fs.writeFileSync(path.join(root,file),initial);
+    const args = (file: string) => notebook ? {path:file,cell_id:'a',new_source:'approved'} :
+      {path:file,old_string:'before',new_string:'approved'};
+    const session = Session.open(root,{config:config(root,tools,{
+      permissions:{mode:'default',allow:[],ask:[name],deny:[]},
+      hooks:{PreToolUse:[{matcher:name,command:emit({hookSpecificOutput:{hookEventName:'PreToolUse',updatedInput:args(selected)}})}]},
+    })});
+    const prompts: string[] = [];
+    try {
+      const provider = new ScriptedProvider([response([call('read','read_file',{path:selected})],'tool_use'),
+        response([call('edit',name,args(original))],'tool_use'),done()]);
+      await new Agent(session,provider,tools,{permissionPrompt:'interactive',permission:async request => {
+        prompts.push((request.input as {path:string}).path);
+        return true;
+      }}).run('apply the selected edit');
+      assert.deepEqual(prompts,[original,selected],JSON.stringify(resultBatches(session)));
+      assert.equal(fs.readFileSync(path.join(root,original),'utf8'),initial);
+      assert.match(fs.readFileSync(path.join(root,selected),'utf8'),/approved/);
+    } finally { await session.close(); }
   }
 });
 
@@ -1129,6 +1184,57 @@ test("PermissionRequest allow applies session permission updates before the call
     assert.equal(batches[0]![0]!.is_error, undefined);
     assert.match(String(batches[1]![0]!.content), /Plan mode permits read-only tools: write_file/);
   } finally { session.close(); }
+});
+
+test("permission batches wait for their own primary writes across files", async () => {
+  const root = workspace(), userDir = path.join(root,'user');
+  const session = Session.open(root,{ config: config(root,[],{ configSources: { userDir } }) });
+  const project = path.join(root,'.harness/settings.json');
+  const { queuePermissionSettingsWrite } = await import('../src/permission-settings.js');
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const blocked = queuePermissionSettingsWrite(project,() => gate);
+  const rule = (toolName: string, destination: 'userSettings' | 'projectSettings'): import('../src/permissions.js').PermissionUpdate =>
+    ({ type: 'addRules', behavior: 'deny', destination, rules: [{toolName}] });
+  try {
+    write(root,'.harness/settings.json','{broken');
+    session.adoptPermissionUpdates([rule('first','projectSettings'),rule('second','userSettings')]);
+    const independent: Promise<unknown>[] = [];
+    session.adoptPermissionUpdates([rule('independent','userSettings')],{
+      sessionId: session.id, onWrite: work => independent.push(work),
+    });
+    await Promise.all(independent);
+    const userRules = () => JSON.parse(fs.readFileSync(path.join(userDir,'settings.json'),'utf8')).permissions.deny;
+    assert.deepEqual(userRules(),['independent']);
+    assert.deepEqual(session.permissionOwner.state().alwaysDenyRules.userSettings,['second','independent']);
+    release();
+    await session.drainPermissionWrites();
+    assert.deepEqual(userRules(),['independent','second']);
+    assert.deepEqual(session.permissionWriteResults.map(result => result.outcome),['written','error','written']);
+  } finally { release(); await blocked; await session.close(); }
+});
+
+test("overlapping nested permission updates report only their own write to each caller", async () => {
+  const root = workspace();
+  const parent = Session.open(root, { config: config(root, []) });
+  const child = Session.open(root, { config: parent.config }), nested = Session.open(root, { config: parent.config });
+  try {
+    child.inheritPermissionAdoption(parent.permissionOwner);
+    nested.inheritPermissionAdoption(child.permissionOwner);
+    write(root, ".harness/settings.local.json", "{broken");
+    const apply = (session: Session, destination: 'projectSettings' | 'localSettings') => {
+      const writes: Promise<import('../src/permission-settings.js').PermissionWriteResult>[] = [];
+      session.adoptPermissionUpdates([{ type: 'addRules', behavior: 'deny', destination, rules: [{ toolName: 'fixture_rule' }] }],
+        { sessionId: session.id, onWrite: write => writes.push(write) });
+      return Promise.all(writes);
+    };
+    const [bad, good] = await Promise.all([apply(nested,'localSettings'),apply(parent,'projectSettings')]);
+    assert.deepEqual(bad.map(result => result.outcome), ['error']);
+    assert.deepEqual(good.map(result => result.outcome), ['written']);
+    assert.equal(parent.permissionWriteResults.find(result => result.outcome === 'error')?.sessionId, nested.id);
+    assert.equal(parent.permissionWriteResults.find(result => result.outcome === 'written')?.sessionId, parent.id);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root,'.harness/settings.json'),'utf8')).permissions.deny,['fixture_rule']);
+  } finally { await nested.close(); await child.close(); await parent.close(); }
 });
 
 test("permission destination owner applies memory first, preserves files and drains only its writes", async () => {
@@ -1755,6 +1861,17 @@ test('directory result projection isolates reused IDs, owners and pending recove
       reusedFork.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       assert.doesNotMatch(JSON.stringify(reusedFork.messages), /LIVE_GRANT_SECRET/);
     } finally { await reusedFork.close(); }
+    // Exercise retained-history projection with the real read witness, then revoke it below.
+    const preservedMessages = session.compactionRecords.slice(-3).map(entry => entry.reference);
+    session.append({ kind: 'compact', summary: 'Earlier work', response: done(), preservedMessages });
+    session.append({ kind: 'turn_end', reason: 'manual_compact' });
+    assert.match(JSON.stringify(session.messages), /LIVE_GRANT_SECRET after regrant/);
+    const compactFork = forkSession(session);
+    try {
+      assert.match(JSON.stringify(compactFork.messages), /LIVE_GRANT_SECRET after regrant/);
+      compactFork.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+      assert.doesNotMatch(JSON.stringify(compactFork.messages), /LIVE_GRANT_SECRET/);
+    } finally { await compactFork.close(); }
     session.append({ kind: 'message', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'pending', name: 'read_file', input: {} }] } });
     const pending = { type: 'tool_result' as const, tool_use_id: 'pending', content: 'PENDING_SECRET' };
     session.append({ kind: 'tool_result', result: pending, readGrantWitness: { ...second.readGrantWitness, callId: 'pending' } });
@@ -1867,6 +1984,45 @@ test('relocated directory history follows the successor grant', async () => {
   }
 });
 
+for (const binding of ['inherited', 'adoption'] as const)
+test(`ordinary fork of a child follows the ${binding} permission owner's directory lifetime`, async () => {
+  const root = workspace(), outside = workspace(), tools = createTools();
+  const parent = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  const child = Session.open(root, { config: parent.snapshotConfig() });
+  let fork: Session | undefined;
+  try {
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    if (binding === 'inherited') child.inheritPermissions(parent.permissionOwner);
+    else child.inheritPermissionAdoption(parent.permissionOwner);
+    write(outside, 'read', 'SCOPED_FORK_READ');
+    await new Agent(child, new ScriptedProvider([response([call('read', 'read_file', { path: path.join(outside, 'read') })], 'tool_use'), done()]), tools).run('read before fork');
+    fork = forkSession(child);
+    await child.close();
+    const success = path.join(outside, 'permitted'), refused = path.join(outside, 'revoked');
+    const provider = new ScriptedProvider([response([call('first', 'write_file', { path: success, content: 'allowed' })], 'tool_use'), done(),
+      response([call('second', 'write_file', { path: refused, content: 'unexpected' })], 'tool_use'), done()]);
+    const agent = new Agent(fork, provider, tools);
+    await agent.run('write while granted');
+    assert.equal(fs.readFileSync(success, 'utf8'), 'allowed');
+    parent.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+    await agent.run('write after revoke');
+    assert.equal(fs.existsSync(refused), false);
+    assert.match(JSON.stringify(provider.requests[0]?.messages), /SCOPED_FORK_READ/);
+    assert.doesNotMatch(JSON.stringify(provider.requests.at(-1)?.messages), /SCOPED_FORK_READ/);
+    assert.equal(fork.workingDirectories(false).readHandle?.(outside), undefined);
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    assert.ok(fork.workingDirectories(false).readHandle?.(outside));
+    assert.doesNotMatch(JSON.stringify(fork.messages), /SCOPED_FORK_READ/);
+    const id = fork.id;
+    await fork.close();
+    const cold = Session.open(root, { id });
+    try {
+      assert.equal(cold.workingDirectories(false).readHandle?.(outside), undefined);
+      assert.doesNotMatch(JSON.stringify(cold.messages), /SCOPED_FORK_READ/);
+    } finally { await cold.close(); }
+  } finally { await fork?.close(); await child.close(); await parent.close(); }
+});
+
 test('forked directory history follows independent grant revocation', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   const secret = 'FORK_DIRECTORY_SECRET';
@@ -1957,20 +2113,32 @@ test('directory handles follow grant ownership and close on revoke and session c
     const inherited = child.workingDirectories(true);
     const handle = inherited.readHandle?.(outside);
     assert.ok(handle);
+    const writeHandle = child.workingDirectories(false).readHandle?.(outside);
+    assert.ok(writeHandle);
+    assert.equal(writeHandle.owner, child.id);
+    assert.notEqual(writeHandle.fd, handle.fd);
+    assert.notEqual(writeHandle.incarnation, handle.incarnation);
     assert.equal(handle.owner, parent.id);
     assert.match(handle.incarnation, /^[0-9a-f-]{36}$/);
     assert.equal(fs.fstatSync(handle.fd, { bigint: true }).ino, fs.statSync(outside, { bigint: true }).ino);
     parent.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
     assert.equal(handle.signal.aborted, true);
     assert.equal(inherited.readHandle?.(outside), undefined);
+    assert.equal(writeHandle.signal.aborted, true);
+    assert.throws(() => fs.fstatSync(writeHandle.fd), /EBADF/);
     assert.throws(() => fs.fstatSync(handle.fd), /EBADF/);
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     const renewed = child.workingDirectories(true).readHandle?.(outside);
     assert.ok(renewed);
+    const renewedWrite = child.workingDirectories(false).readHandle?.(outside);
+    assert.ok(renewedWrite);
+    assert.notEqual(renewedWrite.incarnation, writeHandle.incarnation);
     assert.equal(renewed.owner, parent.id);
     assert.notEqual(renewed.incarnation, handle.incarnation);
     await parent.close();
     assert.equal(renewed.signal.aborted, true);
+    assert.equal(renewedWrite.signal.aborted, true);
+    assert.throws(() => fs.fstatSync(renewedWrite.fd), /EBADF/);
     assert.equal(child.workingDirectories(true).readHandle?.(outside), undefined);
     assert.throws(() => fs.fstatSync(renewed.fd), /EBADF/);
   } finally { await child.close(); await parent.close(); }
@@ -1990,7 +2158,46 @@ test('directory handles follow grant ownership and close on revoke and session c
   } finally { await runtime.close(); await owner.close(); }
 });
 
-test('fork skill does not write a replacement directory through an earlier approval', { skip: process.env.W385_DIRECTORY_WRITE_PROBE !== '1' }, async () => {
+test('scoped edits reject the same directory regranted during child approval', async () => {
+  const root = workspace(), outside = workspace();
+  const tools = [...createTools(), ...createNotebookTools()];
+  const session = Session.open(root, { config: config(root, tools) });
+  const grant = (type: 'addDirectories' | 'removeDirectories') =>
+    session.adoptPermissionUpdates([{ type, directories: [outside], destination: 'session' }]);
+  try {
+    grant('addDirectories');
+    for (const name of ['edit_file', 'notebook_edit']) {
+      const target = path.join(outside, name === 'edit_file' ? 'value.txt' : 'value.ipynb');
+      const original = name === 'edit_file' ? 'before' : JSON.stringify({ nbformat: 4, nbformat_minor: 5,
+        cells: [{id:'a', cell_type:'markdown', metadata:{}, source:'before'}], metadata:{} });
+      fs.writeFileSync(target, original);
+      const input = name === 'edit_file' ? {path:target, old_string:'before', new_string:'after'} :
+        {path:target, cell_id:'a', new_source:'after'};
+      const definition = tools.find(tool => tool.schema.name === name)!;
+      let entered = 0;
+      const execute = definition.execute;
+      definition.execute = (input, context) => { entered++; return execute(input, context); };
+      const scoped = bindScopedChildTool(definition, async (_input, context) => {
+        const old = session.workingDirectories(false).readHandle?.(outside);
+        assert.ok(old);
+        grant('removeDirectories');
+        grant('addDirectories');
+        assert.equal(old.signal.aborted, true);
+        assert.notEqual(session.workingDirectories(false).readHandle?.(outside)?.incarnation, old.incarnation);
+        return context;
+      });
+      const context = {workspace:root, signal:new AbortController().signal, allowShell:false, maxOutputBytes:24000,
+        workingDirectories: (readOnly: boolean) => session.workingDirectories(readOnly)};
+      for (const invoke of [() => executeAgentTool(scoped, input, context), () => scoped.execute(input, context)]) {
+        await assert.rejects(invoke, /directory grant changed during child approval/);
+        assert.equal(entered, 0);
+        assert.equal(fs.readFileSync(target, 'utf8'), original);
+      }
+    }
+  } finally { await session.close(); }
+});
+
+test('fork skill does not write a replacement directory through an earlier approval', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   const directory = path.join(outside, 'approved');
   fs.mkdirSync(directory);
@@ -2024,7 +2231,7 @@ test('fork skill does not write a replacement directory through an earlier appro
     assert.equal(prompts, 1);
     assert.equal(fs.existsSync(path.join(directory, 'value')), false, 'replacement directory must not receive the write');
     assert.equal(fs.existsSync(path.join(`${directory}-original`, 'value')), false);
-    assert.match(childResult, /writes through additional directory grants are not implemented/);
+    assert.match(childResult, /directory grant changed during child approval/);
   } finally {
     await registry.close(); await runtime.close(); await parent.close();
   }
@@ -2141,6 +2348,24 @@ test('Agent passes each actual Write call ID into its execution context', async 
   } finally { await session.close(); }
 });
 
+test('Agent rejects a raw Write handler introduced after authorization', async () => {
+  const root = workspace(), tools = createTools();
+  const write = tools.find(tool => tool.schema.name === 'write_file')!;
+  const marker = path.join(root, 'getter-ran');
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  try {
+    const provider = new ScriptedProvider([response([call('raw-write', 'write_file', { path: 'target', content: 'value' })], 'tool_use'), done()]);
+    await new Agent(session, provider, tools, { status(text) {
+      if (text === 'tool: write_file') Object.defineProperty(write, 'executeBlocks', {
+        get() { fs.writeFileSync(marker, 'unexpected'); return async () => 'replacement'; },
+      });
+    } }).run('write target');
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal(fs.existsSync(path.join(root, 'target')), false);
+    assert.match(String(resultBatches(session)[0]?.[0]?.content), /built-in write_file implementation changed/);
+  } finally { await session.close(); }
+});
+
 test('runtime wrapper rejects a substituted builtin Write before execution', { timeout: 30000 }, async () => {
   const root = workspace(), outside = workspace(), file = path.join(outside, 'value'), marker = path.join(root, 'replacement-effect');
   fs.writeFileSync(file, 'ORIGINAL_DIRECTORY_BYTES');
@@ -2227,7 +2452,7 @@ test('Agent rejects substituted builtin Write wrappers before dispatch', { timeo
   const changed = 'Runtime built-in write_file wrapper changed';
   assert.deepEqual(observed, [
     ...['execute', 'execute-getter', 'blocks', 'blocks-getter', 'prototype'].map(scenario => ({ scenario, marker: false, error: changed, backup: false, original: 'OUTER_ORIGINAL' })),
-    { scenario: 'normal', marker: false, error: 'write_file: writes through additional directory grants are not implemented', backup: true, original: 'OUTER_ORIGINAL' },
+    { scenario: 'normal', marker: false, error: 'File has not been read in full. Read it again before attempting to write it.', backup: true, original: 'OUTER_ORIGINAL' },
     { scenario: 'custom', marker: true, error: 'custom result', backup: false, original: 'OUTER_ORIGINAL' },
   ]);
   const reader = `import {Session} from './src/session.ts';const [root,id,outside]=process.argv.slice(1),s=Session.open(root,{id});
@@ -2264,7 +2489,7 @@ test('compiled CLI rejects swapped outer Write dispatch and retains normal write
       { cwd: process.cwd(), input: `/add-dir ${outside}\ntry the directory write\n/exit\n`, encoding: 'utf8', timeout: 20000,
         env: { ...process.env, HOME: userDir, LLM_API_KEY: 'fixture-only', NODE_OPTIONS: `--import=${preload}` } });
     assert.equal(cli.status, 0, cli.stderr + cli.stdout); assert.equal(fs.readFileSync(trace, 'utf8'), 'captured');
-    assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(file, 'utf8'), 'CLI_OUTER_ORIGINAL');
+    assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(file, 'utf8'), scenario === 'normal' ? 'NO' : 'CLI_OUTER_ORIGINAL');
     if (scenario === 'normal') assert.equal(fs.readFileSync(path.join(root, 'normal.txt'), 'utf8'), 'NORMAL');
     const directory = path.join(root, '.agent'), journal = fs.readdirSync(directory).find(name => name.endsWith('.jsonl')); assert.ok(journal);
     const rows = fs.readFileSync(path.join(directory, journal), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
@@ -2276,10 +2501,10 @@ test('compiled CLI rejects swapped outer Write dispatch and retains normal write
     } else assert.equal(runtimeOwner, null);
     const execution = rows.filter(row => row.kind === 'runtime_write_execution' && row.id === 'cli-outer-write');
     assert.deepEqual(execution.map(row => ({ phase: row.phase, outcome: row.outcome ?? null })), scenario === 'normal' ? [
-      { phase: 'entered', outcome: null }, { phase: 'completed', outcome: 'blocked-additional-directory' },
+      { phase: 'entered', outcome: null }, { phase: 'completed', outcome: 'returned' },
     ] : []);
-    const expected = scenario === 'normal' ? 'write_file: writes through additional directory grants are not implemented' : 'Runtime built-in write_file wrapper changed';
-    assert.equal(effect?.result?.content, expected); assert.equal(effect?.result?.is_error, true);
+    const expected = scenario === 'normal' ? `overwrote 2 bytes to ${path.relative(root, file)}` : 'Runtime built-in write_file wrapper changed';
+    assert.equal(effect?.result?.content, expected); assert.equal(effect?.result?.is_error, scenario === 'normal' ? undefined : true);
     assert.equal(rows.some(row => row.kind === 'directory_backup'), scenario === 'normal');
     const reader = `import {Session} from './dist/session.js';const [root,id,outside]=process.argv.slice(1),s=Session.open(root,{id});
       const effect=s.events.find(event=>event.kind==='tool_effect'&&event.result.tool_use_id==='cli-outer-write');
@@ -2316,15 +2541,15 @@ test('compiled CLI rejects a swapped builtin Write and keeps the normal path', {
       { cwd: process.cwd(), input: `/add-dir ${outside}\ntry the directory write\n/exit\n`, encoding: 'utf8', timeout: 20000,
         env: { ...process.env, HOME: userDir, LLM_API_KEY: 'fixture-only', NODE_OPTIONS: `--import=${preload}` } });
     assert.equal(cli.status, 0, cli.stderr + cli.stdout); assert.equal(fs.readFileSync(trace, 'utf8'), 'captured');
-    assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(file, 'utf8'), 'CLI_DIRECTORY_ORIGINAL');
+    assert.equal(fs.existsSync(marker), false); assert.equal(fs.readFileSync(file, 'utf8'), swapped ? 'CLI_DIRECTORY_ORIGINAL' : 'NO');
     const directory = path.join(root, '.agent'), journal = fs.readdirSync(directory).find(name => name.endsWith('.jsonl')); assert.ok(journal);
     const rows = fs.readFileSync(path.join(directory, journal), 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const effect = rows.find(row => row.kind === 'tool_effect' && row.result.tool_use_id === 'cli-swapped-write');
     const start = rows.find(row => row.kind === 'tool_start' && row.id === 'cli-swapped-write');
     if (swapped) assert.equal(start?.runtimeWriteOwner, undefined);
     else { assert.equal(start?.runtimeWriteOwner?.owner, journal.slice(0, -6)); assert.match(start?.runtimeWriteOwner?.incarnation ?? '', /^[0-9a-f-]{36}$/); }
-    const expected = swapped ? 'Runtime built-in write_file implementation changed' : 'write_file: writes through additional directory grants are not implemented';
-    assert.equal(effect?.result?.content, expected); assert.equal(effect?.result?.is_error, true);
+    const expected = swapped ? 'Runtime built-in write_file implementation changed' : `overwrote 2 bytes to ${path.relative(root, file)}`;
+    assert.equal(effect?.result?.content, expected); assert.equal(effect?.result?.is_error, swapped ? true : undefined);
     assert.equal(rows.some(row => row.kind === 'directory_backup'), !swapped);
     const reader = `import {Session} from './dist/session.js';const [root,id,outside]=process.argv.slice(1),s=Session.open(root,{id});
       const effect=s.events.find(event=>event.kind==='tool_effect'&&event.result.tool_use_id==='cli-swapped-write');
@@ -2397,7 +2622,7 @@ test('directory file history snapshots tracked bytes and modes at actual user tu
   let expected: { messageIds: string[]; backupIds: string[] };
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    const callWrite = (id: string) => response([call(id, 'write_file', { path: target, content: 'NOT_PUBLISHED', overwrite: true })], 'tool_use');
+    const callWrite = (id: string) => response([call(id, 'write_file', { path: target, content: 'NOT_PUBLISHED', overwrite: false })], 'tool_use');
     const agent = new Agent(session, new ScriptedProvider([callWrite('first-write'), done(), done(), callWrite('third-write'), done()]), tools);
     await agent.run('first turn');
     fs.writeFileSync(target, 'SECOND_SNAPSHOT'); fs.chmodSync(target, 0o640);
@@ -2453,8 +2678,8 @@ test('directory file history first tracks a missing Write target across cold ope
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('missing-write', 'write_file', { path: target, content: 'NEW' })], 'tool_use'), done()]), tools).run('track absent target');
-    assert.match(JSON.stringify(resultBatches(session)[0]?.[0]), /writes through additional directory grants are not implemented/);
-    assert.equal(fs.existsSync(target), false);
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, undefined);
+    assert.equal(fs.readFileSync(target, 'utf8'), 'NEW');
     const history = session.directoryFileHistory;
     assert.equal(history.kind, 'available');
     if (history.kind === 'available') assert.deepEqual(history.snapshots[0]?.entries.find(entry => entry.path.lexicalPath === target)?.reference, reference);
@@ -2523,7 +2748,7 @@ test('directory rewind selects a later first-tracked version for an earlier user
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     const provider = new ScriptedProvider([done(), response([
-      call('track-present', 'write_file', { path: present, content: 'NOT_WRITTEN', overwrite: true }),
+      call('track-present', 'write_file', { path: present, content: 'NOT_WRITTEN', overwrite: false }),
       call('track-missing', 'write_file', { path: missing, content: 'NOT_CREATED' }),
     ], 'tool_use'), done()]);
     const agent = new Agent(session, provider, tools);
@@ -2551,7 +2776,7 @@ test('directory rewind selects a later first-tracked version for an earlier user
     assert.deepEqual(absent.parent, { dev: String(parent.dev), ino: String(parent.ino) });
     backupId = existing.backupId;
     assert.deepEqual(session.selectDirectoryRewindSnapshot('f7d6970a-6c2e-4be7-9da9-064caf45a123'), { kind: 'not_found' });
-    assert.deepEqual(fs.readFileSync(present), original); assert.equal(fs.existsSync(missing), false);
+    assert.deepEqual(fs.readFileSync(present), original); assert.equal(fs.readFileSync(missing, 'utf8'), 'NOT_CREATED');
     expected = first.entries;
   } finally { await session.close(); }
   const reader = `import {Session} from './src/session.ts';const s=Session.open(process.argv[1],{id:process.argv[2]});
@@ -2581,7 +2806,7 @@ test('an actual checkpoint retains external present and missing witnesses', asyn
   let backupId = '';
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    const provider = new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: true }),
+    const provider = new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: false }),
       call('track-missing', 'write_file', { path: missing, content: 'BLOCKED' })], 'tool_use'), done()]);
     await new Agent(session, provider, tools).run('track both external paths');
     const captured = await checkpointConversationWithDirectoryWitness(session, 'external-boundary', new AbortController().signal);
@@ -2592,7 +2817,7 @@ test('an actual checkpoint retains external present and missing witnesses', asyn
     fs.writeFileSync(present, 'AFTER_CHECKPOINT'); fs.writeFileSync(missing, 'CREATED_AFTER');
     fs.writeFileSync(late, 'TRACKED_LATER');
     await new Agent(session, new ScriptedProvider([response([call('track-late', 'write_file',
-      { path: late, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track the later external path');
+      { path: late, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track the later external path');
     const witness = inspectDirectoryCheckpointWitness(session, 'external-boundary'); assert.equal(witness.kind, 'available');
     if (witness.kind !== 'available') throw new Error('checkpoint witness unavailable');
     const old = witness.entries.find(entry => entry.path.lexicalPath === present)?.observation;
@@ -2669,7 +2894,7 @@ test('checkpoint witness authorization binds the original commitment and Session
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-auth', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external path');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external path');
     const commit = session.commitDirectoryCheckpointWitness.bind(session);
     let reached = false;
     session.commitDirectoryCheckpointWitness = (input, authorization) => {
@@ -2711,7 +2936,7 @@ test('fork descendants retain verified historical checkpoint witnesses', { timeo
   let fork: Session | undefined, grandchild: Session | undefined, backupId = '', ids: string[] = [];
   try {
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    await new Agent(parent, new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: true }),
+    await new Agent(parent, new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: false }),
       call('track-missing', 'write_file', { path: missing, content: 'BLOCKED' })], 'tool_use'), done()]), tools).run('track external paths');
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'history-before-late', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
@@ -2720,7 +2945,7 @@ test('fork descendants retain verified historical checkpoint witnesses', { timeo
     const observation = original.entries.find(entry => entry.path.lexicalPath === present)?.observation;
     assert.ok(observation?.kind === 'present'); backupId = observation.backupId;
     await new Agent(parent, new ScriptedProvider([response([call('track-late', 'write_file',
-      { path: late, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track later path');
+      { path: late, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track later path');
     const append = Session.prototype.append;
     const capturedAuthorization: { event?: Extract<import('../src/session.js').SessionEvent, { kind: 'directory_checkpoint_inheritance' }>; token?: symbol } = {};
     try {
@@ -2800,7 +3025,7 @@ test('bounded conversation fork inherits checkpoints for its selected turns', { 
     const initial = await checkpointConversationWithDirectoryWitness(parent, 'bounded-initial', new AbortController().signal);
     assert.ok('external_witness' in initial); assert.equal(initial.external_witness, 'available');
     await new Agent(parent, new ScriptedProvider([response([call('bounded-track', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('first turn');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('first turn');
     const boundary = parent.events.findIndex(event => event.kind === 'turn_end'); assert.ok(boundary > 0);
     const earlier = await checkpointConversationWithDirectoryWitness(parent, 'bounded-first', new AbortController().signal);
     assert.ok('external_witness' in earlier); assert.equal(earlier.external_witness, 'available');
@@ -2840,7 +3065,7 @@ for (const gateOwner of ['source', 'target'] as const) test(`fork rejects a repl
   try {
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-gate', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before fork');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before fork');
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'gate-base', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     Session.prototype.appendCheckpointBranch = function(source, input) {
@@ -2864,14 +3089,14 @@ test('a fork checkpoints inherited and newly tracked external files under its ow
   try {
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-parent', 'write_file',
-      { path: inherited, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track inherited file');
+      { path: inherited, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track inherited file');
     const original = await checkpointConversationWithDirectoryWitness(parent, 'parent-witness', new AbortController().signal);
     assert.ok('external_witness' in original); assert.equal(original.external_witness, 'available');
     fork = forkSession(parent); forkId = fork.id;
     assert.equal(inspectDirectoryCheckpointWitness(fork, 'parent-witness').kind, 'available');
     assert.equal(readDirectoryCheckpointBackup(fork, 'parent-witness', inherited)?.toString(), 'BEFORE_FORK');
     await new Agent(fork, new ScriptedProvider([response([call('track-child', 'write_file',
-      { path: added, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track new file');
+      { path: added, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track new file');
     fork.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
     const revoked = await checkpointConversationWithDirectoryWitness(fork, 'fork-revoked', new AbortController().signal);
     assert.ok('external_witness' in revoked); assert.equal(revoked.external_witness, 'unknown');
@@ -2902,7 +3127,7 @@ test('rewind and relocation retain paths for new successor checkpoints', { timeo
     try {
       parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       await new Agent(parent, new ScriptedProvider([response([call('track-parent', 'write_file',
-        { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+        { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
       const original = await checkpointConversationWithDirectoryWitness(parent, 'transition-base', new AbortController().signal);
       assert.ok('external_witness' in original); assert.equal(original.external_witness, 'available');
       if (transition === 'rewind' || transition === 'rewind-recovered') {
@@ -2957,7 +3182,7 @@ test('rewind reports committed history when inherited witness journal sync fails
   try {
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-history', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'inherit-fault-base', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     fs.writeFileSync(workspaceFile, 'AFTER');
@@ -2993,6 +3218,7 @@ test('reconciles a torn direct checkpoint inheritance without deleting evidence'
   fs.writeFileSync(target, 'TORN_ORIGINAL'); fs.writeFileSync(local, 'BEFORE');
   const signal = new AbortController().signal, directory = path.join(root, '.agent');
   const parent = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  const deepRecoveredIds: string[] = [];
   const write = fs.writeSync; let child: Session | undefined, childId = '', recoveredForkId = '', recoveredGrandchildId = '', indirectId = '',
     intermediateId = '', indirectDescendantId = '', doubleTornId = '', doubleTornCleanId = '', doubleTornForkId = '',
     doubleTornGrandchildId = '', tripleTornId = '', injected = false, evidence = '', originalEvidence = Buffer.alloc(0);
@@ -3017,7 +3243,7 @@ test('reconciles a torn direct checkpoint inheritance without deleting evidence'
   try {
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-torn-reconcile', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'torn-reconcile', signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     const second = await checkpointConversationWithDirectoryWitness(parent, 'torn-reconcile-second', signal);
@@ -3180,9 +3406,28 @@ test('reconciles a torn direct checkpoint inheritance without deleting evidence'
       const third = Session.open(root, { id: tripleTornId });
       try {
         const before = third.events.length;
-        assert.equal(third.reconcileTornCheckpointInheritance(tornDescendant).kind, 'unknown');
-        assert.equal(third.events.length, before);
-        assert.equal(inspectDirectoryCheckpointWitness(third, 'torn-reconcile').kind, 'unknown');
+        assert.equal(third.reconcileTornCheckpointInheritance(tornDescendant).kind, 'reconciled');
+        assert.equal(third.events.length, before + 1);
+        assert.equal(inspectDirectoryCheckpointWitness(third, 'torn-reconcile').kind, 'available');
+        assert.equal(readDirectoryCheckpointBackup(third, 'torn-reconcile', target)?.toString(), 'TORN_ORIGINAL');
+        const opened: Session[] = [];
+        let previous = third, exhausted = false;
+        try {
+          for (let generation = 4; generation <= 10; generation++) {
+            const next = Session.open(root, { id: interruptRecoveredFork(previous) }); opened.push(next);
+            const count = next.events.length, result = next.reconcileTornCheckpointInheritance(previous);
+            if (result.kind === 'unknown') {
+              assert.equal(next.events.length, count, 'budget exhaustion must not publish a partial proof');
+              assert.equal(inspectDirectoryCheckpointWitness(next, 'torn-reconcile').kind, 'unknown');
+              exhausted = true; break;
+            }
+            assert.equal(result.kind, 'reconciled');
+            assert.equal(readDirectoryCheckpointBackup(next, 'torn-reconcile', target)?.toString(), 'TORN_ORIGINAL');
+            deepRecoveredIds.push(next.id); previous = next;
+          }
+          assert.ok(deepRecoveredIds.length >= 1, 'fourth recovery must succeed within the shared budget');
+          assert.equal(exhausted, true, 'branch revalidation must consume a shared finite budget');
+        } finally { for (const next of opened.reverse()) await next.close(); }
       } finally { await third.close(); }
       tornDescendant.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       const continued = new ScriptedProvider([done()]);
@@ -3308,7 +3553,9 @@ test('reconciles a torn direct checkpoint inheritance without deleting evidence'
     assert.ok(id);
     for (let i = 0; i < 2; i++) assert.deepEqual(cold(id), { kind: 'available', bytes: 'TORN_ORIGINAL', grant: false });
   }
-  assert.ok(tripleTornId); assert.equal(cold(tripleTornId).kind, 'unknown');
+  assert.ok(tripleTornId);
+  for (const id of [tripleTornId, ...deepRecoveredIds]) for (let i = 0; i < 2; i++)
+    assert.deepEqual(cold(id), { kind: 'available', bytes: 'TORN_ORIGINAL', grant: false });
   for (const id of [indirectId, indirectDescendantId]) for (const name of ['torn-reconcile', 'indirect-after-torn'])
     for (let i = 0; i < 2; i++) assert.deepEqual(cold(id, name), { kind: 'available', bytes: 'TORN_ORIGINAL', grant: false });
   const intermediateFile = path.join(root, '.agent', `${intermediateId}.jsonl`), intermediateBytes = fs.readFileSync(intermediateFile);
@@ -3540,7 +3787,7 @@ test('torn checkpoint reconciliation remains verifiable across writer death', { 
     try {
       parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       await new Agent(parent, new ScriptedProvider([response([call('track-recovery-crash', 'write_file',
-        { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+        { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
       const captured = await checkpointConversationWithDirectoryWitness(parent, 'recovery-crash', signal);
       assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
       if (sourceKind === 'recovered' || sourceKind === 'recovered-indirect' || sourceKind === 'post-recovered' || sourceKind === 'post-recovered-indirect') {
@@ -3635,7 +3882,7 @@ test('torn checkpoint reconciliation can follow original writer death', { timeou
   const source = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
   source.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
   await new Agent(source, new ScriptedProvider([response([call('track-writer-death', 'write_file',
-    { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+    { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
   const captured = await checkpointConversationWithDirectoryWitness(source, 'writer-death', new AbortController().signal);
   assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
   const sourceId = source.id; await source.close();
@@ -3684,7 +3931,7 @@ test('indirect and recovered-origin torn checkpoint reconciliation can follow or
   const origin = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
   origin.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
   await new Agent(origin, new ScriptedProvider([response([call('track-indirect-writer-death', 'write_file',
-    { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+    { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
   const captured = await checkpointConversationWithDirectoryWitness(origin, 'indirect-writer-death', new AbortController().signal);
   assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
   let source: Session, prior: Session | undefined, priorEvidence = '', priorBytes = Buffer.alloc(0);
@@ -3754,16 +4001,17 @@ test('indirect and recovered-origin torn checkpoint reconciliation can follow or
 });
 
 test('CLI resume reconciles an inheritance torn by original writer death', { timeout: 120000 }, async t => {
-  for (const sourceKind of ['direct', 'direct-suffix', 'direct-title', 'direct-text', 'direct-text-incomplete', 'direct-text-tool', 'direct-text-snapshot', 'direct-text-disabled',
+  for (const sourceKind of ['direct', 'direct-suffix', 'direct-title', 'direct-text', 'direct-text-null-citations', 'direct-text-empty-citations', 'direct-text-observer', 'direct-text-incomplete', 'direct-text-tool', 'direct-text-snapshot', 'direct-text-disabled',
     'direct-history-untracked', 'direct-history-tracked', 'direct-history-touch', 'direct-history-external', 'direct-unsupported',
-    'indirect', 'recovered', 'recovered-indirect', 'post-recovered', 'post-recovered-indirect'] as const) {
+    'indirect', 'recovered', 'recovered-indirect', 'deep-recovered', 'post-recovered', 'post-recovered-indirect'] as const) {
+  const textSuffix = ['direct-text', 'direct-text-null-citations', 'direct-text-empty-citations'].includes(sourceKind);
   const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), marker = path.join(root, 'resume-writer-stopped');
   const userDir = path.join(root, 'fixture-user'), tools = createTools(); fs.mkdirSync(userDir); fs.writeFileSync(target, 'RESUMED_ORIGINAL');
   const origin = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] },
     ...(sourceKind === 'direct-history-tracked' ? { automaticCheckpoints: true } : {}) }) });
   origin.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
   await new Agent(origin, new ScriptedProvider([response([call('track-resume-writer', 'write_file',
-    { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+    { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
   const captured = await checkpointConversationWithDirectoryWitness(origin, 'resume-writer', new AbortController().signal);
   assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
   let source: Session, prior: Session | undefined, priorEvidence = '', priorBytes = Buffer.alloc(0);
@@ -3771,6 +4019,8 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
   else if (sourceKind === 'indirect') source = forkSession(origin);
   else {
     const directory = path.join(root, '.agent'), write = fs.writeSync; let priorId = '';
+    let recoverySource = origin;
+    for (let round = 0; round < (sourceKind === 'deep-recovered' ? 3 : 1); round++) {
     try {
       fs.writeSync = new Proxy(write, { apply(targetFn, thisArg, args) {
         const [fd, bytes, offset, length] = args;
@@ -3783,17 +4033,20 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
         }
         return Reflect.apply(targetFn, thisArg, args);
       } });
-      assert.throws(() => forkSession(origin), /injected earlier torn inheritance/);
+      assert.throws(() => forkSession(recoverySource), /injected earlier torn inheritance/);
     } finally { fs.writeSync = write; }
-    prior = Session.open(root, { id: priorId }); assert.equal(prior.reconcileTornCheckpointInheritance(origin).kind, 'reconciled');
+    const next = Session.open(root, { id: priorId }); assert.equal(next.reconcileTornCheckpointInheritance(recoverySource).kind, 'reconciled');
+    await prior?.close(); prior = next; recoverySource = next;
     const priorName = fs.readdirSync(directory).find(name => name.startsWith(`${priorId}.jsonl.torn-`)); assert.ok(priorName);
     priorEvidence = path.join(directory, priorName); priorBytes = fs.readFileSync(priorEvidence);
+    }
+    assert.ok(prior);
     if (sourceKind.startsWith('post-')) {
       prior.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       const later = await checkpointConversationWithDirectoryWitness(prior, 'resume-writer-post', new AbortController().signal);
       assert.ok('external_witness' in later); assert.equal(later.external_witness, 'available');
     }
-    source = sourceKind === 'recovered' || sourceKind === 'post-recovered' ? prior : forkSession(prior);
+    source = sourceKind === 'recovered' || sourceKind === 'deep-recovered' || sourceKind === 'post-recovered' ? prior : forkSession(prior);
   }
   const sourceId = source.id; await source.close(); await prior?.close(); await origin.close();
   const writer = `import fs from 'node:fs';import path from 'node:path';import {Session} from './src/session.ts';import {forkSession} from './src/sessions.ts';
@@ -3848,13 +4101,18 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
           }
           finally { await target.close(); }
         }
-        if (sourceKind === 'direct-text') {
+        if (textSuffix || sourceKind === 'direct-text-observer') {
           const targetJournal = path.join(directory, `${id}.jsonl`), before = fs.readFileSync(targetJournal, 'utf8').trimEnd().split('\n').length;
           const preload = path.join(root, 'text-provider-preload.mjs');
           fs.writeFileSync(preload, `globalThis.fetch=()=>{throw Error('fixture network disabled')};
+            if(${JSON.stringify(sourceKind)}==='direct-text-observer'){
+              const fs=await import('node:fs'),{Agent}=await import(${JSON.stringify(new URL('../dist/agent.js', import.meta.url).href)}),run=Agent.prototype.run;
+              Agent.prototype.run=function(...args){Object.defineProperty(this.events,'progress',{configurable:true,get(){
+                fs.writeFileSync(${JSON.stringify(path.join(outside, 'value'))},'DISPLAY_GETTER_EFFECT');return undefined;}});return Reflect.apply(run,this,args);};}
             const {GatewayProvider}=await import(${JSON.stringify(new URL('../dist/provider.js', import.meta.url).href)});
             GatewayProvider.prototype.count=async()=>1;GatewayProvider.prototype.complete=async(_request,_signal,onText)=>{
-              onText?.('fixture reply');return{id:'fixture',model:'fixture',type:'message',role:'assistant',content:[{type:'text',text:'fixture reply'}],
+              onText?.('fixture reply');return{id:'fixture',model:'fixture',type:'message',role:'assistant',content:[{type:'text',text:'fixture reply',
+                ...${JSON.stringify(sourceKind === 'direct-text-null-citations' ? { citations: null } : sourceKind === 'direct-text-empty-citations' ? { citations: [] } : {})}}],
                 stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}};`);
           const turn = resume(preload, 'ordinary later text\nsecond later text\n/exit\n', 'fixture-only');
           assert.equal(turn.status, 0, turn.stderr + turn.stdout); assert.doesNotMatch(turn.stderr, /Checkpoint witness reconciled/);
@@ -3865,7 +4123,9 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
               origin: event.classifier?.origin.kind, stop: event.response?.stop_reason } : { kind: event.kind, ...(event.kind === 'turn_end' ? { reason: event.reason } : {}) }))}`);
             assert.equal(suffix.some(event => event.kind === 'message' && event.message.role === 'user'), true);
             assert.equal(suffix.some(event => event.kind === 'message' && event.message.role === 'assistant'), true);
-            assert.deepEqual(suffix.map(event => event.kind), ['message', 'message', 'turn_end', 'message', 'message', 'turn_end']);
+            assert.deepEqual(suffix.filter(event => event.kind !== 'agent_display_observer').map(event => event.kind),
+              ['message', 'message', 'turn_end', 'message', 'message', 'turn_end']);
+            assert.ok(suffix.some(event => event.kind === 'agent_display_observer'));
           } finally { await target.close(); }
         }
         if (sourceKind === 'direct-text-incomplete') {
@@ -3886,7 +4146,7 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
             }
             owner.kill('SIGKILL'); await ownerExit;
             const target = Session.open(root, { id, recoverLock: true });
-            try { assert.equal(target.events.at(-1)?.kind, 'message'); assert.equal(target.awaitingResponse, true); }
+            try { assert.equal(target.events.findLast(event => event.kind !== 'agent_display_observer')?.kind, 'message'); assert.equal(target.awaitingResponse, true); }
             finally { await target.close(); }
           } finally { if (owner.exitCode === null && owner.signalCode === null) { owner.kill('SIGKILL'); await ownerExit; } }
         }
@@ -3902,7 +4162,7 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
         }
       } finally { fs.unlinkSync(storeLock); }
       if (sourceKind === 'direct-unsupported' || sourceKind === 'direct-history-touch' || sourceKind === 'direct-history-external' ||
-          sourceKind === 'direct-text-incomplete' || sourceKind === 'direct-text-tool' || sourceKind === 'direct-text-snapshot') {
+          sourceKind === 'direct-text-incomplete' || sourceKind === 'direct-text-tool' || sourceKind === 'direct-text-snapshot' || sourceKind === 'direct-text-observer') {
         const blocked = resume(); assert.equal(blocked.status, 0, blocked.stderr + blocked.stdout);
         assert.doesNotMatch(blocked.stderr, /Checkpoint witness reconciled/); assert.equal(fs.existsSync(`${source.file}.lock`), true);
         const pending = Session.open(root, { id });
@@ -3911,6 +4171,11 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
           assert.equal(pending.events.some(event => event.kind === 'title' && event.title === 'retained-title'), true);
           if (sourceKind === 'direct-unsupported' || sourceKind.startsWith('direct-history-')) assert.equal(pending.events.some(event => event.kind === 'file_history'), true);
           if (sourceKind === 'direct-unsupported') assert.equal(pending.events.some(event => event.kind === 'permission_mode_command'), true);
+          if (sourceKind === 'direct-text-observer') {
+            assert.equal(fs.readFileSync(target, 'utf8'), 'DISPLAY_GETTER_EFFECT');
+            assert.ok(pending.agentDisplayObservations.some(row => row.callback === 'progress' &&
+              row.transition.phase === 'returned' && row.transition.mode === 'absent'));
+          }
           if (sourceKind === 'direct-history-touch') {
             assert.equal(pending.events.some(event => event.kind === 'file_history' && event.path === undefined), true);
             assert.equal(fs.readFileSync(path.join(outside, 'shell-created.txt'), 'utf8'), 'EXTERNAL_CHANGE');
@@ -3921,7 +4186,7 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
         } finally { await pending.close(); }
         continue;
       }
-      if (sourceKind === 'direct-text') {
+      if (textSuffix) {
         const journal = path.join(directory, `${id}.jsonl`), original = fs.readFileSync(journal);
         const rows = original.toString('utf8').trimEnd().split('\n').map(line => JSON.parse(line));
         const assistant = rows.findLast(row => row.kind === 'message' && row.message.role === 'assistant'); assert.ok(assistant?.response);
@@ -3931,14 +4196,14 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
           assert.doesNotMatch(blocked.stderr, /Checkpoint witness reconciled/); assert.equal(fs.existsSync(`${source.file}.lock`), true);
         } finally { fs.writeFileSync(journal, original); }
       }
-      if (sourceKind === 'direct-suffix' || sourceKind === 'direct-title' || sourceKind === 'direct-text' || sourceKind === 'direct-history-tracked') {
+      if (sourceKind === 'direct-suffix' || sourceKind === 'direct-title' || textSuffix || sourceKind === 'direct-history-tracked') {
         const targetJournal = path.join(directory, `${id}.jsonl`), originalJournal = fs.readFileSync(targetJournal);
         const preload = path.join(root, 'suffix-tamper-preload.mjs');
         const originalField = sourceKind === 'direct-history-tracked' ? '"path":"later-workspace.txt"' :
-          sourceKind === 'direct-text' ? '"humanText":"ordinary later text"' :
+          textSuffix ? '"humanText":"ordinary later text"' :
           sourceKind === 'direct-title' ? '"title":"retained-title"' : '"color":"blue"';
         const alteredField = sourceKind === 'direct-history-tracked' ? '"path":"changed-workspace.txt"' :
-          sourceKind === 'direct-text' ? '"humanText":"changed later text"' :
+          textSuffix ? '"humanText":"changed later text"' :
           sourceKind === 'direct-title' ? '"title":"changed-title"' : '"color":"green"';
         fs.writeFileSync(preload, `import fs from 'node:fs';const {Session}=await import(${JSON.stringify(new URL('../dist/session.js', import.meta.url).href)}),append=Session.prototype.append;
           Session.prototype.append=function(event,...args){if(event.kind==='directory_checkpoint_torn_recovery'){
@@ -4060,7 +4325,7 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
     try {
       if (sourceKind === 'direct-suffix' || sourceKind === 'direct-title' || sourceKind.startsWith('direct-history-')) assert.equal(resumed.sessionColor, 'blue');
       if (sourceKind === 'direct-title' || sourceKind.startsWith('direct-history-')) assert.equal(resumed.title, 'retained-title');
-      if (sourceKind === 'direct-text') {
+      if (textSuffix) {
         assert.equal(resumed.messages.some(message => message.role === 'user' && message.content === 'ordinary later text'), true);
         assert.equal(resumed.messages.some(message => message.role === 'user' && message.content === 'second later text'), true);
       }
@@ -4103,10 +4368,10 @@ test('CLI resume reconciles an inheritance torn by original writer death', { tim
         assert.equal(cold.status, 0, cold.stderr); assert.deepEqual(JSON.parse(cold.stdout), { kind: 'available', bytes: 'RESUMED_ORIGINAL', tracked: true });
       }
     }
-    if (sourceKind === 'direct-suffix' || sourceKind === 'direct-title' || sourceKind === 'direct-text' || sourceKind === 'direct-history-tracked') {
+    if (sourceKind === 'direct-suffix' || sourceKind === 'direct-title' || textSuffix || sourceKind === 'direct-history-tracked') {
       const journal = path.join(directory, `${id}.jsonl`), original = fs.readFileSync(journal);
       const altered = sourceKind === 'direct-history-tracked' ? original.toString('utf8').replace('"path":"later-workspace.txt"', '"path":"changed-workspace.txt"') :
-        sourceKind === 'direct-text' ? original.toString('utf8').replace('"humanText":"ordinary later text"', '"humanText":"changed later text"') :
+        textSuffix ? original.toString('utf8').replace('"humanText":"ordinary later text"', '"humanText":"changed later text"') :
         sourceKind === 'direct-title' ? original.toString('utf8').replace('"title":"retained-title"', '"title":"changed-title"') :
         original.toString('utf8').replace('"color":"blue"', '"color":"green"'); assert.notEqual(altered, original.toString('utf8'));
       fs.writeFileSync(journal, altered);
@@ -4144,7 +4409,7 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
       ...(scenario === 'write-history-tracked' ? { automaticCheckpoints: true } : {}) }) });
     source.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(source, new ScriptedProvider([response([call('track-recovery-writer', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(source, 'resume-recovery', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     const write = fs.writeSync; let id = '';
@@ -4270,7 +4535,8 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
             try {
               await new Agent(target, new ScriptedProvider([done()]), tools).run('ordinary later text');
               const suffix = target.events.slice(before); t.diagnostic(`completed fact text suffix: ${suffix.map(event => event.kind).join(',')}`);
-              assert.equal(suffix.at(-1)?.kind, 'turn_end');
+              assert.equal(suffix.findLast(event => event.kind !== 'agent_display_observer')?.kind, 'turn_end');
+              assert.ok(suffix.some(event => event.kind === 'agent_display_observer'));
             } finally { await target.close(); }
           }
           if (scenario === 'write-nonempty-snapshot-cli' || scenario === 'write-nonempty-snapshot-cli-async') {
@@ -4281,7 +4547,7 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
                 if(${JSON.stringify(scenario)}==='write-nonempty-snapshot-cli-async'&&event.kind==='tool_result'&&event.result.tool_use_id==='later-track')fs.writeFileSync(${JSON.stringify(asyncRelease)},'ready');return result};
               const {GatewayProvider}=await import(${JSON.stringify(new URL('../dist/provider.js', import.meta.url).href)});let calls=0;
               GatewayProvider.prototype.count=async()=>1;GatewayProvider.prototype.complete=async(_request,_signal,onText)=>{
-                const first=calls++===0,content=first?[{type:'tool_use',id:'later-track',name:'write_file',input:{path:${JSON.stringify(file)},content:'BLOCKED_LATER',overwrite:true}}]:[{type:'text',text:'fixture reply'}];
+                const first=calls++===0,content=first?[{type:'tool_use',id:'later-track',name:'write_file',input:{path:${JSON.stringify(file)},content:'BLOCKED_LATER',overwrite: false}}]:[{type:'text',text:'fixture reply'}];
                 if(!first&&${JSON.stringify(scenario)}==='write-nonempty-snapshot-cli-async'){const deadline=Date.now()+10000;
                   while(!fs.existsSync(${JSON.stringify(hiddenEffect)})&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
                   if(!fs.existsSync(${JSON.stringify(hiddenEffect)}))throw Error('async hook effect missing')}
@@ -4313,11 +4579,13 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
                   },
                 }) : tools;
                 await new Agent(target, new ScriptedProvider([response([call('later-track', 'write_file',
-                  { path: file, content: 'BLOCKED_LATER', overwrite: true })], 'tool_use'), done()]), fixtureTools,
+                  { path: file, content: 'BLOCKED_LATER', overwrite: false })], 'tool_use'), done()]), fixtureTools,
                   scenario === 'write-nonempty-snapshot-callback' ? { toolResult(result) {
                     if (result.id !== 'later-track') return;
                     const last = target.events.at(-1);
-                    assert.ok(last?.kind === 'tool_result' && last.result.tool_use_id === result.id);
+                    assert.ok(last?.kind === 'tool_result_observer' && last.toolUseId === result.id && last.transition.phase === 'admitted');
+                    const committed = target.events[last.resultIndex];
+                    assert.ok(committed?.kind === 'tool_result' && committed.result.tool_use_id === result.id);
                     fs.writeFileSync(hiddenEffect, 'RESULT_CALLBACK_AFTER_SYNC');
                   } } : {}).run('track later external file');
                 await new Agent(target, new ScriptedProvider([done()]), tools).run('snapshot later tracked file');
@@ -4325,11 +4593,17 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
               const kinds = target.events.slice(before).map(event => event.kind);
               t.diagnostic(`completed fact nonempty snapshot suffix: ${kinds.join(',')}`);
               if (scenario === 'write-nonempty-snapshot') ordinaryNonemptyKinds = kinds;
-              if (scenario === 'write-nonempty-snapshot-callback') assert.deepEqual(kinds, ordinaryNonemptyKinds);
+              if (scenario === 'write-nonempty-snapshot-callback') {
+                assert.deepEqual(kinds.filter(kind => kind !== 'runtime_wrapper_observer'), ordinaryNonemptyKinds);
+                assert.deepEqual(target.runtimeWrapperObservations.map(row => [row.event.stage, row.state]),
+                  [['checkScope', 'sync_returned'], ['refresh', 'sync_returned'], ['checkJournal', 'sync_returned']]);
+                assert.equal(target.toolResultObservations.at(-1)?.state, 'sync_returned');
+              }
+              if (scenario === 'write-nonempty-snapshot') assert.equal(target.toolResultObservations.at(-1)?.state, 'absent');
               const effect = target.events.findLast(event => event.kind === 'tool_effect' && event.result.tool_use_id === 'later-track');
               assert.ok(effect && effect.kind === 'tool_effect');
               assert.equal(effect.result.is_error, true);
-              assert.equal(effect.result.content, 'write_file: writes through additional directory grants are not implemented');
+              assert.equal(effect.result.content, `write_file: file already exists (pass overwrite: true): ${file}`);
               assert.equal(fs.existsSync(hiddenEffect), scenario === 'write-nonempty-snapshot-effect' || scenario === 'write-nonempty-snapshot-runtime-wrapper' ||
                 scenario === 'write-nonempty-snapshot-hook' || scenario === 'write-nonempty-snapshot-cli-async' || scenario === 'write-nonempty-snapshot-callback');
               if (scenario === 'write-nonempty-snapshot-runtime-wrapper') assert.equal(fs.readFileSync(hiddenEffect, 'utf8'), 'WRAPPER_REFRESH_EFFECT');
@@ -4357,7 +4631,8 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
               if (mode === 'tool') assert.equal(kinds.includes('tool_result'), true);
               if (mode === 'snapshot') {
                 t.diagnostic(`completed fact snapshot suffix: ${kinds.join(',')}`);
-                assert.deepEqual(kinds, ['message', 'directory_snapshot_intent', 'directory_snapshot', 'message', 'turn_end']);
+                assert.deepEqual(kinds.filter(kind => kind !== 'agent_display_observer'),
+                  ['message', 'directory_snapshot_intent', 'directory_snapshot', 'message', 'turn_end']);
                 if (scenario === 'write-text-snapshot-repeated') await new Agent(target, new ScriptedProvider([done()]), tools).run('second snapshot text');
                 const history = target.directoryFileHistory; assert.equal(history.kind, 'available');
                 if (history.kind === 'available') {
@@ -4514,7 +4789,7 @@ test('CLI resume preserves a live recovery source lock', { timeout: 30000 }, asy
   try {
     source.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(source, new ScriptedProvider([response([call('track-live-source-lock', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(source, 'live-source-lock', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     try {
@@ -4558,7 +4833,7 @@ test('interactive resume reconciles a torn inheritance from its live source', { 
   try {
     source.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(source, new ScriptedProvider([response([call('track-interactive-resume', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(source, 'interactive-resume', signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     try {
@@ -4607,7 +4882,7 @@ test('interactive handles committed rewind witness failures', { timeout: 45000 }
     try {
       parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       await new Agent(parent, new ScriptedProvider([response([call('track-inheritance-failure', 'write_file',
-        { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+        { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
       const captured = await checkpointConversationWithDirectoryWitness(parent, 'inherit-interactive', signal);
       assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
       fs.writeFileSync(local, 'AFTER'); const directory = path.join(root, '.agent');
@@ -4735,7 +5010,7 @@ test('interactive recovers a committed rewind after marker publication fails', {
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-marker', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track external file');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track external file');
     const captured = await checkpointConversationWithDirectoryWitness(session, 'marker-interactive', signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     fs.writeFileSync(local, 'AFTER');
@@ -4886,7 +5161,7 @@ test('automatic checkpoints await external witnesses while the Agent remains bus
       return result;
     };
     const agent = new Agent(session, new ScriptedProvider([response([call('track-auto', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools);
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools);
     run = agent.run('track for automatic checkpoint');
     let timer: ReturnType<typeof setTimeout> | undefined;
     try { await Promise.race([ready, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('automatic witness did not begin')), 10000); })]); }
@@ -4920,7 +5195,7 @@ test('directory checkpoint revocation leaves an unknown witness', async () => {
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-revoke', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before revocation');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before revocation');
     const begin = session.beginDirectoryCheckpointBracket.bind(session);
     session.beginDirectoryCheckpointBracket = async input => {
       const result = await begin(input);
@@ -4949,7 +5224,7 @@ test('inherited checkpoint references survive or remain unknown across writer de
     const parent = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-inherit-crash', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before fork crash');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before fork crash');
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'inherit-crash', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     const id = parent.id; await parent.close();
@@ -4994,7 +5269,7 @@ test('external checkpoint witnesses survive or retain uncertainty across writer 
     const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-crash', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before checkpoint crash');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before checkpoint crash');
     const id = session.id; await session.close();
     const writer = `import fs from 'node:fs';import {Session} from './src/session.ts';import {checkpointConversationWithDirectoryWitness} from './src/rewind.ts';
       const [root,id,outside,marker,phase]=process.argv.slice(1),s=Session.open(root,{id}),append=s.append.bind(s),rename=fs.renameSync;
@@ -5030,8 +5305,19 @@ test('external checkpoint witnesses survive or retain uncertainty across writer 
         assert.equal(!!current.workingDirectories(false).readHandle?.(outside), false);
         await current.close(); reopened = i === 0 ? Session.open(root, { id }) : undefined;
       }
-      const reader = `import {Session} from './src/session.ts';import {forkSession} from './src/sessions.ts';
-        import {inspectDirectoryCheckpointWitness,readDirectoryCheckpointBackup} from './src/rewind.ts';
+      const userDir = path.join(root, 'checkpoint-cold-user'); fs.mkdirSync(userDir);
+      const preload = path.join(root, 'checkpoint-offline.mjs');
+      fs.writeFileSync(preload, "globalThis.fetch=()=>{throw Error('checkpoint recovery fixture forbids network')};");
+      const journalBeforeCli = fs.readFileSync(session.file);
+      const cli = childProcess.spawnSync(process.execPath, ['bin/litcode.mjs', '--workspace', root,
+        '--resume', id, '--interactive', '--no-tui', '--no-inherit-gateway'], { cwd: process.cwd(), input: '/exit\n',
+        encoding: 'utf8', timeout: 15000, env: { ...process.env, HOME: userDir, CLAUDE_CONFIG_DIR: userDir,
+          LLM_API_KEY: 'fixture-only', NODE_OPTIONS: `--import=${preload}` } });
+      assert.equal(cli.status, 0, cli.stderr + cli.stdout);
+      assert.equal(fs.readFileSync(target, 'utf8'), 'AFTER_CRASH');
+      assert.ok(fs.readFileSync(session.file).subarray(0, journalBeforeCli.length).equals(journalBeforeCli));
+      const reader = `import {Session} from './dist/session.js';import {forkSession} from './dist/sessions.js';
+        import {inspectDirectoryCheckpointWitness,readDirectoryCheckpointBackup} from './dist/rewind.js';
         const [root,id,outside,target,mode]=process.argv.slice(1),s=Session.open(root,{id}),fork=mode==='fork'?forkSession(s):undefined,current=fork??s;
         const w=inspectDirectoryCheckpointWitness(current,'crash');process.stdout.write(JSON.stringify({kind:w.kind,
           bytes:readDirectoryCheckpointBackup(current,'crash',target)?.toString()??null,grant:!!current.workingDirectories(false).readHandle?.(outside)}));
@@ -5044,6 +5330,19 @@ test('external checkpoint witnesses survive or retain uncertainty across writer 
       const available = phase === 'commit' || phase === 'receipt';
       for (const mode of ['source', 'fork']) for (let i = 0; i < 2; i++)
         assert.deepEqual(cold(mode), { kind: available ? 'available' : 'unknown', bytes: available ? 'BEFORE_CRASH' : null, grant: false });
+      if (phase === 'prepared') {
+        const prefix = `${path.basename(session.file)}.checkpoint-witness-prepared-`;
+        const name = fs.readdirSync(path.dirname(session.file)).find(name => name.startsWith(prefix)); assert.ok(name);
+        const prepared = path.join(path.dirname(session.file), name), final = prepared.replace('.checkpoint-witness-prepared-', '.checkpoint-witness-receipt-');
+        const bytes = fs.readFileSync(prepared), journal = fs.readFileSync(session.file);
+        fs.renameSync(prepared, final);
+        try {
+          for (const mode of ['source', 'fork']) assert.deepEqual(cold(mode), { kind: 'unknown', bytes: null, grant: false });
+          assert.deepEqual(fs.readFileSync(final), bytes);
+          assert.deepEqual(fs.readFileSync(session.file), journal);
+          assert.equal(fs.readFileSync(target, 'utf8'), 'AFTER_CRASH');
+        } finally { fs.renameSync(final, prepared); }
+      }
       if (phase === 'commit') {
         const prefix = `${path.basename(session.file)}.checkpoint-witness-prepared-`;
         const preparedName = fs.readdirSync(path.dirname(session.file)).find(name => name.startsWith(prefix)); assert.ok(preparedName);
@@ -5071,7 +5370,7 @@ test('external checkpoint cancellation propagates after workspace capture', asyn
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-cancel', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before cancellation');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before cancellation');
     const controller = new AbortController(), begin = session.beginDirectoryCheckpointBracket.bind(session);
     session.beginDirectoryCheckpointBracket = async input => {
       const result = await begin(input);
@@ -5094,7 +5393,7 @@ test('external checkpoint journal failure fences the owning Session', async () =
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([response([call('track-journal', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools).run('track before journal fault');
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools).run('track before journal fault');
     const append = session.append.bind(session);
     session.append = (event, authorization, token) => {
       if (event.kind !== 'directory_checkpoint_witness') return append(event, authorization, token);
@@ -5130,7 +5429,7 @@ test('automatic checkpoint honors cancellation after turn completion', async () 
       return { ...result, finish: async () => { controller.abort(new Error('automatic checkpoint cancelled')); return result.finish(); } };
     };
     const agent = new Agent(session, new ScriptedProvider([response([call('track-auto-cancel', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools);
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools);
     await assert.rejects(agent.run('track before automatic cancellation', controller.signal), /automatic checkpoint cancelled/);
     assert.equal(session.events.filter(event => event.kind === 'turn_end').length, 1);
     assert.equal(session.isJournalFenced, false); assert.equal(fs.readFileSync(target, 'utf8'), 'ORIGINAL');
@@ -5151,7 +5450,7 @@ test('automatic checkpoint journal failure does not return a successful turn', a
       try { return append(event, authorization, token); } finally { fs.fsyncSync = sync; }
     };
     const provider = new ScriptedProvider([response([call('track-auto-fault', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]);
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]);
     await assert.rejects(new Agent(session, provider, tools).run('track before automatic journal fault'), /injected automatic witness journal failure/);
     assert.equal(session.isJournalFenced, true); assert.ok(provider.requests.length > 0);
     assert.equal(fs.readFileSync(target, 'utf8'), 'ORIGINAL');
@@ -5182,10 +5481,10 @@ test('directory message snapshots do not witness an earlier workspace checkpoint
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     const provider = new ScriptedProvider([response([call('track-boundary', 'write_file',
-      { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done(), done()]);
+      { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done(), done()]);
     const agent = new Agent(session, provider, tools);
     await agent.run('track the external file');
-    assert.match(JSON.stringify(resultBatches(session)[0]?.[0]), /writes through additional directory grants are not implemented/);
+    assert.match(JSON.stringify(resultBatches(session)[0]?.[0]), /file already exists/);
     checkpointName = 'before-outside-change';
     checkpointConversation(session, checkpointName, new AbortController().signal);
     const checkpoint = session.events.findLast(event => event.kind === 'checkpoint' && event.name === checkpointName);
@@ -5222,7 +5521,7 @@ test('a first-tracked directory version does not prove an earlier checkpoint sta
     try {
       session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
       const agent = new Agent(session, new ScriptedProvider([done(), response([call('track-later', 'write_file',
-        { path: target, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]), tools);
+        { path: target, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]), tools);
       await agent.run('earlier user turn');
       const first = session.events.find(event => event.kind === 'message' && event.message.role === 'user' && event.messageId);
       assert.ok(first && first.kind === 'message' && first.messageId); messageId = first.messageId;
@@ -5258,7 +5557,7 @@ test('a first-tracked directory version does not prove an earlier checkpoint sta
       try {
         assert.deepEqual(previewRewind(forked, 1, new AbortController().signal).external, preview.external);
         const other = path.join(outside, 'other'); fs.writeFileSync(other, 'OTHER');
-        const provider = new ScriptedProvider([response([call('track-other', 'write_file', { path: other, content: 'BLOCKED', overwrite: true })], 'tool_use'), done()]);
+        const provider = new ScriptedProvider([response([call('track-other', 'write_file', { path: other, content: 'BLOCKED', overwrite: false })], 'tool_use'), done()]);
         await new Agent(forked, provider, tools).run('track another external file');
         const paths = [target, other].sort(); assert.deepEqual(forked.rewindExternalState, { kind: 'unavailable', paths });
         successors.push({ workspace: root, id: forked.id, preview: true, paths });
@@ -5315,7 +5614,7 @@ test('directory file history records missing leaves and a retired grant', async 
   const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    const agent = new Agent(session, new ScriptedProvider([response([call('write', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done(), done(), done()]), tools);
+    const agent = new Agent(session, new ScriptedProvider([response([call('write', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done(), done(), done()]), tools);
     await agent.run('track'); fs.unlinkSync(target);
     await agent.run('missing');
     session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
@@ -5346,7 +5645,7 @@ test('directory file history rejects a grant retired after the snapshot copy', a
   fs.writeFileSync(target, 'UNCHANGED');
   const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
   session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-  const agent = new Agent(session, new ScriptedProvider([response([call('write', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done(), done()]), tools);
+  const agent = new Agent(session, new ScriptedProvider([response([call('write', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done(), done()]), tools);
   await agent.run('track');
   let enter!: () => void, release!: () => void;
   const entered = new Promise<void>(resolve => { enter = resolve; }), barrier = new Promise<void>(resolve => { release = resolve; });
@@ -5384,7 +5683,7 @@ test('directory file history honors checkpoint disable across user turns', async
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     const agent = new Agent(session, new ScriptedProvider([done(), response([call('track', 'write_file',
-      { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done(), done(), done()]), tools);
+      { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done(), done(), done()]), tools);
     await agent.run('disabled first');
     let history = session.directoryFileHistory;
     assert.equal(history.kind, 'available');
@@ -5456,7 +5755,7 @@ test('directory file history never recaptures interrupted snapshots after writer
     const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
     try {
       session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-      await new Agent(session, new ScriptedProvider([response([call('track', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done()]), tools).run('first turn');
+      await new Agent(session, new ScriptedProvider([response([call('track', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done()]), tools).run('first turn');
     } finally { await session.close(); }
     fs.writeFileSync(target, 'AT_CAPTURE');
     const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', writer, root, outside, session.id, phase, marker], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -5468,9 +5767,9 @@ test('directory file history never recaptures interrupted snapshots after writer
         assert.ok(Date.now() < until && child.exitCode === null && child.signalCode === null, `${phase}: ${diagnostics}`);
         await new Promise(resolve => setTimeout(resolve, 10));
       }
-      if (phase === 'after_link') {
+      if (phase === 'after_publish') {
         assert.equal(fs.readFileSync(target, 'utf8'), 'PUBLISHED');
-        assert.equal(fs.statSync(target).nlink, 2);
+        assert.equal(fs.statSync(target).nlink, 1);
       }
       assert.ok(child.pid); process.kill(child.pid, 'SIGKILL'); assert.equal((await exited).signal, 'SIGKILL');
       fs.writeFileSync(target, 'AFTER_CRASH');
@@ -5509,7 +5808,7 @@ test('directory file history never recaptures interrupted snapshots after writer
   }
 });
 
-test('directory grant Write publishes with retained snapshot and mode', { skip: process.env.W385_DIRECTORY_PUBLICATION_PROBE !== '1' }, async () => {
+test('directory grant Write publishes with retained snapshot and mode', async () => {
   const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), tools = createTools();
   const original = Buffer.from([0, 255, 65, 10, 128]);
   fs.writeFileSync(target, original, { mode: 0o751 });
@@ -5535,7 +5834,7 @@ test('owned directory publication creates a missing target with the final Write 
     const root = workspace(), outside = workspace(), target = path.join(outside, 'created'), tools = createTools();
     const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
     writeTool.execute = async (input, context) => {
-      try { return await execute(input, context); }
+      try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
       catch (error) {
         if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
         assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6184,37 +6483,960 @@ test('child workspace rewind still applies without a root recovery owner', async
   } finally { await next?.close(); await session.close(); }
 });
 
-test('directory rewind previews and removes an externally created file', { skip: process.env.W385_DIRECTORY_REWIND_PROBE !== '1' }, async () => {
-  const root = workspace(), outside = workspace(), target = path.join(outside, 'created'), tools = createTools();
-  const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
-  writeTool.execute = async (input, context) => {
-    try { return await execute(input, context); }
-    catch (error) {
-      if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
-      assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
-      const backup = context.session.events.findLast(row => row.kind === 'directory_missing_backup');
-      const grant = context.session.workingDirectories(false).readHandle?.(outside);
-      assert.ok(backup && backup.kind === 'directory_missing_backup' && grant);
-      const result = context.session.publishDirectoryFileTransaction({ toolUseId: context.toolUseId, backupId: backup.id, grant,
-        lexicalPath: target, content: Buffer.from('CREATED'), signal: context.signal, authorizationSignal: context.authorizationIdentity.signal,
-        approvalCall: context.pathApprovalCall, authorization: context.directoryPublicationAuthorization });
-      assert.equal(result.kind, 'durable');
-      return 'published';
-    }
-  };
+test('directory rewind plan binds checkpoint bytes, modes, parents and live grants', async () => {
+  const root = workspace(), outside = workspace(), parent = path.join(outside, 'nested'), target = path.join(parent, 'value'), tools = createTools();
+  fs.mkdirSync(parent);
   const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
-  const signal = new AbortController().signal;
-  let next: Session | undefined;
+  const signal = new AbortController().signal, original = Buffer.from([0, 255, 65, 10, 128]);
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    checkpointConversation(session, 'before-external-create', signal);
-    await new Agent(session, new ScriptedProvider([response([call('external-create', 'write_file', { path: target, content: 'CREATED' })], 'tool_use'), done()]), tools).run('create fixture');
-    assert.equal(fs.readFileSync(target, 'utf8'), 'CREATED');
-    const preview = previewRewind(session, 0, signal);
-    assert.deepEqual(preview.operations.find(operation => operation.path === target), { path: target, action: 'remove' });
-    next = applyRewind(session, preview, preview.token, signal);
-    assert.equal(fs.existsSync(target), false);
-  } finally { await next?.close(); await session.close(); }
+    checkpointConversation(session, 'before-tracking', signal);
+    await new Agent(session, new ScriptedProvider([response([call('track-plan', 'write_file', { path: target, content: 'TRACKED' })], 'tool_use'), done()]), tools).run('track fixture');
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, undefined);
+    fs.writeFileSync(target, original); fs.chmodSync(target, 0o751);
+    await checkpointConversationWithDirectoryWitness(session, 'present-plan', signal);
+    const journal = fs.readFileSync(session.file);
+    const unchanged = planDirectoryRewind(session, 'present-plan', signal);
+    assert.equal(unchanged.kind, 'available');
+    if (unchanged.kind !== 'available') throw new Error('plan unavailable');
+    assert.equal(unchanged.entries[0]?.action, 'unchanged');
+    fs.chmodSync(target, 0o640);
+    const mode = planDirectoryRewind(session, 'present-plan', signal);
+    assert.equal(mode.kind, 'available');
+    if (mode.kind !== 'available') throw new Error('mode plan unavailable');
+    assert.equal(mode.entries[0]?.action, 'write'); assert.notEqual(mode.digest, unchanged.digest);
+    fs.writeFileSync(target, 'AFTER');
+    const changed = planDirectoryRewind(session, 'present-plan', signal);
+    assert.equal(changed.kind, 'available');
+    if (changed.kind !== 'available') throw new Error('changed plan unavailable');
+    const entry = changed.entries[0]; assert.ok(entry && entry.before.kind === 'present' && entry.after.kind === 'present');
+    assert.equal(entry.before.bytes.toString(), 'AFTER'); assert.deepEqual(entry.after.bytes, original);
+    assert.equal(entry.after.observation.mode, 0o751); assert.equal(entry.action, 'write');
+    const encoded = encodeDirectoryRewindPlan(changed); assert.ok(encoded);
+    const originalBefore = entry.before;
+    assert.throws(() => encodeDirectoryRewindPlan({ ...changed, entries: [{ ...entry,
+      before: { ...originalBefore, bytes: Buffer.from('OTHER') } }] }), /plan changed before encoding/);
+    assert.equal(encoded.record.owner, session.id); assert.equal(encoded.record.checkpoint.name, 'present-plan');
+    assert.equal(encoded.record.plan, changed.digest); assert.equal(encoded.record.operations[0]?.stage.kind, 'prepared');
+    assert.equal(verifyDirectoryRewindObjects(encoded.record, digest => {
+      const bytes = encoded.objects.get(digest); assert.ok(bytes); return bytes;
+    }).size, 2);
+    assert.throws(() => verifyDirectoryRewindObjects(encoded.record, () => Buffer.from('CORRUPT')), /object changed/);
+    assert.equal(directoryRewindEvidenceSchema.safeParse({ ...encoded.record, operations: [...encoded.record.operations, ...encoded.record.operations] }).success, false);
+    assert.equal(directoryRewindEvidenceSchema.safeParse({ ...encoded.record, owner: randomUUID() }).success, false);
+    const pending = path.join(root, '.agent/checkpoints/transaction.json'), workspaceTarget = path.join(root, 'pending-workspace');
+    fs.writeFileSync(workspaceTarget, 'WORKSPACE_AFTER');
+    const workspaceState = (value: string) => {
+      const bytes = Buffer.from(value), sha256 = createHash('sha256').update(bytes).digest('hex');
+      fs.writeFileSync(path.join(root, '.agent/checkpoints/objects', sha256), bytes);
+      return { mode: fs.statSync(workspaceTarget).mode & 0o7777, size: bytes.length, sha256 };
+    };
+    const workspaceOperation = { path: 'pending-workspace', before: workspaceState('WORKSPACE_BEFORE'), after: workspaceState('WORKSPACE_AFTER') };
+    const coldReader = `import fs from 'node:fs';import path from 'node:path';import {recoverCheckpoint} from './dist/checkpoints.js';
+      const root=process.argv[1],pending=path.join(root,'.agent/checkpoints/transaction.json'),before=fs.readFileSync(pending);
+      let error;try{recoverCheckpoint({workspace:root,signal:new AbortController().signal,allowShell:false,maxOutputBytes:24000})}catch(e){error=String(e)}
+      process.stdout.write(JSON.stringify({error,retained:fs.readFileSync(pending).equals(before),workspace:fs.readFileSync(path.join(root,'pending-workspace'),'utf8')}));`;
+    try {
+      for (const state of ['pending', 'committed']) {
+        fs.writeFileSync(pending, JSON.stringify({ version: 1, id: randomUUID(), workspace: root, state,
+          operations: [workspaceOperation], directories: [], directory: encoded.record }));
+        const cold = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', coldReader, root],
+          { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
+        assert.equal(cold.status, 0, cold.stderr);
+        const result = JSON.parse(cold.stdout);
+        assert.match(result.error, /external rewind requires live directory reconciliation/);
+        assert.equal(result.retained, true); assert.equal(result.workspace, 'WORKSPACE_AFTER');
+        assert.equal(fs.readFileSync(target, 'utf8'), 'AFTER');
+      }
+    } finally { fs.rmSync(pending, { force: true }); fs.unlinkSync(workspaceTarget); }
+    const grant = session.workingDirectories(false).readHandle?.(outside); assert.ok(grant);
+    assert.equal(readStableDirectoryFile({ fd: grant.fd, relative: path.relative(outside, target) }, 2, signal), undefined);
+    assert.notEqual(changed.digest, mode.digest);
+    assert.deepEqual(planDirectoryRewind(session, 'before-tracking', signal), { kind: 'unknown' });
+    fs.linkSync(target, path.join(outside, 'alias'));
+    assert.deepEqual(planDirectoryRewind(session, 'present-plan', signal), { kind: 'unknown' });
+    fs.unlinkSync(path.join(outside, 'alias')); fs.unlinkSync(target);
+    const absent = planDirectoryRewind(session, 'present-plan', signal);
+    assert.ok(absent.kind === 'available' && absent.entries[0]?.before.kind === 'missing' && absent.entries[0].action === 'write');
+    assert.deepEqual(fs.readFileSync(session.file), journal);
+    await checkpointConversationWithDirectoryWitness(session, 'missing-plan', signal);
+    const missing = planDirectoryRewind(session, 'missing-plan', signal);
+    assert.ok(missing.kind === 'available' && missing.entries[0]?.action === 'unchanged');
+    fs.writeFileSync(target, 'NEW');
+    const remove = planDirectoryRewind(session, 'missing-plan', signal);
+    assert.ok(remove.kind === 'available' && remove.entries[0]?.action === 'remove' && remove.entries[0].after.kind === 'missing');
+    const removal = encodeDirectoryRewindPlan(remove); assert.ok(removal);
+    assert.equal(removal.record.operations[0]?.action, 'remove'); assert.equal(removal.objects.size, 1);
+    fs.unlinkSync(target); fs.symlinkSync(session.file, target);
+    assert.deepEqual(planDirectoryRewind(session, 'missing-plan', signal), { kind: 'unknown' });
+    fs.unlinkSync(target); fs.writeFileSync(target, 'NEW');
+    fs.renameSync(parent, `${parent}-retained`); fs.mkdirSync(parent); fs.writeFileSync(target, 'REPLACEMENT');
+    assert.deepEqual(planDirectoryRewind(session, 'missing-plan', signal), { kind: 'unknown' });
+    assert.equal(fs.readFileSync(path.join(`${parent}-retained`, 'value'), 'utf8'), 'NEW');
+    fs.unlinkSync(target); fs.rmdirSync(parent); fs.renameSync(`${parent}-retained`, parent);
+    session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+    assert.deepEqual(planDirectoryRewind(session, 'missing-plan', signal), { kind: 'unknown' });
+    assert.equal(fs.readFileSync(target, 'utf8'), 'NEW');
+    session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    const regranted = planDirectoryRewind(session, 'missing-plan', signal);
+    assert.ok(regranted.kind === 'available'); assert.notEqual(regranted.digest, remove.digest);
+    const cancelled = new AbortController(); cancelled.abort(new Error('cancel plan'));
+    assert.throws(() => planDirectoryRewind(session, 'missing-plan', cancelled.signal), /cancel plan/);
+    const successor = Session.open(root, { config: session.snapshotConfig() });
+    try {
+      assert.deepEqual(planDirectoryRewind(session, 'missing-plan', signal, successor), { kind: 'unknown' });
+      successor.carryPermissions(session);
+      session.releaseDirectoryAuthority();
+      assert.deepEqual(planDirectoryRewind(session, 'missing-plan', signal), { kind: 'unknown' });
+      const carried = planDirectoryRewind(session, 'missing-plan', signal, successor);
+      assert.ok(carried.kind === 'available');
+      const evidence = encodeDirectoryRewindPlan(carried); assert.ok(evidence);
+      assert.equal(evidence.record.owner, successor.id); assert.equal(evidence.record.checkpoint.owner, session.id);
+      assert.equal(evidence.record.operations[0]?.grant.owner, successor.id);
+      assert.notEqual(carried.digest, regranted.digest);
+    } finally { await successor.close(); }
+  } finally { await session.close(); }
+  const cold = Session.open(root, { id: session.id });
+  try { assert.deepEqual(planDirectoryRewind(cold, 'missing-plan', signal), { kind: 'unknown' }); }
+  finally { await cold.close(); }
+});
+
+test('directory rewind restores witnessed external and workspace files through default Write', async t => {
+  for (const scenario of ['missing', 'present'] as const) await t.test(scenario, async () => {
+    const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), tools = createTools();
+    const workspaceTarget = path.join(root, 'workspace-value'), original = Buffer.from([0, 255, 65, 10, 128]);
+    const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+    const signal = new AbortController().signal;
+    let next: Session | undefined;
+    try {
+      session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      const provider = new ScriptedProvider([
+        response([call('track-external', 'write_file', { path: target, content: 'TRACKED' })], 'tool_use'), done(),
+        response([call('read-workspace', 'read_file', { path: 'workspace-value' }),
+          ...(scenario === 'present' ? [call('read-external', 'read_file', { path: target })] : [])], 'tool_use'),
+        response([call('change-external', 'write_file', { path: target, content: 'AFTER', overwrite: true }),
+          call('change-workspace', 'write_file', { path: 'workspace-value', content: 'WORKSPACE_AFTER', overwrite: true })], 'tool_use'), done(),
+      ]);
+      const agent = new Agent(session, provider, tools);
+      await agent.run('track external fixture');
+      assert.equal(resultBatches(session)[0]?.[0]?.is_error, undefined);
+      assert.equal(fs.readFileSync(target, 'utf8'), 'TRACKED');
+      // Owned fixture setup establishes the actual state that the checkpoint must capture.
+      if (scenario === 'missing') fs.unlinkSync(target);
+      else { fs.writeFileSync(target, original); fs.chmodSync(target, 0o751); }
+      fs.writeFileSync(workspaceTarget, 'WORKSPACE_BEFORE');
+      const captured = await checkpointConversationWithDirectoryWitness(session, 'mixed-before', signal);
+      assert.ok('external_witness' in captured);
+      assert.equal(captured.external_witness, 'available');
+      const witness = inspectDirectoryCheckpointWitness(session, 'mixed-before');
+      assert.equal(witness.kind, 'available');
+      if (witness.kind !== 'available') throw new Error('missing checkpoint witness');
+      assert.equal(witness.entries.find(entry => entry.path.lexicalPath === target)?.observation.kind, scenario);
+      if (scenario === 'present') assert.deepEqual(readDirectoryCheckpointBackup(session, 'mixed-before', target), original);
+      await agent.run('change both files');
+      assert.ok(resultBatches(session).at(-1)?.every(result => !result.is_error), JSON.stringify(resultBatches(session)));
+      assert.equal(fs.readFileSync(target, 'utf8'), 'AFTER');
+      assert.equal(fs.readFileSync(workspaceTarget, 'utf8'), 'WORKSPACE_AFTER');
+      if (scenario === 'present') fs.chmodSync(target, 0o640);
+      const preview = previewRewind(session, 1, signal);
+      assert.deepEqual(preview.operations.find(operation => operation.path === 'workspace-value'), { path: 'workspace-value', action: 'write' });
+      assert.deepEqual(preview.operations.find(operation => operation.path === target),
+        { path: target, action: scenario === 'missing' ? 'remove' : 'write' });
+      next = scenario === 'missing' ? applyRewind(session, preview, preview.token, signal) :
+        await applyRewindAfterRelease(session, preview, preview.token, signal, async completed => { session.releaseDirectoryAuthority(); completed(); });
+      assert.equal(fs.readFileSync(workspaceTarget, 'utf8'), 'WORKSPACE_BEFORE');
+      if (scenario === 'missing') assert.equal(fs.existsSync(target), false);
+      else { assert.deepEqual(fs.readFileSync(target), original); assert.equal(fs.statSync(target).mode & 0o7777, 0o751); }
+      assert.notEqual(next.id, session.id);
+      const store = path.join(root, '.agent/checkpoints');
+      const receipts = fs.readdirSync(store).filter(name => /^directory-rewind-.*\.json$/.test(name));
+      assert.equal(receipts.length, 1);
+      const receipt = JSON.parse(fs.readFileSync(path.join(store, receipts[0]!), 'utf8'));
+      assert.equal(receipt.state, 'committed'); assert.equal(receipt.branch.id, next.id);
+      assert.equal(receipt.directory.owner, next.id);
+      assert.equal(receipt.directory.operations[0].stage.kind, 'completed');
+      assert.equal(fs.existsSync(path.join(store, 'transaction.json')), false);
+      const nextId = next.id; await next.close(); next = undefined;
+      const coldReader = `import fs from 'node:fs';import path from 'node:path';import {Session} from './dist/session.js';
+        const [root,id,outside,target]=process.argv.slice(1),s=Session.open(root,{id});
+        process.stdout.write(JSON.stringify({workspace:fs.readFileSync(path.join(root,'workspace-value'),'utf8'),
+          external:fs.existsSync(target)?fs.readFileSync(target).toString('hex'):null,grant:!!s.workingDirectories(false).readHandle?.(outside)}));await s.close();`;
+      const cold = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', coldReader, root, nextId, outside, target],
+        { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
+      assert.equal(cold.status, 0, cold.stderr);
+      assert.deepEqual(JSON.parse(cold.stdout), { workspace: 'WORKSPACE_BEFORE', external: scenario === 'missing' ? null : original.toString('hex'), grant: false });
+    } finally { await next?.close(); await session.close(); }
+  });
+});
+
+test('mixed rewind rolls back workspace on refusal and retains uncertain effects', async t => {
+  for (const fault of ['refused', 'unknown'] as const) await t.test(fault, async () => {
+    const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), tools = createTools();
+    const workspaceTarget = path.join(root, 'workspace-value'), pending = path.join(root, '.agent/checkpoints/transaction.json');
+    const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+    const signal = new AbortController().signal, native = childProcess.spawnSync;
+    let attempted = false;
+    try {
+      session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      await new Agent(session, new ScriptedProvider([response([call('track-fault', 'write_file', { path: target, content: 'TRACKED' })], 'tool_use'), done()]), tools).run('track fixture');
+      fs.writeFileSync(target, 'BEFORE'); fs.writeFileSync(workspaceTarget, 'WORKSPACE_BEFORE');
+      await checkpointConversationWithDirectoryWitness(session, 'fault-before', signal);
+      fs.writeFileSync(target, 'AFTER'); fs.writeFileSync(workspaceTarget, 'WORKSPACE_AFTER');
+      const preview = previewRewind(session, 1, signal); assert.ok(preview.directory);
+      Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: (...args: unknown[]) => {
+        if (!Array.isArray(args[1]) || !args[1].includes('--restore-retained')) return Reflect.apply(native, childProcess, args);
+        assert.equal(attempted, false); attempted = true;
+        assert.equal(JSON.parse(fs.readFileSync(pending, 'utf8')).directory.operations[0].stage.kind, 'attempting');
+        assert.equal(fs.readFileSync(workspaceTarget, 'utf8'), 'WORKSPACE_BEFORE');
+        if (fault === 'refused') { fs.renameSync(target, `${target}-original`); fs.writeFileSync(target, 'REPLACEMENT'); }
+        const result: unknown = Reflect.apply(native, childProcess, args);
+        if (fault === 'refused') return result;
+        const options = args[2];
+        assert.ok(options && typeof options === 'object' && 'stdio' in options && Array.isArray(options.stdio) && typeof options.stdio[8] === 'number');
+        fs.ftruncateSync(options.stdio[8], 0); // The unknown control loses both output channels.
+        assert.ok(result && typeof result === 'object' && 'output' in result && Array.isArray(result.output));
+        return { ...result, output: result.output.map((value, index) => index === 4 ? 'start\nrenamed\n' : value) };
+      } });
+      syncBuiltinESMExports();
+      assert.throws(() => applyRewind(session, preview, preview.token, signal), /External rewind|rollback incomplete/);
+      assert.equal(attempted, true);
+      if (fault === 'refused') {
+        assert.equal(fs.readFileSync(workspaceTarget, 'utf8'), 'WORKSPACE_AFTER');
+        assert.equal(fs.readFileSync(target, 'utf8'), 'REPLACEMENT');
+        assert.equal(fs.readFileSync(`${target}-original`, 'utf8'), 'AFTER');
+        assert.equal(fs.existsSync(pending), false);
+      } else {
+        assert.equal(fs.readFileSync(workspaceTarget, 'utf8'), 'WORKSPACE_BEFORE');
+        assert.equal(fs.readFileSync(target, 'utf8'), 'BEFORE');
+        const before = fs.readFileSync(pending);
+        assert.equal(JSON.parse(before.toString()).directory.operations[0].stage.kind, 'unknown');
+        assert.throws(() => recoverCheckpoint({ workspace: root, signal, allowShell: false, maxOutputBytes: 24000 }), /requires live directory reconciliation/);
+        assert.throws(() => recoverCheckpoint({ workspace: root, signal, allowShell: false, maxOutputBytes: 24000 }, session), /unresolved effects/);
+        assert.deepEqual(fs.readFileSync(pending), before);
+      }
+    } finally {
+      Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: native }); syncBuiltinESMExports();
+      await session.close();
+    }
+  });
+});
+
+test('mixed rewind compensates known external effects before a failed branch commit', async t => {
+  for (const scenario of ['replace', 'remove', 'create', 'replaced', 'cancelled', 'rollback-unknown'] as const) await t.test(scenario, async () => {
+    const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), tools = createTools();
+    const local = path.join(root, 'value'), pending = path.join(root, '.agent/checkpoints/transaction.json');
+    const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+    const controller = new AbortController(), signal = controller.signal, append = Session.prototype.append, native = childProcess.spawnSync;
+    const baseline = Buffer.from([0, 255, 7, 128]), changed = Buffer.from([1, 0, 128, 9]);
+    let injected = false;
+    try {
+      session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      await new Agent(session, new ScriptedProvider([response([call('track-compensation', 'write_file', { path: target, content: 'TRACKED' })], 'tool_use'), done()]), tools).run('track fixture');
+      if (scenario === 'remove') fs.unlinkSync(target);
+      else { fs.writeFileSync(target, baseline); fs.chmodSync(target, 0o751); }
+      fs.writeFileSync(local, 'LOCAL_BEFORE');
+      await checkpointConversationWithDirectoryWitness(session, 'compensation-before', signal);
+      if (scenario === 'create') fs.unlinkSync(target);
+      else { fs.writeFileSync(target, changed); fs.chmodSync(target, 0o640); }
+      fs.writeFileSync(local, 'LOCAL_AFTER');
+      const preview = previewRewind(session, 1, signal); assert.ok(preview.directory);
+      Session.prototype.append = function(event, ...args) {
+        if (event.kind === 'rewind') {
+          injected = true;
+          const record = JSON.parse(fs.readFileSync(pending, 'utf8'));
+          assert.equal(record.directory.operations[0].stage.kind, 'completed');
+          assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_BEFORE');
+          if (scenario === 'remove') assert.equal(fs.existsSync(target), false);
+          else assert.deepEqual(fs.readFileSync(target), baseline);
+          if (scenario === 'replaced') { fs.renameSync(target, `${target}-landed`); fs.writeFileSync(target, 'OTHER_ACTOR'); }
+          if (scenario === 'cancelled') controller.abort();
+          if (scenario === 'rollback-unknown') {
+            Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: (...args: unknown[]) => {
+              const result: unknown = Reflect.apply(native, childProcess, args);
+              if (!Array.isArray(args[1]) || !args[1].includes('--restore-retained')) return result;
+              const options = args[2];
+              assert.ok(options && typeof options === 'object' && 'stdio' in options && Array.isArray(options.stdio) && typeof options.stdio[8] === 'number');
+              fs.ftruncateSync(options.stdio[8], 0);
+              assert.equal(JSON.parse(fs.readFileSync(pending, 'utf8')).directory.operations[0].rollback.kind, 'attempting');
+              assert.ok(result && typeof result === 'object' && 'output' in result && Array.isArray(result.output));
+              return { ...result, output: result.output.map((value, index) => index === 4 ? 'start\nrenamed\n' : value) };
+            } });
+            syncBuiltinESMExports();
+          }
+          throw new Error('fixture branch commit refused');
+        }
+        return append.call(this, event, ...args);
+      };
+      assert.throws(() => applyRewind(session, preview, preview.token, signal), /fixture branch commit refused|rollback incomplete/);
+      assert.equal(injected, true);
+      if (scenario === 'rollback-unknown') {
+        assert.deepEqual(fs.readFileSync(target), changed);
+        assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_BEFORE');
+        const bytes = fs.readFileSync(pending);
+        assert.equal(JSON.parse(bytes.toString()).directory.operations[0].rollback.kind, 'unknown');
+        assert.throws(() => recoverCheckpoint({ workspace: root, signal, allowShell: false, maxOutputBytes: 24000 }), /requires live directory reconciliation/);
+        assert.throws(() => recoverCheckpoint({ workspace: root, signal, allowShell: false, maxOutputBytes: 24000 }, session), /unresolved effects/);
+        assert.deepEqual(fs.readFileSync(pending), bytes);
+      } else if (scenario === 'replaced') {
+        assert.equal(fs.readFileSync(target, 'utf8'), 'OTHER_ACTOR');
+        assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_BEFORE');
+        assert.deepEqual(fs.readFileSync(`${target}-landed`), baseline);
+        assert.equal(JSON.parse(fs.readFileSync(pending, 'utf8')).directory.operations[0].rollback.kind, 'refused');
+      } else {
+        assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_AFTER');
+        if (scenario === 'create') assert.equal(fs.existsSync(target), false);
+        else { assert.deepEqual(fs.readFileSync(target), changed); assert.equal(fs.statSync(target).mode & 0o7777, 0o640); }
+        assert.equal(fs.existsSync(pending), false);
+        const store = path.dirname(pending), receipts = fs.readdirSync(store).filter(name => name.startsWith('directory-rollback-'));
+        assert.equal(receipts.length, 1);
+        const receipt = JSON.parse(fs.readFileSync(path.join(store, receipts[0]!), 'utf8'));
+        assert.equal(receipt.directory.operations[0].rollback.kind, 'completed');
+        await session.close();
+        const reader = `import fs from 'node:fs';import {Session} from './dist/session.js';
+          const [root,id,outside,target,local]=process.argv.slice(1),s=Session.open(root,{id});
+          process.stdout.write(JSON.stringify({grant:!!s.workingDirectories(false).readHandle?.(outside),
+            local:fs.readFileSync(local,'utf8'),bytes:fs.existsSync(target)?fs.readFileSync(target).toString('hex'):null}));await s.close();`;
+        const cold = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', reader, root, session.id, outside, target, local],
+          { cwd: process.cwd(), encoding: 'utf8', timeout: 10000 });
+        assert.equal(cold.status, 0, cold.stderr);
+        assert.deepEqual(JSON.parse(cold.stdout), { grant: false, local: 'LOCAL_AFTER', bytes: scenario === 'create' ? null : changed.toString('hex') });
+      }
+    } finally {
+      Session.prototype.append = append;
+      Object.defineProperty(childProcess, 'spawnSync', { configurable: true, writable: true, value: native }); syncBuiltinESMExports();
+      await session.close();
+    }
+  });
+});
+
+test('cold mixed rewind requires regrant and verifies native effects before recovery', async t => {
+  const helper = path.join(workspace(), 'directory-write-test');
+  const nativeSource = fs.readFileSync('native/directory-write/write.c', 'utf8'), claim = 'if (rename_exclusive(dir, name, dir, part)) goto done;';
+  assert.equal(nativeSource.split(claim).length, 2);
+  // Owned fixture reproduces the retired host link/unlink crash window; the
+  // production writer continues to use exclusive rename only.
+  fs.writeFileSync(`${helper}.c`, nativeSource.replace(claim, `if (getenv("DIRECTORY_WRITE_TEST_LEGACY_LINK")) {
+    if (linkat(dir, name, dir, part, 0) || test_point("legacy_after_link") || unlinkat(dir, name, 0)) goto done;
+  } else ${claim}`));
+  execFileSync('cc', ['-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-DDIRECTORY_WRITE_TEST', '-o', helper, `${helper}.c`]);
+  const cases = (['committed', 'prepared', 'compensated', 'forward', 'forward-receipt', 'reverse-receipt', 'forward-native', 'reverse-native', 'forward-captured', 'reverse-captured', 'forward-untouched', 'reverse-untouched', 'forward-linked', 'reverse-linked', 'forward-early', 'reverse-early'] as const)
+    .map(phase => ({ phase, createPoint: '' }));
+  for (const createPoint of ['create_attempt_persisted', 'create_publication_persisted', 'create_before_quarantine', 'create_quarantine', 'create_staging', 'create_writing', 'create_after_prepared'])
+    for (const phase of ['forward-untouched', 'reverse-untouched'] as const) cases.push({ phase, createPoint });
+  for (const createPoint of ['create_after_mode', 'create_after_recheck', 'error:create_before_quarantine', 'error:create_writing',
+    'error:create_after_prepared', 'error:create_before_mode', 'error:create_after_mode', 'error:create_after_publish'])
+    for (const phase of (createPoint.endsWith('after_publish') ? ['forward-native', 'reverse-native'] as const : ['forward-untouched', 'reverse-untouched'] as const))
+      cases.push({ phase, createPoint });
+  for (const createPoint of ['zero:create_after_mode', 'zero:error:create_after_mode']) cases.push({ phase: 'forward-untouched', createPoint });
+  for (const phase of ['forward-native', 'reverse-native'] as const)
+    cases.push({ phase, createPoint: 'zero:create_after_publish' });
+  for (const createPoint of ['torn:0', 'torn:8', 'torn:12'])
+    for (const phase of ['forward-untouched', 'reverse-untouched'] as const) cases.push({ phase, createPoint });
+  cases.push({ phase: 'forward-untouched', createPoint: 'zero:torn:12' });
+  for (const createPoint of ['partial:1:create_before_quarantine', 'partial:10:create_writing', 'partial:30:create_after_prepared',
+    'partial:22:create_before_mode', 'partial:17:create_after_mode', 'partial:15:create_after_publish'])
+    for (const phase of (createPoint.endsWith('after_publish') ? ['forward-native', 'reverse-native'] as const : ['forward-untouched', 'reverse-untouched'] as const))
+      cases.push({ phase, createPoint });
+  cases.push({ phase: 'forward-untouched', createPoint: 'zero:partial:17:create_after_mode' });
+  for (const phase of ['forward-native', 'reverse-native'] as const) cases.push({ phase, createPoint: 'published-error' });
+  for (const phase of ['forward-captured', 'reverse-captured'] as const) cases.push({ phase, createPoint: 'captured-error' });
+  for (const phase of ['forward-untouched', 'reverse-untouched'] as const)
+    for (const boundary of ['before', 'staging', 'intent']) cases.push({ phase, createPoint: `untouched-error:${boundary}` });
+  for (const { phase, createPoint } of cases.filter(({ phase, createPoint }) =>
+    (!process.env.W385_COMMITTED_ONLY || phase === 'committed') &&
+    (!process.env.W385_LINKED_ONLY || phase.endsWith('-linked')) && (!process.env.W385_EARLY_ONLY || phase.endsWith('-early')) &&
+    (!process.env.W385_CREATE_ONLY || !!createPoint) && (!process.env.W385_CREATE_PERSIST_ONLY || createPoint.endsWith('_persisted')) &&
+    (!process.env.W385_CREATE_OUTCOME_ONLY || createPoint.startsWith('error:') || ['create_after_mode', 'create_after_recheck'].includes(createPoint)) &&
+    (!process.env.W385_CREATE_ZERO_ONLY || createPoint.startsWith('zero:')) &&
+    (!process.env.W385_CREATE_TORN_ONLY || createPoint.includes('torn:')) &&
+    (!process.env.W385_CREATE_PARTIAL_ERROR_ONLY || createPoint.includes('partial:')) &&
+    (!process.env.W385_PUBLISHED_ERROR_ONLY || createPoint === 'published-error') &&
+    (!process.env.W385_CAPTURED_ERROR_ONLY || createPoint === 'captured-error') &&
+    (!process.env.W385_UNTOUCHED_ERROR_ONLY || createPoint.startsWith('untouched-error:')) &&
+    (!process.env.W385_ZERO_PUBLISHED_ONLY || createPoint === 'zero:create_after_publish')))
+  for (const scenario of (createPoint.startsWith('untouched-error:') ? (phase === 'forward-untouched' ? ['replace', 'remove'] as const : ['replace', 'create'] as const) :
+    createPoint === 'captured-error' ? ['replace', 'staged-conflict', 'held-conflict'] as const :
+    createPoint === 'published-error' ? (phase === 'forward-native' ? ['replace', 'remove'] as const : ['replace', 'create'] as const) :
+    createPoint ? (phase.startsWith('forward') ? ['create'] as const : ['remove'] as const) :
+    phase === 'forward-linked' ? ['create'] as const : phase === 'reverse-linked' ? ['remove'] as const :
+    phase === 'forward-early' ? ['replace', 'remove', 'replaced'] as const : phase === 'reverse-early' ? ['replace', 'create', 'replaced'] as const :
+    phase.endsWith('-captured') ? ['replace', 'replaced', 'staged-conflict', 'held-conflict'] as const :
+    phase.endsWith('-untouched') ? ['replace', 'remove', 'create', 'replaced', 'staged-conflict'] as const :
+    phase === 'forward' ? ['replace', 'remove', 'create', 'replaced', 'multi'] as const : ['replace', 'remove', 'create', 'replaced'] as const)) await t.test(`${phase}/${scenario}${createPoint ? `/${createPoint}` : ''}`, async () => {
+    const zeroCreate = createPoint.startsWith('zero:'), nativeCreatePoint = createPoint.replace(/^zero:/, '');
+    const publicationCut = nativeCreatePoint.startsWith('torn:') || ['create_before_mode', 'create_after_mode', 'create_after_recheck', 'create_after_publish'].includes(nativeCreatePoint.replace(/^error:|^partial:[0-9]+:/, ''));
+    const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), tools = createTools();
+    const other = path.join(outside, 'value-b');
+    const local = path.join(root, 'value'), store = path.join(root, '.agent/checkpoints'), pending = path.join(store, 'transaction.json');
+    const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+    const signal = new AbortController().signal, baseline = Buffer.from([0, 255, 8, 128]);
+    try {
+      session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      await new Agent(session, new ScriptedProvider([response([call('track-cold-mixed', 'write_file', { path: target, content: 'TRACKED' }),
+        ...(scenario === 'multi' ? [call('track-cold-mixed-b', 'write_file', { path: other, content: 'TRACKED' })] : [])], 'tool_use'), done()]), tools).run('track fixture');
+      if (scenario === 'remove') fs.unlinkSync(target);
+      else { fs.writeFileSync(target, baseline); fs.chmodSync(target, zeroCreate ? 0 : 0o751);
+        if (zeroCreate) execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]); }
+      if (scenario === 'multi') { fs.writeFileSync(other, baseline); fs.chmodSync(other, 0o751); }
+      fs.writeFileSync(local, 'LOCAL_BEFORE');
+      await checkpointConversationWithDirectoryWitness(session, 'cold-mixed', signal);
+      if (scenario === 'create') fs.unlinkSync(target);
+      else {
+        fs.writeFileSync(target, 'AFTER'); fs.chmodSync(target, zeroCreate ? 0 : 0o640);
+        if (zeroCreate) execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]);
+      }
+      if (scenario === 'multi') { fs.writeFileSync(other, 'AFTER'); fs.chmodSync(other, 0o640); }
+      fs.writeFileSync(local, 'LOCAL_AFTER');
+      await session.close();
+      const crash = `import fs from 'node:fs';import childProcess from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';
+        import {Session} from './dist/session.js';import {previewRewind,applyRewind} from './dist/rewind.js';
+        const [root,id,outside,pending,phase,local,helper,createPoint]=process.argv.slice(1),s=Session.open(root,{id}),signal=new AbortController().signal;
+        const createKind=createPoint.replace(/^zero:/,''),tornMode=createKind.startsWith('torn:'),partialError=createKind.startsWith('partial:'),nativePoint=tornMode?'receipt_partial_intent':createKind.replace(/^error:|^partial:[0-9]+:/,''),nativeFailure=partialError||createKind.startsWith('error:'),publicationCut=tornMode||['create_before_mode','create_after_mode','create_after_recheck','create_after_publish'].includes(nativePoint);
+        s.adoptPermissionUpdates([{type:'addDirectories',directories:[outside],destination:'session'}]);
+        const unlink=fs.unlinkSync,rename=fs.renameSync,append=Session.prototype.append;
+        if(phase.endsWith('-receipt')||phase.endsWith('-native')||phase.endsWith('-captured')||phase.endsWith('-untouched')||phase.endsWith('-linked')||phase.endsWith('-early')){const native=childProcess.spawnSync;let calls=0;
+          childProcess.spawnSync=function(...args){
+            // Manufacture an actual old native receipt for legacy-only cases.
+            // This fixture migration is outside the production coordinator.
+            if(Array.isArray(args[1])&&args[1].includes('--prepare-create')&&(phase.endsWith('-linked')||phase==='forward-receipt')){
+              const transaction=JSON.parse(fs.readFileSync(pending,'utf8')),op=transaction.directory.operations[0],reverse=phase.startsWith('reverse-');
+              const attempt=reverse?op.rollback:op.stage;
+              delete op[reverse?'rollbackCreation':'creation'];fs.writeFileSync(pending,JSON.stringify(transaction));
+              const receipt=fs.openSync(pending.replace('transaction.json','native-attempt-'+attempt.id+'.receipt'),'r+');
+              args[2]={...args[2],stdio:args[2].stdio.map((fd,index)=>index===8?receipt:fd)};
+              args[1]=['--receipt',args[1][2],String(args[2].input.length),args[1][3],args[1][6]];
+            }
+            const publishedError=createPoint==='published-error';
+            const untouchedError=createPoint.startsWith('untouched-error:');
+            const capturedError=createPoint==='captured-error',partialCapture=capturedError&&phase==='reverse-captured';
+            const selected=!createPoint.endsWith('_persisted')&&Array.isArray(args[1])&&args[1].includes('--receipt')&&((createPoint&&!publicationCut&&!publishedError&&!untouchedError)||!args[1].includes('--prepare-create'))&&++calls===(phase.startsWith('forward-')?1:2);
+            if(selected&&!phase.endsWith('-receipt')){args[0]=helper;args[2]={...args[2],env:{...process.env,
+              DIRECTORY_WRITE_TEST_SELF_KILL:nativeFailure?undefined:'1',DIRECTORY_WRITE_TEST_FAIL:nativeFailure?'1':undefined,DIRECTORY_WRITE_TEST_SHORT_READ:'1',
+              DIRECTORY_WRITE_TEST_RECEIPT_CUT:tornMode?createKind.split(':')[1]:undefined,
+              DIRECTORY_WRITE_TEST_ERROR_CUT:partialError?createKind.split(':')[1]:undefined,
+              ...(phase.endsWith('-linked')?{DIRECTORY_WRITE_TEST_LEGACY_LINK:'1'}:{}),
+              DIRECTORY_WRITE_TEST_POINT:nativePoint|| (phase.endsWith('-early')?(args[1].includes('--remove')?'remove_quarantine':'replace_staging'):phase.endsWith('-linked')?'legacy_after_link':phase.endsWith('-untouched')?(args[1].includes('--remove')?'remove_after_recheck':args[1].includes('--restore-retained')?'replace_after_recheck':args[1].includes('--publish-prepared-create')?'create_before_mode':'after_recheck'):
+                phase.endsWith('-captured')?'replace_after_capture':args[1].includes('--remove')?'remove_after_capture':args[1].includes('--restore-retained')?'replace_after_publish':args[1].includes('--publish-prepared-create')?'create_after_publish':'after_rename')}};}
+            const remove=selected&&args[1].includes('--remove');
+            if(selected&&publishedError) Object.assign(args[2].env,{
+              DIRECTORY_WRITE_TEST_POINT:remove?'remove_after_capture':'replace_after_publish',
+              DIRECTORY_WRITE_TEST_FAIL:'1',DIRECTORY_WRITE_TEST_SELF_KILL:undefined,DIRECTORY_WRITE_TEST_ERROR_CUT:remove?'17':undefined});
+            if(selected&&capturedError) Object.assign(args[2].env,{
+              DIRECTORY_WRITE_TEST_POINT:'replace_after_capture',DIRECTORY_WRITE_TEST_FAIL:'1',
+              DIRECTORY_WRITE_TEST_SELF_KILL:undefined,DIRECTORY_WRITE_TEST_ERROR_CUT:partialCapture?'17':undefined});
+            if(selected&&untouchedError){
+              const points=remove?{before:'remove_before_recheck',staging:'remove_quarantine',intent:'remove_after_recheck'}:
+                {before:'replace_before_quarantine',staging:'replace_writing',intent:'replace_after_recheck'};
+              Object.assign(args[2].env,{DIRECTORY_WRITE_TEST_POINT:points[createPoint.split(':')[1]],DIRECTORY_WRITE_TEST_FAIL:'1',
+                DIRECTORY_WRITE_TEST_SELF_KILL:undefined,DIRECTORY_WRITE_TEST_ERROR_CUT:phase==='reverse-untouched'?'10':undefined});
+            }
+            const result=native.apply(this,args);
+            const fullError=(nativeFailure&&!partialError)||(publishedError&&!remove)||(capturedError&&!partialCapture)||(untouchedError&&phase==='forward-untouched');
+            if(selected){if(!phase.endsWith('-receipt')&&(fullError?result.status!==1:result.signal!=='SIGKILL'))throw Error('native fixture did not fail as selected');process.exit(73);}
+            return result;};syncBuiltinESMExports();}
+        fs.unlinkSync=function(file){if(phase==='committed'&&file===pending)process.exit(73);return unlink.apply(this,arguments)};
+        fs.renameSync=function(from,to){const result=rename.apply(this,arguments);
+          if(createPoint.endsWith('_persisted')&&to===pending){
+            const op=JSON.parse(fs.readFileSync(pending,'utf8')).directory?.operations[0],reverse=phase.startsWith('reverse-');
+            const attempt=reverse?op?.rollback:op?.stage,creation=reverse?op?.rollbackCreation:op?.creation;
+            if(attempt?.kind==='attempting'){
+              if(!creation)throw Error('unbound create attempt persisted');
+              if(creation.phase===(createPoint==='create_attempt_persisted'?'preparing':'publishing'))process.exit(73);
+            }
+          }
+          if(phase==='prepared'&&to===local&&fs.existsSync(pending))process.exit(73);
+          if(phase==='compensated'&&to===pending&&JSON.parse(fs.readFileSync(pending,'utf8')).directory?.operations.every(op=>op.rollback?.kind==='completed'))process.exit(73);
+          return result;};
+        Session.prototype.append=function(event,...args){if(event.kind==='rewind'){
+          if(phase==='forward')process.exit(73);if(phase==='compensated'||phase.startsWith('reverse-'))throw Error('fixture precommit failure');}return append.call(this,event,...args)};
+        const preview=previewRewind(s,1,signal);if(!preview.directory)throw Error('missing mixed plan');applyRewind(s,preview,preview.token,signal);`;
+      const writer = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', crash, root, session.id, outside, pending, phase, local, helper, createPoint],
+        { cwd: process.cwd(), encoding: 'utf8', timeout: 15000 });
+      assert.equal(writer.status, 73, writer.stderr);
+      let original = fs.readFileSync(pending); const record = JSON.parse(original.toString());
+      assert.equal(record.state, phase === 'committed' ? 'committed' : 'pending');
+      assert.equal(record.directory.operations[0].stage.kind, phase === 'prepared' ? 'prepared' : phase.startsWith('forward-') ? 'attempting' : 'completed');
+      if (phase === 'compensated') assert.equal(record.directory.operations[0].rollback.kind, 'completed');
+      if (phase.startsWith('reverse-')) assert.equal(record.directory.operations[0].rollback.kind, 'attempting');
+      assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_BEFORE');
+      const reader = `import fs from 'node:fs';import path from 'node:path';import childProcess from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';
+        import {Session} from './dist/session.js';import {recoverCheckpoint} from './dist/checkpoints.js';
+        const [root,id,outside,regrant,cut,helper]=process.argv.slice(1),s=Session.open(root,{id,recoverLock:true});
+        const context={workspace:root,signal:new AbortController().signal,allowShell:false,maxOutputBytes:24000};
+        if(cut){const pending=path.join(root,'.agent/checkpoints/transaction.json'),transaction=JSON.parse(fs.readFileSync(pending,'utf8'));
+          const branch=path.join(root,'.agent',transaction.branch.id+'.jsonl'),unlink=fs.unlinkSync,rename=fs.renameSync;
+          fs.renameSync=function(from,to){const result=rename.apply(this,arguments);
+            if(cut==='continuation-intent'&&to===pending&&JSON.parse(fs.readFileSync(pending,'utf8')).directory.operations.some(op=>op.continuation||op.rollbackContinuation))process.exit(74);
+            if(cut==='after-inverse'&&to===pending){
+            const ops=JSON.parse(fs.readFileSync(pending,'utf8')).directory.operations;
+            if(ops.some(op=>op.rollback?.kind==='completed')&&ops.some(op=>!op.rollback))process.exit(74);}return result;};
+          fs.unlinkSync=function(file){if(file===branch&&cut==='before-unlink')process.exit(74);
+            const result=unlink.apply(this,arguments);if(file===branch&&cut==='after-unlink')process.exit(74);return result;};
+          if(cut==='inverse-untouched'||cut.startsWith('inverse-early:')){const native=childProcess.spawnSync;
+            childProcess.spawnSync=function(...args){const selected=Array.isArray(args[1])&&args[1].includes('--receipt')&&!args[1].includes('--prepare-create');
+              if(selected){args[0]=helper;args[2]={...args[2],env:{...process.env,DIRECTORY_WRITE_TEST_SELF_KILL:'1',
+                DIRECTORY_WRITE_TEST_RECEIPT_CUT:cut==='inverse-early:torn'?'12':undefined,
+                DIRECTORY_WRITE_TEST_SHORT_READ:'1',DIRECTORY_WRITE_TEST_POINT:cut==='inverse-early:torn'?'receipt_partial_intent':cut.startsWith('inverse-early:')?
+                  (args[1].includes('--remove')?(cut.endsWith('absent')?'remove_before_recheck':'remove_quarantine'):
+                    cut.endsWith('absent')?'replace_before_quarantine':cut.endsWith('partial')?'replace_writing':'replace_before_intent'):
+                  args[1].includes('--remove')?'remove_after_recheck':args[1].includes('--restore-retained')?'replace_after_recheck':args[1].includes('--publish-prepared-create')?'create_before_mode':'after_recheck'}};}
+              const result=native.apply(this,args);if(selected){if(result.signal!=='SIGKILL')throw Error('inverse did not die');process.exit(74);}return result;};syncBuiltinESMExports();}
+          if(cut.startsWith('linked-')){const native=childProcess.spawnSync;
+            childProcess.spawnSync=function(...args){const selected=Array.isArray(args[1])&&args[1].includes(cut==='linked-capture'||cut==='linked-prepared'||cut.startsWith('linked-early:')?'--normalize-linked':'--publish-linked-captured');
+              if(selected){args[0]=helper;args[2]={...args[2],env:{...process.env,DIRECTORY_WRITE_TEST_SELF_KILL:'1',
+                DIRECTORY_WRITE_TEST_RECEIPT_CUT:cut.startsWith('linked-early:receipt-partial:')?cut.split(':')[2]:undefined,
+                DIRECTORY_WRITE_TEST_SHORT_READ:'1',DIRECTORY_WRITE_TEST_POINT:cut.startsWith('linked-early:receipt-partial:')?'receipt_partial_intent':cut.startsWith('linked-early:')?cut.slice('linked-early:'.length):cut==='linked-prepared'?'replace_after_recheck':cut==='linked-capture'?'replace_after_capture':cut==='linked-resume-before'?'captured_before_publish':'captured_after_publish'}};}
+              const injectError=selected&&process.env.W385_LINKED_ERRORS&&args[1].includes('--normalize-linked')&&!cut.includes('receipt-partial');
+              const partial=${phase.startsWith('reverse-')};
+              if(injectError) Object.assign(args[2].env,{DIRECTORY_WRITE_TEST_SELF_KILL:undefined,DIRECTORY_WRITE_TEST_FAIL:'1',DIRECTORY_WRITE_TEST_ERROR_CUT:partial?'10':undefined});
+              const result=native.apply(this,args);if(selected){if(injectError&&!partial?result.status!==1:result.signal!=='SIGKILL')throw Error('linked fixture outcome differs');process.exit(74);}return result;};syncBuiltinESMExports();}
+          if(cut==='continuation-before'||cut==='continuation-after'){const native=childProcess.spawnSync;
+            childProcess.spawnSync=function(...args){const selected=Array.isArray(args[1])&&args[1].includes('--publish-captured');
+              if(selected){args[0]=helper;args[2]={...args[2],env:{...process.env,DIRECTORY_WRITE_TEST_SELF_KILL:'1',
+                DIRECTORY_WRITE_TEST_POINT:cut==='continuation-before'?'captured_before_publish':'captured_after_publish'}};}
+              const result=native.apply(this,args);if(selected){if(result.signal!=='SIGKILL')throw Error('continuation did not die');process.exit(74);}return result;};syncBuiltinESMExports();}}
+        try{if(regrant==='yes')s.adoptPermissionUpdates([{type:'addDirectories',directories:[outside],destination:'session'}]);
+          console.log(JSON.stringify({first:recoverCheckpoint(context,s),second:recoverCheckpoint(context,s)}));}
+        catch(error){console.log(JSON.stringify({error:String(error)}));}finally{await s.close();}`;
+      const run = (grant: boolean, cut = '') => {
+        const owner = phase === 'committed' && (scenario !== 'replace' || process.env.W385_SUCCESSOR_ONLY) ? record.branch.id : session.id;
+        const result = childProcess.spawnSync(process.execPath, ['--input-type=module', '-e', reader, root, owner, outside, grant ? 'yes' : 'no', cut, helper],
+          { cwd: process.cwd(), encoding: 'utf8', timeout: 15000 });
+        assert.equal(result.status, cut ? 74 : 0, result.stderr || result.stdout);
+        return cut ? undefined : JSON.parse(result.stdout);
+      };
+      assert.match(run(false).error, /explicit grant/);
+      assert.deepEqual(fs.readFileSync(pending), original);
+      if (phase === 'committed' && scenario === 'remove') {
+        const activeSource = Session.open(root, { id: session.id, recoverLock: true });
+        try {
+          assert.match(run(true).error, /Session is active/);
+          assert.deepEqual(fs.readFileSync(pending), original);
+          activeSource.checkpointGateIdentity();
+        } finally { await activeSource.close(); }
+      }
+      if (createPoint === 'zero:create_after_publish') {
+        const inode = fs.statSync(target, { bigint: true });
+        assert.throws(() => fs.readFileSync(target), { code: 'EACCES' });
+        assert.match(run(true).error, /needs read access.*mode 0000/);
+        assert.deepEqual(fs.readFileSync(pending), original);
+        assert.equal(fs.statSync(target, { bigint: true }).ctimeNs, inode.ctimeNs);
+        // The fixture owner grants access only after the cold reader returns.
+        execFileSync('/bin/chmod', ['+a', `user:${os.userInfo().username} allow read,readattr,readextattr,readsecurity`, target]);
+        assert.equal(fs.statSync(target, { bigint: true }).ino, inode.ino);
+        assert.equal(fs.statSync(target).mode & 0o7777, 0);
+      }
+      const creation = phase.startsWith('reverse-') ? record.directory.operations[0].rollbackCreation : record.directory.operations[0].creation;
+      if (creation) {
+        const file = path.join(store, `native-attempt-${creation.id}.receipt`), bytes = fs.readFileSync(file);
+        fs.renameSync(file, `${file}-original`); fs.writeFileSync(file, bytes, { mode: 0o600 });
+        assert.match(run(true).error, /receipt identity changed/); assert.deepEqual(fs.readFileSync(pending), original);
+        fs.unlinkSync(file); fs.renameSync(`${file}-original`, file);
+        fs.appendFileSync(file, 'changed\n'); assert.match(run(true).error, /create preparation (receipt changed|prefix differs)/);
+        assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(file, bytes);
+        if (nativeCreatePoint.startsWith('error:')) {
+          const failed = creation.phase === 'preparing' ? file : path.join(store, `native-attempt-${(phase.startsWith('reverse-') ? record.directory.operations[0].rollback : record.directory.operations[0].stage).id}.receipt`);
+          const raw = fs.readFileSync(failed, 'utf8'); assert.match(raw, /error (not_prepared|preparation_incomplete|not_published|unknown) 5\nexit 1\n$/);
+          fs.writeFileSync(failed, raw.replace(/\nerror [^ ]+ /, `\nerror ${creation.phase === 'preparing' ? 'not_published' : 'preparation_incomplete'} `));
+          assert.match(run(true).error, /create error phase differs/); assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(failed, raw);
+          fs.writeFileSync(failed, raw.replace(/exit 1\n$/, 'exit 0\n'));
+          assert.match(run(true).error, /create .* (differs|changed|unresolved)|metadata-only creation unresolved/); assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(failed, raw);
+        }
+        if (nativeCreatePoint.startsWith('partial:')) {
+          const attempt = phase.startsWith('reverse-') ? record.directory.operations[0].rollback : record.directory.operations[0].stage;
+          const failed = creation.phase === 'preparing' ? file : path.join(store, `native-attempt-${attempt.id}.receipt`);
+          const raw = fs.readFileSync(failed, 'utf8'), start = raw.indexOf('\ne');
+          assert.ok(start >= 0); assert.equal(raw.slice(start + 1).length, Number(nativeCreatePoint.split(':')[1]));
+          const invalid = nativeCreatePoint === 'partial:1:create_before_quarantine'
+            ? ['error not_prepared -1\nexit 1\n', 'error not_prepared 2147483648\nexit 1\n', 'error not_prepared 05\nexit 1\n',
+              'error not_prepared 5\nexit 0\n', 'error not_prepared 5\nexit 1\nextra\n'] : [raw.slice(start + 1) + 'X'];
+          for (const suffix of invalid) {
+            fs.writeFileSync(failed, raw.slice(0, start + 1) + suffix);
+            assert.match(run(true).error, /create .* (differs|changed|unresolved)|metadata-only creation unresolved/);
+            assert.deepEqual(fs.readFileSync(pending), original);
+          }
+          fs.writeFileSync(failed, raw);
+        }
+        if (nativeCreatePoint.startsWith('torn:')) {
+          const attempt = phase.startsWith('reverse-') ? record.directory.operations[0].rollback : record.directory.operations[0].stage;
+          const pub = path.join(store, `native-attempt-${attempt.id}.receipt`), raw = fs.readFileSync(pub, 'utf8');
+          assert.match(raw, /mode_changing\nmode_applied v[^\n]*$/); assert.ok(!raw.includes('publishing\n'));
+          fs.writeFileSync(pub, `${raw}X`);
+          assert.match(run(true).error, /create staged identity changed|metadata-only creation unresolved/);
+          assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(pub, raw);
+        }
+        if (createPoint.endsWith('create_after_mode')) {
+          const staged = path.join(outside, `.litcode-create-${creation.id}`, 'staged'), content = zeroCreate ? baseline : fs.readFileSync(staged), mode = fs.statSync(staged).mode & 0o7777;
+          if (zeroCreate) {
+            assert.equal(mode, 0); assert.throws(() => fs.readFileSync(staged), { code: 'EACCES' });
+            const pub = path.join(store, `native-attempt-${record.directory.operations[0].stage.id}.receipt`), raw = fs.readFileSync(pub, 'utf8');
+            const before = fs.statSync(staged, { bigint: true });
+            fs.writeFileSync(pub, raw.replace('mode_changing\n', 'mode_changing\npublishing\n'));
+            assert.match(run(true).error, /metadata-only creation unresolved/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(pub, raw);
+            const after = fs.statSync(staged, { bigint: true });
+            for (const key of ['dev', 'ino', 'mode', 'size', 'mtimeNs', 'ctimeNs'] as const) assert.equal(after[key], before[key]);
+          }
+          fs.renameSync(staged, `${staged}-original`); fs.writeFileSync(staged, content, { mode });
+          assert.match(run(true).error, /create staged identity changed|metadata-only creation unresolved/); assert.deepEqual(fs.readFileSync(pending), original);
+          fs.unlinkSync(staged); fs.renameSync(`${staged}-original`, staged);
+        }
+      }
+      if ((phase.endsWith('-receipt') || phase.endsWith('-native')) && scenario === 'replace') {
+        const operation = record.directory.operations[0], attempt = phase.startsWith('forward-') ? operation.stage : operation.rollback;
+        const receipt = path.join(store, `native-attempt-${attempt.id}.receipt`), bytes = fs.readFileSync(receipt);
+        fs.renameSync(receipt, `${receipt}-original`); fs.writeFileSync(receipt, bytes, { mode: 0o600 });
+        assert.match(run(true).error, /receipt identity changed/);
+        assert.deepEqual(fs.readFileSync(pending), original);
+        fs.unlinkSync(receipt); fs.renameSync(`${receipt}-original`, receipt);
+        if (createPoint === 'published-error') {
+          assert.match(bytes.toString(), /renamed\nerror unknown 5\nexit 1\n$/);
+          fs.writeFileSync(receipt, bytes.toString().replace('error unknown', 'error not_published'));
+        } else fs.writeFileSync(receipt, bytes.subarray(0, bytes.length - 3));
+        assert.match(run(true).error, /unresolved effects/); assert.deepEqual(fs.readFileSync(pending), original);
+        // A complete exit marker cannot authorize an inconsistent pre-effect inode.
+        const changedIntent = bytes.toString().replace(/^(intent replace [^\n ]+ v2:[^:]+:)[^:]+/m, '$1999999999999999999');
+        assert.notEqual(changedIntent, bytes.toString());
+        fs.writeFileSync(receipt, changedIntent);
+        assert.match(run(true).error, /unresolved effects/); assert.deepEqual(fs.readFileSync(pending), original);
+        fs.writeFileSync(receipt, bytes);
+      }
+      if (phase.endsWith('-receipt') && scenario === 'create') {
+        // Old complete receipts remain recoverable without V2 intent metadata.
+        const operation = record.directory.operations[0], attempt = phase === 'forward-receipt' ? operation.stage : operation.rollback;
+        const receipt = path.join(store, `native-attempt-${attempt.id}.receipt`);
+        fs.writeFileSync(receipt, fs.readFileSync(receipt, 'utf8').replace('directory-write-receipt-v2\n', 'directory-write-receipt-v1\n').replace(/^intent [^\n]+\n/m, ''));
+      }
+      if (scenario === 'staged-conflict' || scenario === 'held-conflict') {
+        const operation = record.directory.operations[0], attempt = phase.startsWith('forward-') ? operation.stage : operation.rollback;
+        const file = path.join(outside, `.litcode-replace-${attempt.id}`, scenario === 'staged-conflict' ? 'staged' : 'held');
+        const bytes = fs.readFileSync(file), mode = fs.statSync(file).mode & 0o7777;
+        fs.renameSync(file, `${file}-bound`); fs.writeFileSync(file, bytes, { mode });
+        const current = fs.existsSync(target) ? fs.readFileSync(target) : undefined;
+        assert.match(run(true).error, phase.endsWith('-untouched') ? /no-effect staged file changed/ : /captured identity changed/);
+        assert.deepEqual(fs.readFileSync(pending), original);
+        if (current) assert.deepEqual(fs.readFileSync(target), current); else assert.equal(fs.existsSync(target), false);
+      } else if (scenario === 'replaced') {
+        const present = fs.existsSync(target), bytes = present ? fs.readFileSync(target) : phase.startsWith('forward-') ? baseline : Buffer.from('AFTER');
+        const mode = present ? fs.statSync(target).mode & 0o7777 : 0o640;
+        if (present) fs.renameSync(target, `${target}-landed`);
+        fs.writeFileSync(target, bytes); fs.chmodSync(target, mode);
+        assert.match(run(true).error, /identity or content changed|unresolved effects/);
+        assert.deepEqual(fs.readFileSync(pending), original);
+        assert.deepEqual(fs.readFileSync(target), bytes);
+      } else {
+        if (phase.endsWith('-untouched') || phase.endsWith('-early')) {
+          if (createPoint.startsWith('untouched-error:')) {
+            const op = record.directory.operations[0], attempt = phase === 'forward-untouched' ? op.stage : op.rollback;
+            const receipt = path.join(store, `native-attempt-${attempt.id}.receipt`), raw = fs.readFileSync(receipt, 'utf8');
+            const index = raw.indexOf('\nerror '); assert.ok(index > 0);
+            const before = createPoint.endsWith(':before'), remove = scenario !== 'replace';
+            const refused = remove ? 'not_removed' : 'not_published';
+            const trailer = `error ${before ? refused : 'unknown'} 5\nexit 1\n`;
+            assert.equal(raw.slice(index + 1), phase === 'forward-untouched' ? trailer : trailer.slice(0, 10));
+            fs.writeFileSync(receipt, raw.slice(0, index + 1) + `error ${before ? 'unknown' : refused} 5\nexit 1\n`);
+            assert.match(run(true).error, /no-effect error phase differs|unresolved effects/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, raw);
+          }
+          const current = fs.existsSync(target) ? fs.readFileSync(target) : undefined;
+          fs.writeFileSync(local, 'OUTSIDE_WORKSPACE');
+          assert.match(run(true).error, /recovery conflict/); assert.deepEqual(fs.readFileSync(pending), original);
+          fs.writeFileSync(local, 'LOCAL_BEFORE');
+          if (phase === 'reverse-untouched') {
+            for (let retry = 0; retry < 2; retry++) {
+              run(true, 'inverse-untouched'); original = fs.readFileSync(pending);
+              const operation = JSON.parse(original.toString()).directory.operations[0];
+              assert.equal(operation.noEffectAttempts.length, retry + 1);
+              assert.equal(operation.rollback.kind, 'attempting');
+              assert.ok(operation.noEffectAttempts.every((attempt: { id: string }) => attempt.id !== operation.rollback.id));
+              if (current) assert.deepEqual(fs.readFileSync(target), current); else assert.equal(fs.existsSync(target), false);
+            }
+          }
+          if (phase === 'reverse-early') {
+            for (const [index, cut] of ['absent', 'partial', 'checking', 'torn'].entries()) {
+              run(true, `inverse-early:${cut}`); original = fs.readFileSync(pending);
+              const operation = JSON.parse(original.toString()).directory.operations[0];
+              assert.equal(operation.noEffectAttempts.length, index + 1);
+              assert.equal(operation.rollback.kind, 'attempting');
+              assert.ok(operation.noEffectAttempts.every((attempt: { id: string }) => attempt.id !== operation.rollback.id));
+              if (current) assert.deepEqual(fs.readFileSync(target), current); else assert.equal(fs.existsSync(target), false);
+            }
+          }
+        }
+        if (phase.endsWith('-linked')) {
+          assert.equal(fs.statSync(target).nlink, 2);
+          fs.writeFileSync(local, 'OUTSIDE_WORKSPACE'); assert.match(run(true).error, /recovery conflict/);
+          assert.deepEqual(fs.readFileSync(pending), original); assert.equal(fs.statSync(target).nlink, 2);
+          fs.writeFileSync(local, 'LOCAL_BEFORE');
+          const pair = fs.statSync(target, { bigint: true });
+          const preparationCuts = ['linked-prepared', 'linked-prepared', ...['replace_before_quarantine', 'replace_quarantine', 'replace_staging', 'replace_writing', 'replace_before_intent'].map(point => `linked-early:${point}`),
+            ...Array.from({ length: 13 }, (_, field) => `linked-early:receipt-partial:${field}`)];
+          for (const [retry, cut] of preparationCuts.entries()) {
+            run(true, cut); original = fs.readFileSync(pending);
+            const entry = JSON.parse(original.toString()).directory.operations[0];
+            const preparation = phase.startsWith('forward-') ? entry.normalization : entry.rollbackNormalization;
+            assert.equal(entry.abandonedNormalizations?.length ?? 0, retry);
+            assert.ok((entry.abandonedNormalizations ?? []).every((old: { normalization: { id: string } }) => old.normalization.id !== preparation.id));
+            assert.equal(fs.statSync(target, { bigint: true }).ino, pair.ino); assert.equal(fs.statSync(target, { bigint: true }).ctimeNs, pair.ctimeNs);
+            const receipt = path.join(store, `native-attempt-${preparation.id}.receipt`), bytes = fs.readFileSync(receipt);
+            assert.equal(fs.existsSync(path.join(outside, `.litcode-linked-${preparation.id}`, 'staged')), !['linked-early:replace_before_quarantine', 'linked-early:replace_quarantine'].includes(cut));
+            assert.equal(fs.existsSync(path.join(outside, `.litcode-linked-${preparation.id}`, 'held')), false);
+            if (process.env.W385_LINKED_ERRORS && !cut.includes('receipt-partial')) {
+              const index = bytes.indexOf('\nerror '); assert.ok(index > 0);
+              const family = cut.endsWith('replace_before_quarantine') ? 'unknown' : 'not_published';
+              fs.writeFileSync(receipt, Buffer.concat([bytes.subarray(0, index + 1), Buffer.from(`error ${family} 5\nexit 1\n`)]));
+              assert.match(run(true).error, /normalization error phase differs/);
+              assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            }
+            fs.appendFileSync(receipt, 'changed\n'); assert.match(run(true).error, /normalization (receipt unresolved|intent incomplete or changed)|invalid descriptor observation/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            if (cut.startsWith('linked-early:receipt-partial:')) {
+              assert.equal(bytes.at(-1) === 10, false);
+              fs.writeFileSync(receipt, Buffer.concat([bytes.subarray(0, -1), Buffer.from('?')]));
+              assert.match(run(true).error, /normalization staged prefix changed/);
+              assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            }
+          }
+          fs.writeFileSync(local, 'OUTSIDE_WORKSPACE'); assert.match(run(true).error, /recovery conflict/);
+          assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(local, 'LOCAL_BEFORE');
+          run(true, 'linked-capture'); original = fs.readFileSync(pending); assert.equal(fs.existsSync(target), false);
+          const operation = JSON.parse(original.toString()).directory.operations[0];
+          assert.equal(operation.abandonedNormalizations.length, 20);
+          const normalization = phase.startsWith('forward-') ? operation.normalization : operation.rollbackNormalization;
+          const held = path.join(outside, `.litcode-linked-${normalization.id}`, 'held');
+          assert.equal(fs.statSync(held).nlink, 2); assert.equal(fs.statSync(path.join(outside, normalization.alias)).ino, fs.statSync(held).ino);
+          const nativeReceipt = path.join(store, `native-attempt-${normalization.id}.receipt`), receiptBytes = fs.readFileSync(nativeReceipt);
+          if (process.env.W385_LINKED_ERRORS) {
+            const start = receiptBytes.indexOf('\nerror '); assert.ok(start > 0);
+            fs.writeFileSync(nativeReceipt, Buffer.concat([receiptBytes.subarray(0, start + 1),
+              Buffer.from('publishing\nrenamed\nheld v2:0\nlanded v2:0\nerror unknown 5\nexit 1\n')]));
+            assert.match(run(true).error, /normalization error phase differs/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(nativeReceipt, receiptBytes);
+          }
+          fs.renameSync(nativeReceipt, `${nativeReceipt}-original`); fs.writeFileSync(nativeReceipt, receiptBytes, { mode: 0o600 });
+          assert.match(run(true).error, /Native receipt identity changed/); assert.deepEqual(fs.readFileSync(pending), original);
+          fs.unlinkSync(nativeReceipt); fs.renameSync(`${nativeReceipt}-original`, nativeReceipt);
+          const corrupt = JSON.parse(original.toString()), entry = corrupt.directory.operations[0];
+          (phase.startsWith('forward-') ? entry.normalization : entry.rollbackNormalization).pair.ino = '999999999999999999';
+          fs.writeFileSync(pending, JSON.stringify(corrupt)); assert.match(run(true).error, /original linked identity changed/);
+          fs.writeFileSync(pending, original);
+          run(true, 'linked-resume-before'); original = fs.readFileSync(pending); assert.equal(fs.existsSync(target), false);
+          const saved = JSON.parse(original.toString()).directory.operations[0];
+          const captured = (phase.startsWith('forward-') ? saved.normalization : saved.rollbackNormalization).captured;
+          assert.ok(captured);
+          assert.equal(captured.receiptDigest, createHash('sha256').update(receiptBytes).digest('hex'));
+          if (process.env.W385_LINKED_ERRORS) {
+            const index = receiptBytes.indexOf('\nerror ');
+            assert.ok(index > 0);
+            const stripped = JSON.parse(original.toString()), op = stripped.directory.operations[0];
+            delete (phase.startsWith('forward-') ? op.normalization : op.rollbackNormalization).captured.receiptDigest;
+            fs.writeFileSync(pending, JSON.stringify(stripped));
+            assert.match(run(true).error, /normalization capture receipt changed/);
+            assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), stripped); fs.writeFileSync(pending, original);
+            fs.writeFileSync(nativeReceipt, Buffer.concat([receiptBytes.subarray(0, index + 1), Buffer.from('error unknown 9\nexit 1\n')]));
+            assert.match(run(true).error, /normalization capture receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(nativeReceipt, receiptBytes);
+          }
+          run(true, 'linked-resume-after'); assert.deepEqual(fs.readFileSync(pending), original);
+          assert.equal(fs.statSync(target).nlink, 1); assert.equal(String(fs.statSync(target).ino), captured.staged.ino);
+        }
+        if (phase.endsWith('-captured')) {
+          assert.equal(fs.existsSync(target), false);
+          fs.writeFileSync(local, 'OUTSIDE_WORKSPACE');
+          assert.match(run(true).error, /recovery conflict/);
+          assert.deepEqual(fs.readFileSync(pending), original); assert.equal(fs.existsSync(target), false);
+          fs.writeFileSync(local, 'LOCAL_BEFORE');
+          run(true, 'continuation-intent');
+          original = fs.readFileSync(pending);
+          const saved = JSON.parse(original.toString()).directory.operations[0];
+          const continuation = phase.startsWith('forward-') ? saved.continuation : saved.rollbackContinuation;
+          assert.equal(continuation.kind, 'publish-captured'); assert.equal(fs.existsSync(target), false);
+          const corrupt = JSON.parse(original.toString()), entry = corrupt.directory.operations[0];
+          (phase.startsWith('forward-') ? entry.continuation : entry.rollbackContinuation).staged.ino = '999999999999999999';
+          fs.writeFileSync(pending, JSON.stringify(corrupt));
+          assert.match(run(true).error, /captured continuation changed/);
+          assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), corrupt); assert.equal(fs.existsSync(target), false);
+          fs.writeFileSync(pending, original);
+          run(true, 'continuation-before');
+          assert.deepEqual(fs.readFileSync(pending), original); assert.equal(fs.existsSync(target), false);
+          run(true, 'continuation-after');
+          assert.deepEqual(fs.readFileSync(pending), original);
+          assert.equal(fs.statSync(target, { bigint: true }).ino.toString(), continuation.staged.ino);
+          if (createPoint === 'captured-error') {
+            const copy = JSON.parse(original.toString()), op = copy.directory.operations[0];
+            delete op[phase === 'forward-captured' ? 'continuation' : 'rollbackContinuation'];
+            fs.writeFileSync(pending, JSON.stringify(copy));
+            assert.match(run(true).error, /unresolved effects/);
+            assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), copy);
+            fs.writeFileSync(pending, original);
+          }
+        }
+        if (phase !== 'committed') {
+          const branch = path.join(root, '.agent', `${record.branch.id}.jsonl`);
+          const archived = path.join(store, `rollback-branch-${record.id}.jsonl`), journal = fs.readFileSync(branch);
+          if (scenario === 'multi') {
+            run(true, 'after-inverse');
+            original = fs.readFileSync(pending);
+            assert.equal(JSON.parse(original.toString()).directory.operations.filter((operation: { rollback?: { kind: string } }) => operation.rollback?.kind === 'completed').length, 1);
+            assert.equal(fs.readFileSync(local, 'utf8'), 'LOCAL_BEFORE');
+            assert.deepEqual(fs.readFileSync(target), baseline); assert.equal(fs.readFileSync(other, 'utf8'), 'AFTER');
+          }
+          run(true, 'before-unlink');
+          if (phase === 'forward' || phase.endsWith('-receipt') || phase.endsWith('-native') || phase.endsWith('-captured') || phase.endsWith('-untouched') || phase.endsWith('-linked') || phase.endsWith('-early')) {
+            original = fs.readFileSync(pending);
+            assert.equal(JSON.parse(original.toString()).directory.operations[0].stage.kind, phase === 'forward-untouched' || phase === 'forward-early' ? 'refused' : 'completed');
+            if (phase !== 'forward-untouched' && phase !== 'forward-early') assert.equal(JSON.parse(original.toString()).directory.operations[0].rollback.kind, 'completed');
+          }
+          if (phase.endsWith('-untouched')) {
+            const operation = JSON.parse(original.toString()).directory.operations[0];
+            assert.equal(operation.noEffectAttempts.length, phase === 'forward-untouched' ? 1 : 3);
+            const proof = operation.noEffectAttempts[0], receipt = path.join(store, `native-attempt-${proof.id}.receipt`), bytes = fs.readFileSync(receipt);
+            assert.equal(proof.digest, createHash('sha256').update(bytes).digest('hex'));
+            if (proof.creation) {
+              assert.equal(proof.creation.evidence.phase, createPoint && createPoint !== 'create_publication_persisted' && !publicationCut ? 'preparing' : 'publishing');
+              const preparationReceipt = path.join(store, `native-attempt-${proof.creation.evidence.id}.receipt`), prepBytes = fs.readFileSync(preparationReceipt);
+              fs.appendFileSync(preparationReceipt, 'changed\n'); assert.match(run(true).error, /Abandoned create preparation changed/);
+              assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(preparationReceipt, prepBytes);
+              const corrupt = JSON.parse(original.toString()), snapshot = corrupt.directory.operations[0].noEffectAttempts[0].preparation;
+              if (snapshot.kind === 'metadata') snapshot.observation.ino = '999999999999999999';
+              else if (snapshot.kind === 'absent') snapshot.parent.ino = '999999999999999999';
+              else if (snapshot.staged.kind === 'missing') snapshot.staged.parent.ino = '999999999999999999';
+              else snapshot.staged.observation.ino = '999999999999999999';
+              fs.writeFileSync(pending, JSON.stringify(corrupt)); assert.match(run(true).error, /retained creation changed|metadata-only creation unresolved|create (preparation prefix differs|staged identity changed)/);
+              assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), corrupt); fs.writeFileSync(pending, original);
+              if (zeroCreate) {
+                assert.equal(proof.preparation.kind, 'metadata'); assert.equal(proof.preparation.content, 'unverified');
+                const retained = path.join(outside, `.litcode-create-${proof.creation.evidence.id}`, 'staged');
+                assert.equal(fs.statSync(retained).mode & 0o7777, 0); assert.throws(() => fs.readFileSync(retained), { code: 'EACCES' });
+              }
+            }
+            fs.appendFileSync(receipt, 'changed\n'); assert.match(run(true).error, /No-effect native receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            if (createPoint.startsWith('untouched-error:') && !createPoint.endsWith(':intent')) {
+              assert.equal(proof.preparation.kind, createPoint.endsWith(':before') ? 'absent' : 'retained');
+              if (createPoint.endsWith(':staging') && scenario === 'replace') assert.equal(proof.preparation.staged.content.bytes, 1);
+            } else if (scenario === 'replace') {
+              const changed = bytes.toString().replace(/^(intent replace [^\n ]+ v2:[^:]+:)[^:]+/m, '$1999999999999999999');
+              const corrupt = JSON.parse(original.toString());
+              corrupt.directory.operations[0].noEffectAttempts[0].digest = createHash('sha256').update(changed).digest('hex');
+              fs.writeFileSync(receipt, changed); fs.writeFileSync(pending, JSON.stringify(corrupt));
+              assert.match(run(true).error, /no-effect staged file changed/);
+              assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), corrupt);
+              fs.writeFileSync(receipt, bytes); fs.writeFileSync(pending, original);
+            }
+          }
+          if (phase.endsWith('-early')) {
+            const operation = JSON.parse(original.toString()).directory.operations[0];
+            assert.equal(operation.noEffectAttempts.length, phase === 'forward-early' ? 1 : 5);
+            const proof = operation.noEffectAttempts[0], receipt = path.join(store, `native-attempt-${proof.id}.receipt`), bytes = fs.readFileSync(receipt);
+            fs.appendFileSync(receipt, 'changed\n'); assert.match(run(true).error, /No-effect native receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            const altered = JSON.parse(original.toString()), staged = altered.directory.operations[0].noEffectAttempts[0].preparation.staged;
+            if (staged.kind === 'present') staged.observation.ino = '999999999999999999'; else staged.parent.ino = '999999999999999999';
+            fs.writeFileSync(pending, JSON.stringify(altered));
+            assert.match(run(true).error, /early no-effect retained state changed/);
+            assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), altered); fs.writeFileSync(pending, original);
+            if (phase === 'reverse-early') {
+              const torn = operation.noEffectAttempts[4], tornReceipt = path.join(store, `native-attempt-${torn.id}.receipt`), tornBytes = fs.readFileSync(tornReceipt);
+              assert.notEqual(tornBytes.at(-1), 10);
+              const changed = Buffer.concat([tornBytes.subarray(0, -1), Buffer.from('?')]), forged = JSON.parse(original.toString());
+              forged.directory.operations[0].noEffectAttempts[4].digest = createHash('sha256').update(changed).digest('hex');
+              fs.writeFileSync(tornReceipt, changed); fs.writeFileSync(pending, JSON.stringify(forged));
+              assert.match(run(true).error, /early no-effect intent changed/);
+              assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), forged);
+              fs.writeFileSync(tornReceipt, tornBytes); fs.writeFileSync(pending, original);
+            }
+          }
+          if (phase.endsWith('-linked')) {
+            const operation = JSON.parse(original.toString()).directory.operations[0];
+            assert.equal(operation.abandonedNormalizations.length, 20);
+            const abandoned = operation.abandonedNormalizations[0], oldReceipt = path.join(store, `native-attempt-${abandoned.normalization.id}.receipt`);
+            const oldBytes = fs.readFileSync(oldReceipt);
+            assert.equal(abandoned.digest, createHash('sha256').update(oldBytes).digest('hex'));
+            fs.appendFileSync(oldReceipt, 'changed\n'); assert.match(run(true).error, /Abandoned normalization receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(oldReceipt, oldBytes);
+            const forged = oldBytes.toString().replace(/^(intent normalize-linked [^\n ]+ v2:[^:]+:)[^:]+/m, '$1999999999999999999');
+            const corrupt = JSON.parse(original.toString());
+            corrupt.directory.operations[0].abandonedNormalizations[0].digest = createHash('sha256').update(forged).digest('hex');
+            fs.writeFileSync(oldReceipt, forged); fs.writeFileSync(pending, JSON.stringify(corrupt));
+            assert.match(run(true).error, /normalization preparation changed/);
+            fs.writeFileSync(oldReceipt, oldBytes); fs.writeFileSync(pending, original);
+            const early = operation.abandonedNormalizations[4];
+            assert.equal(early.preparation.kind, 'retained'); assert.equal(early.preparation.staged.kind, 'present');
+            assert.equal(early.preparation.staged.content.bytes, 0);
+            assert.equal(operation.abandonedNormalizations[5].preparation.staged.content.bytes, 1);
+            const altered = JSON.parse(original.toString());
+            altered.directory.operations[0].abandonedNormalizations[4].preparation.staged.observation.ino = '999999999999999999';
+            fs.writeFileSync(pending, JSON.stringify(altered));
+            assert.match(run(true).error, /early normalization preparation changed/);
+            assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), altered); fs.writeFileSync(pending, original);
+            const torn = operation.abandonedNormalizations[7], tornReceipt = path.join(store, `native-attempt-${torn.normalization.id}.receipt`);
+            const tornBytes = fs.readFileSync(tornReceipt), contradictory = Buffer.concat([tornBytes.subarray(0, -1), Buffer.from('?')]);
+            const forgedPrefix = JSON.parse(original.toString());
+            forgedPrefix.directory.operations[0].abandonedNormalizations[7].digest = createHash('sha256').update(contradictory).digest('hex');
+            fs.writeFileSync(tornReceipt, contradictory); fs.writeFileSync(pending, JSON.stringify(forgedPrefix));
+            assert.match(run(true).error, /normalization staged prefix changed/);
+            assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), forgedPrefix);
+            fs.writeFileSync(tornReceipt, tornBytes); fs.writeFileSync(pending, original);
+            const normalization = phase.startsWith('forward-') ? operation.normalization : operation.rollbackNormalization;
+            const receipt = path.join(store, `native-attempt-${normalization.id}.receipt`), bytes = fs.readFileSync(receipt);
+            assert.equal(normalization.completedReceiptDigest, createHash('sha256').update(bytes).digest('hex'));
+            fs.appendFileSync(receipt, 'changed\n'); assert.match(run(true).error, /Normalized native receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original); fs.writeFileSync(receipt, bytes);
+            const held = path.join(outside, `.litcode-linked-${normalization.id}`, 'held');
+            assert.equal(fs.statSync(held).nlink, 2); assert.equal(fs.statSync(path.join(outside, normalization.alias)).ino, fs.statSync(held).ino);
+          }
+          if (phase.endsWith('-native') || phase.endsWith('-captured')) {
+            const operation = JSON.parse(original.toString()).directory.operations[0];
+            const attempt = phase.startsWith('forward-') ? operation.stage : operation.rollback;
+            const receipt = path.join(store, `native-attempt-${attempt.id}.receipt`), bytes = fs.readFileSync(receipt);
+            assert.equal(attempt.reconciledReceipt, createHash('sha256').update(bytes).digest('hex'));
+            fs.appendFileSync(receipt, 'changed\n');
+            assert.match(run(true).error, /Reconciled native receipt changed/);
+            assert.deepEqual(fs.readFileSync(pending), original);
+            fs.writeFileSync(receipt, bytes);
+            if (scenario === 'replace') {
+              const changed = bytes.toString().replace(/^(intent replace [^\n ]+ v2:[^:]+:)[^:]+/m, '$1999999999999999999');
+              const corrupt = JSON.parse(original.toString()), entry = corrupt.directory.operations[0];
+              (phase.startsWith('forward-') ? entry.stage : entry.rollback).reconciledReceipt = createHash('sha256').update(changed).digest('hex');
+              fs.writeFileSync(receipt, changed); fs.writeFileSync(pending, JSON.stringify(corrupt));
+              assert.match(run(true).error, /Reconciled native receipt outcome differs/);
+              assert.deepEqual(JSON.parse(fs.readFileSync(pending, 'utf8')), corrupt);
+              fs.writeFileSync(receipt, bytes); fs.writeFileSync(pending, original);
+            }
+          }
+          assert.ok(fs.existsSync(branch)); assert.deepEqual(fs.readFileSync(archived), journal);
+          assert.equal(fs.statSync(archived).ino, record.branch.inode);
+          assert.deepEqual(fs.readFileSync(pending), original);
+          run(true, 'after-unlink');
+          assert.equal(fs.existsSync(branch), false); assert.deepEqual(fs.readFileSync(archived), journal);
+          assert.equal(fs.statSync(archived).ino, record.branch.inode);
+          assert.deepEqual(fs.readFileSync(pending), original);
+          assert.match(run(false).error, /explicit grant/);
+          if (scenario === 'replace') {
+            fs.renameSync(archived, `${archived}-original`); fs.writeFileSync(archived, journal);
+            assert.match(run(true).error, /identity changed|archive changed/);
+            assert.deepEqual(fs.readFileSync(pending), original);
+            fs.unlinkSync(archived); fs.renameSync(`${archived}-original`, archived);
+          }
+        }
+        assert.deepEqual(run(true), { first: { recovery: phase === 'committed' ? 'committed' : 'rolled_back' }, second: { recovery: 'none' } });
+        assert.equal(fs.existsSync(pending), false);
+        assert.equal(fs.readFileSync(local, 'utf8'), phase === 'committed' ? 'LOCAL_BEFORE' : 'LOCAL_AFTER');
+        if (phase === 'committed' ? scenario === 'remove' : scenario === 'create') assert.equal(fs.existsSync(target), false);
+        else {
+          assert.deepEqual(fs.readFileSync(target), phase === 'committed' ? baseline : Buffer.from('AFTER'));
+          assert.equal(fs.statSync(target).mode & 0o7777, zeroCreate ? 0 : phase === 'committed' ? 0o751 : 0o640);
+        }
+        if (scenario === 'multi') { assert.equal(fs.readFileSync(other, 'utf8'), 'AFTER'); assert.equal(fs.statSync(other).mode & 0o7777, 0o640); }
+        if (phase !== 'prepared') {
+          assert.ok(fs.existsSync(path.join(store, `directory-${phase === 'committed' ? 'rewind' : 'rollback'}-${record.id}.json`)));
+          for (const operation of record.directory.operations) for (const state of [operation.before, operation.after])
+            if (state.kind === 'present') assert.ok(fs.existsSync(path.join(store, 'objects', state.content.sha256)));
+        }
+      }
+    } finally { await session.close(); }
+  });
 });
 
 test('owned directory publication transaction preserves prior bytes and cold result', async () => {
@@ -6224,7 +7446,7 @@ test('owned directory publication transaction preserves prior bytes and cold res
   fs.writeFileSync(target, original, { mode: 0o751 });
   const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
   writeTool.execute = async (input, context) => {
-    try { return await execute(input, context); }
+    try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
     catch (error) {
       if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
       assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6318,7 +7540,7 @@ test('retained directory publication binds its held inode across cold readers', 
   const originalStat = fs.statSync(target, { bigint: true });
   const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
   writeTool.execute = async (input, context) => {
-    try { return await execute(input, context); }
+    try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
     catch (error) {
       if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
       assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6412,7 +7634,7 @@ test('owned directory publication transaction preserves a replaced target', asyn
   fs.writeFileSync(target, 'BEFORE');
   const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
   writeTool.execute = async (input, context) => {
-    try { return await execute(input, context); }
+    try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
     catch (error) {
       if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
       assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6447,7 +7669,7 @@ test('owned directory publication rejects mismatched tool input or lifetime', as
     fs.writeFileSync(target, 'ORIGINAL');
     const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
     writeTool.execute = async (input, context) => {
-      try { return await execute(input, context); }
+      try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
       catch (error) {
         if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
         assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6481,9 +7703,9 @@ test('owned directory publication remains unknown across owner death at native c
   const writer = `import fs from 'node:fs';import childProcess from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';import path from 'node:path';
     import {Session} from './src/session.ts';import {Agent,defaultConfig} from './src/agent.ts';import {createTools} from './src/tools.ts';
     const [root,outside,helper,phase,marker]=process.argv.slice(1),target=path.join(outside,'value'),tools=createTools(),tool=tools.find(x=>x.schema.name==='write_file'),execute=tool.execute;
-    tool.execute=async(input,ctx)=>{try{return await execute(input,ctx)}catch(error){
+    tool.execute=async(input,ctx)=>{try{return await execute(input,{...ctx,directoryPublicationAuthorization:undefined})}catch(error){
       if(!String(error).includes('writes through additional directory grants are not implemented'))throw error;
-      const backup=phase==='after_link'?ctx.session.events.findLast(row=>row.kind==='directory_missing_backup'):ctx.session.directoryBackups.at(-1),grant=ctx.session.workingDirectories(false).readHandle(outside),native=childProcess.spawnSync;
+      const backup=phase==='after_publish'?ctx.session.events.findLast(row=>row.kind==='directory_missing_backup'):ctx.session.directoryBackups.at(-1),grant=ctx.session.workingDirectories(false).readHandle(outside),native=childProcess.spawnSync;
       childProcess.spawnSync=(file,args,options)=>{const stdio=[...options.stdio];stdio[5]=5;
         return native(helper,args,{...options,stdio,env:{...process.env,DIRECTORY_WRITE_TEST_POINT:phase,DIRECTORY_WRITE_TEST_CONTROL_STATUS:'1'}})};
       syncBuiltinESMExports();const result=ctx.session.publishDirectoryFileTransaction({toolUseId:ctx.toolUseId,backupId:backup.id,grant,lexicalPath:target,
@@ -6501,9 +7723,9 @@ test('owned directory publication remains unknown across owner death at native c
     const s=Session.open(process.argv[1],{id:process.argv[2],recoverLock:true});let request;
     const provider={count:async()=>1,complete:async value=>{request=value;return{id:'fixture',model:'fixture',type:'message',role:'assistant',content:[{type:'text',text:'done'}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:1,output_tokens:1}}}};
     await new Agent(s,provider,createTools()).run();process.stdout.write(JSON.stringify({publications:s.directoryPublications.map(x=>x.kind),unknown:JSON.stringify(request.messages).includes('effect is unknown')}));await s.close();`;
-  for (const phase of ['after_recheck', 'after_rename', 'after_link', ...(process.platform === 'darwin' ? ['replace_after_capture', 'replace_after_publish'] : [])]) {
+  for (const phase of ['after_recheck', 'after_rename', 'after_publish', ...(process.platform === 'darwin' ? ['replace_after_capture', 'replace_after_publish'] : [])]) {
     const root = workspace(), outside = workspace(), target = path.join(outside, 'value'), marker = path.join(root, 'owner-id');
-    if (phase !== 'after_link') fs.writeFileSync(target, 'ORIGINAL', { mode: 0o751 });
+    if (phase !== 'after_publish') fs.writeFileSync(target, 'ORIGINAL', { mode: 0o751 });
     const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', writer, root, outside, helper, phase, marker],
       { stdio: ['ignore', 'ignore', 'pipe', 'ignore', 'ignore', 'pipe'] });
     const control = Array.from(child.stdio).at(5); assert.ok(control instanceof Duplex); assert.ok(child.stderr);
@@ -6561,7 +7783,7 @@ test('owned directory publication retains failure evidence when pending and rece
   fs.writeFileSync(target, 'ORIGINAL', { mode: 0o751 });
   const writeTool = tools.find(tool => tool.schema.name === 'write_file')!, execute = writeTool.execute;
   writeTool.execute = async (input, context) => {
-    try { return await execute(input, context); }
+    try { return await execute(input, { ...context, directoryPublicationAuthorization: undefined }); }
     catch (error) {
       if (!(error instanceof Error) || !error.message.includes('writes through additional directory grants are not implemented')) throw error;
       assert.ok(context.session && context.toolUseId && context.pathApprovalCall && context.authorizationIdentity);
@@ -6622,7 +7844,7 @@ test('directory backup binds the issuing assistant and user turn despite reused 
   let expected: { users: string[]; parents: string[]; contexts: { userMessageId: string; parentMessageId: string }[]; ids: string[] };
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-    const writeCall = () => response([call('reused-backup', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use');
+    const writeCall = () => response([call('reused-backup', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use');
     const agent = new Agent(session, new ScriptedProvider([writeCall(), writeCall(), done(), writeCall(), done()]), tools);
     await agent.run('first user turn');
     await agent.run('second user turn');
@@ -6693,7 +7915,7 @@ test('directory grant Write preserves binary backup evidence while refusing the 
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(session, new ScriptedProvider([
-      response([call('external-binary', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done(),
+      response([call('external-binary', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done(),
     ]), tools).run('attempt external write');
     assert.deepEqual(fs.readFileSync(target), original);
     assert.equal(resultBatches(session)[0]?.[0]?.is_error, true);
@@ -6743,7 +7965,7 @@ test('directory grant Write records prior bytes before the external-write refusa
   try {
     session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     const provider = new ScriptedProvider([
-      response([call('external-backup', 'write_file', { path: target, content: 'NEW_CONTENT', overwrite: true })], 'tool_use'),
+      response([call('external-backup', 'write_file', { path: target, content: 'NEW_CONTENT', overwrite: false })], 'tool_use'),
       done(),
     ]);
     await new Agent(session, provider, tools).run('attempt external write');
@@ -6776,7 +7998,7 @@ test('directory backup cold readers reject missing, foreign and changed evidence
   fs.writeFileSync(target, original);
   const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
   session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
-  await new Agent(session, new ScriptedProvider([response([call('backup-evidence', 'write_file', { path: target, content: 'NEW', overwrite: true })], 'tool_use'), done()]), tools).run('attempt write');
+  await new Agent(session, new ScriptedProvider([response([call('backup-evidence', 'write_file', { path: target, content: 'NEW', overwrite: false })], 'tool_use'), done()]), tools).run('attempt write');
   const backup = session.directoryBackups[0];
   assert.equal(backup?.kind, 'valid');
   assert.ok(backup && backup.kind === 'valid');
@@ -7036,7 +8258,7 @@ test('directory backup cannot cross grant revocation or a same-ID Session rebind
     assert.equal(selected.entries.find(entry => entry.path.lexicalPath === missing.lexicalPath)?.reference.kind, 'missing');
     assert.deepEqual(owner.directoryBackups.map(backup => backup.kind), ['unknown']);
     for (const backup of owner.directoryBackups) assert.equal(owner.readDirectoryBackup(backup.id), undefined);
-    assert.equal(fs.existsSync(path.join(outside, 'missing')), false);
+    assert.equal(fs.readFileSync(path.join(outside, 'missing'), 'utf8'), 'NEW');
     assert.equal(fs.statSync(path.join(outside, 'directory')).isDirectory(), true);
   } finally { await other.close(); await owner.close(); }
 });
@@ -7416,7 +8638,7 @@ test("live directory grants affect current file execution, revocation and status
     const provider = new ScriptedProvider([response([call('grant', 'write_file', { path: path.join(external, 'current.txt'), content: 'current effect' })], 'tool_use'), done()]);
     await new Agent(session, provider, tools).run('write current');
     assert.equal(resultBatches(session)[0]?.[0]?.is_error, true, JSON.stringify(resultBatches(session)));
-    assert.match(JSON.stringify(resultBatches(session)), /writes through additional directory grants are not implemented/);
+    assert.match(JSON.stringify(resultBatches(session)), /Directory publication snapshot unavailable/);
     assert.equal(fs.existsSync(path.join(external, 'current.txt')), false);
     await assert.rejects(tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'original', new_string: 'edited' }, context), /edits through additional directory grants are not implemented/);
     assert.equal(fs.readFileSync(path.join(external, 'existing.txt'), 'utf8'), 'outside original');

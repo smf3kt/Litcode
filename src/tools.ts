@@ -16,21 +16,25 @@ import { fileURLToPath } from "node:url";
 
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
+import type { WrapperObservation, WrapperTransition } from './runtime-wrapper-observer.js';
 import { atomicWriteFile, syncDirectory } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
-import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
+import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type DirectoryReadHandle, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
 import { editEffectResult, writeEffectResult, type ToolUseResult } from "./tool-use-result.js";
 import type { PlanModeHost } from './plan-mode.js';
 import type { PathApprovalCall } from './path-approval-call-owner.js';
 import { resolveOwnedPlanFile } from './plan-file.js';
 import type { SourceReadCache } from './controlled-read-projection-source.js';
 import { sourceBunHashString } from './wyhash-source.js';
+import { decodeFileBytes, lwe } from './path-approval-decoder-source.js';
+import { ZMe } from './edit-match-source.js';
 import { skillResultsDirectory } from './skill-output-source.js';
 import { copyStableDirectoryFile } from './directory-file-state.js';
-import { directoryWriteInputSchema } from './directory-publication-authorization.js';
+import { directoryEditInputSchema as editFileSchema, directoryWriteInputSchema, renderFileEdit } from './directory-publication-authorization.js';
 export { copyStableDirectoryFile } from './directory-file-state.js';
 
 export type ToolContext = {
+  notebookInsertId?: string;
   session?: import('./session.js').Session;
   toolUseId?: string;
   workspace: string;
@@ -307,7 +311,7 @@ function truncateHead(text: string, maxBytes: number, label: string): string {
 // Atomic write
 // ---------------------------------------------------------------------------
 
-function atomicWrite(real: string, content: string, mode?: number) {
+function atomicWrite(real: string, content: string | Buffer, mode?: number) {
   // Delegated: the shared writer verifies the bytes it wrote and the directory
   // it wrote them in, and keeps the content rather than discarding it when the
   // rename cannot happen.
@@ -775,15 +779,137 @@ const searchSchema = z
   .strict();
 
 const writeFileSchema = directoryWriteInputSchema;
+const approvedMutationInputs = new WeakSet<object>();
+const builtinEdits = new WeakSet<ToolDefinition>();
+const selectedEdits = new WeakMap<object, { tool: ToolDefinition; execute: ToolDefinition['execute'] }>();
 
-const editFileSchema = z
-  .object({
-    path: z.string().min(1),
-    old_string: z.string().min(1),
-    new_string: z.string(),
-    replace_all: z.boolean().optional(),
-  })
-  .strict();
+// Kt, hwpb27as [121053,123737), half-open UTF-16. The selected implementation
+// survives permission checks. Both host edit adapters expose only execute.
+function editExecutor(tool: ToolDefinition): ToolDefinition['execute'] {
+  const method = Object.getOwnPropertyDescriptor(tool, 'execute');
+  if (Object.getPrototypeOf(tool) !== Object.prototype || 'executeBlocks' in tool ||
+      !method || typeof method.value !== 'function')
+    throw new Error('Built-in edit implementation changed');
+  return method.value;
+}
+
+function checkedEditExecutor(tool: ToolDefinition, input: unknown): ToolDefinition['execute'] {
+  const execute = editExecutor(tool);
+  if (input && typeof input === 'object' && approvedMutationInputs.has(input)) {
+    const selected = selectedEdits.get(input);
+    if (selected?.tool !== tool || selected.execute !== execute) throw new Error('Built-in edit implementation changed');
+  }
+  return execute;
+}
+
+export function registerBuiltinEdit(tool: ToolDefinition): ToolDefinition {
+  builtinEdits.add(tool);
+  return tool;
+}
+
+// m_t/_Wo, sfn1dbxq [504681,505531)/[2237279,2239655), UTF-16.
+// Both edit schemas contain scalar fields. Compare the actual parser output
+// to the selected permission input before resolving any target.
+export function verifyApprovedEditInput(input: unknown, parsed: Record<string, unknown>): void {
+  if (!input || typeof input !== 'object' || !approvedMutationInputs.has(input)) return;
+  const fields = Object.getOwnPropertyDescriptors(input);
+  if (Object.keys(fields).length !== Object.keys(parsed).length ||
+      Object.entries(parsed).some(([key,value]) => !Object.hasOwn(fields,key) || fields[key]?.value !== value))
+    throw new Error('Built-in edit input changed after permission checking');
+}
+type ChildToolAuthorization = (input: unknown, context: ToolContext) => Promise<ToolContext>;
+const scopedChildMutations = new WeakMap<ToolDefinition, { tool: ToolDefinition; authorize: ChildToolAuthorization }>();
+
+// Kt [121053,123737), _Wo [2237279,2239655), half-open UTF-16. Keep the
+// checked input while the child supplies its narrower execution context.
+export function bindScopedChildTool(tool: ToolDefinition, checkPermission: ChildToolAuthorization,
+    lookup: 'before-approval' | 'after-approval' = 'before-approval'): ToolDefinition {
+  if (builtinEdits.has(tool)) editExecutor(tool);
+  const mutation = builtinEdits.has(tool) || builtinWriteExecutors.has(tool) || runtimeBuiltinWrites.has(tool) || scopedChildMutations.has(tool);
+  const authorize = mutation ? withChildDirectoryGrant(checkPermission) : checkPermission;
+  const scoped: ToolDefinition = { ...tool,
+    async execute(value, context) {
+      const input = snapshotBuiltinMutationInput(tool, value);
+      if (builtinEdits.has(tool)) {
+        const approved = await authorize(input, context);
+        return checkedEditExecutor(tool, input).call(tool, input, approved);
+      }
+      if (lookup === 'after-approval') {
+        const approved = await authorize(input, context);
+        return tool.execute(input, approved);
+      }
+      return tool.execute(input, await authorize(input, context));
+    },
+    ...(tool.executeBlocks ? { async executeBlocks(value: unknown, context: ToolContext) {
+      const input = snapshotBuiltinMutationInput(tool, value);
+      if (lookup === 'after-approval') {
+        const approved = await authorize(input, context);
+        return tool.executeBlocks!(input, approved);
+      }
+      return tool.executeBlocks!(input, await authorize(input, context));
+    } } : {}),
+  };
+  if (mutation) {
+    scopedChildMutations.set(scoped, { tool, authorize });
+    Object.freeze(scoped);
+  }
+  return scoped;
+}
+
+function withChildDirectoryGrant(authorize: ChildToolAuthorization): ChildToolAuthorization {
+  return async (checked, context) => {
+    // Kt [121053,123737), UTF-16: a location change during permission
+    // checking requires a new call. Compare the actual directory grant.
+    const file = (checked as { path?: unknown }).path;
+    const target = typeof file === 'string' ? path.resolve(context.workspace, file) : undefined;
+    const external = target && !isWithin(context.workspace, target) ? target : undefined;
+    const grantFor = (ctx: ToolContext, destination: string) => {
+      const directories = ctx.workingDirectories?.(false);
+      const root = directories?.filter(root => isWithin(root, destination)).sort((a, b) => b.length - a.length)[0];
+      return root ? directories?.readHandle?.(root) : undefined;
+    };
+    const grant = external ? grantFor(context, external) : undefined;
+    const childContext = await authorize(checked, context);
+    if (external && (grant?.signal.aborted || grant !== grantFor(childContext, external)))
+      throw new Error('Write directory grant changed during child approval');
+    return childContext;
+  };
+}
+const rawWriteDispatch = new WeakMap<object, { tool: ToolDefinition; handler: ToolDefinition['execute'] | NonNullable<ToolDefinition['executeBlocks']> }>();
+
+// Kt, hwpb27as [121053,123737), UTF-16: capture the factory on construction
+// and check execution location at dispatch. The raw host adapter selects one of two methods.
+function rawWriteHandler(tool: ToolDefinition) {
+  const blocks = Object.getOwnPropertyDescriptor(tool, 'executeBlocks');
+  const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+  if (Object.getPrototypeOf(tool) !== Object.prototype || (blocks && !('value' in blocks)) ||
+      (!blocks && 'executeBlocks' in tool) || !execute || !('value' in execute))
+    throw new Error('Runtime built-in write_file implementation changed');
+  const handler = blocks?.value ?? execute.value;
+  if (typeof handler !== 'function') throw new Error('Runtime built-in write_file implementation changed');
+  return handler as ToolDefinition['execute'] | NonNullable<ToolDefinition['executeBlocks']>;
+}
+
+// Kt [121053,123737), m_t/_Wo [504681,505531)/[2237279,2239655),
+// half-open UTF-16. Rewritten inputs pass through permission checks again.
+// Pin scalar arguments for the built-in file mutations across awaited callbacks.
+export function snapshotBuiltinMutationInput(tool: ToolDefinition, input: unknown): unknown {
+  const scoped = scopedChildMutations.get(tool);
+  if (scoped) return snapshotBuiltinMutationInput(scoped.tool, input);
+  if (!builtinEdits.has(tool) && !builtinWriteExecutors.has(tool) && !runtimeBuiltinWrites.has(tool)) return input;
+  const invalid = builtinEdits.has(tool) ? 'Invalid built-in edit input' : 'Invalid built-in Write input';
+  if (!input || typeof input !== 'object' || utilTypes.isProxy(input)) throw new Error(invalid);
+  if (approvedMutationInputs.has(input)) return input;
+  const proto = Object.getPrototypeOf(input);
+  if (proto !== Object.prototype && proto !== null) throw new Error(invalid);
+  const descriptors = Object.getOwnPropertyDescriptors(input);
+  if (Object.values(descriptors).some(field => !('value' in field))) throw new Error(invalid);
+  const value = Object.freeze(Object.create(null, descriptors));
+  if (builtinEdits.has(tool)) selectedEdits.set(value, { tool, execute: editExecutor(tool) });
+  if (builtinWriteExecutors.has(tool)) rawWriteDispatch.set(value, { tool, handler: rawWriteHandler(tool) });
+  approvedMutationInputs.add(value);
+  return value;
+}
 
 const runCommandSchema = z
   .object({
@@ -982,6 +1108,41 @@ export function consumeBuiltinWriteExecution(authorization: BuiltinWriteExecutio
   return structuredClone(saved.event);
 }
 
+type WrapperInvocation = { tool: ToolDefinition; input: unknown; context: ToolContext; observe(authorization: object): void };
+const wrapperInvocations = new WeakMap<ToolContext, WrapperInvocation>();
+const wrapperObservations = new WeakMap<object, { invocation: WrapperInvocation; event: WrapperObservation }>();
+export function consumeRuntimeWrapperObservation(authorization: object, tool: ToolDefinition, input: unknown,
+    context: ToolContext): WrapperObservation | undefined {
+  const saved = wrapperObservations.get(authorization); wrapperObservations.delete(authorization);
+  if (!saved || saved.invocation.tool !== tool || saved.invocation.input !== input || saved.invocation.context !== context) return;
+  return structuredClone(saved.event);
+}
+
+function observeRuntimeCheck(tool: ToolDefinition, input: unknown, context: ToolContext,
+    method: WrapperObservation['method'], stage: WrapperObservation['stage'], invoke: () => unknown): void {
+  const invocation = wrapperInvocations.get(context);
+  if (!invocation || invocation.tool !== tool || invocation.input !== input) { invoke(); return; }
+  const invocationId = crypto.randomUUID();
+  const record = (transition: WrapperTransition) => {
+    const authorization = {};
+    wrapperObservations.set(authorization, { invocation, event: { invocationId, method, stage, transition } });
+    try { invocation.observe(authorization); } finally { wrapperObservations.delete(authorization); }
+  };
+  // Admission also covers callback property selection, including supplied getters.
+  record({ phase: 'admitted' });
+  let returned: unknown;
+  try { returned = invoke(); } catch (error) { record({ phase: 'threw' }); throw error; }
+  if (!utilTypes.isPromise(returned)) { record({ phase: 'returned', mode: 'sync' }); return; }
+  let failed = false, failure: unknown;
+  try { record({ phase: 'returned', mode: 'promise' }); } catch (error) { failed = true; failure = error; }
+  const settle = (outcome: 'fulfilled' | 'rejected') => {
+    if (!failed) try { record({ phase: 'settled', outcome }); } catch { /* Original journal retains uncertainty. */ }
+  };
+  try { Promise.prototype.then.call(returned, () => settle('fulfilled'), () => settle('rejected')); }
+  catch { if (!failed) record({ phase: 'unobserved' }); }
+  if (failed) throw failure;
+}
+
 export function bindRuntimeTool(tool: ToolDefinition, checks: {
   checkScope(): void;
   refresh(): void;
@@ -989,12 +1150,13 @@ export function bindRuntimeTool(tool: ToolDefinition, checks: {
 }): ToolDefinition {
   let child: ToolDefinition | undefined;
   const builtinWrite = builtinWriteExecutors.get(tool);
+  const edit = builtinEdits.has(tool) ? editExecutor(tool) : undefined;
   const wrapped: ToolDefinition = { ...tool,
     async execute(input, context) {
       context.signal.throwIfAborted();
-      checks.checkScope();
-      checks.refresh();
-      checks.checkJournal(tool);
+      observeRuntimeCheck(wrapped, input, context, 'execute', 'checkScope', () => checks.checkScope());
+      observeRuntimeCheck(wrapped, input, context, 'execute', 'refresh', () => checks.refresh());
+      observeRuntimeCheck(wrapped, input, context, 'execute', 'checkJournal', () => checks.checkJournal(tool));
       // Host wrapper guard: Kt, hwpb27as [121053,123737), UTF-16 has no mutable refresh callback.
       if (builtinWrite) {
         const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
@@ -1012,25 +1174,54 @@ export function bindRuntimeTool(tool: ToolDefinition, checks: {
         if (observed && observed.state.phase === 'entered') observeBuiltinWrite(observed, { phase: 'completed', input: observed.state.input, outcome: 'returned' });
         return result;
       }
+      if (edit) {
+        if (editExecutor(tool) !== edit) throw new Error('Built-in edit implementation changed');
+        return edit.call(tool, input, context);
+      }
       return tool.execute(input, context);
     },
     ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
       context.signal.throwIfAborted();
-      checks.checkScope();
-      checks.checkJournal(tool);
+      observeRuntimeCheck(wrapped, input, context, 'executeBlocks', 'checkScope', () => checks.checkScope());
+      observeRuntimeCheck(wrapped, input, context, 'executeBlocks', 'checkJournal', () => checks.checkJournal(tool));
       return tool.executeBlocks!(input, context);
     } } : {}),
     ...(tool.forChild ? { forChild() { checks.checkScope(); return child ??= bindRuntimeTool(tool.forChild!(), checks); } } : {}),
   };
   if (builtinWrite) runtimeBuiltinWrites.set(wrapped, { execute: wrapped.execute, original: tool,
     originalSnapshot: builtinWriteSnapshots.get(tool), wrapperSnapshot: snapshotTool(wrapped) });
-  return wrapped;
+  return builtinEdits.has(tool) ? registerBuiltinEdit(wrapped) : wrapped;
 }
 
 // Host dispatch guard: Kt/KWo, hwpb27as [121053,123737), sfn1dbxq [2275902,2308030), UTF-16.
 export async function executeAgentTool(tool: ToolDefinition, input: unknown, context: ToolContext,
+    observe?: (authorization: BuiltinWriteExecutionAuthorization) => void,
+    wrapperObserver?: ((authorization: object) => void) | {
+      forTool(tool: ToolDefinition, context: ToolContext): (authorization: object) => void;
+    }): Promise<Anthropic.ToolResultBlockParam['content']> {
+  const scoped = scopedChildMutations.get(tool);
+  if (scoped) {
+    const checked = snapshotBuiltinMutationInput(scoped.tool, input);
+    const childContext = await scoped.authorize(checked, context);
+    return executeAgentTool(scoped.tool, checked, childContext, observe, wrapperObserver);
+  }
+  if (wrapperInvocations.has(context)) throw new Error('Runtime wrapper invocation already active');
+  const observeWrapper = typeof wrapperObserver === 'function' ? wrapperObserver : wrapperObserver?.forTool(tool, context);
+  if (observeWrapper) wrapperInvocations.set(context, { tool, input, context, observe: observeWrapper });
+  try { return await executeAgentToolBody(tool, input, context, observe); }
+  finally { wrapperInvocations.delete(context); }
+}
+
+async function executeAgentToolBody(tool: ToolDefinition, input: unknown, context: ToolContext,
     observe?: (authorization: BuiltinWriteExecutionAuthorization) => void): Promise<Anthropic.ToolResultBlockParam['content']> {
   const builtinWrite = runtimeBuiltinWrites.get(tool);
+  if (builtinEdits.has(tool)) return checkedEditExecutor(tool, input).call(tool, input, context);
+  if (builtinWriteExecutors.has(tool) && input && typeof input === 'object' && approvedMutationInputs.has(input)) {
+    const selected = rawWriteDispatch.get(input);
+    if (selected?.tool !== tool || selected.handler !== rawWriteHandler(tool))
+      throw new Error('Runtime built-in write_file implementation changed');
+    return selected.handler.call(tool, input, context);
+  }
   if (!builtinWrite) return tool.executeBlocks ? tool.executeBlocks(input, context) : tool.execute(input, context);
   const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
   if (!execute || !('value' in execute) || execute.value !== builtinWrite.execute ||
@@ -1363,6 +1554,68 @@ function searchTool(): ToolDefinition {
   };
 }
 
+// dno, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+// [733986,734328), UTF-16. Shared source-backed pre-write guard; callers own file observation.
+function checkWriteReadState(context: ToolContext, file: Pick<ResolvedPath, 'path' | 'identity'>,
+  cacheKey: string, previous: string, mtimeMs: number): void {
+  const real = file.path;
+  const observed = context.readFileCache?.get(cacheKey);
+  const read = observed?.identity && (observed.realPath !== real ||
+    observed.identity.dev !== file.identity?.dev || observed.identity.ino !== file.identity?.ino) ? undefined : observed;
+  if (!read && context.fileMutationGate && (context.fileMutationGate.preReadGuard || !context.fileMutationGate.readAllowed(real, 'write_file'))) {
+    throw new Error('File has not been read in full. Read it again before attempting to write it.');
+  }
+  if (read?.isPartialView) throw new Error('File has not been read in full. Read it again before attempting to write it.');
+  if (read && !read.isPartialView && Math.floor(mtimeMs) > read.timestamp) {
+    const complete = (read.offset ?? 1) <= 1 && (read.limit === undefined ||
+      (read.content !== '' && read.content.split('\n').length < read.limit));
+    const normalized = previous.replace(/^﻿/, '').replaceAll('\r\n', '\n');
+    const matches = read.contentHash === undefined ? read.content === normalized :
+      read.contentHash === sourceBunHashString(normalized);
+    if (!complete || !matches) throw new Error('File has been modified since read. Read it again before attempting to write it.');
+  }
+}
+
+// uno, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+// [739599,743280), UTF-16: update read state and project the successfully landed write.
+function finishFileWrite(context: ToolContext, real: string, cacheKey: string, rel: string, previous: string, content: string,
+  existed: boolean, landed: Pick<ReturnType<typeof atomicWrite>, 'mtimeMs' | 'identity'>): string {
+  if (context.readFileCache) {
+    // Host conservative alias invalidation until write/edit/rewind alias ownership is mapped.
+    context.readFileCache.clear();
+    try { context.readFileCache.set(cacheKey, { content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'),
+      timestamp: Math.floor(landed.mtimeMs), identity: landed.identity, realPath: real, offset: undefined, limit: undefined }); }
+    catch { context.readFileCache.delete(cacheKey); }
+  }
+  context.hostResult?.({ ...writeEffectResult(rel, previous, content), landed: { filePath: real, cacheKey,
+    content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'), mtimeMs: landed.mtimeMs, identity: landed.identity } });
+  return `${existed ? "overwrote" : "wrote"} ${Buffer.byteLength(content, "utf8")} bytes to ${rel}`;
+}
+
+// Fet/T$n, sfn1dbxq [4731316,4732048)/[4739060,4739632), UTF-16.
+// Pin the source grant and copy exact bytes before recording the original.
+async function captureDirectoryBackup(session: NonNullable<ToolContext['session']>, toolUseId: string,
+  grant: DirectoryReadHandle, lexicalPath: string, relative: string, id: string, signal: AbortSignal,
+  edit?: { input: unknown; resolved: ResolvedPath }) {
+  signal.throwIfAborted();
+  const sidecar = `${session.file}.backup-unknown-${id}`;
+  const destination = await fsp.open(sidecar, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR | fs.constants.O_NOFOLLOW, 0o600);
+  try {
+    signal.throwIfAborted();
+    syncDirectory(path.dirname(sidecar));
+    const copied = await copyStableDirectoryFile({ fd: grant.fd, relative }, destination, signal);
+    signal.throwIfAborted();
+    if (edit) {
+      verifyUnchanged(edit.resolved, 'edit_file', lexicalPath);
+      if (copied.metadata.dev !== edit.resolved.identity?.dev || copied.metadata.ino !== edit.resolved.identity?.ino)
+        throw new Error('edit_file: directory file changed during backup');
+    }
+    session.recordDirectoryBackup({ id, toolUseId, lexicalPath, grant, destinationFd: destination.fd, ...copied,
+      source: { begin: copied.metadata, end: { ...copied.metadata } }, signal, ...(edit ? { editInput: edit.input } : {}) });
+    return copied.metadata;
+  } finally { await destination.close(); }
+}
+
 function writeFileTool(): ToolDefinition {
   const tool: ToolDefinition = {
     toAutoClassifierInput(input) { const value = writeFileSchema.parse(input); return `${value.path}: ${value.content}`; },
@@ -1370,11 +1623,9 @@ function writeFileTool(): ToolDefinition {
     schema: {
       name: "write_file",
       description:
-        "Write a UTF-8 text file inside the agent workspace. The write is atomic " +
-        "(temporary file in the target directory, then rename). Existing files are " +
+        "Write a UTF-8 text file inside the agent workspace or an explicitly granted directory. Existing files are " +
         "left untouched unless `overwrite: true`; when overwriting, the original " +
-        "file mode is preserved. Paths are workspace-relative and confined to the " +
-        "workspace.",
+        "file mode is preserved. Paths may be workspace-relative or absolute within a granted directory.",
       input_schema: {
         type: "object",
         properties: {
@@ -1392,6 +1643,11 @@ function writeFileTool(): ToolDefinition {
     async execute(input, context) {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, content, overwrite = false } = writeFileSchema.parse(input);
+      if (input && typeof input === 'object' && approvedMutationInputs.has(input)) {
+        const approved = input as Record<string, unknown>;
+        if (userPath !== approved.path || content !== approved.content || overwrite !== (approved.overwrite === undefined ? false : approved.overwrite))
+          throw new Error('Built-in Write input changed after permission checking');
+      }
       const invocation = builtinWriteInvocations.get(context);
       if (invocation && invocation.input === input && runtimeBuiltinWrites.get(invocation.tool)?.original === tool)
         observeBuiltinWrite(invocation, { phase: 'entered', input: { path: userPath, content, overwrite } });
@@ -1400,9 +1656,11 @@ function writeFileTool(): ToolDefinition {
       const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership);
       const resolved = planPath || confineResolved(root, userPath, false, context.workingDirectories?.(false));
       const real = resolved.path;
-      // Temporary host restriction: uno, sfn1dbxq [739599,743280), and sC,
-      // f606a53w [12501,15618), UTF-16, do not supply this host's grant-FD
-      // history and atomic publication contract. Refuse before any effect.
+      // uno/dno, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
+      // [739599,743280)/[733986,734328), and sC, f606a53w
+      // dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033
+      // [12501,15618), UTF-16. Adapt history-before-publication and successful
+      // cache/result ordering to the host's owned descriptor transaction.
       if (!planPath && !isWithin(root, real)) {
         // T$n, sfn1dbxq 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
         // UTF-16 [4739060,4739632): source copies by path. The host binds its FD
@@ -1417,26 +1675,47 @@ function writeFileTool(): ToolDefinition {
           context.readGrantSignal?.(owned.signal);
           const signal = AbortSignal.any([context.signal, owned.signal, context.session.closeSignal]);
           const id = crypto.randomUUID();
-          const sidecar = `${context.session.file}.backup-unknown-${id}`;
-          let destination: fsp.FileHandle | undefined;
+          let missing = false;
+          let captured = false;
           try {
             signal.throwIfAborted();
-            const missing = context.session.recordMissingDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
+            missing = context.session.recordMissingDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
               grant: owned, value: { path: userPath, content, overwrite }, signal });
             if (!missing) {
-              destination = await fsp.open(sidecar, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR | fs.constants.O_NOFOLLOW, 0o600);
-              signal.throwIfAborted();
-              syncDirectory(path.dirname(sidecar));
-              const copied = await copyStableDirectoryFile({ fd: owned.fd, relative }, destination, signal);
-              signal.throwIfAborted();
-              context.session.recordDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
-                grant: owned, destinationFd: destination.fd, ...copied,
-                source: { begin: copied.metadata, end: { ...copied.metadata } }, signal });
+              await captureDirectoryBackup(context.session, context.toolUseId, owned, requested, relative, id, signal);
             }
+            captured = true;
           } catch {
             // Partial or unsynced evidence stays unknown and is never removed here.
-          } finally {
-            await destination?.close();
+          }
+          if (context.directoryPublicationAuthorization && context.authorizationIdentity && context.pathApprovalCall) {
+            signal.throwIfAborted();
+            if (!captured) throw new Error('write_file: directory backup unavailable');
+            let previous = '';
+            if (!missing) {
+              if (!overwrite) {
+                const error = new Error(`write_file: file already exists (pass overwrite: true): ${userPath}`);
+                blockedDirectoryWrites.add(error);
+                throw error;
+              }
+              const backup = context.session.directoryBackups.find(row => row.id === id);
+              const bytes = context.session.readDirectoryBackup(id);
+              if (backup?.kind !== 'valid' || bytes === undefined) throw new Error('write_file: directory backup unavailable');
+              previous = bytes.toString('utf8');
+              const observed = backup.witness.source.end;
+              checkWriteReadState(context, { path: requested, identity: { dev: observed.dev, ino: observed.ino,
+                size: Number(observed.size), ctimeMs: String(BigInt(observed.ctimeSeconds) * 1000n + BigInt(observed.ctimeNanoseconds) / 1000000n) } },
+                requested, previous, Number(observed.mtimeSeconds) * 1000 + Number(observed.mtimeNanoseconds) / 1e6);
+            }
+            const publication = context.session.publishDirectoryFileTransaction({ toolUseId: context.toolUseId, backupId: id,
+              grant: owned, lexicalPath: requested, content: Buffer.from(content, 'utf8'), signal: context.signal,
+              authorizationSignal: context.authorizationIdentity.signal, approvalCall: context.pathApprovalCall,
+              authorization: context.directoryPublicationAuthorization, ...(missing ? {} : { strategy: 'retained' }) });
+            if (publication.kind !== 'durable') throw new Error(`write_file: directory publication ${publication.kind}: ${publication.detail}`);
+            const observed = publication.observation;
+            return finishFileWrite(context, requested, requested, path.relative(root, requested) || userPath,
+              previous, content, !missing, { mtimeMs: Number(observed.mtimeSeconds) * 1000 + Number(observed.mtimeNanoseconds) / 1e6,
+                identity: { dev: observed.dev, ino: observed.ino } });
           }
         }
         const error = new Error('write_file: writes through additional directory grants are not implemented');
@@ -1461,21 +1740,7 @@ function writeFileTool(): ToolDefinition {
         previous = fs.readFileSync(real, "utf8");
         // dno, chunk-sfn1dbxq.js 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da
         // UTF-16 [733986,735250): an advanced mtime requires a matching complete read.
-        const observed = context.readFileCache?.get(cacheKey);
-        const read = observed?.identity && (observed.realPath !== real ||
-          observed.identity.dev !== resolved.identity?.dev || observed.identity.ino !== resolved.identity?.ino) ? undefined : observed;
-        if (!read && context.fileMutationGate && (context.fileMutationGate.preReadGuard || !context.fileMutationGate.readAllowed(real, 'write_file'))) {
-          throw new Error('File has not been read in full. Read it again before attempting to write it.');
-        }
-        if (read?.isPartialView) throw new Error('File has not been read in full. Read it again before attempting to write it.');
-        if (read && !read.isPartialView && Math.floor(stat.mtimeMs) > read.timestamp) {
-          const complete = (read.offset ?? 1) <= 1 && (read.limit === undefined ||
-            (read.content !== '' && read.content.split('\n').length < read.limit));
-          const normalized = previous.replace(/^﻿/, '').replaceAll('\r\n', '\n');
-          const matches = read.contentHash === undefined ? read.content === normalized :
-            read.contentHash === sourceBunHashString(normalized);
-          if (!complete || !matches) throw new Error('File has been modified since read. Read it again before attempting to write it.');
-        }
+        checkWriteReadState(context, resolved, cacheKey, previous, stat.mtimeMs);
         verifyUnchanged(resolved, "write_file", userPath);
         context.fileHistory?.(real);
         landed = atomicWrite(real, content, stat.mode & 0o7777);
@@ -1483,18 +1748,7 @@ function writeFileTool(): ToolDefinition {
         context.fileHistory?.(real);
         landed = atomicWrite(real, content);
       }
-      const rel = path.relative(root, real) || userPath;
-      // uno, sfn1dbxq [739599,743199), UTF-16: retain the landed write.
-      if (context.readFileCache) {
-        // Host conservative alias invalidation until write/edit/rewind alias ownership is mapped.
-        context.readFileCache.clear();
-        try { context.readFileCache.set(cacheKey, { content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'),
-          timestamp: Math.floor(landed.mtimeMs), identity: landed.identity, realPath: real, offset: undefined, limit: undefined }); }
-        catch { context.readFileCache.delete(cacheKey); }
-      }
-      context.hostResult?.({ ...writeEffectResult(rel, previous, content), landed: { filePath: real, cacheKey,
-        content: content.replace(/^﻿/, '').replaceAll('\r\n', '\n'), mtimeMs: landed.mtimeMs, identity: landed.identity } });
-      return `${existed ? "overwrote" : "wrote"} ${Buffer.byteLength(content, "utf8")} bytes to ${rel}`;
+      return finishFileWrite(context, real, cacheKey, path.relative(root, real) || userPath, previous, content, existed, landed);
     },
   };
   builtinWriteExecutors.set(tool, tool.execute);
@@ -1503,8 +1757,47 @@ function writeFileTool(): ToolDefinition {
   return tool;
 }
 
+type RetainedEdit = { grant: DirectoryReadHandle; backupId: string };
+
+export function requireDirectoryHandle(context: ToolContext, requested: string, readOnly: boolean) {
+  const directories = context.workingDirectories?.(readOnly);
+  const grantRoot = directories?.filter(directory => isWithin(directory, requested)).sort((a, b) => b.length - a.length)[0];
+  const held = grantRoot && directories?.readHandle?.(grantRoot);
+  if (!held || !context.session || held.owner !== context.session.id || !context.toolUseId)
+    throw new Error('directory grant unavailable');
+  const named = fs.lstatSync(held.root, { bigint: true });
+  if (!named.isDirectory() || named.dev !== held.dev || named.ino !== held.ino)
+    throw new Error('directory grant changed');
+  context.readGrantSignal?.(held.signal);
+  return held;
+}
+
+export async function captureExternalEdit(context: ToolContext, resolved: ResolvedPath, requested: string, input: unknown) {
+  const held = requireDirectoryHandle(context, requested, false);
+  if (!context.session || !context.toolUseId) throw new Error('directory edit session unavailable');
+  const signal = AbortSignal.any([context.signal, context.session.closeSignal, held.signal]);
+  const id = crypto.randomUUID();
+  const observed = await captureDirectoryBackup(context.session, context.toolUseId, held, requested, path.relative(held.root, requested),
+    id, signal, { input, resolved });
+  const bytes = context.session.readDirectoryBackup(id);
+  if (!bytes) throw new Error('edit_file: original directory backup unavailable');
+  signal.throwIfAborted();
+  return { decoded: decodeFileBytes(bytes), observed, retained: {grant: held, backupId: id} };
+}
+
+export function publishExternalEdit(context: ToolContext, retained: RetainedEdit, cacheKey: string, bytes: Buffer) {
+  if (!context.session || !context.toolUseId || !context.authorizationIdentity || !context.pathApprovalCall)
+    throw new Error('edit_file: directory publication unavailable');
+  const publication = context.session.publishDirectoryFileTransaction({ ...retained, toolUseId: context.toolUseId,
+    lexicalPath: cacheKey, content: bytes, signal: context.signal, authorizationSignal: context.authorizationIdentity.signal,
+    approvalCall: context.pathApprovalCall, authorization: context.directoryPublicationAuthorization, strategy: 'retained' });
+  if (publication.kind !== 'durable') throw new Error(`edit_file: directory publication ${publication.kind}: ${publication.detail}`);
+  const { dev, ino, mtimeSeconds, mtimeNanoseconds } = publication.observation;
+  return { identity: {dev, ino}, mtimeMs: Number(mtimeSeconds) * 1000 + Number(mtimeNanoseconds) / 1e6 };
+}
+
 function editFileTool(): ToolDefinition {
-  return {
+  return registerBuiltinEdit({
     // sfn [4160906,4161312), UTF-16. Select external removal-visible defaults, cap 3000.
     toAutoClassifierInput(input) { const value = editFileSchema.parse(input); return { file_path: value.path,
       adds: value.new_string, removes: value.old_string.slice(0, 3000), removesTruncated: value.old_string.length > 3000,
@@ -1513,7 +1806,7 @@ function editFileTool(): ToolDefinition {
     schema: {
       name: "edit_file",
       description:
-        "Replace text in an existing workspace file. `old_string` must occur " +
+        "Replace text in an existing workspace file or an explicitly granted directory. `old_string` must occur " +
         "exactly once unless `replace_all: true` is set; otherwise the edit is " +
         "rejected. `new_string` is inserted literally (dollar sequences such as " +
         "`$&` are not expanded). The write is atomic and preserves the file mode. " +
@@ -1535,22 +1828,44 @@ function editFileTool(): ToolDefinition {
     },
     async execute(input, context) {
       if (context.signal.aborted) throw abortError();
-      const { path: userPath, old_string, new_string, replace_all = false } = editFileSchema.parse(input);
+      const parsed = editFileSchema.parse(input);
+      verifyApprovedEditInput(input, parsed);
+      const { path: userPath, old_string, new_string, replace_all = false } = parsed;
       const root = workspaceReal(context.workspace);
       // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
       const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership, true);
       const resolved = planPath || confineResolved(root, userPath, true, context.workingDirectories?.(false));
       const real = resolved.path;
-      // Host restriction: sjr, sfn1dbxq [4167188,4171835), UTF-16, uses
-      // US/recheckBeforeWrite; external grant-FD history/publication is unconnected.
-      if (!planPath && !isWithin(root, real)) throw new Error('edit_file: edits through additional directory grants are not implemented');
+      // sjr, sfn1dbxq [4167188,4171835), UTF-16. Bind recheckBeforeWrite
+      // to the retained file and the original directory descriptor.
+      const external = !planPath && !isWithin(root, real);
       const cacheKey = path.resolve(root, userPath);
-      const stat = await fsp.stat(real);
-      if (!stat.isFile()) {
-        throw new Error(`edit_file: not a regular file: ${userPath}`);
+      let decoded: Awaited<ReturnType<typeof lwe>>;
+      let mtimeMs: number, mode: number;
+      let retained: { grant: DirectoryReadHandle; backupId: string } | undefined;
+      if (external) {
+        const captured = await captureExternalEdit(context, resolved, cacheKey, input);
+        const { observed } = captured;
+        decoded = captured.decoded;
+        retained = captured.retained;
+        mtimeMs = Number(observed.mtimeSeconds) * 1000 + Number(observed.mtimeNanoseconds) / 1e6;
+        mode = observed.mode;
+      } else {
+        // ijr/lwe [4171835,4172005)/[2923,3214), half-open UTF-16.
+        const descriptor = await fsp.open(real, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+        try {
+          const identity = await descriptor.stat({ bigint: true });
+          if (!identity.isFile()) throw new Error(`edit_file: not a regular file: ${userPath}`);
+          if (!resolved.identity || identity.dev.toString() !== resolved.identity.dev || identity.ino.toString() !== resolved.identity.ino)
+            throw new Error(`edit_file: file changed before read: ${userPath}`);
+          mtimeMs = Number(identity.mtimeNs / 1000000n);
+          mode = Number(identity.mode & 0o7777n);
+          decoded = await lwe(descriptor, real, undefined);
+        } finally { await descriptor.close(); }
       }
-      const original = await fsp.readFile(real, "utf8");
-      const occurrences = original.split(old_string).length - 1;
+      const original: string = decoded.content;
+      const match: string | null = ZMe(original, old_string);
+      const occurrences = match ? original.split(match).length - 1 : 0;
       // Edit validator and ajr, sfn1dbxq [4163900,4165400), [4172005,4172613), UTF-16.
       const observed = context.readFileCache?.get(cacheKey);
       const read = observed?.identity && (observed.realPath !== real ||
@@ -1560,7 +1875,7 @@ function editFileTool(): ToolDefinition {
       if ((!read || read.isPartialView) && gate && (gate.preReadGuard || !allowed())) {
         throw new Error('File has not been read in full. Read it again before attempting to edit it.');
       }
-      if (read && (read.refreshedBehindModel || Math.floor(stat.mtimeMs) > read.timestamp)) {
+      if (read && (read.refreshedBehindModel || Math.floor(mtimeMs) > read.timestamp)) {
         const complete = (read.offset ?? 1) <= 1 && !read.isPartialView && (read.limit === undefined ||
           (read.content !== '' && read.content.split('\n').length < read.limit));
         const normalized = original.replace(/^﻿/, '').replaceAll('\r\n', '\n');
@@ -1570,7 +1885,8 @@ function editFileTool(): ToolDefinition {
           throw new Error('File has been modified since read. Read it again before attempting to edit it.');
         }
       }
-      if (occurrences === 0) {
+      if (decoded.lossyDecode) throw new Error('edit_file: unsupported encoding; cannot edit invalid UTF-8 without losing bytes');
+      if (!match) {
         throw new Error(`edit_file: old_string not found in ${userPath}`);
       }
       if (occurrences > 1 && !replace_all) {
@@ -1579,15 +1895,17 @@ function editFileTool(): ToolDefinition {
             "provide more context or pass replace_all: true",
         );
       }
-      // Both paths insert `new_string` literally: `split`/`join` never expands
-      // dollar patterns, and a function replacement is used verbatim by
-      // `String#replace`.
-      const updated = replace_all
-        ? original.split(old_string).join(new_string)
-        : original.replace(old_string, () => new_string);
+      // sjr [4167188,4171835) uses the matched spelling for P3t and restores
+      // the decoded encoding and line endings through o8e/pPe [7016,7501).
+      const { updated, patch, bytes } = renderFileEdit(decoded, { path: real, old_string, new_string, replace_all }, match);
       verifyUnchanged(resolved, "edit_file", userPath);
-      context.fileHistory?.(real);
-      const landed = atomicWrite(real, updated, stat.mode & 0o7777);
+      let landed: {mtimeMs: number; identity: { dev: string; ino: string }};
+      if (retained) {
+        landed = publishExternalEdit(context, retained, cacheKey, bytes);
+      } else {
+        context.fileHistory?.(real);
+        landed = atomicWrite(real, bytes, mode);
+      }
       // sjr, sfn1dbxq [4167188,4170788), UTF-16: an edited view may not be fully visible.
       const priorRead = context.readFileCache?.get(cacheKey);
       if (context.readFileCache) {
@@ -1599,12 +1917,12 @@ function editFileTool(): ToolDefinition {
       }
       const count = replace_all ? occurrences : 1;
       const rel = path.relative(root, real) || userPath;
-      context.hostResult?.({ ...editEffectResult(rel, original, updated, old_string, new_string, replace_all), landed: {
+      context.hostResult?.({ ...editEffectResult(rel, original, updated, match, new_string, replace_all, patch), landed: {
         filePath: real, cacheKey, content: updated.replace(/^﻿/, ''), mtimeMs: landed.mtimeMs, identity: landed.identity,
         ...(priorRead?.isPartialView ? { isPartialView: true } : {}) } });
       return `edited ${rel}: ${count} replacement(s)`;
     },
-  };
+  });
 }
 
 function runCommandTool(): ToolDefinition {

@@ -1,0 +1,176 @@
+{
+  "sources": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        504309,
+        505531
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "cac7aa44e163fd57c44f0c1bb4e6ac4dea82a2697d994d2b3b5aa38ba03769c2"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "moduleSha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103321,
+        103575
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "45d1f273d8927b2d80dd2b3e086c3cec5772fa5667d499ed5eee9ffa7959e955"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "moduleSha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103918,
+        103945
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "42e084b79c853b25188f3ffb0114025b955de5ea1ec3bc18c21d38eae6b99af2"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "moduleSha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        121822,
+        121896
+      ],
+      "coordinates": "zero-based half-open UTF-16",
+      "bodySha256": "8f0b1e52979b9e82725fd009e25d57ddbb8aa2687e77c86bbe076bc26678550e"
+    }
+  ],
+  "preCLI": [
+    {
+      "pre": true,
+      "cut": "normal",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "failure",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "denial",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "rewrite",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "chain_admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "module_admitted",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "module_fulfilled",
+      "records": 3,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": true,
+      "cut": "chain_fulfilled",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "genericCLI": [
+    {
+      "pre": false,
+      "cut": "normal",
+      "records": 8,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": false,
+      "cut": "failure",
+      "records": 8,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": false,
+      "cut": "chain_admitted",
+      "records": 1,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": false,
+      "cut": "module_admitted",
+      "records": 2,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": false,
+      "cut": "module_fulfilled",
+      "records": 3,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    },
+    {
+      "pre": false,
+      "cut": "chain_fulfilled",
+      "records": 4,
+      "coldReaders": 2,
+      "noReplay": true,
+      "upstream": 0
+    }
+  ],
+  "reloadGap": {
+    "copiedGateWaited": true,
+    "hostInvokedBeforeReload": true,
+    "gateSettledAfterRelease": true,
+    "status": "confirmed-open",
+    "upstream": 0,
+    "entrypointsExecuted": 0
+  },
+  "identity": "dfe94782d4e7caefee734d550b6a27a6e4609689c091da5b983d3b6399c9d12d",
+  "tests": {
+    "focused": 26,
+    "storageIsolation": 35,
+    "failures": 0
+  },
+  "cliDriverSha256": "89c92edb835c4a4657e22f3a8308039ee8d5fce7c9e39f17bc700e77e84dfc96",
+  "reloadProbeSha256": "7607d7840b8f8427ff4019a6a8e2b51c14d93e86973a3bfcec2f453e1dfb602b"
+}

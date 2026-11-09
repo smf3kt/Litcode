@@ -397,7 +397,7 @@ test('ctrl+p and ctrl+n walk the selection, and the draft keeps it by row', () =
   try {
     key('/checkpoint');
     key('\u0010');
-    assert.ok(composer.screen().includes('❯ /checkpoint-recover'),
+    assert.ok(composer.screen().includes('❯ /checkpoint-archive-held'),
       'ctrl+p walks back to the last row from the first');
     key('\u000e');
     assert.ok(composer.screen().includes('❯ /checkpoint'));

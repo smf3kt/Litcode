@@ -97,6 +97,7 @@ Options (flags override LLM_* environment values for new sessions):
   --resume UUID          Open a session with its original settings
   --continue            Continue a turn interrupted before completion
   --recover-lock        Remove a lock only if its owner process has exited
+                        With --continue on the root, resume receipted child skill turns
   --interactive         Read tasks and slash commands until /exit (the default
                         when no task is given and input is a terminal)
   --tui                 Draw the full-screen interface (default at a capable
@@ -822,6 +823,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       session = Session.open(workspace, { config });
     } else if (values.resume) {
       session = Session.open(workspace, { id: values.resume, recoverLock: values['recover-lock'] });
+      if (session.config.legacyPluginHookSnapshot)
+        process.stderr.write('This older session keeps its saved hooks. Use /reload-plugins or /reload to load current hooks.\n');
       if (residentWorker && (session.config.features?.residentForks !== true
         || session.config.features?.crossSessionMessaging !== true)) {
         throw new Error('Resident worker requires pinned residentForks and crossSessionMessaging settings');
@@ -963,6 +966,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout,
         status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
         sessionStart: values.resume ? 'resume' : 'startup',
+        recoverWorkerDeliveries: Boolean(values.resume && values['recover-lock'] && !residentWorker && !currentSession.config.parentSessionId),
         ...(residentWorker ? { residentWorker: {
           ...(positionals.length === 0 ? {} : { initialTask: positionals.join(' ') }),
           ready: () => {
@@ -1018,10 +1022,24 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     });
     // Run SessionStart hooks once, for startup or resume.
     const started = await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
-    // The recovered headless prologue prepends the hook's initial user message
-    // to the input queue (`OXr`/`prependUserMessage`, chunk-rx2nah4x.js offset
-    // 472137), so it runs as the first turn ahead of the typed prompt.
+    // OXr, rx2nah4x [472137], UTF-16: prepend the startup hook's message before the typed turn.
     if (started.initialUserMessage !== undefined) await agent.run(started.initialUserMessage, controller.signal, undefined, undefined, [], undefined, { kind: 'generated', source: 'session-start' });
+    if (values.continue && values['recover-lock'] && !currentSession.config.parentSessionId && currentRuntime.continueWorkerDeliveries) {
+      const release = currentRuntime.bindAgentApproval?.(currentSession.config,currentSession.id,
+        async () => ({decision:'deny',reason:'Interactive approval unavailable'}));
+      try {
+        const recovered = await currentRuntime.continueWorkerDeliveries(currentSession,controller.signal,
+          message => headless!.status(message));
+        for (const child of recovered) {
+          if (child.status === 'cancelled') headless!.status(`Worker ${child.id}: cancelled`);
+          else if (child.status !== 'completed') throw new Error(child.error ?? 'Worker continuation failed');
+        }
+        if (recovered.length && !currentSession.awaitingResponse) {
+          await finish('end_turn',recovered.map(child => child.summary).join('\n'),budget.snapshot().model_calls);
+          return;
+        }
+      } finally { release?.(); }
+    }
     const rawPrompt = positionals.join(' ');
     const slash = parseSlashCommand(rawPrompt);
     const selectedSkill = slash ? findSkill(currentSession.config.skills, slash.name) : undefined;

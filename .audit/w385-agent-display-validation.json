@@ -1,0 +1,15 @@
+{
+  "identity": "c72fc2115607f9e40e41d304418f17a36fb91fa0ab6da9edc0e427cded843edf",
+  "check": "pass",
+  "build": "pass",
+  "affectedFinal": {"pass": 125, "fail": 0, "skip": 0},
+  "lifecycleInitial": {"pass": 176, "fail": 4, "skip": 3},
+  "lifecycleFinalTargeted": {"pass": 2, "fail": 2, "skip": 0},
+  "knownFailures": ["CLI resume reconciles an inheritance torn by original writer death", "CLI restart preserves recovery uncertainty across writer death"],
+  "failureMeaning": "Display records do not satisfy existing no-effect suffix eligibility. Recovery/reclamation assertions remain failing; later scenarios in those groups remain unverified.",
+  "cliEvidence": ".audit/w385-agent-display-cli.json",
+  "dispatchInventory": ".audit/w385-agent-display-dispatch.json",
+  "logs": ["/private/tmp/w385-display-check-final2.log", "/private/tmp/w385-display-build-final.log", "/private/tmp/w385-display-suite-final.log", "/private/tmp/w385-display-lifecycle.log", "/private/tmp/w385-display-lifecycle-targeted.log", "/private/tmp/w385-display-cli-final.log"],
+  "upstreamCalls": 0,
+  "completeRecovery": false
+}

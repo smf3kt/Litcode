@@ -1,0 +1,51 @@
+{
+  "unit": "W385 #43 startup-row filtering",
+  "identity": "b8066862740371e3ab5052288792e3aa1c5a9bf7a9584689bc7fc0262126e169",
+  "inputs": "3672a1e12013e549cb0c2068a03d66093a6087d7ac0c9702e09825c8e0c4b501",
+  "validation": "53870043178138e5a2c8c3ae3462755a24408ab1f8c20b363367663184dad229",
+  "build": "6c7457e7baf31bcdab973547cff659c60d8c3799f55904853d4ee886e7012d48",
+  "source": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbols": {
+        "vhe": [
+          1300642,
+          1301158
+        ],
+        "h$t": [
+          1301271,
+          1301637
+        ],
+        "lHe": [
+          1301637,
+          1301736
+        ]
+      }
+    },
+    {
+      "module": "chunk-566cpr3w.js",
+      "sha256": "bcbbf0cd8b6c5132409afe2e38ac723d8dd65dc466aadb50e9f10ea2b1dc06e4",
+      "symbols": {
+        "p9": [
+          1967,
+          1990
+        ]
+      }
+    }
+  ],
+  "coordinates": "zero-based half-open UTF-16",
+  "checks": {
+    "check": 0,
+    "build": 0,
+    "affected": "60/61 initially; CLI resume fixture rejected forbidden settings flags; corrected focused rerun 5/5, combined 61 cases pass",
+    "actualCli": "initial and resumed CLI each one model request, one context occurrence, no notification intent; startup shell commands executed twice; locks released",
+    "modelUpstreamRequests": 0
+  },
+  "remaining": [
+    "full plugin origin",
+    "notification-bearing fork owner investigation",
+    "root/child process and callback lifecycle provenance",
+    "display-only success/error rows are not converted to model-visible history"
+  ]
+}

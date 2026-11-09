@@ -35,7 +35,7 @@ import { askUserQuestionTimeoutMs } from './tui-afk.js';
 import { questionImageBlocks, type QuestionImage } from './question-images.js';
 import { checkpointConversationWithDirectoryWitness, previewRewind, applyRewindAfterRelease, RewindCommittedWitnessError, type RewindPreview } from './rewind.js';
 import { isReconciledCheckpointTorn } from './directory-checkpoint.js';
-import { CommittedCheckpointTransactionError, recoverCheckpoint, recoverCommittedCheckpoint } from './checkpoints.js';
+import { CommittedCheckpointTransactionError, PendingRewindHandoff, archiveRewindHolds, listRecordedRewindHolds, recoverCheckpoint, recoverCommittedCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { promptBlockMessage } from './hooks.js';
 import { createLocalPeerTransport, createLocalPeerTools, heldApprovalTimeoutMs, latestPeerHopChain, type AcceptedMessage, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
@@ -224,6 +224,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /rewind N   Branch conversation at completed turn N (files stay as they are; alias: /undo)
 /checkpoint NAME  Associate a file snapshot with the current completed turn
 /checkpoint-recover  Resolve a proven interrupted restore; changed files stay preserved
+/checkpoint-archive-held [UUID]  List held files or archive by publication or rewind transaction UUID
 /rewind N --files  Preview files and history together (N=0 means initial history)
 /rewind N --files --apply TOKEN  Apply the exact preview and start a new session
 /cwd DIR    Relocate completed conversation into an existing workspace
@@ -337,16 +338,15 @@ function permissionPanelInput(session: Session): PermissionPanelInput {
 }
 
 /**
- * Source `kor` (`chunk-sfn1dbxq.js` 3364311) and the `L9` write behind it: reduce the update onto
- * the live context, then persist it. The recovered `await`s its writer, so this awaits the session's
- * queued permission writes and reports the first one that failed.
+ * kor, sfn1dbxq [3364305,3364776), awaits lDn, 2bcyxj9q [70938,71522), UTF-16.
+ * The panel uses the host's shared reducer and awaits only this action's persistence.
  */
 async function applyPermissionPanelUpdate(session: Session,
   update: PermissionUpdate): Promise<PermissionPanelApplyResult> {
-  await session.drainPermissionWrites();
-  const outcome = session.adoptPermissionUpdates([update]);
+  const writes: Promise<import('./permission-settings.js').PermissionWriteResult>[] = [];
+  const outcome = session.adoptPermissionUpdates([update], { sessionId: session.id, onWrite: work => writes.push(work) });
   if (outcome.blocked !== undefined) return { error: outcome.blocked };
-  const results = await session.drainPermissionWrites();
+  const results = await Promise.all(writes);
   const failure = results.find(result => result.outcome === 'error');
   return failure === undefined ? {} : { error: failure.error };
 }
@@ -360,6 +360,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   /** Cn, 78w3rfp3 [49289,55904), UTF-16: resident task argv is independent of SessionStart. */
   residentWorker?: { initialTask?: string; ready?: () => void };
   sessionStart?: 'resume' | 'startup';
+  recoverWorkerDeliveries?: boolean;
   /** SessionStart `watchPaths` from the startup hooks run before this loop. */
   initialWatchPaths?: string[];
   /** Test seam for `/fork`'s background copy; defaults to the real spawn. */
@@ -554,6 +555,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     background?: Extract<import('./runtime.js').RuntimeEvent, { kind: 'background' }>;
     agentEvents?: Extract<import('./runtime.js').RuntimeEvent, { kind: 'agent_events' }>;
+    asyncHook?: Extract<import('./runtime.js').RuntimeEvent, { kind: 'async_hook' }>;
     notificationLease?: () => boolean;
     peer?: PeerEnvelopeMetadata;
     peerIdleConversation?: string;
@@ -917,7 +919,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } });
   let unsubscribe: (() => void) | undefined;
   let activeAgent: Agent | undefined;
-  let agentGeneration = 0;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
   /** Bound after the picker helpers; the chord handler above runs only after terminal start. */
@@ -1159,11 +1160,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let revokeAgentApproval: (() => void) | undefined;
   let progressEpoch = 0;
   const agent = () => {
-    // A plugin catalog change replaces the tool set a later turn can reach; a
-    // turn boundary is the only point the session's pinned schemas move.
-    const generation = session.config.pluginGeneration ?? 0;
-    if (activeAgent !== undefined && agentGeneration !== generation) activeAgent = undefined;
-    if (activeAgent === undefined) agentGeneration = generation;
+    // oL/bq.applyRefresh update live catalogs. Preserve this Agent's lifecycle and owner;
+    // runtime.buildTools still rejects structural configuration changes.
     const base = activeRuntime.buildTools(session.config, session.id);
     if (activeAgent === undefined && !options.residentWorker) {
       revokeAgentApproval?.();
@@ -1331,7 +1329,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
       },
     },
-    progress: event => terminal?.setProgress?.(event),
+    // With no terminal the original optional-call body does nothing. Leave the
+    // callback absent so the observer can attest an inert lookup, not a return.
+    ...(terminal === undefined ? {} : { progress: (event: import('./tui-progress.js').AgentProgressEvent) => terminal.setProgress?.(event) }),
     agentProgress: event => {
       if (session === progressOwner && ownerEpoch === progressEpoch && turnController && !turnController.signal.aborted)
         terminal?.setAgentProgress?.(event.toolUseId, event.message);
@@ -1523,6 +1523,36 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (peer) activeRuntime.bindPeerMessaging?.(session.id, peer);
     syncPeerIdle();
   };
+  const acceptRewindOwner = async (next: Session, nextRuntime: Runtime, failureMessage: string, beforeRelease?: () => () => void) => {
+    const previousRuntime = activeRuntime;
+    // Runtime release closes the departing owner's directory descriptors.
+    try {
+      const verifyNewOwner = beforeRelease?.();
+      await acceptNext(next, nextRuntime, true);
+      verifyNewOwner?.();
+    }
+    catch (error) {
+      failedRewindHandoff = true;
+      stopCommittedRewind(failureMessage);
+      const failures: unknown[] = [error];
+      for (const candidate of new Set([previousRuntime, activeRuntime, nextRuntime])) {
+        try {
+          if (!candidate.closeForHandoff) throw new Error('Runtime handoff cleanup is unavailable');
+          await candidate.closeForHandoff();
+        } catch (failure) { failures.push(failure); }
+      }
+      if (failures.length === 1) {
+        for (const target of new Set([session, next])) {
+          try {
+            await target.close();
+            if (fs.existsSync(`${target.file}.lock`)) throw new Error('Session lock remains after handoff cleanup');
+          } catch (failure) { failures.push(failure); }
+        }
+      }
+      if (failures.length > 1) reportRewindCleanup();
+      throw new AggregateError(failures, failureMessage);
+    }
+  };
   // Yr/oL, x876fw6t [16694,19097), 9yh2xzb7 [1781,3332), UTF-16; the successor stores the candidate's refreshed catalog.
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
@@ -1551,7 +1581,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         const readWitness = inheritedReadWitnessObservation(event, transferReadWitness);
         if (readWitness) next.append(readWitness);
         if (event.kind === 'message') {
-          const copied = structuredClone(event);
+          const copied = session.branchMessage(event);
+          if (!copied) continue;
           if (Array.isArray(copied.message.content)) {
             copied.message.content = copied.message.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
             if (!copied.message.content.length) copied.message.content = [{ type: 'text', text: '[Prior thinking omitted after configuration change.]' }];
@@ -1561,7 +1592,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         // v/RRn [16667,17235)/[4502962,4503404), UTF-16; copy fold metadata with its conversation.
         if (event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
-          next.append(event);
+          next.append(event.kind === 'compact' ? next.rebaseCompaction(event) : event);
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
@@ -2190,7 +2221,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             for (const sequence of event.sequences) terminal?.writeTerminalSequence(sequence);
             continue;
           }
-          if (event.kind === 'notification' && event.hookTerminal) {
+          if ((event.kind === 'notification' || event.kind === 'async_hook') && event.hookTerminal) {
             const effect = event.hookTerminal;
             session.append({ kind: 'hook_terminal', id: effect.id, event: effect.event, sequences: effect.sequences });
             for (const sequence of effect.sequences) terminal?.writeTerminalSequence(sequence);
@@ -2201,9 +2232,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             options.status.write('Event queue full; dropped the oldest event.\n');
           }
           queue.push({ prompt: event.kind === 'background' || event.kind === 'agent_events' ? '' : event.prompt, source: 'event',
-            ...(event.kind === 'background' || event.kind === 'agent_events' ? { notificationLease: activeRuntime.sessionLease?.(session) } : {}),
+            ...(event.kind === 'background' || event.kind === 'agent_events' || event.kind === 'async_hook' ? { notificationLease: activeRuntime.sessionLease?.(session) } : {}),
             ...(event.kind === 'background' ? { background: event } : {}),
             ...(event.kind === 'agent_events' ? { agentEvents: event } : {}),
+            ...(event.kind === 'async_hook' ? { asyncHook: event } : {}),
             ...(event.kind === 'scheduled' ? { scheduledId: event.id } : {}),
             ...(event.kind === 'scheduled' && event.dynamic ? { wakeupId: event.id } : {}),
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
@@ -2221,7 +2253,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       const item = queue.splice(nextIndex, 1)[0]!;
       promptQueueChanged();
-      if ((item.background || item.agentEvents) && !item.notificationLease?.()) continue;
+      if ((item.background || item.agentEvents || item.asyncHook) && !item.notificationLease?.()) continue;
       // Source `#s` (chunk-24k7d6mw.js 1495345): once the dispatched prompt is accepted, a stashed
       // draft comes back into the composer the dispatch emptied, with `Draft restored`.
       if (item.source === 'user') terminal?.restoreStashedDraft?.();
@@ -2230,7 +2262,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         ? { kind: 'background' as const, events: item.background.events, dropped: item.background.dropped,
           pending: item.background.pending, maxOutputBytes: item.background.maxOutputBytes }
         : item.agentEvents ? { kind: 'agent_events' as const, events: item.agentEvents.events,
-          dropped: item.agentEvents.dropped, maxOutputBytes: item.agentEvents.maxOutputBytes } : undefined;
+          dropped: item.agentEvents.dropped, maxOutputBytes: item.agentEvents.maxOutputBytes }
+        : item.asyncHook ? { kind: 'async_hook' as const, jobId: item.asyncHook.jobId, event: item.asyncHook.event, prompt: item.asyncHook.prompt,
+            ...(item.asyncHook.commandScope ? { commandScope: item.asyncHook.commandScope } : {}),
+            ...(item.asyncHook.attachment ? { attachment: item.asyncHook.attachment } : {}) } : undefined;
       const renderedBatch = structuredClone(notificationBatch());
       if (item.background) {
         if (item.background.owner !== session.id) continue;
@@ -2238,6 +2273,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (item.agentEvents) {
         if (item.agentEvents.owner !== session.id) continue;
       }
+      if (item.asyncHook && item.asyncHook.owner !== session.id) continue;
       if (renderedBatch) prompt = renderNotificationBatch(renderedBatch);
       if (!prompt) continue;
       if (item.source === 'user' && prompt.startsWith('/')) {
@@ -2279,8 +2315,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         else {
           // Ie [17435,19295), chunk-appb2dtz.js preserves scheduled identity until dispatch.
           if (item.wakeupId !== undefined && activeRuntime.beginLoopWakeup?.(session.id, item.wakeupId) === false) continue;
-          const notification = item.background !== undefined || item.agentEvents !== undefined;
-          const deliveryId = item.background?.deliveryId ?? item.agentEvents?.deliveryId;
+          const notification = item.background !== undefined || item.agentEvents !== undefined || item.asyncHook !== undefined;
+          const deliveryId = item.background?.deliveryId ?? item.agentEvents?.deliveryId ?? item.asyncHook?.deliveryId;
           const deliverySession = session;
           const deliveryInputGeneration = inputGeneration;
           const live = item.notificationLease;
@@ -2361,7 +2397,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (retry) {
               const event = { ...retry.batch, owner: retry.owner, deliveryId: retry.deliveryId };
               queue.unshift({ prompt: '', source: 'event', notificationLease: activeRuntime.sessionLease?.(session),
-                ...(event.kind === 'background' ? { background: event } : { agentEvents: event }) });
+                ...(event.kind === 'background' ? { background: event } : event.kind === 'agent_events' ? { agentEvents: event } : { asyncHook: event }) });
               promptQueueChanged(); awaken();
             }
             options.status.write(`Notification ${parts[2]} retry ${retry ? 'queued' : 'already decided'}.\n`);
@@ -2936,6 +2972,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (message) options.status.write(message + '\n');
           continue;
         }
+        // Cm, 24k7d6mw [680125,681000), UTF-16. Line-mode equivalent of the panel's stop action.
+        if (/^\/tasks\s+stop(?:\s|$)/.test(prompt)) {
+          const id = /^\/tasks\s+stop\s+(\S+)$/.exec(prompt)?.[1];
+          if (!id) throw new Error('Use /tasks stop TASK_ID');
+          const stopped = await activeRuntime.stopTask?.(session.id,id);
+          if (!stopped) throw new Error('No stoppable task with that ID in this session');
+          output.write(`Stopped ${stopped} ${id}\n`);
+          continue;
+        }
         if (prompt === '/tasks' && terminal?.prompt && activeRuntime.backgroundTasks) {
           await openTasksPanelLive?.();
           continue;
@@ -3078,7 +3123,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               const readWitness = inheritedReadWitnessObservation(event, transferReadWitness);
               if (readWitness) next.append(readWitness);
               if (event.kind === 'message') {
-                const copied = structuredClone(event);
+                const copied = session.branchMessage(event);
+                if (!copied) continue;
                 if (Array.isArray(copied.message.content)) copied.message.content = copied.message.content.filter(block =>
                   block.type !== 'thinking' && block.type !== 'redacted_thinking');
                 if (Array.isArray(copied.message.content) && copied.message.content.length === 0) {
@@ -3090,7 +3136,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               }
               // v/RRn [16667,17235)/[4502962,4503404), UTF-16; copy fold metadata with its conversation.
               if (event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
-                next.append(event);
+                next.append(event.kind === 'compact' ? next.rebaseCompaction(event) : event);
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
@@ -3796,10 +3842,51 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           for (const failure of added.failures ?? []) options.status.write(`${failure}\n`);
           continue;
         }
+        if (/^\/checkpoint-archive-held(?:\s|$)/.test(prompt)) {
+          if (session.config.features?.checkpoints === false) throw new Error('Checkpoints are disabled in this session');
+          const id = prompt.slice('/checkpoint-archive-held'.length).trim();
+          if (!id) {
+            const ids = session.directoryPublications.flatMap(row => row.kind === 'durable' && row.retained ? [row.id] : []);
+            output.write(JSON.stringify({ publications: ids, recordedRewindHolds: listRecordedRewindHolds(session) }) + '\n');
+          } else if (session.directoryPublications.some(row => row.id === id)) {
+            const result = await withTurn(async signal => session.archiveRetainedDirectoryPublication(id, signal));
+            if (result.kind !== 'observed') throw new Error('Retained archive unconfirmed. Check the directory grant and publication identity.');
+            output.write(JSON.stringify({ archived: id }) + '\n');
+          } else {
+            const files = await withTurn(async signal => archiveRewindHolds(session, id, signal));
+            output.write(JSON.stringify({ archived: id, files }) + '\n');
+          }
+          continue;
+        }
         if (prompt === '/checkpoint-recover') {
           if (session.config.features?.checkpoints === false) throw new Error('Checkpoints are disabled in this session');
-          output.write(JSON.stringify(await withTurn(signal => Promise.resolve(recoverCheckpoint({ workspace: session.config.workspace,
-            signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes }))), null, 2) + '\n');
+          const recovered = await withTurn(async signal => {
+            const context = { workspace: session.config.workspace, signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes };
+            try { return recoverCheckpoint(context, session); }
+            catch (error) {
+              if (!(error instanceof PendingRewindHandoff)) throw error;
+              if (!activeRuntime.reconfigure) throw new Error('Runtime session switching is unavailable');
+              const next = Session.open(context.workspace, { id: error.source, recoverLock: true });
+              try {
+                if (!isDeepStrictEqual(next.config.gateway, session.config.gateway)) throw new Error('Recovery source gateway changed');
+                next.carryPermissions(session);
+                error.verifySource(next);
+                next.permissionUpdates = planResume.resume(next.id, next.permissionOwner.state(), next.config.permissions?.mode, next.events);
+                next.restoreModelPlanMode();
+                const prepared = await activeRuntime.reconfigure(next.config);
+                const runtime = await bindNext(prepared, next);
+                await acceptRewindOwner(next, runtime,
+                  `Rewind rollback handoff is incomplete. Resume source session ${next.id} to recover the pending transaction.`,
+                  () => error.verifyTransfer(next));
+              } catch (handoffError) {
+                if (!failedRewindHandoff && session !== next) await next.close();
+                throw handoffError;
+              }
+              output.write(`Resumed source session ${session.id} for checkpoint recovery.\n`);
+              return recoverCheckpoint(context, session, error);
+            }
+          });
+          output.write(JSON.stringify(recovered, null, 2) + '\n');
           rewindPreview = undefined;
           continue;
         }
@@ -3946,33 +4033,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               throw new AggregateError(failures, message);
             }
           }
-          const previousRuntime = activeRuntime;
-          try { await acceptNext(next, nextRuntime, true); }
-          catch (error) {
-            failedRewindHandoff = true;
-            const message = `Rewind committed in session ${next.id}; session handoff is incomplete. Resume this session after inspecting the error.`;
-            stopCommittedRewind(message);
-            const failures: unknown[] = [error];
-            for (const candidate of new Set([previousRuntime, activeRuntime, nextRuntime])) {
-              try {
-                if (!candidate.closeForHandoff) throw new Error('Runtime handoff cleanup is unavailable');
-                await candidate.closeForHandoff();
-              } catch (failure) { failures.push(failure); }
-            }
-            if (failures.length === 1) {
-              for (const target of new Set([session, next])) {
-                try {
-                  await target.close();
-                  if (fs.existsSync(`${target.file}.lock`)) throw new Error('Session lock remains after handoff cleanup');
-                } catch (failure) { failures.push(failure); }
-              }
-            }
-            if (failures.length > 1) reportRewindCleanup();
-            throw new AggregateError(failures, message);
-          }
+          await acceptRewindOwner(next, nextRuntime,
+            `Rewind committed in session ${next.id}; session handoff is incomplete. Resume this session after inspecting the error.`);
           announce(); await startAgentSession('fork');
           output.write(`Rewound files and conversation to turn ${turn}; restored ${preview.operations.length} file operations; preserved ${preview.preserved.length} directory/symlink changes.\n`);
-          if (preview.external.kind === 'unavailable') output.write(`External checkpoint restore is unavailable for ${preview.external.paths.length} tracked file(s); those files were not restored.\n`);
+          // kVr, sfn1dbxq [4735645,4737243), UTF-16: report actual restore outcomes.
+          // The host directory coordinator completes before this successful handoff.
+          if (preview.directory) output.write('External checkpoint file operations completed.\n');
+          else if (preview.external.kind === 'unavailable') output.write(`External checkpoint restore is unavailable for ${preview.external.paths.length} tracked file(s); those files were not restored.\n`);
           else if (preview.external.kind === 'unknown') output.write('External file history is unknown; external files were not restored.\n');
           continue;
         }
@@ -4237,6 +4305,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         // A run with no credential is refused before the prompt is recorded, so signing in and
         // retrying does not first have to finish a turn that never reached a model.
         if (prompt !== '/continue' && refuseWhenBlocked()) continue;
+        if (item.source === 'user' && prompt === '/continue' && options.recoverWorkerDeliveries && session === initial && activeRuntime.continueWorkerDeliveries) {
+          if (refuseWhenBlocked()) continue;
+          agent(); // Bind the current terminal permission callback before recovering the worker.
+          const recovered = await withTurn(signal => activeRuntime.continueWorkerDeliveries!(session,signal,
+            message => options.status.write(message+'\n')));
+          for (const worker of recovered) {
+            options.status.write(`Worker ${worker.id}: ${worker.status}\n`);
+            if (worker.error) options.status.write(`${worker.error}\n`);
+          }
+          if (recovered.length && !session.awaitingResponse) continue;
+        }
         let result;
         try {
           result = await withModelTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,

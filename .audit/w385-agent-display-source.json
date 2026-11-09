@@ -1,0 +1,111 @@
+{
+  "source": [
+    {
+      "symbol": "LLe",
+      "start": 619331,
+      "end": 619362,
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "06e36d98c376ab549275174aaa3ec4373923ea80762c2537916e21e7110fa5f9",
+      "body": "function LLe(e){Sie().write(e)}"
+    },
+    {
+      "symbol": "Bkr terminalSequence dispatch",
+      "start": 3041260,
+      "end": 3041307,
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "unit": "zero-based half-open UTF-16",
+      "bodySha256": "7d220ae6156084e092ae4b6964af9adf4472aae7309d5dd56a1bf79814789443",
+      "body": "if(Wo.terminalSequence)LLe(Wo.terminalSequence)"
+    }
+  ],
+  "host": {
+    "file": "src/agent.ts",
+    "sha256": "4b1da59ed91224ef41da3b11038475e84a6fde77ff87778855cbd7e87f199f10",
+    "sites": [
+      {
+        "line": 474,
+        "text": "if (duration) this.events.progress?.({kind:'finish', reason, duration});"
+      },
+      {
+        "line": 484,
+        "text": "this.events.status?.(`Automatic checkpoint skipped: ${error instanceof Error ? error.message : String(error)}`);"
+      },
+      {
+        "line": 651,
+        "text": "for (const sequence of result.terminalSequences ?? []) this.events.terminalSequence?.(sequence);"
+      },
+      {
+        "line": 663,
+        "text": "this.events.status?.(`${prefix}${bytes.subarray(0, end).toString('utf8')}${suffix}`);"
+      },
+      {
+        "line": 747,
+        "text": "this.events.status?.(`Skill reload failed: ${error instanceof Error ? error.message : String(error)}`);"
+      },
+      {
+        "line": 867,
+        "text": "this.events.status?.(`[stall] retrying (${attempt + 1}/${STALL_RETRIES})`);"
+      },
+      {
+        "line": 1050,
+        "text": "this.events.status?.(`Hook interrupt: tool=${tool.schema.name} hookMessage=${denied}`);"
+      },
+      {
+        "line": 1381,
+        "text": "this.events.status?.(`tool: ${call.name}`);"
+      },
+      {
+        "line": 1382,
+        "text": "this.events.progress?.({kind:'phase', mode:'tool-use'});"
+      },
+      {
+        "line": 1621,
+        "text": "this.events.status?.(`[end-turn] PostToolBatch block discarded (turn ended by tool result, no model re-invoke): ${reason}`);"
+      },
+      {
+        "line": 1742,
+        "text": "this.events.status?.(`model refused this request${category ? ` (${category})` : ''}${explanation ? `: ${explanation}` : ''}`);"
+      },
+      {
+        "line": 1761,
+        "text": "this.events.status?.('compacting context');"
+      },
+      {
+        "line": 1866,
+        "text": "this.events.status?.(`${stopEvent} continuation cap reached (${cap}); ending this task.`);"
+      },
+      {
+        "line": 1878,
+        "text": "for (const context of stop.additionalContext) this.events.status?.(`hook: ${context}`);"
+      },
+      {
+        "line": 1918,
+        "text": "this.events.progress?.({kind:'start', ...this.turnTiming});"
+      },
+      {
+        "line": 2053,
+        "text": "this.events.progress?.({kind:'phase', mode:'requesting'});"
+      },
+      {
+        "line": 2055,
+        "text": "this.events.progress?.({kind:'phase', mode:'responding'}); this.events.text?.(text);"
+      },
+      {
+        "line": 2056,
+        "text": "}, () => this.events.progress?.({kind:'phase', mode:'thinking'})); }"
+      },
+      {
+        "line": 2064,
+        "text": "} catch (hookError) { this.events.status?.(`StopFailure hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`); }"
+      },
+      {
+        "line": 2113,
+        "text": "if (this.turnTiming) this.events.progress?.({kind:'finish', reason:'error', duration:{uuid:this.turnTiming.uuid,"
+      }
+    ]
+  },
+  "conclusion": "Host display callback injection and busy cleanup need explicit adaptation. LLe writes directly; hook_result alone cannot attest a display callback. No product behavior changed."
+}

@@ -18,6 +18,7 @@ import { createLspTools } from '../src/lsp.js';
 import { createWorktreeTools } from '../src/worktrees.js';
 import type { ToolDefinition, ToolContext } from '../src/tools.js';
 import type { ModelProvider } from '../src/provider.js';
+import { createPluginTools, discoverInstalledPluginComponents } from '../src/plugins.js';
 
 function reply(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'fixture', role: 'assistant', type: 'message', content: [{ type: 'text', text }],
@@ -612,6 +613,54 @@ test('backgroundWorkCount excludes completed child agents', async () => {
     assert.equal(await childStatus(list, second.id, f.context), 'cancelled');
     assert.equal(runtime.backgroundWorkCount!(owner), 0);
     assert.equal(runtime.stopBackground!(owner), 0);
+  } finally { await runtime.close(); session?.close(); f.cleanup(); }
+});
+
+test('live plugin catalogs update retained skill and agent tools without retiring scheduler resources', async () => {
+  const f = fixture();
+  f.config.plugins = { enabled: true }; f.config.features = { ...f.config.features, tasks: false, subagents: true, agentTypes: true };
+  const source = path.join(f.workspace, 'plugin-source'); fs.mkdirSync(source);
+  fs.mkdirSync(path.join(source, 'skills/example'), { recursive: true }); fs.mkdirSync(path.join(source, 'agents'));
+  fs.writeFileSync(path.join(source, 'plugin.json'), JSON.stringify({ name: 'fixture', version: '1', skills: 'skills', agents: 'agents', hooks: 'hooks.json' }));
+  const write = (version: string) => {
+    fs.writeFileSync(path.join(source, 'skills/example/SKILL.md'), `---\nname: example\ndescription: ${version}_SKILL\n---\n${version}_SKILL_BODY`);
+    fs.writeFileSync(path.join(source, 'agents/reviewer.md'), `---\nname: reviewer\ndescription: ${version}_AGENT\n---\n${version}_AGENT_BODY`);
+    fs.writeFileSync(path.join(source, 'hooks.json'), JSON.stringify({ hooks: { SessionStart: [{ command: 'true' }] } }));
+  };
+  const mutate = async (name: string) => {
+    const previous = discoverInstalledPluginComponents(f.workspace, { enabled: true })[0]?.plugin;
+    return createPluginTools({ enabled: true }).find(tool => tool.schema.name === name)!.execute({
+      ...(name !== 'plugin_remove' ? { directory: source } : {}),
+      ...(name !== 'plugin_install' ? { name: 'fixture', expected_digest: previous!.digest } : {}),
+    }, f.context);
+  };
+  write('OLD'); await mutate('plugin_install');
+  const systems: string[] = [];
+  const provider: ModelProvider = { count: async () => 1, complete: async request => { systems.push(JSON.stringify(request.system)); return reply('done'); } };
+  const runtime = await createRuntime(f.config, provider, f.controller.signal, { scheduler: { timer: f.timer } });
+  let session: Session | undefined;
+  try {
+    session = Session.open(f.workspace, { config: f.config }); await runtime.bindSession!(session);
+    const owner = session.id, tools = runtime.buildTools(session.config, owner), context = { ...f.context, session };
+    const skill = selected(tools, 'skill'), agent = selected(tools, 'agent');
+    assert.match(await skill.execute({ name: 'example' }, context), /OLD_SKILL_BODY/);
+    await selected(tools, 'cron_create').execute({ cron: '* * * * *', prompt: 'preserved', recurring: true }, context);
+    await agent.execute({ prompt: 'first', subagent_type: 'fixture:reviewer', background: false }, context);
+    assert.match(systems.at(-1)!, /OLD_AGENT_BODY/);
+    const starts = f.starts();
+    write('NEW'); await mutate('plugin_update');
+    assert.match(await skill.execute({ name: 'example' }, context), /NEW_SKILL_BODY/);
+    const refreshed = runtime.buildTools(session.config, owner);
+    assert.equal(selected(refreshed, 'skill'), skill); assert.equal(selected(refreshed, 'agent'), agent);
+    await agent.execute({ prompt: 'second', subagent_type: 'fixture:reviewer', background: false }, context);
+    assert.match(systems.at(-1)!, /NEW_AGENT_BODY/);
+    assert.equal(f.starts(), starts); assert.match(await selected(refreshed, 'cron_list').execute({}, context), /preserved/);
+    await mutate('plugin_remove');
+    await assert.rejects(skill.execute({ name: 'example' }, context), /Unknown skill/);
+    runtime.buildTools(session.config, owner);
+    await assert.rejects(agent.execute({ prompt: 'removed', subagent_type: 'fixture:reviewer', background: false }, context), /Unknown agent type/);
+    const changed = { ...session.config, maxOutputBytes: session.config.maxOutputBytes + 1 };
+    assert.throws(() => runtime.buildTools(changed, owner), /configuration changed/);
   } finally { await runtime.close(); session?.close(); f.cleanup(); }
 });
 

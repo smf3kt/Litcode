@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,11 +8,15 @@ import type { AsyncHookCompletion } from '../src/async-hooks.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { assertPaired, defaultConfig } from '../src/agent.js';
 import { AgentRegistry, createAgentRegistryTools, type AgentRegistryOptions } from '../src/agent-registry.js';
+import { AgentHistoryStore } from '../src/agent-history.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { Session } from '../src/session.js';
+import { applyRewindAfterRelease, checkpointConversationWithDirectoryWitness, previewRewind, readDirectoryCheckpointBackup } from '../src/rewind.js';
+import { createRuntime, pinToolSchemas } from '../src/runtime.js';
 import { INSTRUCTION_INTRO } from '../src/config.js';
 import { listSessions } from '../src/sessions.js';
-import { capChildOutput, createSubagentTool, selectChildTools } from '../src/subagents.js';
+import { capChildOutput, createChildHookLifecycle, createSubagentTool, selectChildTools } from '../src/subagents.js';
+import { runHooks } from '../src/hooks.js';
 import { createTools, type ToolDefinition } from '../src/tools.js';
 import { permissionOwner } from '../src/permissions.js';
 
@@ -93,7 +98,8 @@ test('sync launch isolates sessions and preserves child config, schemas and expl
     try {
       assert.equal(session.config.childMode, 'explore'); assert.equal(session.config.allowShell, false);
       assert.equal(session.config.maxTurns, 2); assert.equal(session.config.model, 'child-model');
-      assert.equal(session.events.at(-1)?.kind, 'turn_end');
+      assert.equal(session.config.spawnDepth, 1);
+      assert.equal(session.events.findLast(row => row.kind !== 'agent_display_observer')?.kind, 'turn_end');
     } finally { session.close(); }
   } finally { await f.cleanup(); }
 });
@@ -115,6 +121,132 @@ test('child journal preserves directory snapshot transaction authority', async (
       if (history.kind === 'available') assert.equal(history.snapshots.length, 1);
     } finally { await cold.close(); }
   } finally { await registry.close(); await parent.close(); await f.cleanup(); fs.rmSync(outside, { recursive: true, force: true }); }
+});
+
+test('scoped child publishes through a live parent directory grant into its own journal', async () => {
+  const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'scoped-child-write-')));
+  const file = path.join(outside, 'child.txt');
+  let calls = 0, result = '', target = file;
+  const f = fixture(async request => {
+    if (++calls % 2) return response('', [{ type: 'tool_use', id: 'external', name: 'write_file',
+      input: { path: target, content: 'child bytes' }, caller: { type: 'direct' } }]);
+    result = JSON.stringify(request.messages.at(-1)?.content);
+    return response();
+  });
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  const parent = Session.open(f.workspace, { config: f.config });
+  const registry = f.make({ source: () => parent.config });
+  try {
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    const child = await registry.launch({ prompt: 'write outside', mode: 'general' }, undefined, {
+      config: parent.config, tools: f.tools, beforeTool: async () => {},
+    });
+    assert.equal(fs.existsSync(file), true, result);
+    assert.equal(fs.readFileSync(file, 'utf8'), 'child bytes');
+    const reader = Session.open(f.workspace, { id: child.id });
+    try {
+      const backup = reader.events.find(row => row.kind === 'directory_missing_backup');
+      assert.equal(backup?.owner, child.id);
+      assert.notEqual(backup?.grant.incarnation, parent.workingDirectories(false).readHandle?.(outside)?.incarnation);
+      assert.ok(reader.events.some(row => row.kind === 'directory_publication_result' && row.owner === child.id));
+      assert.equal(reader.workingDirectories(false).readHandle?.(outside), undefined);
+      assert.ok(!parent.events.some(row => row.kind === 'directory_publication_result'));
+    } finally { await reader.close(); }
+    target = path.join(outside, 'regranted');
+    const changed = await registry.launch({ prompt: 'write after regrant', mode: 'general' }, undefined, {
+      config: parent.config, tools: f.tools, beforeTool: async () => {
+        parent.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+        parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      },
+    });
+    assert.equal(fs.existsSync(target), false);
+    assert.match(result, /directory grant changed during child approval/);
+    const rejected = Session.open(f.workspace, { id: changed.id });
+    try { assert.ok(!rejected.events.some(row => row.kind === 'directory_missing_backup' || row.kind === 'directory_publication_intent')); }
+    finally { await rejected.close(); }
+  } finally { await registry.close(); await parent.close(); await f.cleanup(); fs.rmSync(outside, { recursive: true, force: true }); }
+});
+
+for (const authority of ['regranted', 'inherited', 'revoked during release'] as const)
+test(`scoped child overwrites a read external file and rewinds with authority ${authority}`, { skip: process.platform !== 'darwin' }, async () => {
+  const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'child-overwrite-')));
+  const target = path.join(outside, 'existing.txt'), original = Buffer.from('\uFEFF初始内容\r\nsecond line\r\n');
+  fs.writeFileSync(target, original, { mode: 0o751 });
+  const signal = new AbortController().signal;
+  let step = 0;
+  const f = fixture(async request => {
+    const call = (name: string, input: Record<string, unknown>) => response('', [{
+      type: 'tool_use', id: 'child-' + step, name, input, caller: { type: 'direct' },
+    }]);
+    switch (++step) {
+      case 1: return call('write_file', { path: target, content: 'unused', overwrite: false });
+      case 3: return call('read_file', { path: target });
+      case 4:
+        assert.match(JSON.stringify(request.messages.at(-1)?.content), /初始内容/);
+        return call('write_file', { path: target, content: 'changed', overwrite: true });
+      case 5:
+        assert.doesNotMatch(JSON.stringify(request.messages.at(-1)?.content), /"is_error":true/);
+    }
+    return response();
+  });
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  const parent = Session.open(f.workspace, { config: f.config }), registry = f.make({ source: () => parent.config });
+  let next: Session | undefined;
+  try {
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    const child = await registry.launch({ prompt: 'track existing target', mode: 'general' }, undefined, {
+      config: parent.config, tools: f.tools, beforeTool: async () => {},
+    });
+    const first = Session.open(f.workspace, { id: child.id });
+    try {
+      first.inheritPermissionAdoption(parent.permissionOwner);
+      const captured = await checkpointConversationWithDirectoryWitness(first, 'before-overwrite', signal);
+      assert.ok('external_witness' in captured && captured.external_witness === 'available');
+      assert.deepEqual(readDirectoryCheckpointBackup(first, 'before-overwrite', target), original);
+    } finally { await first.close(); }
+    await registry.sendMessage(child.id, 'read then overwrite');
+    const finished = await settled(registry, child.id);
+    assert.equal(finished.status, 'completed', finished.error ?? undefined);
+    assert.equal(fs.readFileSync(target, 'utf8'), 'changed');
+    await registry.close();
+    const reopened = Session.open(f.workspace, { id: child.id });
+    try {
+      const backup = reopened.directoryBackups.find(row => row.kind === 'valid' && row.witness.toolUseId === 'child-4');
+      assert.ok(backup);
+      assert.deepEqual(reopened.readDirectoryBackup(backup.id), original);
+      assert.equal(reopened.workingDirectories(false).readHandle?.(outside), undefined);
+      assert.equal(previewRewind(reopened, 1, signal).directory, undefined);
+      assert.deepEqual(readDirectoryCheckpointBackup(reopened, 'before-overwrite', target), original);
+      if (authority === 'regranted') reopened.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+      else reopened.inheritPermissionAdoption(parent.permissionOwner);
+      const preview = previewRewind(reopened, 1, signal);
+      assert.deepEqual(preview.operations.find(op => op.path === target), { path: target, action: 'write' });
+      const rewind = applyRewindAfterRelease(reopened, preview, preview.token, signal, async completed => {
+        if (authority === 'revoked during release') {
+          parent.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+          parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+        }
+        reopened.releaseDirectoryAuthority(); completed();
+      });
+      if (authority === 'revoked during release') {
+        await assert.rejects(rewind, /directory authority changed/);
+        assert.equal(fs.readFileSync(target, 'utf8'), 'changed');
+        return;
+      }
+      next = await rewind;
+      assert.deepEqual(fs.readFileSync(target), original);
+      assert.equal(fs.statSync(target).mode & 0o777, 0o751);
+      assert.ok(next.events.some(event => event.kind === 'branch' && event.reason === 'rewind' && event.source === child.id));
+      assert.deepEqual(readDirectoryCheckpointBackup(next, 'before-overwrite', target), original);
+      if (authority === 'inherited') {
+        const handle = next.workingDirectories(false).readHandle?.(outside);
+        assert.ok(handle && handle.owner === next.id);
+        parent.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+        assert.equal(handle.signal.aborted, true);
+        assert.equal(next.workingDirectories(false).readHandle?.(outside), undefined);
+      }
+    } finally { await reopened.close(); }
+  } finally { await next?.close(); await registry.close(); await parent.close(); await f.cleanup(); fs.rmSync(outside, { recursive: true, force: true }); }
 });
 
 test('child journal retains execution authorization validation through its budget wrapper', async () => {
@@ -301,7 +433,8 @@ test('messages during tool batches wait for complete turn boundaries and remain 
     try {
       assertPaired(session.messages);
       const second = session.events.findIndex(event => event.kind === 'message' && event.message.content === 'second');
-      assert.equal(session.events[second - 1]?.kind, 'turn_end');
+      const previous = session.events.slice(0,second).findLast(event => event.kind !== 'agent_display_observer');
+      assert.equal(previous?.kind, 'turn_end');
       assert.equal(session.events.filter(event => event.kind === 'turn_end').length, 3);
     } finally { session.close(); }
   } finally { release.resolve(); await f.cleanup(); }
@@ -317,6 +450,8 @@ test('completed child resumes its pinned journal and name after source config ch
     assert.equal(firstEvents.length, 1);
     assert.equal(firstEvents[0]?.agent.id, first.id);
     assert.equal(firstEvents[0]?.agent.summary, 'result-1');
+    const firstRun = firstEvents[0]?.runId;
+    assert.match(firstRun ?? '', /^[0-9a-z]{9}-[0-9a-f]{8}$/);
     f.config.model = 'changed-parent'; f.config.system = 'changed-system';
     const queued = await registry.sendMessage('worker', 'follow up');
     assert.equal(queued.id, first.id);
@@ -326,6 +461,9 @@ test('completed child resumes its pinned journal and name after source config ch
     assert.equal(resumedEvents.length, 1);
     assert.equal(resumedEvents[0]?.agent.id, first.id);
     assert.equal(resumedEvents[0]?.agent.summary, 'result-2');
+    const resumedRun = resumedEvents[0]?.runId;
+    assert.match(resumedRun ?? '', /^[0-9a-z]{9}-[0-9a-f]{8}$/);
+    assert.ok(resumedRun! > firstRun!);
     assert.ok(resumedEvents[0]!.sequence > firstEvents[0]!.sequence);
     assert.equal(seen[1]?.model, 'test'); assert.match(String(seen[1]?.system), /child agent/);
     assert.equal(seen[1]?.messages.length, 3);
@@ -429,9 +567,10 @@ test('failure notifications and journal limits release session locks', async () 
     const failed = await registry.launch({ prompt: 'work' });
     assert.equal(failed.status, 'failed'); assert.equal(failed.error, 'scripted failure');
     assert.deepEqual(errors, ['scripted failure']); assert.equal(listSessions(f.workspace)[0]?.active, false);
-    const journalBudget = 4096 + Buffer.byteLength(f.workspace) * 4;
+    // The failed control reached the provider with the same prompt and journal observers.
+    const journalBudget = fs.statSync(path.join(f.workspace,'.agent',failed.id+'.jsonl')).size + 128;
     let boundedCalls = 0;
-    const bounded = f.make({ provider: { count: async () => 0, complete: async () => { boundedCalls++; return response('large'.repeat(1000)); } }, limits: { maxJournalBytes: journalBudget } });
+    const bounded = f.make({ provider: { count: async () => 0, complete: async () => { boundedCalls++; return response('x'.repeat(journalBudget)); } }, limits: { maxJournalBytes: journalBudget } });
     const limited = await bounded.launch({ prompt: 'work' });
     assert.equal(boundedCalls, 1);
     assert.equal(limited.status, 'failed'); assert.match(limited.error!, /journal limit/);
@@ -439,6 +578,80 @@ test('failure notifications and journal limits release session locks', async () 
     assert.ok(fs.statSync(file).size <= journalBudget);
     assert.equal(fs.existsSync(`${file}.lock`), false);
   } finally { await f.cleanup(); }
+});
+
+test('nested history intents reserve witness bytes and slots across reopen', async () => {
+  const f = fixture();
+  let owner = Session.open(f.workspace,{config:f.config});
+  try {
+    const id = owner.id;
+    const intent = {kind:'agent_history_intent' as const,parent:id,id:randomUUID(),oldDigest:'a'.repeat(64),
+      newDigest:'b'.repeat(64),journal:{bytes:0,sha256:'c'.repeat(64)},terminalRecord:{summary:'已完成'}};
+    const witness = {kind:'agent_history' as const,id:intent.id,digest:intent.newDigest};
+    const rowBytes = (row: unknown) => Buffer.byteLength(JSON.stringify(row)) + 1;
+    const original = fs.readFileSync(owner.file);
+    const maxJournalBytes = original.length + rowBytes(intent) + rowBytes(witness) + 128;
+    const maxJournalEvents = owner.events.length + 3;
+    const reopen = async (bytes: number, events: number) => {
+      await owner.close();
+      owner = Session.open(f.workspace,{id,childJournalLimits:{maxJournalBytes:bytes,maxJournalEvents:events}});
+    };
+    for (const [bytes,events] of [[maxJournalBytes-1,maxJournalEvents],[maxJournalBytes,maxJournalEvents-1]] as const) {
+      await reopen(bytes,events);
+      assert.throws(() => owner.append(intent), /Child journal limit/);
+      assert.deepEqual(fs.readFileSync(owner.file),original);
+    }
+    await reopen(maxJournalBytes,maxJournalEvents);
+    owner.append(intent);
+    await reopen(maxJournalBytes,maxJournalEvents);
+    assert.throws(() => owner.append({...witness,digest:'d'.repeat(64)}), /Child journal limit/);
+    const boundary = {kind:'turn_end' as const,reason:''};
+    boundary.reason = 'x'.repeat(128-rowBytes(boundary));
+    owner.append(boundary);
+    owner.append(witness);
+    assert.equal(fs.statSync(owner.file).size,maxJournalBytes);
+    assert.equal(owner.events.length,maxJournalEvents);
+    await reopen(maxJournalBytes,maxJournalEvents);
+    assert.deepEqual(owner.events.at(-1),witness);
+  } finally { await owner.close(); await f.cleanup(); }
+});
+
+test('active history replacement preserves the witnessed state when its owner journal is full', async () => {
+  const f = fixture();
+  let owner = Session.open(f.workspace,{config:f.config});
+  const child = Session.open(f.workspace,{config:{...f.config,parentSessionId:owner.id}});
+  try {
+    const store = () => new AgentHistoryStore(owner,16*1024*1024,100);
+    const header = store().header(child,{name:null,prompt:'work',backgrounded:true,fork:false,startedAt:1});
+    const initial = {...header,state:{kind:'active' as const,runId:'000000001-abcdef12'}};
+    const next = {...header,state:{kind:'active' as const,runId:'000000002-abcdef12'}};
+    store().write(initial);
+    const file = path.join(path.dirname(owner.file),'subagents',owner.id,child.id+'.meta.json');
+    const previous = fs.readFileSync(file), journal = fs.readFileSync(owner.file);
+    const last = owner.events.at(-1);
+    const exactBytes = journal.length + Buffer.byteLength(JSON.stringify(last)) + 1 + 128;
+    const exactEvents = owner.events.length + 2;
+    const reopen = async (maxJournalBytes: number,maxJournalEvents: number) => {
+      const id = owner.id;
+      await owner.close();
+      owner = Session.open(f.workspace,{id,childJournalLimits:{maxJournalBytes,maxJournalEvents}});
+    };
+    for (const [bytes,events] of [[exactBytes-1,exactEvents],[exactBytes,exactEvents-1]] as const) {
+      await reopen(bytes,events);
+      assert.throws(() => store().write(next), /Child journal limit/);
+      assert.deepEqual(fs.readFileSync(file),previous);
+      assert.deepEqual(fs.readFileSync(owner.file),journal);
+      const first = {...next,id:randomUUID()};
+      assert.throws(() => store().write(first), /Child journal limit/);
+      assert.equal(fs.existsSync(path.join(path.dirname(file),first.id+'.meta.json')),false);
+    }
+    await reopen(exactBytes,exactEvents);
+    assert.deepEqual(store().read().records,[initial]);
+    store().write(next);
+    await reopen(exactBytes,exactEvents);
+    assert.deepEqual(store().read().records,[next]);
+    assert.equal(fs.statSync(owner.file).size,exactBytes-128);
+  } finally { await child.close(); await owner.close(); await f.cleanup(); }
 });
 
 test('constructor failures clean locks for registry and legacy child tools', async () => {
@@ -492,14 +705,22 @@ test('start/end hooks run for startup and resume and child configuration disable
 test('metadata budget rejects before journal creation and event budget reserves failure boundaries', async () => {
   const f = fixture();
   const tiny = f.make({ limits: { maxJournalBytes: 1 } });
-  const events = f.make({ limits: { maxJournalEvents: 3 } });
   try {
     await assert.rejects(tiny.launch({ prompt: 'work' }), /journal limit/);
     assert.equal(fs.existsSync(path.join(f.workspace, '.agent')), false);
+    const control = await f.make().launch({ prompt: 'work' });
+    const journal = Session.open(f.workspace,{id:control.id});
+    let eventBudget: number;
+    try {
+      const prompt = journal.events.findIndex(event => event.kind === 'message' && event.message.content === 'work');
+      assert.ok(prompt >= 0);
+      eventBudget = prompt + 2; // Includes the prompt and the reserved failure boundary.
+    } finally { await journal.close(); }
+    const events = f.make({ limits: { maxJournalEvents: eventBudget } });
     const child = await events.launch({ prompt: 'work' });
     assert.equal(child.status, 'failed');
     const session = Session.open(f.workspace, { id: child.id });
-    try { assert.equal(session.events.length, 3); assert.equal(session.events.at(-1)?.kind, 'turn_end'); }
+    try { assert.equal(session.events.length, eventBudget); assert.equal(session.events.at(-1)?.kind, 'turn_end'); }
     finally { session.close(); }
   } finally { await f.cleanup(); }
 });
@@ -543,6 +764,43 @@ test('internal execution overrides validate workspace and tool provenance and re
     try { assert.ok(journal.events.some(event => event.kind === 'hook_result' && event.event === 'SessionEnd')); }
     finally { journal.close(); }
   } finally { await f.cleanup(); }
+});
+
+test('scoped child Write retains the checked path across its argument grant', async () => {
+  let calls = 0, grants = 0;
+  const f = fixture(async () => ++calls === 1 ? response('', [{ type: 'tool_use', id: 'child-write',
+    name: 'write_file', input: { path: 'approved', content: 'child bytes' }, caller: { type: 'direct' } }]) : response());
+  f.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+  const runtime = await createRuntime(f.config, f.provider, new AbortController().signal);
+  f.config.tools = pinToolSchemas(runtime.tools);
+  const parent = Session.open(f.workspace, { config: f.config });
+  try {
+    await runtime.bindSession!(parent);
+    const tools = runtime.buildTools(parent.config, parent.id);
+    const write = tools.find(tool => tool.schema.name === 'write_file')!;
+    const registry = f.make({ tools });
+    const child = await registry.launch({ prompt: 'write', mode: 'general' }, undefined, {
+      config: f.config, tools: [write], beforeTool: async (_tool, input) => {
+        grants++;
+        await Promise.resolve();
+        Reflect.set(input as object, 'path', 'redirected');
+      },
+    });
+    assert.equal(child.status, 'completed');
+    assert.equal(grants, 1);
+    assert.equal(fs.existsSync(path.join(f.workspace, 'redirected')), false);
+    assert.equal(fs.readFileSync(path.join(f.workspace, 'approved'), 'utf8'), 'child bytes');
+    const reader = Session.open(f.workspace, { id: child.id });
+    try {
+      const stages = reader.events.filter(event => event.kind === 'runtime_wrapper_observer')
+        .filter(event => event.toolUseId === 'child-write' && event.transition.phase === 'admitted');
+      assert.deepEqual(stages.map(event => event.stage), ['checkScope', 'refresh', 'checkJournal']);
+      for (const event of stages) {
+        assert.equal(event.owner, child.id);
+        assert.equal(event.writeFactory?.owner, parent.id);
+      }
+    } finally { await reader.close(); }
+  } finally { await runtime.close(); await parent.close(); await f.cleanup(); }
 });
 
 test('internal execution policy overlay enforces parent rules and runs argument grants before original executor', async () => {
@@ -722,6 +980,85 @@ test('child cancellation waits for async process groups and preserves lock until
     }
     assert.equal(alive, false); assert.equal(listSessions(f.workspace)[0]?.active, false);
   } finally { await f.cleanup(); }
+});
+
+function childObserverRows(session: Session) {
+  return session.events.flatMap(row => row.kind === 'async_hook_lifecycle' && row.transition.phase === 'observer'
+    ? [{ owner: row.owner, jobId: row.jobId, generation: row.generation, ...row.transition }] : []);
+}
+
+test('child observers persist actual return and failure independently of command success', async () => {
+  for (const mode of ['returned', 'threw', 'rejected']) {
+    const f = fixture(), session = Session.open(f.workspace, { config: f.config });
+    const order: string[] = [];
+    const observer = (kind: string) => {
+      order.push(kind);
+      const pending = session.events.at(-1);
+      assert.ok(pending?.kind === 'async_hook_lifecycle' && pending.transition.phase === 'observer' && pending.transition.state === 'pending' && pending.owner === session.id);
+      if (mode === 'threw') throw Error('observer');
+      if (mode === 'rejected') return Promise.reject(Error('observer'));
+    };
+    const lifecycle = createChildHookLifecycle(session, { terminalSequence: () => observer('terminal'), onHookCompletion: () => observer('completion') });
+    try {
+      await runHooks({ SessionStart: [{ command: `printf '%s' '{"terminalSequence":"\\u001b]2;observer\\u0007"}'`, async: true }] },
+        'SessionStart', { cwd: f.workspace, session_id: session.id }, new AbortController().signal, lifecycle.hookOptions);
+      await lifecycle.close();
+      assert.deepEqual(order, ['terminal', 'completion']);
+      await session.close();
+      const cold = Session.open(f.workspace, { id: session.id });
+      try {
+        const rows = childObserverRows(cold);
+        assert.equal(rows.length, 4);
+        for (const kind of ['terminal', 'completion']) {
+          const pair = rows.filter(row => row.observer.kind === kind);
+          assert.deepEqual(pair.map(row => row.state), ['pending', mode === 'returned' ? 'returned' : 'threw']);
+          assert.equal(pair[0]!.id, pair[1]!.id);
+          assert.ok(cold.events.some(row => row.kind === 'hook_result' && row.id === pair[0]!.jobId));
+        }
+      } finally { await cold.close(); }
+    } finally { await lifecycle.close(); await session.close(); await f.cleanup(); }
+  }
+});
+
+test('bounded child close leaves late observers pending without writing into a reopened owner', async () => {
+  for (const reject of [false, true]) {
+    const f = fixture(), session = Session.open(f.workspace, { config: f.config });
+    const entered = gate(), release = gate(); let finished = false;
+    const lifecycle = createChildHookLifecycle(session, { onHookCompletion: async () => {
+      entered.resolve(); await release.promise; finished = true;
+      if (reject) throw Error('late failure');
+    } });
+    try {
+      await runHooks({ SessionStart: [{ command: "printf '{}'", async: true }] }, 'SessionStart',
+        { cwd: f.workspace, session_id: session.id }, new AbortController().signal, lifecycle.hookOptions);
+      await entered.promise; await lifecycle.close();
+      assert.equal(finished, false); await session.close();
+      const cold = Session.open(f.workspace, { id: session.id });
+      try {
+        const before = fs.readFileSync(cold.file, 'utf8');
+        release.resolve(); await new Promise(resolve => setTimeout(resolve, 20));
+        assert.equal(finished, true); assert.equal(fs.readFileSync(cold.file, 'utf8'), before);
+        assert.deepEqual(childObserverRows(cold).map(row => row.state), ['pending']);
+      } finally { await cold.close(); }
+    } finally { release.resolve(); await lifecycle.close(); await session.close(); await f.cleanup(); }
+  }
+});
+
+test('failed child observer intent prevents observer invocation and reports close failure', async () => {
+  const f = fixture(), session = Session.open(f.workspace, { config: f.config }); let invoked = false;
+  const append = session.append.bind(session);
+  session.append = (...args) => {
+    if (args[0].kind === 'async_hook_lifecycle' && args[0].transition.phase === 'observer') throw Error('observer journal unavailable');
+    return append(...args);
+  };
+  const lifecycle = createChildHookLifecycle(session, { onHookCompletion: () => { invoked = true; } });
+  try {
+    await runHooks({ SessionStart: [{ command: "printf '{}'", async: true }] }, 'SessionStart',
+      { cwd: f.workspace, session_id: session.id }, new AbortController().signal, lifecycle.hookOptions);
+    await assert.rejects(lifecycle.close(), /observer journal unavailable/);
+    assert.equal(invoked, false);
+    assert.equal(session.events.some(row => row.kind === 'hook_result'), true);
+  } finally { await session.close(); await f.cleanup(); }
 });
 
 test('legacy children run owned async startup/shutdown hooks with unchanged schema', async () => {

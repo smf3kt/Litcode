@@ -1,0 +1,32 @@
+{
+  "unit": "W385 #43 async response semantics",
+  "status": "verified ordinary response and confirmed async-history unit; broader lifecycle remains open",
+  "identity": "eb1584a2cae360e1f8a8b432ef09e89c0d7ff978af6968da1d42785392dbf89f",
+  "inputs": "eb675c1bb935565a37c61154734335b46b2225040f256d3b667a5b2a426d18a7",
+  "validation": "c86164acf9e52c96cf80a62c3bc5890c9664c96b55d7222b04c70592652a5bbe",
+  "build": "435b734dd4ac77a25aca18019c4beb71cde7330e24a1d63cfcb53e0fba787c28",
+  "coordinates": "zero-based half-open UTF-16",
+  "source": [
+    { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da", "symbols": {
+      "Sbt": [626520, 627570], "LLr": [3703453, 3704511], "ybt": [622984, 624230], "gbt": [622557, 622798], "Tie": [621902, 622557],
+      "rDr": [3630017, 3630157], "yyn": [3630158, 3630328], "sDr": [3630332, 3630675], "iDr": [3630676, 3630962], "_yn": [3630962, 3631285],
+      "dbt": [619873, 620253], "ubt": [620253, 620319]
+    } },
+    { "module": "chunk-n3ykh62m.js", "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac", "symbols": {
+      "L1": [390530, 396514], "Une": [396515, 396598], "NI": [396599, 396651], "N1": [390486, 390529], "Bz": [390059, 390481],
+      "Zc": [389917, 389971], "Qc": [389881, 389916], "Rs": [389976, 390058]
+    } },
+    { "module": "chunk-3cynezh1.js", "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3", "symbols": { "pWn": [69259, 69282] } },
+    { "module": "chunk-a60ee1ne.js", "sha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1", "symbols": { "rh": [782, 829], "CH": [682, 754] } }
+  ],
+  "checks": {
+    "typecheck": 0,
+    "build": 0,
+    "hookRuntimeCli": "51/51 pass: response, delivery, async hooks and runtime resources",
+    "interaction": "66/66 pass with isolated CLAUDE_JOB_DIR/tmp",
+    "package": { "exit": 0, "offlineInstall": true, "files": 730, "archiveSha256": "498920c3c9e294978f791fd0dd5e31f1cf994ef58c5c2ba4e987967a65682f16", "installedSilentSuccessAndCallbackSettlement": true },
+    "dependencyCache": "initial ENOTCACHED; fetched 28 locked public npm packages into a temporary cache, then package driver used offline install",
+    "modelUpstreamRequests": 0
+  },
+  "remaining": ["synchronous startup context to visible-history association for mixed dedup", "full plugin origin metadata beyond the explicit HOME partition", "account-specific response branches", "durable root/child process and callback provenance", "no-effect fences and archive remain unchanged"]
+}

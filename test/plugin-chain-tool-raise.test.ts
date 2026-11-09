@@ -159,6 +159,8 @@ test('classic PreToolUse: the agent\'s tool path applies a plugin\'s denial and 
     const agent = new Agent(session, provider, tools);
     await agent.run('go');
     assert.deepEqual(seen, [], 'the tool never ran');
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PreToolUse', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PreToolUse', 'fulfilled']]);
     const results = session.events.filter((event) => event.kind === 'tool_result') as unknown as
       { result: { content: unknown; is_error?: boolean } }[];
     assert.equal(results.at(-1)?.result.is_error, true);
@@ -180,6 +182,8 @@ test('classic PreToolUse: the agent\'s tool path applies a plugin\'s denial and 
     const agent = new Agent(session, provider, tools);
     await agent.run('go');
     assert.deepEqual(seen, [{ x: 'rewritten by the fixture' }]);
+    assert.deepEqual(session.classicHookChains.map(row => [row.event, row.phase]), [['PreToolUse', 'fulfilled']]);
+    assert.deepEqual(session.classicHookModules.map(row => [row.event, row.phase]), [['classic.PreToolUse', 'fulfilled']]);
   } finally {
     rewritten.unload();
   }
