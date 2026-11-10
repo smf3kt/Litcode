@@ -28,13 +28,15 @@ export async function readTrustedHandleLines(
 // Host adaptation: bhn/GIr pass controlled I/O to the reader; the caller owns
 // the handle. chunk-sfn1dbxq.js SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
 // UTF-16 [3551998,3552396) and [3546500,3549105). Window logic follows tools.ts readFileLines.
-export async function readControlledHandleLines(
+export type ControlledHandleLinesResult = { content: string; truncated: boolean };
+
+export async function readControlledHandleLinesResult(
   handle: FileHandle,
   offset: number,
   limit: number,
   maxBytes: number,
   signal: AbortSignal,
-): Promise<string> {
+): Promise<ControlledHandleLinesResult> {
   const endLine = offset + limit - 1;
   const lines: string[] = [];
   let lineNo = 1;
@@ -102,11 +104,21 @@ export async function readControlledHandleLines(
 
   const joined = lines.join("\n");
   const buf = Buffer.from(joined, "utf8");
-  if (!capped && buf.length <= maxBytes) return joined;
+  if (!capped && buf.length <= maxBytes) return { content: joined, truncated: false };
   let end = Math.min(maxBytes, buf.length);
   while (end > 0 && end < buf.length && (buf[end]! & 0xc0) === 0x80) end -= 1;
   const suffix = capped ? "file continues" : `${buf.length - end} more bytes omitted`;
-  return `${buf.subarray(0, end).toString("utf8")}\n[read_file: output truncated; ${suffix}]`;
+  return { content: `${buf.subarray(0, end).toString("utf8")}\n[read_file: output truncated; ${suffix}]`, truncated: true };
+}
+
+export async function readControlledHandleLines(
+  handle: FileHandle,
+  offset: number,
+  limit: number,
+  maxBytes: number,
+  signal: AbortSignal,
+): Promise<string> {
+  return (await readControlledHandleLinesResult(handle, offset, limit, maxBytes, signal)).content;
 }
 
 function abortError(): Error {

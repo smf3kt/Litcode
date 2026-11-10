@@ -1308,7 +1308,7 @@ export async function runConfiguredHookCommand(request: AsyncHookRequest, signal
   if (grant) {
     configuredHookGrants.delete(request); consumedConfiguredHookRequests.add(request);
     const { signal: originalSignal, ...snapshot } = request;
-    if (originalSignal !== grant.signal || !isDeepStrictEqual(snapshot, grant.snapshot)) throw new Error('Configured hook request changed');
+    if (originalSignal !== grant.signal || !isDeepStrictEqual(structuredClone(snapshot), grant.snapshot)) throw new Error('Configured hook request changed');
   }
   const selected = grant?.snapshot ?? request;
   const definition = selected.definition;
@@ -1814,7 +1814,9 @@ export async function runHooks(
     else if (definition.type === "prompt" || definition.type === "agent") {
       raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveModelHook!, "Model", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "callback") {
-      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveCallbackHook!, "Callback", release!, { identity: flattened.identity, observer: options.observeResolver });
+      // Callback resolvers are caller-supplied; they receive a copy so the
+      // caller cannot mutate the payload used by later hooks or the result.
+      raw = await runResolvedHook(definition, event, structuredClone(payload), signal, timeoutMs, options.resolveCallbackHook!, "Callback", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "mcp_tool") {
       raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveMcpHook!, "MCP", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "script") {

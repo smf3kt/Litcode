@@ -12,7 +12,7 @@ import { createPathIdentity } from './path-approval-identity-source.js';
 import { createPathApprovalBinding } from './path-approval-binding-source.js';
 import { createPathOpenCapability, createPathOpenPrimitives } from './path-open-primitives-source.js';
 import { lwe } from './path-approval-decoder-source.js';
-import { readControlledHandleLines } from './controlled-handle-lines.js';
+import { readControlledHandleLines, readControlledHandleLinesResult } from './controlled-handle-lines.js';
 
 type Lane = 'read' | 'write';
 type Identity = { dev: bigint; ino: bigint };
@@ -177,10 +177,20 @@ export class AsyncReadHandleConsumer {
   }
 
   async readLines(offset: number, limit: number, maxBytes: number): Promise<string> {
+    return (await this.readLinesWithMetadata(offset, limit, maxBytes)).content;
+  }
+
+  async readLinesWithMetadata(offset: number, limit: number, maxBytes: number): Promise<{
+    content: string; truncated: boolean; mtimeMs: number; identity: { dev: string; ino: string };
+  }> {
     const opened = await this.open();
     try {
       if (!this.call.isActive || this.signal.aborted) throw new Error('Read approval expired');
-      return await readControlledHandleLines(opened.handle, offset, limit, maxBytes, this.signal);
+      const stat = await opened.handle.stat({ bigint: true });
+      if (!stat.isFile()) throw new Error('Read approval changed');
+      const result = await readControlledHandleLinesResult(opened.handle, offset, limit, maxBytes, this.signal);
+      return { content: result.content, truncated: result.truncated, mtimeMs: Number(stat.mtimeMs),
+        identity: { dev: String(stat.dev), ino: String(stat.ino) } };
     } finally {
       await opened.close();
     }

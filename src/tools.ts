@@ -43,6 +43,13 @@ export type ToolContext = {
   allowShell: boolean;
   maxOutputBytes: number;
   pathApprovalCall?: PathApprovalCall;
+  /** Host-owned approval-to-use checker for a builtin read (revalidates and binds the approved identity). */
+  readHandleConsumer?: {
+    check(input: { path: string }): Promise<boolean>;
+    readLinesWithMetadata(offset: number, limit: number, maxBytes: number): Promise<{
+      content: string; truncated: boolean; mtimeMs: number; identity: { dev: string; ino: string };
+    }>;
+  };
   authorizationIdentity?: { readonly signal: AbortSignal };
   directoryPublicationAuthorization?: import('./directory-publication-authorization.js').DirectoryPublicationAuthorization;
   shellHome?: { value: string | undefined };
@@ -825,6 +832,7 @@ const scopedChildMutations = new WeakMap<ToolDefinition, { tool: ToolDefinition;
 export function bindScopedChildTool(tool: ToolDefinition, checkPermission: ChildToolAuthorization,
     lookup: 'before-approval' | 'after-approval' = 'before-approval'): ToolDefinition {
   if (builtinEdits.has(tool)) editExecutor(tool);
+  const implementation = snapshotToolImplementation(tool);
   const mutation = builtinEdits.has(tool) || builtinWriteExecutors.has(tool) || runtimeBuiltinWrites.has(tool) || scopedChildMutations.has(tool);
   const authorize = mutation ? withChildDirectoryGrant(checkPermission) : checkPermission;
   const scoped: ToolDefinition = { ...tool,
@@ -836,17 +844,23 @@ export function bindScopedChildTool(tool: ToolDefinition, checkPermission: Child
       }
       if (lookup === 'after-approval') {
         const approved = await authorize(input, context);
+        assertToolImplementation(tool, implementation);
         return tool.execute(input, approved);
       }
-      return tool.execute(input, await authorize(input, context));
+      const approved = await authorize(input, context);
+      assertToolImplementation(tool, implementation);
+      return tool.execute(input, approved);
     },
     ...(tool.executeBlocks ? { async executeBlocks(value: unknown, context: ToolContext) {
       const input = snapshotBuiltinMutationInput(tool, value);
       if (lookup === 'after-approval') {
         const approved = await authorize(input, context);
+        assertToolImplementation(tool, implementation);
         return tool.executeBlocks!(input, approved);
       }
-      return tool.executeBlocks!(input, await authorize(input, context));
+      const approved = await authorize(input, context);
+      assertToolImplementation(tool, implementation);
+      return tool.executeBlocks!(input, approved);
     } } : {}),
   };
   if (mutation) {
@@ -1149,6 +1163,7 @@ export function bindRuntimeTool(tool: ToolDefinition, checks: {
   checkJournal(tool: ToolDefinition): void;
 }): ToolDefinition {
   let child: ToolDefinition | undefined;
+  const implementation = snapshotToolImplementation(tool);
   const builtinWrite = builtinWriteExecutors.get(tool);
   const edit = builtinEdits.has(tool) ? editExecutor(tool) : undefined;
   const wrapped: ToolDefinition = { ...tool,
@@ -1178,12 +1193,14 @@ export function bindRuntimeTool(tool: ToolDefinition, checks: {
         if (editExecutor(tool) !== edit) throw new Error('Built-in edit implementation changed');
         return edit.call(tool, input, context);
       }
+      assertToolImplementation(tool, implementation);
       return tool.execute(input, context);
     },
     ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: ToolContext) {
       context.signal.throwIfAborted();
       observeRuntimeCheck(wrapped, input, context, 'executeBlocks', 'checkScope', () => checks.checkScope());
       observeRuntimeCheck(wrapped, input, context, 'executeBlocks', 'checkJournal', () => checks.checkJournal(tool));
+      assertToolImplementation(tool, implementation);
       return tool.executeBlocks!(input, context);
     } } : {}),
     ...(tool.forChild ? { forChild() { checks.checkScope(); return child ??= bindRuntimeTool(tool.forChild!(), checks); } } : {}),
@@ -1198,7 +1215,7 @@ export async function executeAgentTool(tool: ToolDefinition, input: unknown, con
     observe?: (authorization: BuiltinWriteExecutionAuthorization) => void,
     wrapperObserver?: ((authorization: object) => void) | {
       forTool(tool: ToolDefinition, context: ToolContext): (authorization: object) => void;
-    }): Promise<Anthropic.ToolResultBlockParam['content']> {
+    }, implementation?: ToolImplementationSnapshot): Promise<Anthropic.ToolResultBlockParam['content']> {
   const scoped = scopedChildMutations.get(tool);
   if (scoped) {
     const checked = snapshotBuiltinMutationInput(scoped.tool, input);
@@ -1208,12 +1225,13 @@ export async function executeAgentTool(tool: ToolDefinition, input: unknown, con
   if (wrapperInvocations.has(context)) throw new Error('Runtime wrapper invocation already active');
   const observeWrapper = typeof wrapperObserver === 'function' ? wrapperObserver : wrapperObserver?.forTool(tool, context);
   if (observeWrapper) wrapperInvocations.set(context, { tool, input, context, observe: observeWrapper });
-  try { return await executeAgentToolBody(tool, input, context, observe); }
+  try { return await executeAgentToolBody(tool, input, context, observe, implementation); }
   finally { wrapperInvocations.delete(context); }
 }
 
 async function executeAgentToolBody(tool: ToolDefinition, input: unknown, context: ToolContext,
-    observe?: (authorization: BuiltinWriteExecutionAuthorization) => void): Promise<Anthropic.ToolResultBlockParam['content']> {
+    observe?: (authorization: BuiltinWriteExecutionAuthorization) => void,
+    implementation?: ToolImplementationSnapshot): Promise<Anthropic.ToolResultBlockParam['content']> {
   const builtinWrite = runtimeBuiltinWrites.get(tool);
   if (builtinEdits.has(tool)) return checkedEditExecutor(tool, input).call(tool, input, context);
   if (builtinWriteExecutors.has(tool) && input && typeof input === 'object' && approvedMutationInputs.has(input)) {
@@ -1222,7 +1240,10 @@ async function executeAgentToolBody(tool: ToolDefinition, input: unknown, contex
       throw new Error('Runtime built-in write_file implementation changed');
     return selected.handler.call(tool, input, context);
   }
-  if (!builtinWrite) return tool.executeBlocks ? tool.executeBlocks(input, context) : tool.execute(input, context);
+  if (!builtinWrite) {
+    assertToolImplementation(tool, implementation);
+    return tool.executeBlocks ? tool.executeBlocks(input, context) : tool.execute(input, context);
+  }
   const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
   if (!execute || !('value' in execute) || execute.value !== builtinWrite.execute ||
       Object.getOwnPropertyDescriptor(tool, 'executeBlocks') !== undefined || Object.getPrototypeOf(tool) !== Object.prototype)
@@ -1245,6 +1266,36 @@ function snapshotTool(tool: ToolDefinition): ToolSnapshot | undefined {
     return { prototype: Object.getPrototypeOf(tool), properties: properties.map(item => ({ key: item.key, descriptor: item.descriptor! })),
       schema: JSON.stringify(inertSchema(schema.value)) };
   } catch { return; }
+}
+
+type ToolImplementationSnapshot = { prototype: object | null; execute: PropertyDescriptor; executeBlocks?: PropertyDescriptor };
+
+// Kt [121053,123737), UTF-16: the source binds one implementation instance to
+// its host. The host keeps the ToolDefinition reference across awaited hooks;
+// capture the selected handler at authorization and refuse a later replacement.
+export function snapshotToolImplementation(tool: ToolDefinition): ToolImplementationSnapshot | undefined {
+  try {
+    if (utilTypes.isProxy(tool)) return;
+    const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+    const blocks = Object.getOwnPropertyDescriptor(tool, 'executeBlocks');
+    if (!execute || !('value' in execute) || typeof execute.value !== 'function') return;
+    if (blocks && !('value' in blocks)) return;
+    return { prototype: Object.getPrototypeOf(tool), execute, ...(blocks ? { executeBlocks: blocks } : {}) };
+  } catch { return; }
+}
+
+export function assertToolImplementation(tool: ToolDefinition, snapshot: ToolImplementationSnapshot | undefined): void {
+  if (snapshot === undefined) return;
+  let changed = true;
+  try {
+    const execute = Object.getOwnPropertyDescriptor(tool, 'execute');
+    const blocks = Object.getOwnPropertyDescriptor(tool, 'executeBlocks');
+    changed = utilTypes.isProxy(tool) || Object.getPrototypeOf(tool) !== snapshot.prototype ||
+      !execute || !('value' in execute) || execute.value !== snapshot.execute.value ||
+      (blocks === undefined) !== (snapshot.executeBlocks === undefined) ||
+      (blocks !== undefined && snapshot.executeBlocks !== undefined && blocks.value !== snapshot.executeBlocks.value);
+  } catch { changed = true; }
+  if (changed) throw new Error('Tool implementation changed after authorization');
 }
 
 function matchesToolSnapshot(tool: ToolDefinition, saved: ToolSnapshot | undefined): boolean {
@@ -1374,6 +1425,25 @@ function readFileTool(): ToolDefinition {
       const unchanged = previous && previous.identity && previous.realPath === resolved.path && !previous.isPartialView && !previous.contentNotInModelContext &&
         previous.offset === offset && previous.limit === limit ? { timestamp: previous.timestamp, identity: previous.identity } : undefined;
       const readSignal = owned ? AbortSignal.any([context.signal, owned.signal]) : context.signal;
+      // Approval-to-use revalidation belongs immediately before the open, after the
+      // path resolution, so the window between the policy check and the read is minimal.
+      const consumer = context.readHandleConsumer;
+      if (consumer && !directory) {
+        if (!(await consumer.check({ path: userPath }))) throw new Error('read_file: read approval changed');
+        // The approved-handle reader opens the captured identity, so a retarget after
+        // the check cannot substitute another file. Directory-grant reads keep the
+        // descriptor-bound readFileLines path below.
+        const read = await consumer.readLinesWithMetadata(offset, limit, maxBytesFor(context));
+        if (unchanged && Math.floor(read.mtimeMs) === unchanged.timestamp &&
+            read.identity.dev === unchanged.identity.dev && read.identity.ino === unchanged.identity.ino)
+          return 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.';
+        context.readFileCache?.set(cacheKey, { content: read.content, timestamp: Math.floor(read.mtimeMs),
+          offset, limit, identity: read.identity, realPath: resolved.path, isPartialView: read.truncated, contentNotInModelContext: true });
+        context.hostResult?.({ kind: 'file_read', filePath: resolved.path, cacheKey, content: read.content,
+          mtimeMs: read.mtimeMs, identity: read.identity, offset, limit, truncated: read.truncated });
+        return read.content;
+      }
+      if (consumer && !(await consumer.check({ path: userPath }))) throw new Error('read_file: read approval changed');
       const read = await readFileLines(resolved, userPath, offset, limit, maxBytesFor(context), readSignal, unchanged, directory);
       readSignal.throwIfAborted();
       if ('unchanged' in read) return 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.';

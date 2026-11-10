@@ -9,6 +9,7 @@ import { Agent, defaultConfig } from '../src/agent.js';
 import { AgentRegistry } from '../src/agent-registry.js';
 import { createMediaTools } from '../src/media.js';
 import { createNotebookTools } from '../src/notebooks.js';
+import { observePermissionPath } from '../src/path-permission-observation.js';
 import { resolveChain } from '../src/path-identity.js';
 import { contentRuleMatches } from '../src/permission-content.js';
 import { permissionDecision, seedPermissionUpdates } from '../src/permissions.js';
@@ -328,4 +329,21 @@ test('isolated child checks the execution workspace rather than the parent works
     fs.rmSync(child, { recursive: true, force: true });
     fs.rmSync(parent, { recursive: true, force: true });
   }
+});
+
+test("permission checks expand a leading tilde before resolving rules", () => {
+  const root = workspace();
+  const target = path.join(os.homedir(), 'w385-tilde-control');
+  const tool = lookup(createTools(), 'read_file');
+  const policy = { mode: 'default' as const, allow: [], deny: [`Read(//${target.slice(1)})`], ruleWorkspace: root };
+  assert.equal(permissionDecision(policy, tool, { path: '~/w385-tilde-control' }, undefined, root).decision, 'deny');
+});
+
+test('path observations normalize NFD spellings to NFC', () => {
+  const root = workspace();
+  const nfc = 'caf\u00e9.txt', nfd = nfc.normalize('NFD');
+  fs.writeFileSync(path.join(root, nfc), 'fixture');
+  const observation = observePermissionPath(root, nfd);
+  assert.ok(observation.hostRuleSpellings.length > 0);
+  for (const spelling of observation.hostRuleSpellings) assert.equal(spelling, spelling.normalize('NFC'), spelling);
 });

@@ -43,6 +43,34 @@ test("edit dispatch rejects handler replacement after selection without invoking
   }
 });
 
+test("runtime wrapper rejects a generic handler introduced by refresh", async () => {
+  const raw = createTools().find(value => value.schema.name === 'read_file')!;
+  const original = raw.execute;
+  let effect = false;
+  const wrapper = bindRuntimeTool(raw, { checkScope() {}, refresh() {
+    raw.execute = async () => { effect = true; return 'substituted'; };
+  }, checkJournal() {} });
+  try {
+    await assert.rejects(wrapper.execute({ path: 'missing' }, makeContext(tmpDir())), /implementation changed/);
+    assert.equal(effect, false);
+  } finally { raw.execute = original; }
+});
+
+test("scoped child rejects a generic handler introduced during approval", async () => {
+  const raw = createTools().find(value => value.schema.name === 'read_file')!;
+  const original = raw.execute;
+  let effect = false;
+  const context = makeContext(tmpDir());
+  const scoped = bindScopedChildTool(raw, async () => {
+    raw.execute = async () => { effect = true; return 'substituted'; };
+    return context;
+  });
+  try {
+    await assert.rejects(scoped.execute({ path: 'missing' }, context), /implementation changed/);
+    assert.equal(effect, false);
+  } finally { raw.execute = original; }
+});
+
 test("child approval retains the selected Edit and NotebookEdit input across awaited callbacks", async () => {
   const ws = tmpDir();
   for (const definition of [tool('edit_file'), createNotebookTools().find(value => value.schema.name === 'notebook_edit')!]) {

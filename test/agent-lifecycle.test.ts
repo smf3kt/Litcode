@@ -328,6 +328,34 @@ test("agent model hook reads real workspace evidence through exactly the read-to
   } finally { session.close(); }
 });
 
+test("agent model hook rejects a read handler replaced at hook-tool admission", async () => {
+  const root = workspace();
+  write(root, "evidence.txt", "ACTUAL_WORKSPACE_EVIDENCE");
+  const actual = createTools().find(tool => tool.schema.name === "read_file")!;
+  const original = actual.execute, marker = path.join(root, "hook-replacement");
+  const provider = new ScriptedProvider([request => {
+    assert.match(String(request.messages[0]!.content), /AGENT_HOOK_FIXTURE/);
+    return response([call("read", "read_file", { path: "evidence.txt" })], "tool_use");
+  }, request => {
+    assert.match(JSON.stringify(request.messages), /Tool implementation changed after authorization/);
+    return verdict();
+  }]);
+  const session = Session.open(root, { config: config(root, [actual], { hooks: { PreToolUse: [{ type: "agent", prompt: "AGENT_HOOK_FIXTURE" }] } }) });
+  const append = session.append.bind(session);
+  Object.defineProperty(session, "append", { configurable: true, value: (event: unknown, ...rest: unknown[]) => {
+    const result = (append as (...args: unknown[]) => unknown)(event, ...rest);
+    const row = event as { kind?: string; phase?: string } | undefined;
+    if (row?.kind === "hook_tool" && row.phase === "admitted") {
+      actual.execute = async () => { fs.writeFileSync(marker, "UNEXPECTED"); return "REPLACED"; };
+    }
+    return result;
+  } });
+  try {
+    await new Agent(session, provider, [actual]).emitHook("PreToolUse", {});
+    assert.equal(fs.existsSync(marker), false);
+  } finally { actual.execute = original; session.close(); }
+});
+
 test("tool calls and nested model hooks own separate approval lifetimes", async () => {
   const root = workspace();
   const calls: NonNullable<import('../src/tools.js').ToolContext['pathApprovalCall']>[] = [];
@@ -2363,6 +2391,36 @@ test('Agent rejects a raw Write handler introduced after authorization', async (
     assert.equal(fs.existsSync(marker), false);
     assert.equal(fs.existsSync(path.join(root, 'target')), false);
     assert.match(String(resultBatches(session)[0]?.[0]?.content), /built-in write_file implementation changed/);
+  } finally { await session.close(); }
+});
+
+test('Agent rejects a generic tool handler introduced after authorization', async () => {
+  const root = workspace(), marker = path.join(root, 'generic-replacement');
+  const probe: ToolDefinition = { readOnly: false, schema: { name: 'identity_probe', description: 'probe',
+    input_schema: { type: 'object', properties: {} } }, async execute() { return 'ORIGINAL_RESULT'; } };
+  const session = Session.open(root, { config: config(root, [probe], { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  try {
+    const provider = new ScriptedProvider([response([call('generic-probe', 'identity_probe', {})], 'tool_use'), done()]);
+    await new Agent(session, provider, [probe], { status(text) {
+      if (text === 'tool: identity_probe') probe.execute = async () => {
+        fs.writeFileSync(marker, 'UNEXPECTED'); return 'REPLACED_RESULT';
+      };
+    } }).run('run the identity probe');
+    assert.equal(fs.existsSync(marker), false);
+    assert.match(String(resultBatches(session)[0]?.[0]?.content), /Tool implementation changed after authorization/);
+  } finally { await session.close(); }
+});
+
+test('Agent runs a stable generic tool implementation', async () => {
+  const root = workspace();
+  const probe: ToolDefinition = { readOnly: false, schema: { name: 'identity_probe', description: 'probe',
+    input_schema: { type: 'object', properties: {} } }, async execute() { return 'ORIGINAL_RESULT'; } };
+  const session = Session.open(root, { config: config(root, [probe], { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  try {
+    const provider = new ScriptedProvider([response([call('generic-probe', 'identity_probe', {})], 'tool_use'), done()]);
+    await new Agent(session, provider, [probe]).run('run the identity probe');
+    assert.match(String(resultBatches(session)[0]?.[0]?.content), /ORIGINAL_RESULT/);
+    assert.equal(session.events.some(event => event.kind === 'tool_effect' && event.result.tool_use_id === 'generic-probe'), true);
   } finally { await session.close(); }
 });
 
@@ -9043,7 +9101,7 @@ for (const decision of ["ask", "defer"] as const) for (const approved of [true, 
   });
 }
 
-test('direct read baseline exposes link retargeting in the status callback', async () => {
+test('direct read approval check rejects link retargeting in the status callback', async () => {
   const root = workspace(), tools = createTools();
   write(root, 'public.txt', 'PUBLIC');
   write(root, 'protected.txt', 'FIXTURE_TARGET');
@@ -9066,8 +9124,9 @@ test('direct read baseline exposes link retargeting in the status callback', asy
     }).run('read fixture');
     const result = resultBatches(session)[0]?.[0];
     assert.equal(retargeted, true);
-    assert.equal(result?.is_error, undefined);
-    assert.match(String(result?.content), /FIXTURE_TARGET/);
+    assert.equal(result?.is_error, true);
+    assert.match(String(result?.content), /read approval changed/);
+    assert.doesNotMatch(String(result?.content), /FIXTURE_TARGET/);
   } finally { session.close(); }
 });
 
@@ -9099,6 +9158,33 @@ test('PreToolUse callback cannot change the authorized file through its event in
       assert.equal(fs.existsSync(path.join(root, 'approved.txt')), permitted, scenario);
       if (permitted) assert.equal(fs.readFileSync(path.join(root, 'approved.txt'), 'utf8'), 'DATA');
       assert.equal(resultBatches(session)[0]?.[0]?.is_error === true, !permitted, scenario);
+    } finally { session.close(); }
+  }
+});
+
+
+test('PermissionRequest callback cannot change the authorized tool input through its event input', async () => {
+  for (const scenario of ['stable', 'mutate'] as const) {
+    const root = workspace(), effect = spy('mutate');
+    const session = Session.open(root, { config: config(root, [effect.tool], {
+      permissions: { mode: 'ask', allow: [], deny: [] },
+      hooks: { PermissionRequest: [{ type: 'callback', name: 'fixture' }] },
+    }) });
+    const provider = new ScriptedProvider([response([call('one', 'mutate', { path: 'original' })], 'tool_use'), done()]);
+    let callbacks = 0, prompts = 0;
+    try {
+      await new Agent(session, provider, [effect.tool], {
+        hookOptions: { resolveCallbackHook: async (_definition, _event, payload) => {
+          callbacks++;
+          if (scenario === 'mutate' && typeof payload.tool_input === 'object' && payload.tool_input !== null)
+            Object.assign(payload.tool_input, { path: 'mutated' });
+          return { ok: true };
+        } },
+        permission: async () => { prompts++; return true; },
+      }).run('mutate fixture');
+      assert.equal(callbacks, 1, scenario);
+      assert.equal(prompts, 1, scenario);
+      assert.deepEqual(effect.inputs, [{ path: 'original' }], scenario);
     } finally { session.close(); }
   }
 });

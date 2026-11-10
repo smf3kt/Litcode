@@ -11,11 +11,11 @@ import { compactionPrompt } from './compaction-prompt-source.js';
 import { observerDisplayDigest, observerResultDigest, type ToolResultObserverEvent } from './tool-result-observer.js';
 import { bindNotificationMessage, type NotificationAuthorization } from './notification-authorization.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
-import { executeAgentTool, snapshotBuiltinMutationInput, consumeBuiltinWriteExecution, consumeRuntimeWrapperObservation, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
+import { executeAgentTool, isBuiltinReadFile, snapshotBuiltinMutationInput, snapshotToolImplementation, assertToolImplementation, consumeBuiltinWriteExecution, consumeRuntimeWrapperObservation, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
 import { createToolContextObserver } from './tool-context-observer.js';
 import { wrapperStartDigest, type RuntimeWrapperEvent } from './runtime-wrapper-observer.js';
 import { ToolCancellation } from './tool-cancellation.js';
-import { PathApprovalCallOwner, type PathApprovalCall } from './path-approval-call-owner.js';
+import { AsyncReadHandleConsumer, PathApprovalCallOwner, type PathApprovalCall } from './path-approval-call-owner.js';
 import { randomUUID } from 'node:crypto';
 import { types as utilTypes } from 'node:util';
 import { planModeReminder } from './plan-mode.js';
@@ -606,6 +606,7 @@ export class Agent {
               let failed = false;
               try {
                 if (!tool) throw new Error('Hook tool is unavailable');
+                const implementation = snapshotToolImplementation(tool);
                 const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.permissionState(), this.session.config.workspace);
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
                 const observeContext = createToolContextObserver(this.session, call.id, 'model_hook');
@@ -613,7 +614,10 @@ export class Agent {
                   allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384), pathApprovalCall,
                   workingDirectories: readOnly => observeContext('workingDirectories', readOnly, () => this.session.workingDirectories(readOnly)) };
                 results.push(this.result(call.id, await runObservedHookTool(tool.schema.name, call.id, call.input,
-                  () => tool.executeBlocks ? tool.executeBlocks(call.input, context) : tool.execute(call.input, context))));
+                  () => {
+                    assertToolImplementation(tool, implementation);
+                    return tool.executeBlocks ? tool.executeBlocks(call.input, context) : tool.execute(call.input, context);
+                  })));
               } catch (error) { failed = true; results.push(this.result(call.id, error instanceof Error ? error.message : String(error), true)); }
               finally {
                 hookSignal.removeEventListener('abort', retireOnAbort);
@@ -640,12 +644,16 @@ export class Agent {
         hookSignal.addEventListener('abort', retireOnAbort, { once: true });
         if (hookSignal.aborted) retireOnAbort();
         let failed = true;
+        const implementation = snapshotToolImplementation(tool);
         try {
           if (permissionDecision(this.session.config.permissions, tool, input, this.permissionState(), this.session.config.workspace).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
           hookSignal.throwIfAborted();
-          const content = await runObservedHookTool(tool.schema.name, callId, input, () => tool.execute(input,
-            { workspace: this.session.config.workspace, signal: hookSignal,
-              allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes, pathApprovalCall }));
+          const content = await runObservedHookTool(tool.schema.name, callId, input, () => {
+            assertToolImplementation(tool, implementation);
+            return tool.execute(input,
+              { workspace: this.session.config.workspace, signal: hookSignal,
+                allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes, pathApprovalCall });
+          });
           const parsed = JSON.parse(content);
           failed = false;
           return parsed && typeof parsed === "object" && Object.hasOwn(parsed, "structuredContent") ? parsed.structuredContent : parsed;
@@ -1021,7 +1029,10 @@ export class Agent {
       return { input, denied, retry: retry && !noVerdict, outcome };
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
-    const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal, identity.hookCall);
+    // Native PermissionRequest hooks must not mutate the authorized input through
+    // the payload; the classic event already carries a deep copy. Native PreToolUse
+    // and the approval request use the same copy boundary.
+    const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: structuredClone(input), reason }, signal, identity.hookCall);
     // `interrupt` belongs to the adopted deny only; `runHooks` keeps the first
     // non-allow decision, matching the source's first-result loop (`n2e`,
     // chunk-fyhzvvp0.js offset 15633).
@@ -1284,9 +1295,15 @@ export class Agent {
         signal.addEventListener('abort', retireOnAbort, { once: true });
         if (signal.aborted) retireOnAbort();
         let failed = true;
+        let readHandleConsumer: AsyncReadHandleConsumer | undefined;
         try {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
+          const implementation = snapshotToolImplementation(tool);
+          readHandleConsumer = tool.schema.name === 'read_file' && isBuiltinReadFile(tool)
+            ? new AsyncReadHandleConsumer(pathApprovalCall, tool, c.workspace, signal,
+              () => this.session.config.permissions, () => this.session.permissionUpdates)
+            : undefined;
           const authorization = await this.authorize(tool, input, signal, identity, call.id, false, true, classifierMessages);
           if (authorization.outcome) callOutcome = authorization.outcome;
           let shellHome = authorization.shellHome;
@@ -1369,6 +1386,7 @@ export class Agent {
           }
           const observeContext = createToolContextObserver(this.session, call.id, 'agent');
           let executionContext: ToolContext = { ...context, signal, abortController, pathApprovalCall, authorizationIdentity: identity.current, toolUseId: call.id,
+            ...(readHandleConsumer ? { readHandleConsumer } : {}),
             workingDirectories: readOnly => observeContext('workingDirectories', readOnly, () => this.session.workingDirectories(readOnly)),
             fileHistory: file => observeContext('fileHistory', file, () => this.session.touchFile(file)),
             agentProgress: (agentId, message) => this.display('agentProgress', { agentId, toolUseId: call.id, message }),
@@ -1424,7 +1442,8 @@ export class Agent {
           try {
             result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
               runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext)),
-              { forTool: (selected, context) => this.#wrapperObserver(selected, input, context, parentMessageId, call.id) }));
+              { forTool: (selected, context) => this.#wrapperObserver(selected, input, context, parentMessageId, call.id) },
+              implementation));
             // KWo, sfn1dbxq SHA 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
             // [2290000,2304720), UTF-16: a returned tool value remains a result after cancellation.
             failed = false;
@@ -1441,6 +1460,7 @@ export class Agent {
           identity.current.abort();
           signal.removeEventListener('abort', retireOnAbort);
           pathApprovalCall.finish(signal.aborted ? 'cancelled' : failed ? (executed ? 'error' : 'denied') : 'success');
+          readHandleConsumer?.finish();
         }
       }
       const readKey = hostResult && 'kind' in hostResult && hostResult.kind === 'file_read'

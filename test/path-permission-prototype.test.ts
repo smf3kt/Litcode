@@ -668,10 +668,13 @@ test('caller-controlled runtime wrapper cannot obtain trusted read authority', a
   try {
     assert.equal(isBuiltinReadFile(parent), true);
     assert.equal(await new TrustedReadContract(call, wrapped).observe(policy, { path: 'file' }, root), false);
-    assert.equal(await wrapped.execute({ path: 'file' }, {
+    // The generic implementation pin refuses a refresh-time replacement before it runs.
+    // The original intent (this caller-controlled wrapper never gains trusted read authority)
+    // is preserved; the replacement effect is now additionally prevented.
+    await assert.rejects(wrapped.execute({ path: 'file' }, {
       workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000,
-    }), 'attacker');
-    assert.equal(invoked, true);
+    }), /Tool implementation changed after authorization/);
+    assert.equal(invoked, false);
     assert.equal(isBuiltinReadFile(wrapped), false);
   } finally {
     parent.execute = original;

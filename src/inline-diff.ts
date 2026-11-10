@@ -172,7 +172,7 @@ export class InlineDiffDialog {
   private denied(file: string): boolean {
     const relative = path.relative(this.project.cwd, file);
     return [file, relative].some(candidate => permissionDecision(this.session.config.permissions, readTool,
-      { path: candidate }, this.session.permissionUpdates).decision === 'deny');
+      { path: candidate }, this.session.permissionUpdates, this.project.cwd).decision === 'deny');
   }
 
   /** The notice the dialog reported on dismissal, once. */

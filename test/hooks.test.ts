@@ -5,6 +5,7 @@ import path from "node:path";
 import http from "node:http";
 import { after, test } from "node:test";
 
+import { AsyncHookRegistry } from "../src/async-hooks.js";
 import {
   HOOK_EVENTS,
   hookDefinitionSchema,
@@ -1290,6 +1291,22 @@ test("async command hooks explicitly require an owned registry and return regist
   assert.equal(fs.existsSync(marker), false);
 });
 
+test("async command hooks preserve a null-prototype tool input through the real registry", async () => {
+  const dir = fs.realpathSync(tmpDir());
+  const marker = path.join(dir, "async-null-proto");
+  const registry = new AsyncHookRegistry({ workspace: dir, signal: signal() });
+  try {
+    const payload = { session_id: "11111111-1111-4111-8111-111111111111", cwd: dir,
+      tool_name: "write_file", tool_input: Object.assign(Object.create(null), { path: "x" }), tool_use_id: "call-1" };
+    const result = await runHooks({ PostToolUseFailure: [{ command: `printf x > '${marker}'`, async: true }] },
+      "PostToolUseFailure", payload, signal(), { startAsyncCommand: request => registry.start(request) });
+    const deadline = Date.now() + 5000;
+    while (!fs.existsSync(marker) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(fs.existsSync(marker), true);
+    assert.equal(result.backgroundTasks?.length, 1);
+  } finally { await registry.close(); }
+});
+
 test("asyncRewake implies the async owner and command results stay observable", async () => {
   const dir = tmpDir();
   const definition: HookDefinition = { command: "true", asyncRewake: true };
@@ -1309,4 +1326,15 @@ test("asyncRewake implies the async owner and command results stay observable", 
   assert.equal(seen?.stdout, "out");
   assert.equal(seen?.stderr, "err");
   assert.equal(result.blocked, false);
+});
+
+test("callback hook resolvers cannot mutate the caller payload", async () => {
+  const payload = { tool_name: "read_file", reason: "original" };
+  await runHooks({ PermissionRequest: [{ type: "callback", name: "fixture" }] }, "PermissionRequest", payload, signal(), {
+    resolveCallbackHook: async (_definition, _event, received) => {
+      Object.assign(received as Record<string, unknown>, { reason: "mutated", tool_name: "write_file" });
+      return { ok: true };
+    },
+  });
+  assert.deepEqual(payload, { tool_name: "read_file", reason: "original" });
 });
