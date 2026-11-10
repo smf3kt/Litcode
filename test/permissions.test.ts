@@ -417,3 +417,14 @@ test('product shell read block exempts the owned plan file', () => {
   assert.equal(permissionDecision(current, shell, { command: `cat < ${planFile}` }, session, workspace).decision, 'allow');
   assert.equal(permissionDecision(current, shell, { command: `cat ${planFile}` }, undefined, workspace).decision, 'ask');
 });
+
+test('product shell read block honors session grant roots', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const granted = '/tmp/read-block-granted';
+  const current = policy({ blockReadsOutsideWorkingDirectories: true, allow: ['Bash(cat:*)'] });
+  const session = emptySessionPermissionUpdates();
+  session.additionalWorkingDirectories.set(granted, { path: granted, source: 'session' });
+  assert.equal(permissionDecision(current, shell, { command: `cat ${granted}/file` }, session, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: `cat ${granted}/file` }, undefined, workspace).decision, 'ask');
+});

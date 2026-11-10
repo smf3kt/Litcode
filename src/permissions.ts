@@ -581,9 +581,11 @@ function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefin
  * remain under the read-block item.
  */
 function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: string, workspace?: string,
-  planFile?: string): PermissionDecision | undefined {
+  planFile?: string, session?: SessionPermissionUpdates): PermissionDecision | undefined {
   if (policy?.blockReadsOutsideWorkingDirectories !== true) return undefined;
-  const roots = [workspace, ...(policy.additionalDirectories ?? [])].filter((root): root is string => typeof root === 'string' && path.isAbsolute(root));
+  const granted = session === undefined ? [] : [...session.additionalWorkingDirectories.keys()];
+  const roots = [workspace, ...(policy.additionalDirectories ?? []), ...granted]
+    .filter((root): root is string => typeof root === 'string' && path.isAbsolute(root));
   if (roots.length === 0) return undefined;
   let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
   try { tree = vS().parse(command, undefined); } catch { return undefined; }
@@ -664,7 +666,7 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
   if (baseline.decision === 'deny') return baseline;
   const command = commandInput(tool, input);
   if (command === undefined) return baseline;
-  const readBlock = shellReadBlockDecision(policy, command, workspace, planFile);
+  const readBlock = shellReadBlockDecision(policy, command, workspace, planFile, session);
   if (readBlock !== undefined) return readBlock;
   const nestedDenial = nestedShellDenial(policy, tool, input, command, session);
   if (nestedDenial !== undefined) return nestedDenial;
