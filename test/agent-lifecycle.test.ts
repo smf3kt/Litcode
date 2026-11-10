@@ -9450,6 +9450,28 @@ test('an external write updates an existing file through an ancestor link inside
   } finally { session.close(); }
 });
 
+test('an external edit updates through an ancestor link inside its grant', async () => {
+  const root = workspace(), outside = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(outside, 'real'));
+  fs.writeFileSync(path.join(outside, 'real', 'file.txt'), 'ORIGINAL');
+  fs.symlinkSync('real', path.join(outside, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+  const target = path.join(outside, 'aliasdir', 'file.txt');
+  const provider = new ScriptedProvider([response([
+    call('external-ancestor-read', 'read_file', { path: target }),
+    call('external-ancestor-edit', 'edit_file', { path: target, old_string: 'ORIGINAL', new_string: 'CHANGED' }),
+  ], 'tool_use'), done()]);
+  try {
+    await new Agent(session, provider, tools).run('edit through the granted ancestor link');
+    const results = resultBatches(session)[0] ?? [];
+    const edit = results.find(result => result.tool_use_id === 'external-ancestor-edit');
+    assert.equal(edit?.is_error, undefined, JSON.stringify(results));
+    assert.equal(fs.readFileSync(path.join(outside, 'real', 'file.txt'), 'utf8'), 'CHANGED');
+    assert.equal(fs.lstatSync(path.join(outside, 'aliasdir')).isSymbolicLink(), true);
+  } finally { session.close(); }
+});
+
 test('an external write creates through an ancestor link inside its grant', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   fs.mkdirSync(path.join(outside, 'real'));

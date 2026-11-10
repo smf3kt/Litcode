@@ -1863,7 +1863,7 @@ function writeFileTool(): ToolDefinition {
   return tool;
 }
 
-type RetainedEdit = { grant: DirectoryReadHandle; backupId: string };
+type RetainedEdit = { grant: DirectoryReadHandle; backupId: string; resolvedRelative?: string };
 
 export function requireDirectoryHandle(context: ToolContext, requested: string, readOnly: boolean) {
   const directories = context.workingDirectories?.(readOnly);
@@ -1883,12 +1883,14 @@ export async function captureExternalEdit(context: ToolContext, resolved: Resolv
   if (!context.session || !context.toolUseId) throw new Error('directory edit session unavailable');
   const signal = AbortSignal.any([context.signal, context.session.closeSignal, held.signal]);
   const id = crypto.randomUUID();
-  const observed = await captureDirectoryBackup(context.session, context.toolUseId, held, requested, path.relative(held.root, requested),
-    id, signal, { input, resolved });
+  const relative = path.relative(held.root, requested), resolvedRelative = path.relative(held.root, resolved.path);
+  const observed = await captureDirectoryBackup(context.session, context.toolUseId, held, requested, relative,
+    id, signal, { input, resolved }, resolvedRelative !== relative ? resolvedRelative : relative);
   const bytes = context.session.readDirectoryBackup(id);
   if (!bytes) throw new Error('edit_file: original directory backup unavailable');
   signal.throwIfAborted();
-  return { decoded: decodeFileBytes(bytes), observed, retained: {grant: held, backupId: id} };
+  return { decoded: decodeFileBytes(bytes), observed,
+    retained: { grant: held, backupId: id, ...(resolvedRelative !== relative ? { resolvedRelative } : {}) } };
 }
 
 export function publishExternalEdit(context: ToolContext, retained: RetainedEdit, cacheKey: string, bytes: Buffer) {
@@ -1896,7 +1898,8 @@ export function publishExternalEdit(context: ToolContext, retained: RetainedEdit
     throw new Error('edit_file: directory publication unavailable');
   const publication = context.session.publishDirectoryFileTransaction({ ...retained, toolUseId: context.toolUseId,
     lexicalPath: cacheKey, content: bytes, signal: context.signal, authorizationSignal: context.authorizationIdentity.signal,
-    approvalCall: context.pathApprovalCall, authorization: context.directoryPublicationAuthorization, strategy: 'retained' });
+    approvalCall: context.pathApprovalCall, authorization: context.directoryPublicationAuthorization, strategy: 'retained',
+    ...(retained.resolvedRelative ? { resolvedRelative: retained.resolvedRelative } : {}) });
   if (publication.kind !== 'durable') throw new Error(`edit_file: directory publication ${publication.kind}: ${publication.detail}`);
   const { dev, ino, mtimeSeconds, mtimeNanoseconds } = publication.observation;
   return { identity: {dev, ino}, mtimeMs: Number(mtimeSeconds) * 1000 + Number(mtimeNanoseconds) / 1e6 };

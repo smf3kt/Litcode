@@ -20,6 +20,8 @@ A granted external directory can create and update files through an ancestor dir
 
 Validation: new-file and existing-file external-ancestor tests (file lands in `real`, alias remains), external Write/fork/notebook tests, cold-history suite, 18-case driver, check/build. Identity `90d6a0ab...`; build `0ead1ae2...`.
 
+External Edit: `captureExternalEdit` copies the retained backup from the resolved grant-relative path and carries the optional `resolvedRelative` through `RetainedEdit` and `publishDirectoryFileTransaction`. The real-Agent read+edit ancestor test updates `real/file.txt` and keeps the alias; the external publication is durable. Notebook edits use the same adapter.
+
 History reconstruction: `DirectoryHistoryPath` and the `directory_backup`/`directory_missing_backup` events carry an optional `resolvedRelative`; the write tool populates it when lexical and resolved relatives differ, snapshot capture probes/copies from it, and `reconstructDirectoryFileHistory` includes it in the tracked path. The new `external ancestor publication history reconstructs for the lexical target` test verifies immediate refs `[missing, present]`, the backup bytes, the durable publication and two cold readers. Old records without the field remain readable.
 
 ### W385 twentieth full-suite checkpoint (2026-11-10, green)
