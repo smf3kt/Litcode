@@ -80,6 +80,7 @@ async function fixture(root: string, complete: ModelProvider['complete'], config
   let session: Session;
   try { session = Session.open(root, { config }); }
   catch (error) { await runtime.close(); throw error; }
+  await runtime.bindSession!(session);
   const agent = new Agent(session, provider, runtime.buildTools(session.config, session.id), events);
   return { config, provider, controller, runtime, session, agent,
     run: (prompt: string) => agent.run(prompt, AbortSignal.timeout(10_000)),
