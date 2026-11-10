@@ -2339,10 +2339,11 @@ test('mutation directory gates preserve workspace and owned-plan edits', async (
     fs.writeFileSync(session.planFilePath, 'ORIGINAL');
     await new Agent(session, new ScriptedProvider([response([
       call('workspace-edit', 'edit_file', { path: 'value.txt', old_string: 'ORIGINAL', new_string: 'WORKSPACE_EDITED' }),
+      call('workspace-notebook-read', 'notebook_read', { path: 'value.ipynb' }),
       call('workspace-notebook', 'notebook_edit', { path: 'value.ipynb', cell_id: 'fixture', new_source: 'NOTEBOOK_EDITED' }),
       call('owned-plan-edit', 'edit_file', { path: session.planFilePath, old_string: 'ORIGINAL', new_string: 'PLAN_EDITED' }),
     ], 'tool_use'), done()]), tools).run('edit workspace and owned plan');
-    assert.deepEqual(resultBatches(session)[0]?.map(result => result.is_error === true), [false, false, false]);
+    assert.deepEqual(resultBatches(session)[0]?.map(result => result.is_error === true), [false, false, false, false]);
     assert.equal(fs.readFileSync(path.join(root, 'value.txt'), 'utf8'), 'WORKSPACE_EDITED');
     assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'value.ipynb'), 'utf8')).cells[0].source, 'NOTEBOOK_EDITED');
     assert.equal(fs.readFileSync(session.planFilePath, 'utf8'), 'PLAN_EDITED');
