@@ -1,3 +1,7 @@
+### W385 thirty-third full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4375 tests, 4368 pass, 0 fail, 0 cancelled, 7 skipped; duration 1051889 ms. Cold matrix 451863 ms. The shell read-block guard and all prior nested-shell/approval/stash tests pass. Identity `c76f0f76d10fd1188a005df07c18e96bba2431f8d5b7cff1ef095d06da48f16e`; build `1d40dfb3b7f78e3b08d2bf6237efa10182677487129d2087cc2b1b3b35162f50`.
+
 ### W385 shell read-block guard (2026-11-11, verified product)
 
 The host already carried `permissions.blockReadsOutsideWorkingDirectories` for directory grants but did not apply it to shell reads; a simple `cat /outside/secret` could be allowed when an outer `Bash(cat:*)` rule matched. `applyShellReadings` now calls `shellReadBlockDecision` when the flag is true. It parses the command with `E6`/`vS`, restricts to simple read commands with explicit path operands, resolves them against the workspace cwd, and returns a readings ask when any operand falls outside the workspace and `additionalDirectories`. `/dev/null`, stdio and tty are exempt; commands without the flag are unchanged.
