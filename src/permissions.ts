@@ -571,11 +571,57 @@ function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefin
   return undefined;
 }
 
+/**
+ * The read-block flag (`permissions.blockReadsOutsideWorkingDirectories`) is a
+ * source policy state (`vX`/`sR`, chunk-sfn1dbxq.js) that asks when a shell
+ * command names a path outside the working directories. The host already
+ * carries the flag for directory grants but did not apply it to shell reads.
+ * This is a conservative subset: simple read commands with explicit path
+ * operands; redirections, globs, exceptions and the full source callback chain
+ * remain under the read-block item.
+ */
+function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: string, workspace?: string): PermissionDecision | undefined {
+  if (policy?.blockReadsOutsideWorkingDirectories !== true) return undefined;
+  const roots = [workspace, ...(policy.additionalDirectories ?? [])].filter((root): root is string => typeof root === 'string' && path.isAbsolute(root));
+  if (roots.length === 0) return undefined;
+  let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
+  try { tree = vS().parse(command, undefined); } catch { return undefined; }
+  if (!tree) return undefined;
+  let analysis: ReturnType<typeof E6>;
+  try { analysis = E6(command, tree); } catch { return undefined; }
+  if (analysis.kind !== 'simple') {
+    return { decision: 'ask', floor: 'readings', reason: 'This command cannot be checked against the read block (permissions.blockReadsOutsideWorkingDirectories)' };
+  }
+  const readCommands = new Set(['cat', 'head', 'tail', 'less', 'more', 'wc', 'file', 'stat', 'od', 'strings', 'nl', 'tac', 'sort', 'uniq']);
+  const cwd = workspace ?? process.cwd();
+  const outside = (candidate: string) => roots.every(root => {
+    const relative = path.relative(root, candidate);
+    return path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`);
+  });
+  for (const entry of analysis.commands) {
+    const argv = entry.argv;
+    if (!Array.isArray(argv) || argv.length < 2) continue;
+    if (!readCommands.has(path.basename(argv[0] ?? ''))) continue;
+    for (const operand of argv.slice(1)) {
+      if (operand === '' || operand === '--' || operand.startsWith('-') || operand === '|' || operand === ';') continue;
+      if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(operand)) continue;
+      if (['/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr', '/dev/tty'].includes(operand)) continue;
+      const candidate = path.resolve(cwd, operand);
+      if (outside(candidate)) {
+        return { decision: 'ask', floor: 'readings', reason: `This command reads outside the working directories: ${operand}` };
+      }
+    }
+  }
+  return undefined;
+}
+
 function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, baseline: PermissionDecision,
-  session?: SessionPermissionUpdates): PermissionDecision {
+  session?: SessionPermissionUpdates, workspace?: string): PermissionDecision {
   if (baseline.decision === 'deny') return baseline;
   const command = commandInput(tool, input);
   if (command === undefined) return baseline;
+  const readBlock = shellReadBlockDecision(policy, command, workspace);
+  if (readBlock !== undefined) return readBlock;
   const nestedDenial = nestedShellDenial(policy, tool, input, command, session);
   if (nestedDenial !== undefined) return nestedDenial;
   if (!(policy?.inputRules ?? []).some(rule => rule.command !== undefined && matches(rule.tool, tool.schema.name)) &&
@@ -1006,7 +1052,7 @@ function decideWithObservations(policy: PermissionPolicy | undefined, tool: Tool
       baseline = filePathDecision(tool.schema.name, getObservation()) ?? baseline;
     }
   } catch (error) { return { decision: 'deny', reason: `Permission path check failed: ${error instanceof Error ? error.message : String(error)}` }; }
-  const result = !policy && !sessionUpdatesActive(session) ? baseline : applyShellReadings(policy, tool, input, baseline, session);
+  const result = !policy && !sessionUpdatesActive(session) ? baseline : applyShellReadings(policy, tool, input, baseline, session, workspace);
   // axr, sfn [3321472,3323500), UTF-16. Chrome origin-consent has no local tool surface.
   return (session?.mode ?? policy?.mode) === 'dontAsk' && result.decision === 'ask'
     ? { decision: 'deny', reason: `Dont-ask mode denied approval: ${tool.schema.name}` } : result;

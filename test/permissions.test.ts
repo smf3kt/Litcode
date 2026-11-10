@@ -361,3 +361,15 @@ test('product nested shell evaluates a denied inner command', () => {
   for (let i = 0; i < 4; i++) deep = `bash -c ${JSON.stringify(deep)}`;
   assert.equal(permissionDecision(current, shell, { command: deep }).decision, 'deny');
 });
+
+test('product shell read block asks outside paths', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const current = policy({ blockReadsOutsideWorkingDirectories: true, allow: ['Bash(cat:*)'] });
+  assert.equal(permissionDecision(current, shell, { command: 'cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'cat ./inside' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat /tmp/read-block-workspace/inside' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat /dev/null' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(policy({ allow: ['Bash(cat:*)'] }), shell,
+    { command: 'cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'allow');
+});

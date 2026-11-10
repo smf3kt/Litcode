@@ -1,3 +1,9 @@
+### W385 shell read-block guard (2026-11-11, verified product)
+
+The host already carried `permissions.blockReadsOutsideWorkingDirectories` for directory grants but did not apply it to shell reads; a simple `cat /outside/secret` could be allowed when an outer `Bash(cat:*)` rule matched. `applyShellReadings` now calls `shellReadBlockDecision` when the flag is true. It parses the command with `E6`/`vS`, restricts to simple read commands with explicit path operands, resolves them against the workspace cwd, and returns a readings ask when any operand falls outside the workspace and `additionalDirectories`. `/dev/null`, stdio and tty are exempt; commands without the flag are unchanged.
+
+This is a conservative subset of the source read-block chain (`vX` [3151331,3156825), `sR` and the `hTr` path checks in `chunk-sfn1dbxq.js` SHA-256 `4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da`). Redirections, globs, `~`/home expansion, read deny/allow exceptions, plan-path ownership, sandbox state and the full source callback chain remain open under #123. Product tests cover outside ask, inside allow, no-flag allow and `/dev/null` exemption. Permissions/shell suites, 18-case driver and check/build pass; no original-application execution was performed.
+
 ### W385 thirty-second full-suite checkpoint (2026-11-11, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4367 pass, 0 fail, 0 cancelled, 7 skipped; duration 1051334 ms. Cold matrix 449298 ms. Nested shell depth overflow, wrapper/deep/inner-prefix sampling and all prior approval/stash tests pass. Identity `3a2d3f5d0962cb37a6ee173efa5f68c89cd6fb3309737b6a141cb2ac6ddfb678`; build `4b7607333278f7454490c39d9c2f454bc505d61d0987278fb99c26e06e10a134`.
