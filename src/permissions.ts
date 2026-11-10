@@ -607,6 +607,17 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
     if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(operand)) return undefined;
     if (safeDevice.has(operand)) return undefined;
     const expanded = operand === '~' ? os.homedir() : operand.startsWith('~/') ? path.join(os.homedir(), operand.slice(2)) : operand;
+    if (/[*?[]/.test(expanded)) {
+      let matches: string[] = [];
+      try { matches = fs.globSync(expanded, { cwd }); } catch { matches = []; }
+      if (matches.length > 0) {
+        for (const match of matches) {
+          const blocked = checkOperand(path.resolve(cwd, match));
+          if (blocked !== undefined) return blocked;
+        }
+        return undefined;
+      }
+    }
     const candidate = path.resolve(cwd, expanded);
     const readRules = (policy?.inputRules ?? []).filter(rule => inputRuleMatches(rule, 'read_file', { path: candidate }));
     if (readRules.some(rule => rule.decision === 'deny')) {

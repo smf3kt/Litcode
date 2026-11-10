@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -385,4 +388,19 @@ test('product shell read block asks outside paths', () => {
   assert.equal(ruledAsk.decision, 'ask'); assert.equal(ruledAsk.floor, 'rule');
   assert.equal(permissionDecision(policy({ allow: ['Bash(cat:*)'] }), shell,
     { command: 'cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'allow');
+});
+
+test('product shell read block follows glob matches', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'read-block-glob-'));
+  const workspace = path.join(base, 'workspace'), outside = path.join(base, 'outside');
+  fs.mkdirSync(workspace); fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(outside, 'secret.txt'), 'secret');
+  fs.writeFileSync(path.join(workspace, 'inside.txt'), 'inside');
+  const shell = tool('Bash', false);
+  const current = policy({ mode: 'bypass', blockReadsOutsideWorkingDirectories: true, allow: [] });
+  try {
+    assert.equal(permissionDecision(current, shell, { command: `cat ${outside}/*.txt` }, undefined, workspace).decision, 'ask');
+    assert.equal(permissionDecision(current, shell, { command: `cat ${workspace}/*.txt` }, undefined, workspace).decision, 'allow');
+    assert.equal(permissionDecision(current, shell, { command: `cat ${outside}/missing-*.txt` }, undefined, workspace).decision, 'ask');
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
