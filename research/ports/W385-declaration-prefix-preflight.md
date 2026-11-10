@@ -1,3 +1,11 @@
+### W385 skill shell HOME pinning (2026-11-10, verified bounded unit)
+
+Host contract: the configured skill shell (`bash`/`zsh`/`sh`) sources `BASH_ENV` or `ZDOTDIR` startup files before the `-c` command, so a startup file could export a third `HOME` after the permission layer approved the account value. `shellOutput` now prefixes the command passed to the configured shell with a host-owned prologue: `HOME='<approved>'; export HOME;` (or `unset HOME;` when the approved home is absent). Startup files still run, but the user command sees the approved HOME.
+
+Regression `skill shell pins the approved HOME after startup files` sets `HOME` to an approved temp directory and `BASH_ENV` to a script that exports a changed directory; without the prologue the command prints the changed directory (red), with it the approved directory (green). `test/skill-runtime.test.ts` is 88 pass / 1 existing skip; check/build pass. The prologue does not authorize or suppress other startup-file effects; only the effective HOME is pinned.
+
+Identity `2d63b8f50298372e5ad1a4158f561bf700c5e94dcf79ed808b09fbba53520650`; inputs `32a8fbae42c19839a889d193864661325cf092a1df29993eba00a70caf4c99a7` (1078), validation `b29c98b91ab6ca072849641abf7d81fe9ff17ec9b8ddd4224a57995c91b601b7` (417), build `450df26b603e429c5b22bf6a51c095f7230a9a113620fb34f842c64e82196338` (746).
+
 ### W385 approval-to-use coverage matrix (2026-11-10, wrap-up)
 
 | Consumer | Binding | Evidence |

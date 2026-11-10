@@ -43,6 +43,27 @@ async function executeSkill(item: SkillInfo, args: string, options: SkillExecuti
   } finally { session.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
+test('skill shell pins the approved HOME after startup files', async () => {
+  if (!fs.existsSync('/bin/bash')) return;
+  await fixture(async options => {
+    const approved = fs.mkdtempSync(path.join(options.config.workspace, 'home-approved-'));
+    const changed = fs.mkdtempSync(path.join(options.config.workspace, 'home-changed-'));
+    const startup = path.join(approved, 'startup.sh');
+    fs.writeFileSync(startup, `export HOME='${changed}'\n`);
+    const previous = { HOME: process.env.HOME, BASH_ENV: process.env.BASH_ENV };
+    process.env.HOME = approved; process.env.BASH_ENV = startup;
+    try {
+      const item = skill({ shell: '/bin/bash', body: '!`printf "%s" "$HOME"`' });
+      options.config.skills = [item];
+      options.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+      assert.equal(await executeSkill(item, '', options), approved);
+    } finally {
+      if (previous.HOME === undefined) delete process.env.HOME; else process.env.HOME = previous.HOME;
+      if (previous.BASH_ENV === undefined) delete process.env.BASH_ENV; else process.env.BASH_ENV = previous.BASH_ENV;
+    }
+  });
+});
+
 test('model skill recovery commits only a durable final warning', async () => {
   for (const scenario of ['delivery', 'replacement', 'write-failure'] as const) {
     await fixture(async options => {

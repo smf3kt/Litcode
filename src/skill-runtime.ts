@@ -202,6 +202,17 @@ function skillShellText(output: Buffer[]): string {
   return Buffer.concat(output).toString('utf8').replace(/^(\s*\n)+/, '').trimEnd();
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+// Host contract: the configured shell may source BASH_ENV/ZDOTDIR before -c,
+// so pin the approved HOME after startup files run. The approved command text
+// remains the one checked by the permission layer.
+function pinShellHome(command: string, home: string | undefined): string {
+  return `${home === undefined ? 'unset HOME;' : `HOME=${shellQuote(home)}; export HOME;`}\n${command}`;
+}
+
 /** Commands use an owned process group and a bounded output window. */
 async function shellOutput(command: string, shell: string, options: SkillExecutionOptions, home: string | undefined): Promise<Buffer> {
   options.signal.throwIfAborted();
@@ -209,7 +220,7 @@ async function shellOutput(command: string, shell: string, options: SkillExecuti
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 120_000) throw new Error('Skill timeout must be between 1 and 120000ms');
   // ale/uIr, chunk-sfn1dbxq.js [3514300,3517100), [3521162,3521290), UTF-16:
   // share the output target before exec so the configured shell receives its original command.
-  const shellArgs = ['-c', 'exec "$@" 2>&1', 'skill-shell', shell, '-c', command];
+  const shellArgs = ['-c', 'exec "$@" 2>&1', 'skill-shell', shell, '-c', pinShellHome(command, home)];
   if (process.platform === 'darwin') {
     // Host rewrite: Axe/ale chunk-sfn1dbxq.js [82919,87427), [3506526,3518705),
     // Mw chunk-25vrbr0v.js [943,3031), UTF-16; digests and rationale in W385.
