@@ -23,8 +23,14 @@ function message(content: unknown[], stop = 'end_turn'): Anthropic.Message {
 }
 const call = (name: string, input: unknown) => message([{ type: 'tool_use', id: name, name, input }], 'tool_use');
 
+function temporary(prefix: string): string {
+  const base = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir();
+  fs.mkdirSync(base, { recursive: true });
+  return fs.realpathSync(fs.mkdtempSync(path.join(base, prefix)));
+}
+
 test('ordinary session append cannot commit a notification with forged hook context', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-direct-')));
+  const root = temporary('notification-direct-');
   const session = Session.open(root, { config: { ...defaultConfig(root, []), model: 'fixture', skills: [] } });
   const batch = { kind: 'background' as const, events: [], dropped: 0, pending: 0, maxOutputBytes: 24000 };
   const deliveryId = randomUUID();
@@ -38,7 +44,7 @@ test('ordinary session append cannot commit a notification with forged hook cont
 });
 
 test('notification authority binds full batch, exact message, owner and one use', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-grant-')));
+  const root = temporary('notification-grant-');
   const session = Session.open(root, { config: { ...defaultConfig(root, []), model: 'fixture', skills: [] } });
   const other = Session.open(root, { config: { ...defaultConfig(root, []), model: 'fixture', skills: [] } });
   const event = { seq: 1, job_id: 'one', kind: 'line' as const, at: 0, lines: ['secret'], text: 'secret' };
@@ -78,7 +84,7 @@ test('notification authority binds full batch, exact message, owner and one use'
 });
 
 test('session and agent reject content unrelated to durable notification intent', async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-content-')));
+  const root = temporary('notification-content-');
   let calls = 0;
   const provider: ModelProvider = { count: async () => 1, complete: async () => {
     calls++; return message([{ type: 'text', text: 'unexpected' }]);
@@ -105,7 +111,7 @@ test('session and agent reject content unrelated to durable notification intent'
 });
 
 test('notification message shape accepts real submit hook context and rejects unrelated blocks', async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-hook-')));
+  const root = temporary('notification-hook-');
   const batch = { kind: 'background' as const, events: [], dropped: 0, pending: 0, maxOutputBytes: 24000 };
   const prompt = renderNotificationBatch(batch);
   let received: Anthropic.MessageParam[] = [];
@@ -149,7 +155,7 @@ test('notification rendering preserves UTF-8 boundaries and exposes truncated ba
 });
 
 test('forged Agent notification hook context cannot reach the model', async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-forged-agent-')));
+  const root = temporary('notification-forged-agent-');
   let calls = 0;
   const provider: ModelProvider = { count: async () => 1, complete: async () => {
     calls++; return message([{ type: 'text', text: 'unexpected' }]);
@@ -168,7 +174,7 @@ test('forged Agent notification hook context cannot reach the model', async () =
 });
 
 test('notification delivery rejects independent prompt inputs before hooks and model', async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-extra-')));
+  const root = temporary('notification-extra-');
   let calls = 0;
   const provider: ModelProvider = { count: async () => { calls++; return 1; }, complete: async () => {
     calls++; return message([{ type: 'text', text: 'unexpected' }]);
@@ -208,7 +214,7 @@ test('notification delivery rejects independent prompt inputs before hooks and m
 });
 
 test('explicit notification retry delivers a complete unknown batch once without rerunning its task', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-retry-')));
+  const root = temporary('notification-retry-');
   const input = new PassThrough();
   let status = '';
   const sink = new Writable({ write(chunk, _encoding, done) { status += String(chunk); done(); } });
@@ -264,7 +270,7 @@ test('explicit notification retry delivers a complete unknown batch once without
 
 test('retry decision fences independent process failures and never replays on cold open', { timeout: 30000 }, async t => {
   for (const mode of ['success', 'fsync', 'short', 'kill']) await t.test(mode, () => {
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'retry-decision-')));
+    const root = temporary('retry-decision-');
     try {
       const writer = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
         import fs from 'node:fs'; import {randomUUID} from 'node:crypto';
@@ -308,7 +314,7 @@ test('retry publication boundaries survive ordered writer death and two cold ope
     'decision-before-dirsync', 'decision-after-dirsync', 'decision-receipt-before-rename', 'decision-receipt-after-rename',
     'intent-before-write', 'intent-after-write', 'message-receipt-before-rename', 'message-receipt-after-rename'];
   for (const stage of stages) await t.test(stage, async () => {
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'retry-barrier-')));
+    const root = temporary('retry-barrier-');
     try {
       const writer = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
         import fs from 'node:fs'; import {randomUUID} from 'node:crypto';
@@ -384,7 +390,7 @@ test('retry publication boundaries survive ordered writer death and two cold ope
 
 test('manual notification decisions survive cold restart and incomplete publication stays unknown', { timeout: 30000 }, async t => {
   for (const mode of ['success', 'fsync', 'short', 'rename', 'kill', 'dirsync', 'postrename-kill', 'corrupt']) await t.test(mode, () => {
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'decision-')));
+    const root = temporary('decision-');
     try {
       const writer = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
         import fs from 'node:fs'; import {randomUUID} from 'node:crypto';
@@ -436,7 +442,7 @@ test('manual notification decisions survive cold restart and incomplete publicat
 });
 
 test('interactive cold recovery shows only its unknown delivery without sending it to the Agent', { timeout: 30000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-visible-')));
+  const root = temporary('notification-visible-');
   const writer = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
     import fs from 'node:fs'; import {randomUUID} from 'node:crypto';
     import {Session,renderNotificationBatch} from './src/session.ts'; import {fixtureAppend} from './test/notification-fixture.ts'; import {defaultConfig} from './src/agent.ts';
@@ -495,7 +501,7 @@ test('interactive cold recovery shows only its unknown delivery without sending 
 
 test('cold notification recovery distinguishes completed writes from independent writer failures', { timeout: 30000 }, async t => {
   for (const mode of ['success', 'fsync', 'short', 'kill']) await t.test(mode, () => {
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-cold-')));
+    const root = temporary('notification-cold-');
     try {
       const writer = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
         import fs from 'node:fs';
@@ -546,7 +552,7 @@ test('cold notification recovery distinguishes completed writes from independent
 });
 
 test('receipt recovery re-establishes durability before exposing a notification', { timeout: 30000 }, () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'receipt-resync-')));
+  const root = temporary('receipt-resync-');
   try {
     const writer = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
       import fs from 'node:fs'; import {randomUUID} from 'node:crypto';
@@ -578,7 +584,7 @@ test('receipt recovery re-establishes durability before exposing a notification'
 });
 
 test('receipt evidence keeps same delivery ID isolated by owner and rejects damaged journal tails', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'receipt-owners-')));
+  const root = temporary('receipt-owners-');
   const deliveryId = randomUUID();
   try {
     const owners = ['good', 'wrong-owner', 'missing', 'truncated', 'torn'].map(mode => {
@@ -607,7 +613,7 @@ test('receipt evidence keeps same delivery ID isolated by owner and rejects dama
 });
 
 test('cold notification recovery rejects altered receipts and does not retry unresolved intent', () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-receipt-')));
+  const root = temporary('notification-receipt-');
   let session = Session.open(root, { config: { ...defaultConfig(root, []), model: 'fixture' } });
   try {
     const completed = randomUUID(), pending = randomUUID();
@@ -631,7 +637,7 @@ test('cold notification recovery rejects altered receipts and does not retry unr
 });
 
 test('interactive refuses a changed notification batch and preserves the unknown intent on reopen', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-binding-')));
+  const root = temporary('notification-binding-');
   const controller = new AbortController(), input = new PassThrough();
   let status = '', modelCalls = 0, deliveryId = '';
   const sink = new Writable({ write(_chunk, _encoding, done) { done(); } });
@@ -677,7 +683,7 @@ test('interactive refuses a changed notification batch and preserves the unknown
 });
 
 test('separate durable batches retain complete events and legacy intent across cold reopen', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-batches-')));
+  const root = temporary('notification-batches-');
   const controller = new AbortController();
   const input = new PassThrough();
   const sink = new Writable({ write(_chunk, _encoding, done) { done(); } });
@@ -817,7 +823,7 @@ test('interactive Agent consumes owned child identity after structured transfer'
 });
 
 test('interactive hook rejection retains ordered background notifications for the next input', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'background-hook-loss-')));
+  const root = temporary('background-hook-loss-');
   const input = new PassThrough();
   let status = '', retrySent = false;
   const observed: string[] = [];
@@ -913,7 +919,7 @@ test('interactive append failure distinguishes no write from complete line with 
 });
 
 test('released notification is not delivered to a same-ID rebound owner', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-rebind-')));
+  const root = temporary('notification-rebind-');
   const input = new PassThrough();
   const controller = new AbortController();
   let status = '', scheduled = false, rebound: Session | undefined, failure: unknown;
@@ -965,7 +971,7 @@ test('released notification is not delivered to a same-ID rebound owner', { time
 });
 
 test('in-flight notification cannot cross a released and rebound same-ID session', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-inflight-')));
+  const root = temporary('notification-inflight-');
   const input = new PassThrough();
   const sink = new Writable({ write(_chunk, _encoding, done) { done(); } });
   const controller = new AbortController();
@@ -1017,7 +1023,7 @@ test('in-flight notification cannot cross a released and rebound same-ID session
 test('notification append boundary preserves journal and owner identity across rebind', { timeout: 10000 }, async () => {
   const missingIntents: string[] = [];
   for (const boundary of ['before', 'after', 'fsync'] as const) {
-    const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-append-owner-')));
+    const root = temporary('notification-append-owner-');
     const input = new PassThrough();
     const sink = new Writable({ write(_chunk, _encoding, done) { done(); } });
     const controller = new AbortController();
@@ -1110,7 +1116,7 @@ test('notification append boundary preserves journal and owner identity across r
 });
 
 test('intent fsync failure fences the owner and leaves the source queue intact', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'intent-fsync-')));
+  const root = temporary('intent-fsync-');
   const controller = new AbortController();
   const provider: ModelProvider = { count: async () => 1, complete: async () => message([{ type: 'text', text: 'done' }]) };
   const config = { ...defaultConfig(root, []), model: 'fixture', skills: [],
@@ -1138,7 +1144,7 @@ test('intent fsync failure fences the owner and leaves the source queue intact',
 });
 
 test('second batch fsync failure preserves first handoff and uncertain second batch', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'intent-second-fsync-')));
+  const root = temporary('intent-second-fsync-');
   const controller = new AbortController();
   const provider: ModelProvider = { count: async () => 1, complete: async request =>
     request.messages.at(-1)?.content === 'START CHILD' ? call('agent', { prompt: 'CHILD', background: true }) : message([{ type: 'text', text: 'done' }]) };
@@ -1190,7 +1196,7 @@ test('second batch fsync failure preserves first handoff and uncertain second ba
 });
 
 test('interactive cancellation before notification commit retains it for later input', { timeout: 10000 }, async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR!, 'tmp', 'notification-cancel-')));
+  const root = temporary('notification-cancel-');
   const controller = new AbortController();
   let callbacks: import('../src/terminal.js').TerminalCallbacks = {}, interrupted = false, retrySent = false, status = '';
   const seen: string[] = [];
