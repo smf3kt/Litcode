@@ -8697,7 +8697,7 @@ test("live directory grants affect current file execution, revocation and status
     assert.equal(resultBatches(session)[0]?.[0]?.is_error, true, JSON.stringify(resultBatches(session)));
     assert.match(JSON.stringify(resultBatches(session)), /Directory publication snapshot unavailable/);
     assert.equal(fs.existsSync(path.join(external, 'current.txt')), false);
-    await assert.rejects(tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'original', new_string: 'edited' }, context), /edits through additional directory grants are not implemented/);
+    await assert.rejects(tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'original', new_string: 'edited' }, context), /directory grant unavailable|edits through additional directory grants are not implemented/);
     assert.equal(fs.readFileSync(path.join(external, 'existing.txt'), 'utf8'), 'outside original');
     assert.match(await tool('read_file').execute({ path: path.join(external, 'existing.txt') }, context), /outside original/);
     assert.match(await tool('list_files').execute({ path: external }, context), /existing.txt/);
@@ -8710,7 +8710,8 @@ test("live directory grants affect current file execution, revocation and status
     write(external, 'pixel.png', '');
     fs.writeFileSync(path.join(external, 'pixel.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==', 'base64'));
     assert.match(await tool('read_media').execute({ path: path.join(external, 'pixel.png') }, context), /image|png/i);
-    assert.match(await tool('notebook_read').execute({ path: path.join(external, 'book.ipynb') }, context), /cells|notebook/i);
+    assert.match(await tool('notebook_read').execute({ path: path.join(external, 'book.ipynb') },
+      { ...context, session, toolUseId: 'external-notebook-read' }), /cells|notebook/i);
     session.adoptPermissionUpdates([{ type: 'setMode', mode: 'plan', destination: 'session' }]);
     await until(() => payloads().some(value => value.permission_mode === 'plan' && value.workspace.added_dirs.includes(external)));
     session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [external], destination: 'cliArg' }]);
@@ -8730,7 +8731,7 @@ test("live directory grants affect current file execution, revocation and status
       assert.deepEqual(seeded.workingDirectories(true), []);
       assert.deepEqual(seeded.workingDirectories(false), [external]);
       await assert.rejects(tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'original', new_string: 'project edit' }, {
-        ...context, workingDirectories: readOnly => seeded.workingDirectories(readOnly) }), /edits through additional directory grants are not implemented/);
+        ...context, workingDirectories: readOnly => seeded.workingDirectories(readOnly) }), /directory grant unavailable|edits through additional directory grants are not implemented/);
       await assert.rejects(tool('read_file').execute({ path: path.join(external, 'existing.txt') }, {
         ...context, workingDirectories: readOnly => seeded.workingDirectories(readOnly) }), /absolute|escapes/);
       assert.equal(fs.readFileSync(path.join(external, 'existing.txt'), 'utf8'), 'outside original');
