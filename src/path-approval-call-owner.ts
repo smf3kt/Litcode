@@ -163,7 +163,7 @@ export class AsyncReadHandleConsumer {
       const result = await this.#checker.check({ policy: this.policy(), session: this.session(), tool: this.tool,
         input, workspace: this.workspace, signal: this.signal, toolUseId: this.call.providerId }, this.#lane);
       if (this.#state !== 'active' || !this.call.isActive || this.signal.aborted || result.kind !== 'decision' ||
-          result.decision.decision !== 'allow' || !result.observation || result.observation.unresolved ||
+          (result.decision.decision !== 'allow' && result.decision.decision !== 'ask') || !result.observation || result.observation.unresolved ||
           (this.#requested !== undefined && this.#requested !== result.observation.requested)) {
         this.finish();
         return false;
@@ -211,7 +211,7 @@ export class AsyncReadHandleConsumer {
         if (this.#state !== 'opening' || this.signal.aborted || !this.call.isActive || !isBuiltinReadFile(this.tool)) return false;
         const result = prototypePermissionDecision(this.policy(), this.tool, { path: requested }, this.session(), this.workspace);
         const observation = result.kind === 'observed' ? result.observations[0] : undefined;
-        return result.kind === 'observed' && result.decision.decision === 'allow' && result.observations.length === 1 &&
+        return result.kind === 'observed' && (result.decision.decision === 'allow' || result.decision.decision === 'ask') && result.observations.length === 1 &&
           observation !== undefined && !observation.unresolved && observation.requested === requested &&
           JSON.stringify(observation.spellings) === JSON.stringify(snapshot.paths) &&
           this.#state === 'opening' && !this.signal.aborted && this.call.isActive && isBuiltinReadFile(this.tool);

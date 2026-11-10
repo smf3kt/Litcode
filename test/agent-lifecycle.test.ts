@@ -9203,6 +9203,43 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('per-call read approvals isolate a retarget from a sibling', async () => {
+  const root = workspace(), tools = createTools();
+  write(root, 'public-a.txt', 'PUBLIC_A');
+  write(root, 'public-b.txt', 'PUBLIC_B');
+  write(root, 'protected-a.txt', 'PROTECTED_A');
+  fs.symlinkSync('public-a.txt', path.join(root, 'alias-a.txt'));
+  const session = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['read_file'] },
+  }) });
+  const provider = new ScriptedProvider([response([
+    call('call-a', 'read_file', { path: 'alias-a.txt' }),
+    call('call-b', 'read_file', { path: 'public-b.txt' }),
+  ], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(session, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: read_file') {
+          retargeted = true;
+          fs.unlinkSync(path.join(root, 'alias-a.txt'));
+          fs.symlinkSync('protected-a.txt', path.join(root, 'alias-a.txt'));
+        }
+      },
+    }).run('read two paths');
+    const results = resultBatches(session)[0] ?? [];
+    const a = results.find(result => result.tool_use_id === 'call-a');
+    const b = results.find(result => result.tool_use_id === 'call-b');
+    assert.equal(retargeted, true);
+    assert.equal(a?.is_error, true, JSON.stringify(a));
+    assert.match(String(a?.content), /read approval changed/);
+    assert.equal(b?.is_error, undefined, JSON.stringify(b));
+    assert.match(String(b?.content), /PUBLIC_B/);
+    assert.doesNotMatch(JSON.stringify(results), /PROTECTED_A/);
+  } finally { session.close(); }
+});
+
 test('relocated write through a terminal symlink is denied', async () => {
   const parent = workspace(), child = workspace(), tools = createTools();
   fs.writeFileSync(path.join(child, 'target.txt'), 'ORIGINAL');

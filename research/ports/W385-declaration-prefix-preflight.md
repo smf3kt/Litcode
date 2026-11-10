@@ -1,3 +1,9 @@
+### W385 approved-ask read consumer fix (2026-11-10, verified product)
+
+The per-call read-isolation test exposed that the builtin `AsyncReadHandleConsumer` rechecked the live decision and accepted only `allow`; an ask that the host had already approved therefore failed with `read approval changed` even when its landing was unchanged. The consumer now accepts `allow` or `ask`, while `deny`, unresolved observations and landing/spelling changes remain fatal. The Agent's approval-time observation is still the primary retarget guard, so the direct retarget and read_media tests continue to deny.
+
+Validation: per-call isolation (retargeted sibling denied, stable sibling reads its public bytes), direct retarget, read_media retarget; 18-case compiled CLI driver 18/18; path-leaf/tools/path-approval-binding suites; check/build. Identity `a52121d052e2b640957a7bcb2380a08ffbeb72813b64783699d241576f460634`; inputs `6271102e5d35ae6f01a9e18f1b5672a35f71fab76f6113e1c53e0e99b3a41627` (1078), validation `aa53115e040e08a61a79d3b4bec63ab379dc806c71f4d756a1a9a5630c1ab6b5` (417), build `8ecb09ac5d9583ac8b6c1f09daff3d82cc306a9974f959d6b68537b0a033815e` (746).
+
 ### W385 external Edit publication verification (2026-11-10, verified)
 
 The old `external Edit and NotebookEdit refuse before pathname reads or effects` test encoded the retired refusal branch. It intercepted `fs.readFileSync`, which the descriptor-based external edit no longer uses, and never primed the notebook read, so it failed on the first stable edit.
