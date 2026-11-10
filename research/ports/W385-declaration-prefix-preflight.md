@@ -1,3 +1,9 @@
+### W385 source-stash write lane integration (2026-11-10, verified product)
+
+The Agent now records the approved write observation in the copied `PathApprovalCall` write lane at tool lookup (`record('write', observation.requested, observation.spellings)`) and after each authorized input rewrite. Immediately before executing a write whose landing and spellings still match, it consumes the lane with `take('write', requested)` and requires a `saved` snapshot whose paths equal the approved spellings. Expired, missing or mismatched snapshots deny with `<tool>: write approval changed`; `PathApprovalCall.finish` clears the lane for every terminal outcome. This connects the source stash's write producer/consumer to the per-call owner already used by the read consumer; the tools themselves remain guarded by the Agent landing check.
+
+Validation: write ancestor-retarget (root/fork/relocated), per-call write isolation, new-file/ancestor create, external-grant fork writes, the PermissionRequest plan-update test, `path-approval-call-owner`/`path-approval-stash-source`/tools/path-leaf suites, 18-case driver and check/build. Identity `c9ad186ccb7f817755d85277df645afbe2758fc5858db7a3f56ecf898355b434`; inputs `e3a747a0ebbea5000f3037a9962e4bc402f87a7f733284a0644811154a00be7f` (1078), validation `5e912b8f5c7a3f74d14d57649427c0f8adff9e87fea692e33fe9511a20441673` (417), build `7c6ead1dce1587418bdc59c3960e43b3c3af4d29d4f945bea81c6f6bc2cdda83` (746).
+
 ### W385 eighteenth full-suite checkpoint (2026-11-10, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4367 tests, 4360 pass, 0 fail, 0 cancelled, 7 skipped; duration 1043533 ms. The cold mixed matrix passes in 450390 ms. All write-side approval/ancestor-retarget tests and the root/fork/relocated evidence are included; the prior worker-death flake did not recur. Identity `1910f401f8fa1ca78e557a3a197d4d1a9fac5bbb3308646bcc368c43acbb148f`; build `37616e8ea5c59e1f13e0f5c22b2a7c963b0f17dcc72e22c9e238d20924a8f853`.

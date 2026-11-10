@@ -1312,6 +1312,12 @@ export class Agent {
             try { readApproval = { path: readPath, observation: observePermissionPath(c.workspace, readPath) }; }
             catch { readApproval = undefined; }
           }
+          const recordWriteApproval = () => {
+            if (!writePathTool || readApproval === undefined) return;
+            try { pathApprovalCall.record('write', readApproval.observation.requested, readApproval.observation.spellings); }
+            catch { throw new Error(`${tool.schema.name}: write approval changed`); }
+          };
+          recordWriteApproval();
           readHandleConsumer = tool.schema.name === 'read_file' && isBuiltinReadFile(tool)
             ? new AsyncReadHandleConsumer(pathApprovalCall, tool, c.workspace, signal,
               () => this.session.config.permissions, () => this.session.permissionUpdates)
@@ -1320,8 +1326,10 @@ export class Agent {
           if (authorization.outcome) callOutcome = authorization.outcome;
           let shellHome = authorization.shellHome;
           input = authorization.input;
-          if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+          if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string') {
             readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
+            recordWriteApproval();
+          }
           if (authorization.retry === true) callRetryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
           // Source m_t/_Wo (sfn1dbxq [504681,505531), [2237279,2239655), UTF-16):
@@ -1362,8 +1370,10 @@ export class Agent {
             if (updated.outcome) callOutcome = updated.outcome;
             shellHome = updated.shellHome;
             input = updated.input;
-            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string') {
               readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
+              recordWriteApproval();
+            }
             if (updated.retry === true) callRetryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
           }
@@ -1371,8 +1381,10 @@ export class Agent {
             (this.permissionState().mode === 'auto' || this.permissionState().autoDuringPlan)) {
             const finalAuthorization = await this.authorize(tool, input, signal, identity, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer', false, classifierMessages);
             input = finalAuthorization.input;
-            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string') {
               readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
+              recordWriteApproval();
+            }
             shellHome = finalAuthorization.shellHome;
             if (finalAuthorization.outcome) callOutcome = finalAuthorization.outcome;
             if (finalAuthorization.retry) callRetryMeta = true;
@@ -1471,6 +1483,14 @@ export class Agent {
                   current.landing !== readApproval.observation.landing ||
                   JSON.stringify(current.spellings) !== JSON.stringify(readApproval.observation.spellings))
                 throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
+              if (writePathTool) {
+                let snapshot;
+                try { snapshot = pathApprovalCall.take('write', readApproval.observation.requested); }
+                catch { throw new Error(`${tool.schema.name}: write approval changed`); }
+                if (snapshot.kind !== 'saved' ||
+                    JSON.stringify(snapshot.paths) !== JSON.stringify(readApproval.observation.spellings))
+                  throw new Error(`${tool.schema.name}: write approval changed`);
+              }
               // The current write was authorized (possibly by a PermissionRequest
               // allow that also adopts plan mode or other updates); a live deny
               // applies to later calls, not retroactively to this one. The landing
