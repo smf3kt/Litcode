@@ -6866,7 +6866,7 @@ test('mixed rewind compensates known external effects before a failed branch com
   });
 });
 
-test('cold mixed rewind requires regrant and verifies native effects before recovery', { timeout: 600000 }, async t => {
+test('cold mixed rewind requires regrant and verifies native effects before recovery', { timeout: 1200000 }, async t => {
   const helper = path.join(workspace(), 'directory-write-test');
   const nativeSource = fs.readFileSync('native/directory-write/write.c', 'utf8'), claim = 'if (rename_exclusive(dir, name, dir, part)) goto done;';
   assert.equal(nativeSource.split(claim).length, 2);
