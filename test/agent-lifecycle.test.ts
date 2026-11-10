@@ -9203,6 +9203,23 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('a write to an existing file through an ancestor directory symlink remains allowed', async () => {
+  const root = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(root, 'real'));
+  fs.writeFileSync(path.join(root, 'real', 'file.txt'), 'BEFORE');
+  fs.symlinkSync('real', path.join(root, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  const provider = new ScriptedProvider([response([call('ancestor-write', 'write_file',
+    { path: 'aliasdir/file.txt', content: 'ANCESTOR_OK', overwrite: true })], 'tool_use'), done()]);
+  try {
+    await new Agent(session, provider, tools).run('write through an ancestor link');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(result?.is_error, undefined, JSON.stringify(result));
+    assert.equal(fs.readFileSync(path.join(root, 'real', 'file.txt'), 'utf8'), 'ANCESTOR_OK');
+    assert.equal(fs.lstatSync(path.join(root, 'aliasdir')).isSymbolicLink(), true);
+  } finally { session.close(); }
+});
+
 test('a fork inherits an external directory grant and revokes it independently', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   fs.mkdirSync(outside, { recursive: true });
