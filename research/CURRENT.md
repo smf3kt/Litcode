@@ -1,5 +1,7 @@
 W385 fifteenth full-suite checkpoint (2026-11-10, green after confinement fix). `npm test` without `CLAUDE_JOB_DIR`: 4361 tests, 4354 pass, 0 fail, 0 cancelled, 7 skipped (1138152 ms); cold mixed matrix 463208 ms. The previous fourteenth run's 13 failures/13 cancellations were load-induced (CLI tests 24-48s, a hook test 134s, no orphan processes; those cases pass alone); this idle rerun clears them. Identity `fd2b2b64…`. [W385](ports/W385-declaration-prefix-preflight.md).
 
+W385 thirty-eighth full-suite checkpoint (2026-11-11, green). `npm test` without `CLAUDE_JOB_DIR`: 4378 tests, 4371 pass, 0 fail, 0 cancelled, 7 skipped (1058456 ms). Cold matrix 448697 ms. Session grant roots in the read block and all prior nested-shell/approval/stash tests pass. Identity `daf697c3…`. [W385](ports/W385-declaration-prefix-preflight.md).
+
 W385 thirty-seventh full-suite checkpoint (2026-11-11, green). `npm test` without `CLAUDE_JOB_DIR`: 4377 tests, 4370 pass, 0 fail, 0 cancelled, 7 skipped (1055930 ms). Cold matrix 449595 ms. The owned/agent plan-file read-block exemption and all prior nested-shell/approval/stash tests pass. Identity `a3b4fd03…`. [W385](ports/W385-declaration-prefix-preflight.md).
 
 W385 thirty-sixth full-suite checkpoint (2026-11-11, green). `npm test` without `CLAUDE_JOB_DIR`: 4376 tests, 4369 pass, 0 fail, 0 cancelled, 7 skipped (1051854 ms). Cold matrix 448343 ms. Shell read-block glob matches and all prior nested-shell/approval/stash tests pass. Identity `cee20ae6…`. [W385](ports/W385-declaration-prefix-preflight.md).

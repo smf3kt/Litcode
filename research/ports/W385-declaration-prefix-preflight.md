@@ -1,3 +1,7 @@
+### W385 thirty-eighth full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4378 tests, 4371 pass, 0 fail, 0 cancelled, 7 skipped; duration 1058456 ms. Cold matrix 448697 ms. Session grant roots in the read block and all prior nested-shell/approval/stash tests pass. Identity `daf697c35953ea672bfc34e064d783d7fe5a179278ed36d896c9ff8867808ae6`; build `fb627bf2a88a0515235d667ea1405e793e4d028c242e1bc4c33b30a6114fde5d`.
+
 ### W385 thirty-seventh full-suite checkpoint (2026-11-11, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4377 tests, 4370 pass, 0 fail, 0 cancelled, 7 skipped; duration 1055930 ms. Cold matrix 449595 ms. The owned/agent plan-file read-block exemption and all prior nested-shell/approval/stash tests pass. Identity `a3b4fd03bf8af7af423382343ab19edefd9df89881dd9eae5cfcacc52b7195eb`; build `20f1d57728c2d4d12418671a3e5d66b455887c6f487d8c30bebff16e776dd712`.
