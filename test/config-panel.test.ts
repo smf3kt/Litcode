@@ -172,6 +172,7 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
   const temporary = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w233-settings-'));
   const workspace = path.join(temporary, 'workspace'), userDir = path.join(temporary, 'user');
   fs.mkdirSync(workspace); fs.mkdirSync(userDir);
+  const canonicalWorkspace = fs.realpathSync(workspace);
   const userFile = path.join(userDir, 'settings.json'), localFile = path.join(workspace, '.harness', 'settings.local.json');
   fs.writeFileSync(userFile, JSON.stringify({ keep: { nested: true }, model: 'model-02', effort: 'medium',
     permissions: { allow: ['Bash'] }, modelSettings: { 'model-02': { unrelated: 7 } } }), { mode: 0o640 });
@@ -201,12 +202,12 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     assert.equal(loaded.spinnerTipsEnabled, false);
     assert.equal(loaded.permissions?.mode, 'acceptEdits'); assert.equal(loaded.permissions?.defaultMode, 'acceptEdits');
     assert.equal(configPanelInput({ ...defaultConfig(workspace, []), permissions: loaded.permissions }).config.permissions?.defaultMode, 'acceptEdits');
-    const config = { ...defaultConfig(workspace, []), model: 'model-02', thinking: true, modelSettings: loaded.modelSettings,
+    const config = { ...defaultConfig(canonicalWorkspace, []), model: 'model-02', thinking: true, modelSettings: loaded.modelSettings,
       effort: configuredEffort(loaded, 'model-02'), configSources: { userDir } };
-    const session = Session.open(workspace, { config }); const id = session.id; session.close();
-    const restored = Session.open(workspace, { id });
+    const session = Session.open(canonicalWorkspace, { config }); const id = session.id; session.close();
+    const restored = Session.open(canonicalWorkspace, { id });
     assert.equal(restored.config.effort, 'xhigh'); assert.equal(restored.config.modelSettings?.['model-02']?.effortLevel, 'xhigh'); restored.close();
-    const journal = fs.readFileSync(path.join(workspace, '.agent', `${id}.jsonl`), 'utf8');
+    const journal = fs.readFileSync(path.join(canonicalWorkspace, '.agent', `${id}.jsonl`), 'utf8');
     const metadata = JSON.parse(journal.split('\n')[0]!);
     assert.deepEqual(metadata.config.modelSettings, { 'model-02': { effortLevel: 'xhigh' } });
     assert.deepEqual(loaded.modelSettings, { 'model-02': { effortLevel: 'xhigh' } });
