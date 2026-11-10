@@ -58,6 +58,12 @@ function config(workspace: string): SessionConfig {
     compactAt: 50_000, maxTurns: 30, thinking: false };
 }
 
+function hostWithoutLanded(host: unknown): unknown {
+  if (host === null || typeof host !== "object") return host;
+  const { landed: _landed, ...rest } = host as Record<string, unknown>;
+  return rest;
+}
+
 test("a write and an edit become typed rows that survive a reopen and read back as one turn", async () => {
   const ws = tmpDir();
   const session = Session.open(ws, { config: config(ws) });
@@ -73,9 +79,9 @@ test("a write and an edit become typed rows that survive a reopen and read back 
   assert.equal(fs.readFileSync(path.join(ws, "notes.txt"), "utf8"), "one\n2\nthree\n");
   const hostRows = session.events.filter((event) => event.kind === "tool_result" && event.host !== undefined);
   assert.equal(hostRows.length, 2);
-  assert.deepEqual(hostRows[0]!.kind === "tool_result" ? hostRows[0]!.host : undefined, {
+  assert.deepEqual(hostRows[0]!.kind === "tool_result" ? hostWithoutLanded(hostRows[0]!.host) : undefined, {
     type: "create", filePath: "notes.txt", content: "one\ntwo\nthree\n", structuredPatch: [] });
-  assert.deepEqual(hostRows[1]!.kind === "tool_result" ? hostRows[1]!.host : undefined, {
+  assert.deepEqual(hostRows[1]!.kind === "tool_result" ? hostWithoutLanded(hostRows[1]!.host) : undefined, {
     filePath: "notes.txt", oldString: "two", newString: "2", replaceAll: false,
     structuredPatch: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3, lines: [" one", "-two", "+2", " three"] }] });
   await session.close();
@@ -109,7 +115,7 @@ test("a write over existing non-empty content is an update row with its patch an
   const row = session.events.find((event) => event.kind === "tool_result" && event.host !== undefined
     && "type" in event.host && event.host.type === "update");
   assert.ok(row?.kind === "tool_result");
-  assert.deepEqual(row.host, { type: "update", filePath: "kept.txt",
+  assert.deepEqual(hostWithoutLanded(row.host), { type: "update", filePath: "kept.txt",
     structuredPatch: [{ oldStart: 1, oldLines: 2, newStart: 1, newLines: 2, lines: [" alpha", "-beta", "+gamma"] }] });
   const turns = new TurnDiffAccumulator().update(turnDiffMessages(session.events));
   assert.deepEqual(turns[0]!.stats, { filesChanged: 1, linesAdded: 1, linesRemoved: 1 });
