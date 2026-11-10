@@ -9162,6 +9162,39 @@ test('read_media approval observation rejects status-callback retargeting', asyn
   } finally { session.close(); }
 });
 
+test('fork read approval observation denies a status retarget', async () => {
+  const root = workspace(), tools = createTools();
+  write(root, 'public.txt', 'PUBLIC');
+  write(root, 'protected.txt', 'PROTECTED');
+  fs.symlinkSync('public.txt', path.join(root, 'alias.txt'));
+  const session = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: ['Read(protected.txt)'], ask: ['read_file'] },
+  }) });
+  session.append({ kind: 'message', message: { role: 'user', content: 'fork fixture' } });
+  session.append({ kind: 'message', message: { role: 'assistant', content: 'done' } });
+  session.append({ kind: 'turn_end', reason: 'end_turn' });
+  const fork = forkSession(session);
+  const provider = new ScriptedProvider([response([call('fork-read', 'read_file', { path: 'alias.txt' })], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(fork, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (message === 'tool: read_file') {
+          fs.unlinkSync(path.join(root, 'alias.txt'));
+          fs.symlinkSync('protected.txt', path.join(root, 'alias.txt'));
+          retargeted = true;
+        }
+      },
+    }).run('read on the fork');
+    const result = resultBatches(fork)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true);
+    assert.match(String(result?.content), /read approval changed/);
+    assert.doesNotMatch(String(result?.content), /PROTECTED/);
+  } finally { fork.close(); session.close(); }
+});
+
 test('PreToolUse callback cannot change the authorized file through its event input', async () => {
   for (const scenario of ['stable', 'mutate', 'explicit-rewrite', 'direct-deny'] as const) {
     const root = workspace();
