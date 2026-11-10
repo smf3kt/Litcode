@@ -370,6 +370,10 @@ test('product shell read block asks outside paths', () => {
   assert.equal(permissionDecision(current, shell, { command: 'cat ./inside' }, undefined, workspace).decision, 'allow');
   assert.equal(permissionDecision(current, shell, { command: 'cat /tmp/read-block-workspace/inside' }, undefined, workspace).decision, 'allow');
   assert.equal(permissionDecision(current, shell, { command: 'cat /dev/null' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat < /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'cat < ./inside' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat ~/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'cat < /dev/null' }, undefined, workspace).decision, 'allow');
   assert.equal(permissionDecision(policy({ allow: ['Bash(cat:*)'] }), shell,
     { command: 'cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'allow');
 });

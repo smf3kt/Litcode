@@ -598,17 +598,33 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
     const relative = path.relative(root, candidate);
     return path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`);
   });
+  const askOutside = (display: string) => ({ decision: 'ask' as const, floor: 'readings' as const,
+    reason: `This command reads outside the working directories: ${display}` });
+  const safeDevice = new Set(['/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr', '/dev/tty']);
+  const checkOperand = (operand: string): PermissionDecision | undefined => {
+    if (operand === '' || operand === '--' || operand === '|' || operand === ';') return undefined;
+    if (operand.startsWith('-') && operand !== '-') return undefined;
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(operand)) return undefined;
+    if (safeDevice.has(operand)) return undefined;
+    const expanded = operand === '~' ? os.homedir() : operand.startsWith('~/') ? path.join(os.homedir(), operand.slice(2)) : operand;
+    if (outside(path.resolve(cwd, expanded))) return askOutside(operand);
+    return undefined;
+  };
   for (const entry of analysis.commands) {
     const argv = entry.argv;
-    if (!Array.isArray(argv) || argv.length < 2) continue;
-    if (!readCommands.has(path.basename(argv[0] ?? ''))) continue;
-    for (const operand of argv.slice(1)) {
-      if (operand === '' || operand === '--' || operand.startsWith('-') || operand === '|' || operand === ';') continue;
-      if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(operand)) continue;
-      if (['/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr', '/dev/tty'].includes(operand)) continue;
-      const candidate = path.resolve(cwd, operand);
-      if (outside(candidate)) {
-        return { decision: 'ask', floor: 'readings', reason: `This command reads outside the working directories: ${operand}` };
+    if (Array.isArray(argv) && argv.length >= 2 && readCommands.has(path.basename(argv[0] ?? ''))) {
+      for (const operand of argv.slice(1)) {
+        const blocked = checkOperand(operand);
+        if (blocked !== undefined) return blocked;
+      }
+    }
+    const redirects = (entry as { redirects?: { op?: unknown; target?: unknown }[] }).redirects;
+    if (Array.isArray(redirects)) {
+      for (const redirect of redirects) {
+        if (redirect.op !== '<' && redirect.op !== '<>') continue;
+        if (typeof redirect.target !== 'string') continue;
+        if (safeDevice.has(redirect.target)) continue;
+        if (outside(path.resolve(cwd, redirect.target))) return askOutside(redirect.target);
       }
     }
   }
