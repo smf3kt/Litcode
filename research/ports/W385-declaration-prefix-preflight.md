@@ -1,3 +1,19 @@
+### W385 approval-to-use coverage matrix (2026-11-10, wrap-up)
+
+| Consumer | Binding | Evidence |
+| --- | --- | --- |
+| `read_file` | Agent approval-time landing observation + post-resolution landing compare + `readFileLines` resolution/identity check | driver 18/18; landing test; focused suites |
+| `notebook_read` | same observation + post-resolution landing compare | driver; landing test |
+| `read_media` | same observation + post-resolution landing compare; `O_NOFOLLOW` and handle dev/ino | driver; landing/status tests |
+| `list_files`/`search` | same observation (default `.`) + landing compare before ripgrep | landing tests |
+| `write_file`/`edit_file`/`notebook_edit` | publication authorization and retained evidence | driver retarget/direct denied |
+| `send_peer_files` | execution-time `permissionDecision` on resolved path + `O_NOFOLLOW`/dev/ino on the copied handle | `local-peer-files` 3/3 |
+| `memory_read`/`memory_list` | store/directory no-symlink, regular-file/no-link, `O_NOFOLLOW` and fstat dev/ino | `memory` 22/22 |
+| `lsp`, MCP, plugin and external provider tools | server/provider-owned reads; outside the host path observation | remaining/external |
+| Linux/Windows | POSIX `O_DIRECTORY`/`O_NOFOLLOW` branches; untested here | remaining |
+
+This wraps the approval-to-use work package for the host-owned file tools. The real inline CLI retarget driver is green; the remaining boundaries are external/provider tools and platforms, plus root/fork ownership and other consumers tracked under the path-approval todo item.
+
 ### W385 peer file consumer inspection (2026-11-10, verified bounded slice; no product change)
 
 `send_peer_files` does not rely on a stale pre-approval: it validates the raw path, then for each file resolves through `confineResolved`, re-runs `permissionDecision` on the resolved path with `context.workspace`, and stages the copy through `stageLocalPeerFile`/`readPeerFileBounded`, which opens with `O_NOFOLLOW` and verifies the resolved dev/ino identity on the opened handle. A retarget between the resolved permission check and the read is therefore rejected by the identity check. `test/local-peer-files.test.ts` passes 3/3. Skill result-file reads use `read_file`, already covered by the approval-time observation and landing check. No product change; only platform coverage and consumers outside these paths remain.
