@@ -1,3 +1,11 @@
+### W385 approval-to-use retarget driver green (2026-11-10, verified acceptance)
+
+`node scripts/smoke-approval-retarget-cli.mjs` (driver SHA-256 `3104477d6a810e342ad7bd03632286687015f605613c6d84c6ca2cd8fc0cb75c`) now completes 18/18 rows: six tools × `stable`/`retarget`/`direct`, stable allowed, retarget and direct denied, two model calls per case, protected and public fixtures unchanged. The tools are `read_file`, `write_file`, `edit_file`, `notebook_read`, `notebook_edit` and `read_media`, through the real inline CLI.
+
+Basis: the Agent's approval-time path observation for the read tools (commit `d1eb02d`) plus the existing write/edit/notebook publication authorization. The fixture primes `notebook_edit` with a `notebook_read` in the same model turn because the product requires read-before-edit; this is a fixture correction, not a product relaxation. The earlier builtin-consumer experiment remains reverted.
+
+Remaining: the check-to-open window for read tools (the final path does not use the approved handle), plus platform and other read-consumer coverage. This supersedes the read portion of the earlier "retarget CLI driver remains red" entry; the driver is the acceptance gate and is green.
+
 ### W385 approval-time read path observation (2026-11-10, verified bounded slice)
 
 The retarget driver's runtime-wrapper bypass is addressed at the Agent boundary: for `read_file`, `notebook_read` and `read_media`, the Agent captures `observePermissionPath` from the input path immediately after tool lookup (before PermissionRequest/PreToolUse hooks), recaptures after an authorized input reassignment, and before execution rejects a changed input path, a changed landing/spellings, or a live deny. This covers runtime-wrapped tools because it does not require `isBuiltinReadFile` or the builtin consumer.

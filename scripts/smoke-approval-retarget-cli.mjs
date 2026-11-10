@@ -22,11 +22,17 @@ try {
     req.on('end', () => {
       const body = JSON.parse(Buffer.concat(chunks));
       calls += 1;
+      const toolCalls = calls === 1 ? [
+        ...(current.primer ? [{ id: current.primer.id, name: current.primer.name, input: current.primer.input }] : []),
+        { id: 'approval-call', name: current.name, input: current.input },
+      ] : [];
       const events = calls === 1 ? [
         { type: 'message_start', message: { id: 'approval-fixture', type: 'message', role: 'assistant', model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 0 } } },
-        { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'approval-call', name: current.name, input: {} } },
-        { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(current.input) } },
-        { type: 'content_block_stop', index: 0 },
+        ...toolCalls.flatMap((toolCall, index) => [
+          { type: 'content_block_start', index, content_block: { type: 'tool_use', id: toolCall.id, name: toolCall.name, input: {} } },
+          { type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(toolCall.input) } },
+          { type: 'content_block_stop', index },
+        ]),
         { type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 2 } },
         { type: 'message_stop' },
       ] : [
@@ -82,7 +88,7 @@ try {
           ask: [`${write ? 'Edit' : 'Read'}(alias/${file})`] },
         hooks: { PermissionRequest: [{ matcher: name, command }] },
       }));
-      current = { name, input };
+      current = { name, input, ...(name === 'notebook_edit' ? { primer: { id: 'approval-read', name: 'notebook_read', input: { path: selected } } } : {}) };
       calls = 0;
       child = spawn(process.execPath, [path.join(project, 'bin/personal-harness.mjs'), '--workspace', workspace, '--user-dir', user,
         '--max-turns', '4', '--output-format', 'json', 'Exercise the local fixture'],
