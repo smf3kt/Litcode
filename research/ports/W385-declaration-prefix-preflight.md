@@ -26,6 +26,8 @@ Validation: new-file and existing-file external-ancestor tests (file lands in `r
 
 External Edit: `captureExternalEdit` copies the retained backup from the resolved grant-relative path and carries the optional `resolvedRelative` through `RetainedEdit` and `publishDirectoryFileTransaction`. The real-Agent read+edit ancestor test updates `real/file.txt` and keeps the alias; the external publication is durable. Notebook edits use the same adapter.
 
+External notebook read/edit: the external `notebook_read` directory read uses `path.relative(grant.root, resolvedLanding)` when the landing differs from the lexical requested path, so an in-grant ancestor link can be read; `notebook_edit` then captures/publishes through the resolved retained-edit path. A real Agent notebook_read+notebook_edit through `outside/aliasdir/file.ipynb` updates `real/file.ipynb` and keeps the alias.
+
 History reconstruction: `DirectoryHistoryPath` and the `directory_backup`/`directory_missing_backup` events carry an optional `resolvedRelative`; the write tool populates it when lexical and resolved relatives differ, snapshot capture probes/copies from it, and `reconstructDirectoryFileHistory` includes it in the tracked path. The new `external ancestor publication history reconstructs for the lexical target` test verifies immediate refs `[missing, present]`, the backup bytes, the durable publication and two cold readers. Old records without the field remain readable.
 
 ### W385 twentieth full-suite checkpoint (2026-11-10, green)

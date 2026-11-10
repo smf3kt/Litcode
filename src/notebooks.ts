@@ -192,7 +192,8 @@ function notebookReadTool(): ToolDefinition {
       } else {
         const grant = requireDirectoryHandle(context, cacheKey, true);
         const signal = AbortSignal.any([grant.signal, context.signal]);
-        const read = readStableDirectoryFile({ fd: grant.fd, relative: path.relative(grant.root, cacheKey) }, NOTEBOOK_MAX_BYTES, signal);
+        const relative = isWithin(grant.root, real) ? path.relative(grant.root, real) : path.relative(grant.root, cacheKey);
+        const read = readStableDirectoryFile({ fd: grant.fd, relative }, NOTEBOOK_MAX_BYTES, signal);
         if (!read || read.observation.dev !== resolved.identity?.dev || read.observation.ino !== resolved.identity?.ino)
           throw new Error('notebook_read: directory notebook is unavailable or changed');
         verifyIdentity(resolved);

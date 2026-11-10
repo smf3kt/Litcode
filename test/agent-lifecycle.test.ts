@@ -9450,6 +9450,29 @@ test('an external write updates an existing file through an ancestor link inside
   } finally { session.close(); }
 });
 
+test('an external notebook edit updates through an ancestor link inside its grant', async () => {
+  const root = workspace(), outside = workspace(), tools = [...createTools(), ...createNotebookTools()];
+  fs.mkdirSync(path.join(outside, 'real'));
+  fs.writeFileSync(path.join(outside, 'real', 'file.ipynb'), JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {},
+    cells: [{ id: 'fixture', cell_type: 'code', metadata: {}, execution_count: null, outputs: [], source: 'ORIGINAL' }] }));
+  fs.symlinkSync('real', path.join(outside, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+  const target = path.join(outside, 'aliasdir', 'file.ipynb');
+  const provider = new ScriptedProvider([response([
+    call('external-ancestor-notebook-read', 'notebook_read', { path: target }),
+    call('external-ancestor-notebook-edit', 'notebook_edit', { path: target, cell_id: 'fixture', new_source: 'CHANGED' }),
+  ], 'tool_use'), done()]);
+  try {
+    await new Agent(session, provider, tools).run('edit the notebook through the granted ancestor link');
+    const results = resultBatches(session)[0] ?? [];
+    const edit = results.find(result => result.tool_use_id === 'external-ancestor-notebook-edit');
+    assert.equal(edit?.is_error, undefined, JSON.stringify(results));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(outside, 'real', 'file.ipynb'), 'utf8')).cells[0].source, 'CHANGED');
+    assert.equal(fs.lstatSync(path.join(outside, 'aliasdir')).isSymbolicLink(), true);
+  } finally { session.close(); }
+});
+
 test('an external edit updates through an ancestor link inside its grant', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   fs.mkdirSync(path.join(outside, 'real'));
