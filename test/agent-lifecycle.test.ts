@@ -9203,6 +9203,28 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('relocated write through a terminal symlink is denied', async () => {
+  const parent = workspace(), child = workspace(), tools = createTools();
+  fs.writeFileSync(path.join(child, 'target.txt'), 'ORIGINAL');
+  fs.symlinkSync('target.txt', path.join(child, 'alias.txt'));
+  const source = Session.open(parent, { config: config(parent, tools, {
+    permissions: { mode: 'bypass', allow: [], deny: [] },
+  }) });
+  let relocated: Session | undefined;
+  try {
+    await new Agent(source, new ScriptedProvider([done()]), tools).run('hello');
+    relocated = relocateSession(source, child, () => tools);
+    const provider = new ScriptedProvider([response([call('relocated-leaf-write', 'write_file',
+      { path: 'alias.txt', content: 'CHANGED', overwrite: true })], 'tool_use'), done()]);
+    await new Agent(relocated, provider, tools).run('write through the relocated leaf');
+    const result = resultBatches(relocated)[0]?.[0];
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /symbolic link/i);
+    assert.equal(fs.readFileSync(path.join(child, 'target.txt'), 'utf8'), 'ORIGINAL');
+    assert.equal(fs.lstatSync(path.join(child, 'alias.txt')).isSymbolicLink(), true);
+  } finally { await relocated?.close(); await source.close(); }
+});
+
 test('relocated read approval observation denies a status retarget', async () => {
   const parent = workspace(), child = workspace(), tools = createTools();
   write(child, 'public.txt', 'PUBLIC');
