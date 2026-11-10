@@ -2651,7 +2651,9 @@ test('compiled CLI retains Write execution boundaries after process death', { ti
   const execution = rows.filter(row => row.kind === 'runtime_write_execution');
   assert.deepEqual(execution.map(row => row.phase), phase === 'start' ? [] : phase === 'completed' ? ['entered', 'completed'] : ['entered']);
   assert.equal(rows.some(row => row.kind === 'directory_backup' && row.toolUseId === 'start-death-write'), phase === 'completed' || phase === 'partial-completion');
-  assert.equal(fs.readFileSync(file, 'utf8'), 'START_DEATH_ORIGINAL');
+  // The completed boundary is recorded after the directory publication; killing there
+  // leaves the new bytes but no tool_effect, so recovery must report no effect, not roll back.
+  assert.equal(fs.readFileSync(file, 'utf8'), phase === 'start' || phase === 'entered' ? 'START_DEATH_ORIGINAL' : 'NO');
   const reader = `import {Session} from './dist/session.js';const [root,id,outside]=process.argv.slice(1),s=Session.open(root,{id,recoverLock:true});
     const start=s.events.find(event=>event.kind==='tool_start'&&event.id==='start-death-write');
     process.stdout.write(JSON.stringify({owner:start?.runtimeWriteOwner,effect:s.events.some(event=>event.kind==='tool_effect'&&event.result.tool_use_id==='start-death-write'),
