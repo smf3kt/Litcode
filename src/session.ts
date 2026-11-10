@@ -247,6 +247,7 @@ type DirectoryBackupObservation = z.infer<typeof directoryFileObservationSchema>
 type DirectoryBackupMessageContext = { userMessageId: string; parentMessageId: string };
 type DirectoryBackupEvent = {
   kind: 'directory_backup'; id: string; owner: string; toolUseId: string; lexicalPath: string;
+  resolvedRelative?: string;
   editInputDigest?: string;
   messageContext?: DirectoryBackupMessageContext;
   grant: { root: string; incarnation: string; dev: string; ino: string };
@@ -608,12 +609,14 @@ const decimalIdentitySchema = z.string().regex(/^[0-9]+$/);
 const directoryBackupSchema = z.object({ kind: z.literal('directory_backup'), id: z.string().uuid(), owner: z.string().uuid(),
   editInputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   toolUseId: z.string().min(1).max(256), lexicalPath: z.string().min(1).max(4096),
+  resolvedRelative: z.string().min(1).max(4096).optional(),
   messageContext: z.object({ userMessageId: z.string().uuid(), parentMessageId: z.string().uuid() }).strict().optional(),
   grant: z.object({ root: z.string().min(1).max(4096), incarnation: z.string().uuid(), dev: decimalIdentitySchema, ino: decimalIdentitySchema }).strict(),
   source: z.object({ begin: directoryFileObservationSchema, end: directoryFileObservationSchema }).strict(),
   sidecar: z.object({ dev: decimalIdentitySchema, ino: decimalIdentitySchema, uid: decimalIdentitySchema }).strict(),
   bytes: z.number().int().nonnegative().safe(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const directoryMissingBackupSchema = directoryBackupSchema.pick({ id: true, owner: true, toolUseId: true, lexicalPath: true, grant: true }).extend({
+  resolvedRelative: z.string().min(1).max(4096).optional(),
   kind: z.literal('directory_missing_backup'),
   messageContext: z.object({ userMessageId: z.string().uuid(), parentMessageId: z.string().uuid() }).strict(),
   parent: z.object({ dev: decimalIdentitySchema, ino: decimalIdentitySchema }).strict(),
@@ -1796,7 +1799,7 @@ export class Session {
   // Host rewrite: uno/Fet/T$n, sfn1dbxq SHA-256 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da,
   // UTF-16 [739599,743280)/[4731316,4732048)/[4739060,4739632), have no FD-bound journal or receipt.
   recordDirectoryBackup(input: { id: string; toolUseId: string; lexicalPath: string; grant: DirectoryReadHandle;
-    editInput?: unknown;
+    editInput?: unknown; resolvedRelative?: string;
     destinationFd: number; bytes: number; sha256: string; source: { begin: BoundDirectoryFileObservation; end: BoundDirectoryFileObservation }; signal: AbortSignal }): void {
     const assertOwner = () => {
       input.signal.throwIfAborted();
@@ -1825,7 +1828,7 @@ export class Session {
         Number(source.begin.mtimeNanoseconds) >= 1e9 || Number(source.begin.ctimeNanoseconds) >= 1e9)
       throw new Error('Directory backup sidecar identity mismatch');
     const event = directoryBackupSchema.parse({ kind: 'directory_backup', id: input.id, owner: this.id,
-      toolUseId: input.toolUseId, lexicalPath: input.lexicalPath, messageContext,
+      toolUseId: input.toolUseId, lexicalPath: input.lexicalPath, ...(input.resolvedRelative ? { resolvedRelative: input.resolvedRelative } : {}), messageContext,
       ...(edit ? { editInputDigest: edit.digest } : {}),
       grant: { root: input.grant.root, incarnation: input.grant.incarnation, dev: String(input.grant.dev), ino: String(input.grant.ino) },
       source, sidecar: { dev: String(file.dev), ino: String(file.ino), uid: String(file.uid) }, bytes: input.bytes, sha256: input.sha256 });
@@ -1859,7 +1862,7 @@ export class Session {
     assertOwner();
     if (!parent) return false;
     const event = directoryMissingBackupSchema.parse({ kind: 'directory_missing_backup', id: input.id, owner: this.id,
-      toolUseId: input.toolUseId, lexicalPath: input.lexicalPath, messageContext,
+      toolUseId: input.toolUseId, lexicalPath: input.lexicalPath, ...(input.resolvedRelative ? { resolvedRelative: input.resolvedRelative } : {}), messageContext,
       grant: { root: input.grant.root, incarnation: input.grant.incarnation, dev: String(input.grant.dev), ino: String(input.grant.ino) },
       parent, createMode: 0o666 & ~process.umask(), writeInput: { content: writeInput.content, overwrite: writeInput.overwrite } });
     if (this.events.some(row => (row.kind === 'directory_backup' || row.kind === 'directory_snapshot_file' || row.kind === 'directory_missing_backup') && row.id === input.id))
@@ -2202,6 +2205,7 @@ export class Session {
         const trackingPath = directoryHistoryTrackingPath(this.config.workspace, row.lexicalPath);
         if (!shouldTrackDirectoryHistory(state, trackingPath)) continue;
         const pathInfo: DirectoryHistoryPath = { trackingPath, lexicalPath: row.lexicalPath,
+          ...(row.resolvedRelative ? { resolvedRelative: row.resolvedRelative } : {}),
           grant: { root: row.grant.root, dev: row.grant.dev, ino: row.grant.ino } };
         const reference: DirectoryHistoryEntry['reference'] = row.kind === 'directory_missing_backup'
           ? this.inspectDirectorySnapshot(row) ? { kind: 'missing', parent: row.parent, version: 1 } : { kind: 'unknown', lastKnownVersion: 0, reason: 'corrupt' }
@@ -2967,7 +2971,7 @@ export class Session {
     const grant = this.workingDirectories(false).readHandle?.(target.grant.root);
     if (!grant || grant.owner !== this.id || String(grant.dev) !== target.grant.dev || String(grant.ino) !== target.grant.ino)
       return unknown('grant-unavailable');
-    const relative = path.relative(grant.root, target.lexicalPath), combined = AbortSignal.any([signal, grant.signal, this.closeSignal]);
+    const relative = target.resolvedRelative ?? path.relative(grant.root, target.lexicalPath), combined = AbortSignal.any([signal, grant.signal, this.closeSignal]);
     if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return unknown('corrupt');
     let destination: fsp.FileHandle | undefined, discard = false;
     const id = randomUUID(), sidecar = this.directoryEvidencePath('directory_snapshot_file', id);

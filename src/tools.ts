@@ -1701,7 +1701,8 @@ async function captureDirectoryBackup(session: NonNullable<ToolContext['session'
         throw new Error('edit_file: directory file changed during backup');
     }
     session.recordDirectoryBackup({ id, toolUseId, lexicalPath, grant, destinationFd: destination.fd, ...copied,
-      source: { begin: copied.metadata, end: { ...copied.metadata } }, signal, ...(edit ? { editInput: edit.input } : {}) });
+      source: { begin: copied.metadata, end: { ...copied.metadata } }, signal, ...(edit ? { editInput: edit.input } : {}),
+      ...(copyRelative !== relative ? { resolvedRelative: copyRelative } : {}) });
     return copied.metadata;
   } finally { await destination.close(); }
 }

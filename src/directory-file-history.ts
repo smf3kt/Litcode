@@ -6,7 +6,8 @@ const identity = z.string().regex(/^[0-9]+$/);
 const version = z.number().int().positive().safe();
 const parentSchema = z.object({ dev: identity, ino: identity }).strict();
 export const directoryHistoryPathSchema = z.object({ trackingPath: z.string().min(1).max(4096),
-  lexicalPath: z.string().min(1).max(4096), grant: z.object({ root: z.string().min(1).max(4096), dev: identity, ino: identity }).strict() }).strict();
+  lexicalPath: z.string().min(1).max(4096), resolvedRelative: z.string().min(1).max(4096).optional(),
+  grant: z.object({ root: z.string().min(1).max(4096), dev: identity, ino: identity }).strict() }).strict();
 export const directoryCheckpointPathsSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('unknown') }).strict(),
   z.object({ kind: z.literal('available'), paths: z.array(directoryHistoryPathSchema).max(4096) }).strict(),

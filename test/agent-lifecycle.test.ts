@@ -9468,6 +9468,36 @@ test('an external write creates through an ancestor link inside its grant', asyn
   } finally { session.close(); }
 });
 
+test('external ancestor publication history reconstructs for the lexical target', async () => {
+  const root = workspace(), outside = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(outside, 'real'));
+  fs.symlinkSync('real', path.join(outside, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+  const target = path.join(outside, 'aliasdir', 'tracked.txt');
+  let id = '';
+  try {
+    await new Agent(session, new ScriptedProvider([response([call('external-ancestor-tracked', 'write_file',
+      { path: target, content: 'TRACKED_OK' })], 'tool_use'), done()]), tools).run('create tracked file');
+    await new Agent(session, new ScriptedProvider([done()]), tools).run('snapshot tracked file');
+    const history = session.directoryFileHistory;
+    assert.equal(history.kind, 'available');
+    if (history.kind === 'available') {
+      const refs = history.snapshots.map(snapshot => snapshot.entries.find(entry => entry.path.lexicalPath === target)?.reference);
+      assert.deepEqual(refs.map(ref => ref?.kind), ['missing', 'present']);
+      if (refs[1]?.kind === 'present') assert.equal(session.readDirectoryHistoryBackup(refs[1].backupId)?.bytes.toString(), 'TRACKED_OK');
+    }
+    id = session.id;
+  } finally { session.close(); }
+  const reader = `import {Session} from './src/session.ts';const s=Session.open(process.argv[1],{id:process.argv[2]});const h=s.directoryFileHistory;
+    const refs=h.kind==='available'?h.snapshots.map(x=>x.entries.find(e=>e.path.lexicalPath===process.argv[3])?.reference):[];
+    process.stdout.write(JSON.stringify({publications:s.directoryPublications.map(p=>p.kind),refs:refs.map(r=>({kind:r?.kind,version:r?.version})),
+      contents:refs.map(r=>r?.kind==='present'?s.readDirectoryHistoryBackup(r.backupId)?.bytes.toString():null)}));await s.close();`;
+  for (let i = 0; i < 2; i++) assert.deepEqual(JSON.parse(execFileSync(process.execPath,
+    ['--import', 'tsx', '--input-type=module', '-e', reader, root, id, target], { encoding: 'utf8' })),
+    { publications: ['durable'], refs: [{ kind: 'missing', version: 1 }, { kind: 'present', version: 2 }], contents: [null, 'TRACKED_OK'] });
+});
+
 test('a fork inherits an external directory grant and revokes it independently', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   fs.mkdirSync(outside, { recursive: true });

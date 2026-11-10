@@ -16,7 +16,7 @@ A granted external directory can create and update files through an ancestor dir
 
 Validation: new-file and existing-file external-ancestor tests (file lands in `real`, alias remains), external Write/fork/notebook tests, cold-history suite, 18-case driver, check/build. Identity `90d6a0ab...`; build `0ead1ae2...`.
 
-History gap: a follow-up `directoryFileHistory` probe after an ancestor create returned refs `[missing, unknown]`. `reconstructDirectoryFileHistory` derives `trackingPath` and snapshot reference checks from the lexical `row.lexicalPath`, while the missing backup/publication records store the resolved parent/relative. The first missing ref is recognized; the post-create snapshot ref becomes unknown. Supporting rewind/history for ancestor lexical paths therefore needs the resolved relative carried through snapshot evidence and cold history, not just missing backup/publication. The probe was removed and file-level publication tests remain green.
+History reconstruction: `DirectoryHistoryPath` and the `directory_backup`/`directory_missing_backup` events carry an optional `resolvedRelative`; the write tool populates it when lexical and resolved relatives differ, snapshot capture probes/copies from it, and `reconstructDirectoryFileHistory` includes it in the tracked path. The new `external ancestor publication history reconstructs for the lexical target` test verifies immediate refs `[missing, present]`, the backup bytes, the durable publication and two cold readers. Old records without the field remain readable.
 
 ### W385 twentieth full-suite checkpoint (2026-11-10, green)
 
