@@ -176,7 +176,8 @@ for (const stop of ['end_turn', 'refusal']) {
       assert.match(result.stderr, new RegExp(`finished: ${stop}`));
       assert.equal(listSessions(root).some(session => session.active), false);
       const child = Session.open(root, { id: descriptor.session_id });
-      try { assertPaired(child.messages); assert.equal(child.events.at(-1)?.kind, 'turn_end'); }
+      try { assertPaired(child.messages);
+        assert.equal(child.events.filter(event => event.kind !== 'agent_display_observer').at(-1)?.kind, 'turn_end'); }
       finally { child.close(); }
       assert.equal(fs.readdirSync(path.join(root, '.agent')).some(file => file.endsWith('.lock')), false);
       assert.deepEqual(local.failures, []);
