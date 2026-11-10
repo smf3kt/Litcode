@@ -1,3 +1,9 @@
+### W385 external ancestor-link create boundary (2026-11-10, diagnosed; design handoff)
+
+The in-workspace ancestor-link create fix does not extend to a granted external directory. For `outside/aliasdir/created.txt` (`aliasdir` → `real` inside `outside`), the write reaches `Session.recordMissingDirectoryBackup`; that method derives `relative = path.relative(grant.root, lexicalPath)` and calls `probeMissingDirectoryFile({fd, relative})`, which walks the symlinked ancestor and refuses it, so the tool reports `write_file: directory backup unavailable` and never publishes. `publishDirectoryFileTransaction` also receives the lexical path.
+
+A source-compatible adaptation needs a resolved grant-relative path carried through the missing-backup, publication, receipt and cold readers together with the lexical path, while refusing any link whose resolved parent leaves the grant. This is an #11 owner/backup boundary; the leaf check is not involved. The in-workspace path remains fixed and tested.
+
 ### W385 fifteenth full-suite checkpoint (2026-11-10, green after confinement fix)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4361 tests, 4354 pass, 0 fail, 0 cancelled, 7 skipped; duration 1138152 ms. The cold mixed matrix passes in 463208 ms. The preceding fourteenth run's 13 failures/13 cancellations were load-induced (CLI tests 24-48 s, one hook test 134 s despite a 20 s timeout, no orphan processes; the affected cases pass alone). This idle rerun validates the ancestor-link create fix. Identity `fd2b2b64dcb74a9880cd2c7fa6eb53708673a974c9b6613aae499329ca5bb311`; build `bd6f6cbd...`.
