@@ -1,3 +1,7 @@
+### W385 twentieth full-suite checkpoint (2026-11-10, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4367 tests, 4360 pass, 0 fail, 0 cancelled, 7 skipped; duration 1069459 ms. The source-stash write lane is recorded by the Agent and consumed by the builtin writers; the PermissionRequest deny/interrupt path is preserved. Cold mixed matrix 464933 ms. Identity `1d6f659dfe56bb9d9e3bb15223eaa6c08b3908e7016b34d2d1a1ddef377cc27e`; build `d15fa40268264355b2749b9687757a6144131954b2818a4983c811929c2fbb38`.
+
 ### W385 source-stash write lane integration (2026-11-10, verified product)
 
 The Agent records the approved write observation in the copied `PathApprovalCall` write lane at tool lookup (`record('write', observation.requested, observation.spellings)`) and after each authorized input rewrite. The builtin `write_file`, `edit_file` and `notebook_edit` consume the lane at execution with `take('write', requested)`; an expired/missing snapshot denies with `<tool>: write approval changed`. The Agent no longer takes the lane after authorization, so a denied/interrupted call does not mask the hook message: the post-authorization record is skipped when the call is already inactive. `PathApprovalCall.finish` clears the lane for every terminal outcome. Custom write tools retain the Agent landing check but do not consume the stash.
