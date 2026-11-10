@@ -14,7 +14,7 @@ import { createPluginTools } from '../src/plugins.js';
 import { PromptSuggestionStore } from '../src/prompt-suggestion-store.js';
 import { PromptSuggestionRun } from '../src/prompt-suggestions.js';
 import type { ModelProvider } from '../src/provider.js';
-import { createRuntime } from '../src/runtime.js';
+import { createRuntime, pinToolSchemas } from '../src/runtime.js';
 import { saveScrollSpeedSetting } from '../src/scroll-speed.js';
 import { Session } from '../src/session.js';
 import { forkSession } from '../src/sessions.js';
@@ -129,10 +129,12 @@ test('live sources stay separate from pinned metadata across local merges, alias
     const runtimeConfig = { ...current.config, features: { tasks: false, subagents: true, agentMessaging: true, agentTypes: true } };
     const provider: ModelProvider = { count: async () => 0, complete: async () => { throw new Error('Owned child completion'); } };
     const runtime = await createRuntime(runtimeConfig, provider, new AbortController().signal);
+    runtimeConfig.tools = pinToolSchemas(runtime.tools);
+    const owner = Session.open(nested, { config: runtimeConfig }); sessions.push(owner);
     try {
-      runtime.buildTools(runtimeConfig, current.id);
-      runtime.backgroundWorkCount?.(current.id);
-      const launched = await runtime.launchSubtask!({ ...current.snapshotConfig(), features: runtimeConfig.features }, current.id,
+      await runtime.bindSession!(owner);
+      runtime.backgroundWorkCount?.(owner.id);
+      const launched = await runtime.launchSubtask!(owner.config, owner.id,
         'owned child', new AbortController().signal, [{ role: 'user', content: 'owned parent context' }]);
       assert.equal(launched.kind, 'forked');
     } finally { await runtime.close(); }
