@@ -486,7 +486,7 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
           const rule = Un(text); return rule.ruleContent !== undefined && ruleToolMatches(rule.toolName, tool.schema.name);
         })) return baseline;
   // E6/pyr, zjewzgfh [7897,10857)/[7547,7897); D3e/DTr, sfn [3256051,3265763)/[3234534,3234967), UTF-16.
-  let samplingUncertain = false;
+  let samplingUncertain = false, prefixSetUncertain = false;
   try {
     if (command.length <= 10000) {
       const tree = vS().parse(command, undefined);
@@ -495,7 +495,7 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
           const initial = E6(command, tree);
           if (initial.declarationPrefixes !== undefined) {
             const { readings: vectors, exhaustive: prefixesExhaustive } = pyr(initial.declarationPrefixes, initial.declarationPrefixBashKeeps);
-            if (!prefixesExhaustive) samplingUncertain = true;
+            if (!prefixesExhaustive) prefixSetUncertain = true;
             for (const declarationPrefix of vectors) {
               const options = { plainUnquotedHeredocs: false, declarationPrefix };
               const analysis = E6(command, tree, options);
@@ -552,11 +552,22 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
   if (winnerReading !== undefined) {
     return { ...winner, reason: `Alternate command reading requires approval: ${winnerReading}` };
   }
-  const wholeToolAllowed = [...(policy?.allow ?? []), ...(session?.allow ?? [])].some(text => {
+  const allowRules = [...(policy?.allow ?? []), ...(session?.allow ?? [])];
+  const wholeToolAllowed = allowRules.some(text => {
     const rule = Un(text);
     return rule.ruleContent === undefined && ruleToolMatches(rule.toolName, tool.schema.name);
   });
-  if (samplingUncertain && winner.decision === 'allow' && mode !== 'bypass' && !wholeToolAllowed) {
+  const trimmedCommand = command.trim();
+  const commandAllowedByRule = allowRules.some(text => {
+    const rule = Un(text);
+    if (rule.ruleContent === undefined || !ruleToolMatches(rule.toolName, tool.schema.name)) return false;
+    return rule.ruleContent === trimmedCommand ||
+      (rule.ruleContent.endsWith(':*') && trimmedCommand.startsWith(rule.ruleContent.slice(0, -2)));
+  });
+  if (samplingUncertain && winner.decision === 'allow') {
+    return { decision: 'ask', floor: 'readings', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
+  }
+  if (prefixSetUncertain && winner.decision === 'allow' && mode !== 'bypass' && !wholeToolAllowed && commandAllowedByRule) {
     return { decision: 'ask', floor: 'readings', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
   }
   if (baseline.decision === 'allow' && mode !== 'bypass' && !exhaustive) {
