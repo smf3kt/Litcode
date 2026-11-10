@@ -1,3 +1,7 @@
+### W385 twenty-fifth full-suite checkpoint (2026-11-10, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4371 tests, 4364 pass, 0 fail, 0 cancelled, 7 skipped; duration 1057436 ms. Cold matrix 448586 ms. External ancestor Write/Edit publication and history pass, plus all prior approval/stash/leaf tests. Identity `e24dac667d575850c4b88f169d72ca9832efd6146153991abac3bf0450a7b2a4`; build `3ae31d880a14fe360185376e32e4916a8c606b9e5fda84fceed1489a2077915d`.
+
 ### W385 twenty-fourth full-suite checkpoint (2026-11-10, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4370 tests, 4363 pass, 0 fail, 0 cancelled, 7 skipped; duration 1054257 ms. Cold matrix 448119 ms. The ancestor history fix (resolvedRelative through backup/missing events and snapshot capture) passes immediate plus two cold readers; all prior approval/stash/write/leaf tests remain green. Identity `08ec21f85f675e710519eb375a76698f2e24f8c8637cee9e3643388e81e47bd9`; build `ed4acece325d71947dd59580e99c245a50198f66d5e6479a39649630ea87bd1c`.
