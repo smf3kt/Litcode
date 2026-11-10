@@ -9203,6 +9203,41 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('a notebook edit ancestor retarget after approval is denied', async () => {
+  const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
+  fs.mkdirSync(path.join(root, 'real'));
+  fs.mkdirSync(path.join(root, 'protected'));
+  const notebook = (source: string) => JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {},
+    cells: [{ id: 'fixture', cell_type: 'code', metadata: {}, execution_count: null, outputs: [], source }] });
+  fs.writeFileSync(path.join(root, 'real', 'file.ipynb'), notebook('ORIGINAL'));
+  fs.writeFileSync(path.join(root, 'protected', 'file.ipynb'), notebook('PROTECTED_FIXTURE'));
+  fs.symlinkSync('real', path.join(root, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['notebook_edit'] },
+  }) });
+  const provider = new ScriptedProvider([response([call('ancestor-retarget-notebook', 'notebook_edit',
+    { path: 'aliasdir/file.ipynb', cell_id: 'fixture', new_source: 'CHANGED' })], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(session, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: notebook_edit') {
+          retargeted = true;
+          fs.unlinkSync(path.join(root, 'aliasdir'));
+          fs.symlinkSync('protected', path.join(root, 'aliasdir'));
+        }
+      },
+    }).run('edit the notebook through the ancestor link');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /write approval changed/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'protected', 'file.ipynb'), 'utf8')).cells[0].source, 'PROTECTED_FIXTURE');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'real', 'file.ipynb'), 'utf8')).cells[0].source, 'ORIGINAL');
+  } finally { session.close(); }
+});
+
 test('an edit ancestor retarget after approval is denied', async () => {
   const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
   fs.mkdirSync(path.join(root, 'real'));
