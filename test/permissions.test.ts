@@ -428,3 +428,14 @@ test('product shell read block honors session grant roots', () => {
   assert.equal(permissionDecision(current, shell, { command: `cat ${granted}/file` }, session, workspace).decision, 'allow');
   assert.equal(permissionDecision(current, shell, { command: `cat ${granted}/file` }, undefined, workspace).decision, 'ask');
 });
+
+test('product shell read block skips pattern arguments', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const current = policy({ mode: 'bypass', blockReadsOutsideWorkingDirectories: true, allow: [] });
+  assert.equal(permissionDecision(current, shell, { command: 'grep secret /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'grep -e secret /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'grep secret ./inside' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: "awk '{print}' /tmp/read-block-outside/secret" }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'sed -n p /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+});

@@ -595,7 +595,9 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
   if (analysis.kind !== 'simple') {
     return { decision: 'ask', floor: 'readings', reason: 'This command cannot be checked against the read block (permissions.blockReadsOutsideWorkingDirectories)' };
   }
-  const readCommands = new Set(['cat', 'head', 'tail', 'less', 'more', 'wc', 'file', 'stat', 'od', 'strings', 'nl', 'tac', 'sort', 'uniq']);
+  const readCommands = new Set(['cat', 'head', 'tail', 'less', 'more', 'wc', 'file', 'stat', 'od', 'strings', 'nl', 'tac', 'sort', 'uniq',
+    'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
+  const patternFirst = new Set(['grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
   const cwd = workspace ?? process.cwd();
   const outside = (candidate: string) => roots.every(root => {
     const relative = path.relative(root, candidate);
@@ -640,10 +642,21 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
   };
   for (const entry of analysis.commands) {
     const argv = entry.argv;
-    if (Array.isArray(argv) && argv.length >= 2 && readCommands.has(path.basename(argv[0] ?? ''))) {
-      for (const operand of argv.slice(1)) {
-        const blocked = checkOperand(operand);
-        if (blocked !== undefined) return blocked;
+    if (Array.isArray(argv) && argv.length >= 2) {
+      const base = path.basename(argv[0] ?? '');
+      if (readCommands.has(base)) {
+        let skipPattern = patternFirst.has(base);
+        const args = argv.slice(1);
+        for (let position = 0; position < args.length; position++) {
+          const operand = args[position]!;
+          if (operand.startsWith('-')) {
+            if (['-e', '--regexp', '-f', '--file'].includes(operand)) { position++; skipPattern = false; }
+            continue;
+          }
+          if (skipPattern) { skipPattern = false; continue; }
+          const blocked = checkOperand(operand);
+          if (blocked !== undefined) return blocked;
+        }
       }
     }
     const redirects = (entry as { redirects?: { op?: unknown; target?: unknown }[] }).redirects;
