@@ -94,7 +94,8 @@ test("callback and MCP prerequisites, once, cancellation and JSON results share 
       calls++;
       assert.deepEqual(received, definition);
       assert.equal(event, "PreToolUse");
-      assert.equal(data, payload);
+      assert.deepEqual(data, payload);
+      assert.notEqual(data, payload, "callback hooks receive a copy");
       assert.equal(hookSignal.aborted, false);
       assert.equal(lifecycle.snapshot().length, 1, "journal claim precedes resolver effect");
       return { ok: true, additionalContext: "checked", hookSpecificOutput: {

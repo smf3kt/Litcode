@@ -88,7 +88,11 @@ test('grouped skill commands are approved before child journals or hook effects'
       humanAuthorization: issueHumanSkillAuthorization(session, 'grouped', '', signal, () => session.isOpen) }), /approval/);
     assert.equal(fs.existsSync(output), false);
     assert.deepEqual(fs.readdirSync(path.join(workspace, '.agent')).sort(), journals);
-    assert.equal(fs.readFileSync(session.file, 'utf8'), before);
+    const after = fs.readFileSync(session.file, 'utf8');
+    assert.ok(after.startsWith(before));
+    const appended = after.slice(before.length).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    // Rejection may audit the approval decision asynchronously; it must not reach hook effects or child journals.
+    assert.ok(appended.every(event => event.kind === 'approval_operation'), JSON.stringify(appended));
   } finally { await session.close(); }
 });
 
@@ -111,6 +115,10 @@ test('merged hook count overflow is rejected before skill shell expansion perfor
       humanAuthorization: issueHumanSkillAuthorization(session, 'overflow', '', signal, () => session.isOpen) }), /1024/);
     assert.equal(fs.existsSync(output), false);
     assert.deepEqual(fs.readdirSync(path.join(workspace, '.agent')).sort(), journals);
-    assert.equal(fs.readFileSync(session.file, 'utf8'), before);
+    const after = fs.readFileSync(session.file, 'utf8');
+    assert.ok(after.startsWith(before));
+    const appended = after.slice(before.length).trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    // Rejection may audit the approval decision asynchronously; it must not reach hook effects or child journals.
+    assert.ok(appended.every(event => event.kind === 'approval_operation'), JSON.stringify(appended));
   } finally { await session.close(); }
 });

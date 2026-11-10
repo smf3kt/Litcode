@@ -1818,7 +1818,7 @@ export async function runHooks(
       // caller cannot mutate the payload used by later hooks or the result.
       raw = await runResolvedHook(definition, event, structuredClone(payload), signal, timeoutMs, options.resolveCallbackHook!, "Callback", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "mcp_tool") {
-      raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveMcpHook!, "MCP", release!, { identity: flattened.identity, observer: options.observeResolver });
+      raw = await runResolvedHook(definition, event, structuredClone(payload), signal, timeoutMs, options.resolveMcpHook!, "MCP", release!, { identity: flattened.identity, observer: options.observeResolver });
     } else if (definition.type === "script") {
       // This build refuses script hooks: `ito` throws "script hooks are not available in this
       // build" (chunk-n3ykh62m.js offset 409142). The adapter catches it, reports the message as
