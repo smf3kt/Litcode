@@ -15,7 +15,8 @@ import { backgroundTaskItems, backgroundTaskRequest, tasksPanelRows, tasksPanelS
 import { initialTaskDetail } from '../src/task-details.js';
 import { backgroundFooterLabel } from '../src/tui-background.js';
 import { TuiTerminal } from '../src/tui.js';
-import { createRuntime } from '../src/runtime.js';
+import { createRuntime, pinToolSchemas } from '../src/runtime.js';
+import { Session } from '../src/session.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { ToolContext } from '../src/tools.js';
 
@@ -65,7 +66,12 @@ test('history projection retains only owned background completions and follows e
   const runtimeConfig = { ...config, features: { tasks: false, subagents: true, agentMessaging: true } };
   const runtime = await createRuntime(runtimeConfig, provider, abort.signal);
   const context: ToolContext = { workspace, signal: abort.signal, allowShell: false, maxOutputBytes: 24000 };
+  let owner: Session | undefined, ownerId = '';
   try {
+    runtimeConfig.tools = pinToolSchemas(runtime.tools);
+    owner = Session.open(workspace, { config: runtimeConfig });
+    ownerId = owner.id;
+    await runtime.bindSession!(owner);
     await registry.launch({ prompt: 'WAITED_FOREGROUND' });
     assert.deepEqual(registry.backgroundTasks(), []);
     const first = await registry.launch({ prompt: 'BACKGROUND_ONE', background: true });
@@ -83,28 +89,29 @@ test('history projection retains only owned background completions and follows e
     assert.deepEqual(registry.backgroundTasks().map(row => row.id), [second.id]);
     assert.equal((await registry.stop(second.id)).status, 'completed');
     assert.deepEqual(registry.backgroundTasks().map(row => [row.id, row.status]), [[second.id, 'completed']]);
-    const tools = runtime.buildTools(runtimeConfig, 'be84c9c7-e99a-4ced-b5a8-27ab060c4842'), agent = tools.find(tool => tool.schema.name === 'agent');
+    const tools = runtime.buildTools(runtimeConfig, ownerId), agent = tools.find(tool => tool.schema.name === 'agent');
     assert.ok(agent);
     const launched = JSON.parse(await agent.execute({ prompt: 'RUNTIME_BACKGROUND', background: true }, context)) as { id: string };
     await until(() => {
-      const detail = runtime.backgroundTaskDetail!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id);
+      const detail = runtime.backgroundTaskDetail!(ownerId, launched.id);
       return detail?.kind === 'agent' && detail.status === 'completed';
     });
     const journal = path.join(workspace, '.agent', `${launched.id}.jsonl`);
     const metadata = fs.readFileSync(journal, 'utf8').split('\n')[0];
-    assert.ok(JSON.stringify(runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)).includes('OWNED_FILE'));
-    assert.deepEqual(runtime.backgroundTasks!('be84c9c7-e99a-4ced-b5a8-27ab060c4842').agents.map(row => row.id), [launched.id]);
+    assert.ok(JSON.stringify(runtime.agentTranscript!(ownerId, launched.id)).includes('OWNED_FILE'));
+    assert.deepEqual(runtime.backgroundTasks!(ownerId).agents.map(row => row.id), [launched.id]);
     assert.deepEqual(runtime.backgroundTasks!('foreign'), empty);
-    assert.equal(runtime.backgroundWorkCount!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'), 0);
-    assert.equal(await runtime.stopTask!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id), undefined);
-    await runtime.submitAgentInput!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id, 'HUMAN_RESUME');
-    await until(() => runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)?.status === 'completed');
-    assert.ok(JSON.stringify(runtime.agentTranscript!('be84c9c7-e99a-4ced-b5a8-27ab060c4842', launched.id)).includes('HUMAN_RESUME'));
+    assert.equal(runtime.backgroundWorkCount!(ownerId), 0);
+    assert.equal(await runtime.stopTask!(ownerId, launched.id), undefined);
+    await runtime.submitAgentInput!(ownerId, launched.id, 'HUMAN_RESUME');
+    await until(() => runtime.agentTranscript!(ownerId, launched.id)?.status === 'completed');
+    assert.ok(JSON.stringify(runtime.agentTranscript!(ownerId, launched.id)).includes('HUMAN_RESUME'));
     assert.equal(fs.readFileSync(journal, 'utf8').split('\n')[0], metadata);
-    await runtime.releaseSession!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'); assert.deepEqual(runtime.backgroundTasks!('be84c9c7-e99a-4ced-b5a8-27ab060c4842'), empty);
+    await runtime.releaseSession!(ownerId); assert.deepEqual(runtime.backgroundTasks!(ownerId), empty);
     await registry.close(); assert.deepEqual(registry.backgroundTasks(), []);
+    owner.close(); owner = undefined;
     assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
-  } finally { await registry.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+  } finally { await registry.close(); await runtime.close(); owner?.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
 test('Completed headings never take focus and live completion preserves the selected child id', async () => {
