@@ -28,7 +28,8 @@ for (const pressure of [511_999, 512_000]) test(`1M context compacts at the exac
       const summary = request.tool_choice?.type === 'none';
       if (summary) {
         assert.equal(pressure, 512_000);
-        assert.equal(request.messages.length, 4);
+        // The open turn's user message is preserved, not summarized: prior user/assistant + prompt.
+        assert.equal(request.messages.length, 3);
         assert.equal(request.max_tokens, 8192);
       }
       return { id: `context-${completions}`, role: 'assistant', type: 'message', model: 'fixture',
@@ -43,5 +44,6 @@ for (const pressure of [511_999, 512_000]) test(`1M context compacts at the exac
     assert.equal(session.events.filter(event => event.kind === 'compact').length, pressure === 512_000 ? 1 : 0);
     assert.equal(completions, pressure === 512_000 ? 2 : 1);
     assertPaired(session.messages);
+    if (pressure === 512_000) assert.match(JSON.stringify(session.messages), /Current task/);
   } finally { session.close(); }
 });
