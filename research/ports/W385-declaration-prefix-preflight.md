@@ -1,3 +1,7 @@
+### W385 fifteenth full-suite checkpoint (2026-11-10, green after confinement fix)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4361 tests, 4354 pass, 0 fail, 0 cancelled, 7 skipped; duration 1138152 ms. The cold mixed matrix passes in 463208 ms. The preceding fourteenth run's 13 failures/13 cancellations were load-induced (CLI tests 24-48 s, one hook test 134 s despite a 20 s timeout, no orphan processes; the affected cases pass alone). This idle rerun validates the ancestor-link create fix. Identity `fd2b2b64dcb74a9880cd2c7fa6eb53708673a974c9b6613aae499329ca5bb311`; build `bd6f6cbd...`.
+
 ### W385 ancestor-link create fix (2026-11-10, verified product)
 
 `confineResolved` previously rejected any unresolved leaf with a nonempty hop list as a dangling symlink. That also refused creating a file under an in-workspace ancestor directory symlink (e.g. `aliasdir/file.txt`, `aliasdir` → `real`) even though `real` is a real directory inside the workspace. The resolver now distinguishes the terminal `leafIsSymlink` bit from ancestor hops: a missing leaf is allowed only when `path.dirname(resolved.path)` is within an allowed root and is an existing directory. A terminal link to a missing target, a link whose parent lands outside/ungranted, and a missing intermediate directory still fail closed.
