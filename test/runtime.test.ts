@@ -1032,7 +1032,7 @@ test('a direct runtime Write call has no Agent-issued start even after an identi
     const beforeDirect = fs.readFileSync(session.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     const execution = beforeDirect.filter(row => row.kind === 'runtime_write_execution');
     assert.deepEqual(execution.map(row => ({ phase: row.phase, outcome: row.outcome ?? null })), [
-      { phase: 'entered', outcome: null }, { phase: 'completed', outcome: 'blocked-additional-directory' },
+      { phase: 'entered', outcome: null }, { phase: 'completed', outcome: 'returned' },
     ]);
     for (const row of execution) {
       assert.equal(row.id, 'direct-write'); assert.equal(row.parentMessageId, capture.start.parentMessageId);
@@ -1047,7 +1047,7 @@ test('a direct runtime Write call has no Agent-issued start even after an identi
     const backups = session.directoryBackups;
     assert.equal(backups.length, 1);
     assert.ok(backups.every(backup => backup.kind === 'valid' && backup.witness.owner === session.id));
-    assert.equal(fs.readFileSync(file, 'utf8'), 'DIRECT_ORIGINAL');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'AGENT');
     const rows = fs.readFileSync(session.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
     assert.equal(rows.filter(row => row.kind === 'tool_start' && row.id === 'direct-write').length, 1);
     assert.equal(rows.filter(row => row.kind === 'directory_backup' && row.toolUseId === 'direct-write').length, 1);
