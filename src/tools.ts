@@ -1686,14 +1686,14 @@ function finishFileWrite(context: ToolContext, real: string, cacheKey: string, r
 // Pin the source grant and copy exact bytes before recording the original.
 async function captureDirectoryBackup(session: NonNullable<ToolContext['session']>, toolUseId: string,
   grant: DirectoryReadHandle, lexicalPath: string, relative: string, id: string, signal: AbortSignal,
-  edit?: { input: unknown; resolved: ResolvedPath }) {
+  edit?: { input: unknown; resolved: ResolvedPath }, copyRelative = relative) {
   signal.throwIfAborted();
   const sidecar = `${session.file}.backup-unknown-${id}`;
   const destination = await fsp.open(sidecar, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR | fs.constants.O_NOFOLLOW, 0o600);
   try {
     signal.throwIfAborted();
     syncDirectory(path.dirname(sidecar));
-    const copied = await copyStableDirectoryFile({ fd: grant.fd, relative }, destination, signal);
+    const copied = await copyStableDirectoryFile({ fd: grant.fd, relative: copyRelative }, destination, signal);
     signal.throwIfAborted();
     if (edit) {
       verifyUnchanged(edit.resolved, 'edit_file', lexicalPath);
@@ -1785,7 +1785,8 @@ function writeFileTool(): ToolDefinition {
               grant: owned, value: { path: userPath, content, overwrite }, signal,
               ...(resolvedRelative && resolvedRelative !== relative ? { resolvedRelative } : {}) });
             if (!missing) {
-              await captureDirectoryBackup(context.session, context.toolUseId, owned, requested, relative, id, signal);
+              await captureDirectoryBackup(context.session, context.toolUseId, owned, requested, relative, id, signal, undefined,
+                resolvedRelative && resolvedRelative !== relative ? resolvedRelative : relative);
             }
             captured = true;
           } catch {

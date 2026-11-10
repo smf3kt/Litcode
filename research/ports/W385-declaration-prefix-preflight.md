@@ -2,11 +2,11 @@
 
 `npm test` without `CLAUDE_JOB_DIR`: 4368 tests, 4360 pass, 1 fail, 0 cancelled, 7 skipped; duration 1040500 ms. The single failure is `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which passes when rerun alone. Live cold matrix 451854 ms.
 
-### W385 external ancestor-link create (2026-11-10, verified product)
+### W385 external ancestor-link publication (2026-11-10, verified product)
 
-A granted external directory can create a new file through an ancestor directory symlink inside the grant. `outside/aliasdir/created.txt` with `aliasdir` → `real` previously failed `write_file: directory backup unavailable` because the missing-backup probe and native publication used the lexical relative path. `Session.recordMissingDirectoryBackup` and `publishDirectoryFileTransaction` now accept an optional resolved grant-relative path; the write tool passes `path.relative(grant.root, resolvedLanding)` when it differs from the lexical relative, while `lexicalPath` remains the policy/witness identity. The missing witness parent and native publication use the resolved path.
+A granted external directory can create and update files through an ancestor directory symlink inside the grant. `outside/aliasdir/created.txt` with `aliasdir` → `real` previously failed `write_file: directory backup unavailable` because the missing-backup probe, retained backup copy and native publication used the lexical relative path. `Session.recordMissingDirectoryBackup` and `publishDirectoryFileTransaction` now accept an optional resolved grant-relative path, and `captureDirectoryBackup` copies from it for existing targets; the write tool passes `path.relative(grant.root, resolvedLanding)` when it differs from the lexical relative, while `lexicalPath` remains the policy/witness identity. The missing witness parent, existing backup source and native publication use the resolved path.
 
-Validation: the new external-ancestor test (file lands in `real/created.txt`, alias remains), external Write/fork/notebook tests, cold-history suite, 18-case driver, check/build. Existing external targets through an ancestor link still use the lexical relative backup path and remain a separate boundary.
+Validation: new-file and existing-file external-ancestor tests (file lands in `real`, alias remains), external Write/fork/notebook tests, cold-history suite, 18-case driver, check/build. Identity `90d6a0ab...`; build `0ead1ae2...`.
 
 ### W385 twentieth full-suite checkpoint (2026-11-10, green)
 
