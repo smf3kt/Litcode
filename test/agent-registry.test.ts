@@ -720,7 +720,7 @@ test('metadata budget rejects before journal creation and event budget reserves 
     const child = await events.launch({ prompt: 'work' });
     assert.equal(child.status, 'failed');
     const session = Session.open(f.workspace, { id: child.id });
-    try { assert.equal(session.events.length, eventBudget); assert.equal(session.events.at(-1)?.kind, 'turn_end'); }
+    try { assert.equal(session.events.length, eventBudget); assert.equal(session.events.filter(event => event.kind !== 'agent_display_observer').at(-1)?.kind, 'turn_end'); }
     finally { session.close(); }
   } finally { await f.cleanup(); }
 });

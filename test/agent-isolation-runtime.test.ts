@@ -288,7 +288,7 @@ test('standalone dirty checkout returns its successful child result with cleanup
     assert.equal(fs.readFileSync(path.join(f.workspace, 'file.txt'), 'utf8'), 'baseline\n');
     assert.ok(fs.existsSync(path.join(f.workspace, '.agent', `${child.session_id}.jsonl`)));
     const session = Session.open(child.workspace, { id: child.session_id, storageRoot: f.workspace });
-    try { assert.equal(session.events.at(-1)?.kind, 'turn_end'); }
+    try { assert.equal(session.events.filter(event => event.kind !== 'agent_display_observer').at(-1)?.kind, 'turn_end'); }
     finally { session.close(); }
     const records = JSON.parse(fs.readFileSync(path.join(f.workspace, '.agent', 'worktrees.json'), 'utf8')).records;
     assert.equal(records.length, 1);

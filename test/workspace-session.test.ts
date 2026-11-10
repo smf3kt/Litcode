@@ -53,7 +53,7 @@ test("relocation copies completed epochs and records old/new path context withou
   assert.match(String(marker.content), /Workspace relocation context/);
   assert.ok(String(marker.content).includes(JSON.stringify(original.config.workspace)));
   assert.ok(String(marker.content).includes(JSON.stringify(target)));
-  assert.equal(next.events.at(-1)!.kind, "turn_end");
+  assert.equal(next.events.filter(event => event.kind !== 'agent_display_observer').at(-1)!.kind, "turn_end");
   assertPaired(next.messages);
   assert.deepEqual(fs.readFileSync(original.file), before);
   assert.deepEqual(original.events, beforeEvents);
