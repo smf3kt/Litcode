@@ -9,7 +9,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { defaultConfig } from '../src/agent.js';
 import { interactiveLoop } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
-import { createRuntime, type Runtime } from '../src/runtime.js';
+import { createRuntime, pinToolSchemas, type Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { subtaskDirective, type SubtaskLaunch } from '../src/subtask.js';
 import type { TerminalCallbacks, TerminalPromptRequest, TerminalSurface } from '../src/terminal.js';
@@ -113,7 +113,9 @@ test('both agent-type modes seed the retained child, inherit restrictions, conti
       return reply('CHILD_DONE');
     } };
     const runtime = await createRuntime(config, provider, new AbortController().signal);
+    config.tools = pinToolSchemas(runtime.tools);
     const session = Session.open(workspace, { config });
+    await runtime.bindSession!(session);
     session.append({ kind: 'message', message: { role: 'user', content: 'PARENT_TASK' } });
     session.append({ kind: 'message', message: { role: 'assistant', content: 'PARENT_ANSWER' } });
     session.append({ kind: 'turn_end', reason: 'end_turn' });
@@ -121,7 +123,7 @@ test('both agent-type modes seed the retained child, inherit restrictions, conti
       { role: 'user', content: 'REVIEW_THIS_QUESTION' }, { role: 'assistant', content: 'REVIEWED_ANSWER' },
     ];
     try {
-      const launched = await runtime.launchSubtask!(config, session.id, 'REVIEW_THIS_QUESTION',
+      const launched = await runtime.launchSubtask!(session.config, session.id, 'REVIEW_THIS_QUESTION',
         new AbortController().signal, session.messages, extra);
       assert.equal(launched.kind, 'forked');
       if (launched.kind !== 'forked') throw new Error('fixture fork unavailable');
@@ -149,7 +151,7 @@ test('both agent-type modes seed the retained child, inherit restrictions, conti
       assert.equal(fs.readFileSync(path.join(workspace, '.agent', `${launched.agentId}.jsonl`), 'utf8').split('\n')[0], metadata);
       assert.equal(JSON.stringify(session.messages), before);
       hold = true;
-      const running = await runtime.launchSubtask!(config, session.id, 'HOLD_CHILD', new AbortController().signal, session.messages, extra);
+      const running = await runtime.launchSubtask!(session.config, session.id, 'HOLD_CHILD', new AbortController().signal, session.messages, extra);
       assert.equal(running.kind, 'forked');
       await until(() => requests.length === 3);
       await runtime.releaseSession!(session.id);
