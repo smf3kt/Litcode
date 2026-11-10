@@ -9162,6 +9162,23 @@ test('read_media approval observation rejects status-callback retargeting', asyn
   } finally { session.close(); }
 });
 
+test('write through a terminal symlink is denied by the source leaf check', async () => {
+  const root = workspace(), tools = createTools();
+  fs.writeFileSync(path.join(root, 'target.txt'), 'ORIGINAL');
+  fs.symlinkSync('target.txt', path.join(root, 'alias.txt'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  const provider = new ScriptedProvider([response([call('leaf-write', 'write_file',
+    { path: 'alias.txt', content: 'CHANGED', overwrite: true })], 'tool_use'), done()]);
+  try {
+    await new Agent(session, provider, tools).run('write through the leaf');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /symbolic link/i);
+    assert.equal(fs.readFileSync(path.join(root, 'target.txt'), 'utf8'), 'ORIGINAL');
+    assert.equal(fs.lstatSync(path.join(root, 'alias.txt')).isSymbolicLink(), true);
+  } finally { session.close(); }
+});
+
 test('fork read approval observation denies a status retarget', async () => {
   const root = workspace(), tools = createTools();
   write(root, 'public.txt', 'PUBLIC');
