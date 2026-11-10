@@ -1,3 +1,11 @@
+### W385 seventeenth full-suite checkpoint (2026-11-10, one flake)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4362 tests, 4354 pass, 1 fail, 0 cancelled, 7 skipped; duration 1036716 ms. The single failure is the known `explicit stop writer death preserves history and fences across two cold processes`, which passes when rerun alone. The write-approval permission-update regression is fixed. Cold matrix 449787 ms.
+
+### W385 per-call write approval isolation (2026-11-10, verified test; no product change)
+
+Two write calls in one turn under an ask rule: the status callback retargets the ancestor directory for `write-a`; that call is denied with `write approval changed`, while `write-b` to a separate path succeeds. Protected and original files are unchanged, and the sibling file holds its bytes. This adds per-call write-producer isolation evidence for #7/#11.
+
 ### W385 write approval-time path observation (2026-11-10, verified product)
 
 A status callback that retargeted an ancestor directory link after a `write_file` ask was approved could redirect the write to a protected file: the read-only approval observation did not cover write tools, and the terminal-leaf check does not see an ancestor retarget. The Agent now captures `observePermissionPath` for `write_file`, `edit_file` and `notebook_edit` immediately after tool lookup (before PermissionRequest/PreToolUse hooks), recaptures after an authorized input rewrite, and before execution rejects a changed input path, changed landing/spellings or a live deny. The error is `<tool>: write approval changed`.

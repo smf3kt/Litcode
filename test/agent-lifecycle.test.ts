@@ -9203,6 +9203,45 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('per-call write approvals isolate an ancestor retarget from a sibling', async () => {
+  const root = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(root, 'real'));
+  fs.mkdirSync(path.join(root, 'protected'));
+  fs.writeFileSync(path.join(root, 'real', 'file.txt'), 'ORIGINAL');
+  fs.writeFileSync(path.join(root, 'protected', 'file.txt'), 'PROTECTED_FIXTURE');
+  fs.symlinkSync('real', path.join(root, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['write_file'] },
+  }) });
+  const provider = new ScriptedProvider([response([
+    call('write-a', 'write_file', { path: 'aliasdir/file.txt', content: 'CHANGED', overwrite: true }),
+    call('write-b', 'write_file', { path: 'sibling.txt', content: 'SIBLING_OK' }),
+  ], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(session, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: write_file') {
+          retargeted = true;
+          fs.unlinkSync(path.join(root, 'aliasdir'));
+          fs.symlinkSync('protected', path.join(root, 'aliasdir'));
+        }
+      },
+    }).run('write two paths');
+    const results = resultBatches(session)[0] ?? [];
+    const a = results.find(result => result.tool_use_id === 'write-a');
+    const b = results.find(result => result.tool_use_id === 'write-b');
+    assert.equal(retargeted, true);
+    assert.equal(a?.is_error, true, JSON.stringify(a));
+    assert.match(String(a?.content), /write approval changed/);
+    assert.equal(b?.is_error, undefined, JSON.stringify(b));
+    assert.equal(fs.readFileSync(path.join(root, 'protected', 'file.txt'), 'utf8'), 'PROTECTED_FIXTURE');
+    assert.equal(fs.readFileSync(path.join(root, 'real', 'file.txt'), 'utf8'), 'ORIGINAL');
+    assert.equal(fs.readFileSync(path.join(root, 'sibling.txt'), 'utf8'), 'SIBLING_OK');
+  } finally { session.close(); }
+});
+
 test('a write ancestor retarget after approval is denied', async () => {
   const root = workspace(), tools = createTools();
   fs.mkdirSync(path.join(root, 'real'));
