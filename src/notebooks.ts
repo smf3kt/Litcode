@@ -21,7 +21,7 @@ import { verifyIdentity, type ResolvedPath } from "./path-identity.js";
 
 import { z } from "zod";
 
-import { captureExternalEdit, confineResolved, publishExternalEdit, registerBuiltinEdit, requireDirectoryHandle, verifyApprovedEditInput, type ToolContext, type ToolDefinition } from "./tools.js";
+import { captureExternalEdit, confineResolved, consumeWriteApproval, publishExternalEdit, registerBuiltinEdit, requireDirectoryHandle, verifyApprovedEditInput, type ToolContext, type ToolDefinition } from "./tools.js";
 
 import { NOTEBOOK_MAX_BYTES, CELL_TYPES, EDIT_MODES, notebookEditSchema, parseNotebook, renderNotebookEdit, type Notebook } from "./notebook-edit.js";
 const FALLBACK_MAX_OUTPUT_BYTES = 100_000;
@@ -264,6 +264,7 @@ function notebookEditTool(): ToolDefinition {
       const parsed = notebookEditSchema.parse(input);
       verifyApprovedEditInput(input, parsed);
       const { path: userPath, edit_mode: mode = "replace", cell_type } = parsed;
+      consumeWriteApproval(context, path.resolve(context.workspace, userPath).normalize('NFC'), 'notebook_edit');
       const root = workspaceReal(context.workspace);
       const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(false));
       const real = resolved.path;

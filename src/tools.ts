@@ -1706,6 +1706,16 @@ async function captureDirectoryBackup(session: NonNullable<ToolContext['session'
   } finally { await destination.close(); }
 }
 
+/** Consume the Agent's per-call write-lane snapshot at the builtin producer. */
+export function consumeWriteApproval(context: ToolContext, requested: string, label: string): void {
+  const call = context.pathApprovalCall;
+  if (!call) return;
+  let snapshot;
+  try { snapshot = call.take('write', requested); }
+  catch { throw new Error(`${label}: write approval changed`); }
+  if (snapshot.kind !== 'saved') throw new Error(`${label}: write approval changed`);
+}
+
 function writeFileTool(): ToolDefinition {
   const tool: ToolDefinition = {
     toAutoClassifierInput(input) { const value = writeFileSchema.parse(input); return `${value.path}: ${value.content}`; },
@@ -1741,6 +1751,7 @@ function writeFileTool(): ToolDefinition {
       const invocation = builtinWriteInvocations.get(context);
       if (invocation && invocation.input === input && runtimeBuiltinWrites.get(invocation.tool)?.original === tool)
         observeBuiltinWrite(invocation, { phase: 'entered', input: { path: userPath, content, overwrite } });
+      consumeWriteApproval(context, path.resolve(context.workspace, userPath).normalize('NFC'), 'write_file');
       const root = workspaceReal(context.workspace);
       // fl/aNe, 2bcyxj9q [205509,205734)/[241113,242279), UTF-16.
       const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership);
@@ -1921,6 +1932,7 @@ function editFileTool(): ToolDefinition {
       const parsed = editFileSchema.parse(input);
       verifyApprovedEditInput(input, parsed);
       const { path: userPath, old_string, new_string, replace_all = false } = parsed;
+      consumeWriteApproval(context, path.resolve(context.workspace, userPath).normalize('NFC'), 'edit_file');
       const root = workspaceReal(context.workspace);
       // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
       const planPath = context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership, true);

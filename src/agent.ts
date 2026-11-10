@@ -1313,7 +1313,7 @@ export class Agent {
             catch { readApproval = undefined; }
           }
           const recordWriteApproval = () => {
-            if (!writePathTool || readApproval === undefined) return;
+            if (!writePathTool || readApproval === undefined || !pathApprovalCall.isActive) return;
             try { pathApprovalCall.record('write', readApproval.observation.requested, readApproval.observation.spellings); }
             catch { throw new Error(`${tool.schema.name}: write approval changed`); }
           };
@@ -1483,14 +1483,6 @@ export class Agent {
                   current.landing !== readApproval.observation.landing ||
                   JSON.stringify(current.spellings) !== JSON.stringify(readApproval.observation.spellings))
                 throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
-              if (writePathTool) {
-                let snapshot;
-                try { snapshot = pathApprovalCall.take('write', readApproval.observation.requested); }
-                catch { throw new Error(`${tool.schema.name}: write approval changed`); }
-                if (snapshot.kind !== 'saved' ||
-                    JSON.stringify(snapshot.paths) !== JSON.stringify(readApproval.observation.spellings))
-                  throw new Error(`${tool.schema.name}: write approval changed`);
-              }
               // The current write was authorized (possibly by a PermissionRequest
               // allow that also adopts plan mode or other updates); a live deny
               // applies to later calls, not retroactively to this one. The landing
