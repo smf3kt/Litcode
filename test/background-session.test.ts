@@ -86,7 +86,8 @@ test("startBackgroundSession forks the journal before spawning a detached headle
     try {
       const branch = fork.events.find(event => event.kind === "branch");
       assert.deepEqual(branch, { kind: "branch", source: session.id, workspace: root,
-        boundary: session.events.length - 1, reason: "fork" });
+        boundary: session.events.length - 1, reason: "fork", external: { kind: "none" },
+        checkpointPaths: { kind: "available", paths: [] } });
       assert.deepEqual(fork.messages, session.messages);
     } finally { fork.close(); }
   } finally { session.close(); }
