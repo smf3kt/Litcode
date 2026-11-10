@@ -1302,8 +1302,9 @@ export class Agent {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
           const implementation = snapshotToolImplementation(tool);
+          const writePathTool = tool.schema.name === 'write_file' || tool.schema.name === 'edit_file' || tool.schema.name === 'notebook_edit';
           const readPathTool = tool.schema.name === 'read_file' || tool.schema.name === 'notebook_read' ||
-            tool.schema.name === 'read_media' || tool.schema.name === 'search' || tool.schema.name === 'list_files';
+            tool.schema.name === 'read_media' || tool.schema.name === 'search' || tool.schema.name === 'list_files' || writePathTool;
           const inputPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
             ? (input as { path: string }).path : undefined;
           const readPath = readPathTool ? (inputPath ?? (tool.schema.name === 'search' || tool.schema.name === 'list_files' ? '.' : undefined)) : undefined;
@@ -1463,14 +1464,15 @@ export class Agent {
               const currentInputPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
                 ? (input as { path: string }).path : undefined;
               const currentPath = currentInputPath ?? (tool.schema.name === 'search' || tool.schema.name === 'list_files' ? '.' : undefined);
-              if (currentPath !== readApproval.path) throw new Error(`${tool.schema.name}: read input changed`);
+              const pathLabel = writePathTool ? 'write' : 'read';
+              if (currentPath !== readApproval.path) throw new Error(`${tool.schema.name}: ${pathLabel} input changed`);
               const current = observePermissionPath(c.workspace, readApproval.path);
               if (current.unresolved || readApproval.observation.unresolved ||
                   current.landing !== readApproval.observation.landing ||
                   JSON.stringify(current.spellings) !== JSON.stringify(readApproval.observation.spellings))
-                throw new Error(`${tool.schema.name}: read approval changed`);
+                throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
               if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates, c.workspace).decision === 'deny')
-                throw new Error(`${tool.schema.name}: read approval changed`);
+                throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
             }
             result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
               runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext)),

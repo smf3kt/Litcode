@@ -1,3 +1,9 @@
+### W385 write approval-time path observation (2026-11-10, verified product)
+
+A status callback that retargeted an ancestor directory link after a `write_file` ask was approved could redirect the write to a protected file: the read-only approval observation did not cover write tools, and the terminal-leaf check does not see an ancestor retarget. The Agent now captures `observePermissionPath` for `write_file`, `edit_file` and `notebook_edit` immediately after tool lookup (before PermissionRequest/PreToolUse hooks), recaptures after an authorized input rewrite, and before execution rejects a changed input path, changed landing/spellings or a live deny. The error is `<tool>: write approval changed`.
+
+Validation: `a write ancestor retarget after approval is denied` (protected/real files unchanged); new-file and external-grant writes still publish; read retarget and read_media tests; 18-case driver 18/18; path-leaf/tools/path-approval-binding/agent-cold-history suites; check/build. Identity `95cf23bdc9dfa4cdddbef4c80c0cc676534db55436ba6db211b0ca5565ddd253`; inputs `45f15b93903beb9d9569edc5e7a7c80371b5448c94a0c79924db24de8ac98cea` (1078), validation `eb21e6a1fa71b5ff393a5ecd41ce59ea5ddc8f0337a68104cde26888018eaf7f` (417), build `8b078a9ef6e0c51f6e39ad172a7431c58f12683d351d5ecbdbbd730aff928d20` (746).
+
 ### W385 external ancestor-link create boundary (2026-11-10, diagnosed; design handoff)
 
 The in-workspace ancestor-link create fix does not extend to a granted external directory. For `outside/aliasdir/created.txt` (`aliasdir` → `real` inside `outside`), the write reaches `Session.recordMissingDirectoryBackup`; that method derives `relative = path.relative(grant.root, lexicalPath)` and calls `probeMissingDirectoryFile({fd, relative})`, which walks the symlinked ancestor and refuses it, so the tool reports `write_file: directory backup unavailable` and never publishes. `publishDirectoryFileTransaction` also receives the lexical path.
