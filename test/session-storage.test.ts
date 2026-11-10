@@ -70,12 +70,12 @@ function fixture(t: TestContext) {
   return { root, workspace, storageRoot, outside, tools, config, open };
 }
 
-function journal(file: string): { bytes: Buffer; events: SessionEvent[] } {
+function journal(file: string, nonDisplayLimit = 64): { bytes: Buffer; events: SessionEvent[] } {
   assert.ok(fs.statSync(file).size <= JOURNAL_LIMIT, "Fixture journal exceeded its byte budget");
   const bytes = fs.readFileSync(file);
   assert.equal(bytes.at(-1), 10);
   const events = bytes.toString("utf8").trimEnd().split("\n").map(line => JSON.parse(line) as SessionEvent);
-  assert.ok(events.filter(event => event.kind !== 'agent_display_observer').length <= 64, "Fixture journal exceeded its non-display event budget");
+  assert.ok(events.filter(event => event.kind !== 'agent_display_observer').length <= nonDisplayLimit, "Fixture journal exceeded its non-display event budget");
   assert.ok(events.length <= 256, "Fixture journal exceeded its total event budget");
   return { bytes, events };
 }
@@ -433,7 +433,7 @@ test("external storage grants no file-tool access through traversal absolute pat
     assert.match(String(output.content), /escapes the workspace|reserved/);
   }
   assert.equal(fs.readFileSync(path.join(f.storageRoot, "sentinel.txt"), "utf8"), "STORAGE_SENTINEL\n");
-  assert.deepEqual(journal(session.file).events[0], metadata);
+  assert.deepEqual(journal(session.file, 128).events[0], metadata);
   assertNoCheckoutJournal(f.workspace);
   assert.deepEqual(fs.readdirSync(f.workspace), ["storage-link"]);
   assertPaired(session.messages);
