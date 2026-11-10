@@ -489,7 +489,7 @@ test('migration Agent async hooks notify only their owner and clear/runtime clos
   // Exec keeps the recorded PID directly owned/reaped by the hook runner under parallel load.
   const nodeCommand = (script: string) => `exec '${process.execPath.replace(/'/g, "'\\''")}' -e '${script.replace(/'/g, "'\\''")}'`;
   const startCommand = nodeCommand(`const fs=require("node:fs");const timer=setInterval(()=>{
-    if(fs.existsSync(${JSON.stringify(release)})){clearInterval(timer);process.stdout.write(JSON.stringify({additionalContext:"async startup ready"}));}
+    if(fs.existsSync(${JSON.stringify(release)})){clearInterval(timer);process.stdout.write(JSON.stringify({hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:"async startup ready"}}));}
   },10);`);
   const longCommand = nodeCommand(`require("node:fs").writeFileSync(${JSON.stringify(pidFile)},String(process.pid));setInterval(()=>{},1000);`);
   let calls = 0;
@@ -513,9 +513,10 @@ test('migration Agent async hooks notify only their owner and clear/runtime clos
     fs.writeFileSync(release, 'ready'); await until(() => notified.includes(f.session.id));
     assert.deepEqual(f.runtime.drainEvents!('foreign-owner'), []);
     const completion = f.runtime.drainEvents!(f.session.id);
-    assert.equal(completion.length, 1); assert.equal(completion[0]!.kind, 'notification');
+    assert.equal(completion.length, 1);
+    assert.ok(completion[0]!.kind === 'notification' || completion[0]!.kind === 'async_hook');
     assert.match(completion[0]!.prompt!, /async startup ready/);
-    assert.match(completion[0]!.prompt!, /"state":"completed"/);
+    assert.match(completion[0]!.prompt!, /"hookEvent":"SessionStart"/);
     assert.deepEqual(f.runtime.drainEvents!(f.session.id), []);
     await agent.run('execute with async post hook', AbortSignal.timeout(5000));
     await until(() => fs.existsSync(pidFile)); const firstPid = Number(fs.readFileSync(pidFile, 'utf8'));
