@@ -1,3 +1,7 @@
+### W385 thirty-fifth full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4375 tests, 4368 pass, 0 fail, 0 cancelled, 7 skipped; duration 1054356 ms. Cold matrix 449220 ms. Shell read-block read-rule handling and all prior nested-shell/approval/stash tests pass. Identity `9b3be86743670ead2d878ce23be0aa6f64c0652ad15cefbbd166f3303c33da35`; build `98926d55e51cd105dbd1f4d843cbe1ed2941303dd02d3f7dd77c3b369fb02dc0`.
+
 ### W385 thirty-fourth full-suite checkpoint (2026-11-11, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4375 tests, 4368 pass, 0 fail, 0 cancelled, 7 skipped; duration 1053160 ms. Cold matrix 448516 ms. Shell read-block redirects/`~` expansion and all prior nested-shell/approval/stash tests pass. Identity `565cad4a4d0e86d7276847e9fff97e1aa557f986c6332cd45b055c96e91fd10a`; build `dff09b332be404cbf370246605d21bc4adf18c7751b0ce813a3df32f955b8fa6`.
