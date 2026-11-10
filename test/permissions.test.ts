@@ -339,3 +339,11 @@ test('product shell sampling applies the incomplete declaration reading', () => 
   const bypass = permissionDecision(policy({ mode: 'bypass', allow: [] }), tool('Bash', false), { command: four });
   assert.equal(bypass.decision, 'allow');
 });
+
+test('product nested shell evaluates a denied inner command', () => {
+  const shell = tool('Bash', false);
+  const current = policy({ allow: ['Bash(bash -c:*)'], deny: ['Bash(rm:*)'] });
+  assert.equal(permissionDecision(current, shell, { command: "bash -c 'rm -rf /tmp/x'" }).decision, 'deny');
+  assert.equal(permissionDecision(current, shell, { command: "bash -lc 'rm -rf /tmp/x'" }).decision, 'deny');
+  assert.equal(permissionDecision(current, shell, { command: "bash -c 'printf hi'" }).decision, 'allow');
+});

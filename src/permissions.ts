@@ -475,11 +475,47 @@ function readingRank(decision: PermissionDecision): number {
  * unchanged. A denial is never softened, and `bypass` keeps its meaning rather
  * than turning into an approval prompt.
  */
+/**
+ * The recovered nested-shell policy (`jcn`/`Fcn`, chunk-sfn1dbxq.js UTF-16
+ * [3213895,3215588)/[3243430,3246934)) evaluates a shell script passed to
+ * `bash -c` instead of judging only the outer argv. The host's readings do
+ * not parse that script, so a denied inner command behind an allowed outer
+ * `bash -c` escaped. Re-check direct `bash -c`/`sh -c` scripts with the same
+ * rules before an allow. This is a one-level conservative adaption: only a
+ * nested denial is returned; asks and deeper wrappers remain with the
+ * source-policy package.
+ */
+function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, command: string,
+  session?: SessionPermissionUpdates): PermissionDecision | undefined {
+  let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
+  try { tree = vS().parse(command, undefined); } catch { return undefined; }
+  if (!tree) return undefined;
+  let analysis: ReturnType<typeof E6>;
+  try { analysis = E6(command, tree); } catch { return undefined; }
+  if (analysis.kind !== 'simple') return undefined;
+  for (const entry of analysis.commands) {
+    const argv = entry.argv;
+    if (!Array.isArray(argv) || argv.length < 3) continue;
+    const base = path.basename(argv[0] ?? '');
+    if (!['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(base)) continue;
+    const index = argv.findIndex((arg, position) => position > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(arg));
+    const script = index >= 0 ? argv[index + 1] : undefined;
+    if (script === undefined || script.trim() === '') continue;
+    const nested = decideOnce(policy, tool, withCommand(input, script), session);
+    if (nested.decision === 'deny') {
+      return { decision: 'deny', reason: `Permission to run this command was denied for a nested shell: ${tool.schema.name}` };
+    }
+  }
+  return undefined;
+}
+
 function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, baseline: PermissionDecision,
   session?: SessionPermissionUpdates): PermissionDecision {
   if (baseline.decision === 'deny') return baseline;
   const command = commandInput(tool, input);
   if (command === undefined) return baseline;
+  const nestedDenial = nestedShellDenial(policy, tool, input, command, session);
+  if (nestedDenial !== undefined) return nestedDenial;
   if (!(policy?.inputRules ?? []).some(rule => rule.command !== undefined && matches(rule.tool, tool.schema.name)) &&
       ![...(policy?.allow ?? []), ...(policy?.deny ?? []), ...(policy?.ask ?? []), ...(session?.allow ?? []),
         ...(session?.deny ?? []), ...(session?.ask ?? [])].some(text => {
