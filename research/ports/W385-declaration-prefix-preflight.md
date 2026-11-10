@@ -1,3 +1,21 @@
+### W385 approval-time read path observation (2026-11-10, verified bounded slice)
+
+The retarget driver's runtime-wrapper bypass is addressed at the Agent boundary: for `read_file`, `notebook_read` and `read_media`, the Agent captures `observePermissionPath` from the input path immediately after tool lookup (before PermissionRequest/PreToolUse hooks), recaptures after an authorized input reassignment, and before execution rejects a changed input path, a changed landing/spellings, or a live deny. This covers runtime-wrapped tools because it does not require `isBuiltinReadFile` or the builtin consumer.
+
+Driver: `node scripts/smoke-approval-retarget-cli.mjs` now gets past `read_file` (stable/retarget/direct), `write_file`, `edit_file` and `notebook_read`; it next fails at `notebook_edit/stable` with `File has not been read yet. Read it first before writing to it.` because the fixture never reads the notebook before editing, not because of a retarget. `read_media` is not reached yet. The earlier builtin-consumer experiment remains reverted.
+
+Validation: `path-leaf-permission` + `tools` + `path-approval-binding-source` 66/66; Agent read/notebook/media focused 14 pass with the pre-existing stale external-Edit failure; `agent-cold-history` 75 pass/5 skips; the in-process retarget test passes; check/build pass.
+
+Remaining: the check-to-open window for these tools (no handle binding), `notebook_edit`/`read_media` driver coverage and the driver's read-before-edit precondition. Identity `702e67835cffe32e2d240236eed81c735b2ef8c4791ad01c8994e2133d315d34`; inputs `49fbb100c6cd3557080bb5844f1a5ee39c0dca6486fe965d35c71f8ac1875041` (1078), validation `2325b6156105bd3dfe15aa410450cc045535a249dab2e2fe89b216687146560f` (417), build `b6447fd3de7ac75c25d3e9a7b815775ec9c87dab65e60b9435a5871694fc7aa7` (746).
+
+### W385 retarget CLI driver remains red (2026-11-10, no product change)
+
+`node scripts/smoke-approval-retarget-cli.mjs` (normal mode) on the current build still fails at `read_file/retarget` with `"PROTECTED_FIXTURE"`: the CLI executes runtime-wrapped tools, `isBuiltinReadFile(wrapper)` is false, so the Agent does not create the builtin `AsyncReadHandleConsumer`; the in-process `direct read approval check` test passes, but the production CLI path bypasses it. All six tool retarget cases therefore remain part of the approval-to-use gap.
+
+A follow-up experiment registered runtime read wrappers (`runtimeBuiltinReads`) and reused the consumer with the original tool, then accepted the original `ask` decision. It failed both ways: with allow-only the stable `read_file` case was denied (`read approval changed`); with ask accepted the retarget still returned protected bytes. The experiment was reverted; the worktree is back at checkpoint `96b6931` (identity `4e234baf…`).
+
+Next: capture the approval-time path observation for the runtime wrapper (the `TrustedReadContract.observe` pattern) and compare it at execution, or pass the approved decision into a wrapper-aware consumer; do not treat the builtin-only handle binding as production approval-to-use. The driver is the acceptance gate.
+
 ### W385 full-suite checkpoint (2026-11-10, not green)
 
 `npm test` on the current worktree: 4346 tests, 4129 pass, 208 fail, 2 cancelled, 7 skipped; duration 703279 ms. All new/affected tests pass in this run: generic tool pins, async-hook grant regression, diff deny workspace, tilde/NFD, read approval retarget denial, native PermissionRequest isolation, callback payload isolation, relocated diff denial. The remaining failures concentrate in the pre-existing `agent-lifecycle`/environmental and stale groups already seen individually (external-Edit refusal, mutation directory gates, controlled-handle metadata `cacheKey`/`identity`, checkpoint forward/reverse receipt/native matrices, effort-slider canonical workspace); they are not attributed to this work without a HEAD baseline. No full-green claim is made; targeted suites remain the acceptance basis. This checkpoint changed no file.

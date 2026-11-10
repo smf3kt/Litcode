@@ -13,6 +13,7 @@ import { bindNotificationMessage, type NotificationAuthorization } from './notif
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import { executeAgentTool, isBuiltinReadFile, snapshotBuiltinMutationInput, snapshotToolImplementation, assertToolImplementation, consumeBuiltinWriteExecution, consumeRuntimeWrapperObservation, type BuiltinWriteExecutionAuthorization, type ToolDefinition, type ToolContext } from './tools.js';
 import { createToolContextObserver } from './tool-context-observer.js';
+import { observePermissionPath, type PathPermissionObservation } from './path-permission-observation.js';
 import { wrapperStartDigest, type RuntimeWrapperEvent } from './runtime-wrapper-observer.js';
 import { ToolCancellation } from './tool-cancellation.js';
 import { AsyncReadHandleConsumer, PathApprovalCallOwner, type PathApprovalCall } from './path-approval-call-owner.js';
@@ -1296,10 +1297,18 @@ export class Agent {
         if (signal.aborted) retireOnAbort();
         let failed = true;
         let readHandleConsumer: AsyncReadHandleConsumer | undefined;
+        let readApproval: { path: string; observation: PathPermissionObservation } | undefined;
         try {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
           const implementation = snapshotToolImplementation(tool);
+          const readPath = (tool.schema.name === 'read_file' || tool.schema.name === 'notebook_read' || tool.schema.name === 'read_media') &&
+            typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
+            ? (input as { path: string }).path : undefined;
+          if (readPath !== undefined) {
+            try { readApproval = { path: readPath, observation: observePermissionPath(c.workspace, readPath) }; }
+            catch { readApproval = undefined; }
+          }
           readHandleConsumer = tool.schema.name === 'read_file' && isBuiltinReadFile(tool)
             ? new AsyncReadHandleConsumer(pathApprovalCall, tool, c.workspace, signal,
               () => this.session.config.permissions, () => this.session.permissionUpdates)
@@ -1308,6 +1317,8 @@ export class Agent {
           if (authorization.outcome) callOutcome = authorization.outcome;
           let shellHome = authorization.shellHome;
           input = authorization.input;
+          if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+            readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
           if (authorization.retry === true) callRetryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
           // Source m_t/_Wo (sfn1dbxq [504681,505531), [2237279,2239655), UTF-16):
@@ -1348,6 +1359,8 @@ export class Agent {
             if (updated.outcome) callOutcome = updated.outcome;
             shellHome = updated.shellHome;
             input = updated.input;
+            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+              readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
             if (updated.retry === true) callRetryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
           }
@@ -1355,6 +1368,8 @@ export class Agent {
             (this.permissionState().mode === 'auto' || this.permissionState().autoDuringPlan)) {
             const finalAuthorization = await this.authorize(tool, input, signal, identity, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer', false, classifierMessages);
             input = finalAuthorization.input;
+            if (readApproval && typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string')
+              readApproval = { path: (input as { path: string }).path, observation: observePermissionPath(c.workspace, (input as { path: string }).path) };
             shellHome = finalAuthorization.shellHome;
             if (finalAuthorization.outcome) callOutcome = finalAuthorization.outcome;
             if (finalAuthorization.retry) callRetryMeta = true;
@@ -1440,6 +1455,18 @@ export class Agent {
           this.display('progress', {kind:'phase', mode:'tool-use'});
           const startedAt = Date.now();
           try {
+            if (readApproval) {
+              const currentPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
+                ? (input as { path: string }).path : undefined;
+              if (currentPath !== readApproval.path) throw new Error(`${tool.schema.name}: read input changed`);
+              const current = observePermissionPath(c.workspace, readApproval.path);
+              if (current.unresolved || readApproval.observation.unresolved ||
+                  current.landing !== readApproval.observation.landing ||
+                  JSON.stringify(current.spellings) !== JSON.stringify(readApproval.observation.spellings))
+                throw new Error(`${tool.schema.name}: read approval changed`);
+              if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates, c.workspace).decision === 'deny')
+                throw new Error(`${tool.schema.name}: read approval changed`);
+            }
             result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
               runtimeStart && (authorization => runtimeStart.observe(authorization, executionContext)),
               { forTool: (selected, context) => this.#wrapperObserver(selected, input, context, parentMessageId, call.id) },
