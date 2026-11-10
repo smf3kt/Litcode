@@ -2265,8 +2265,9 @@ test('fork skill does not write a replacement directory through an earlier appro
   }
 });
 
-test('external Edit and NotebookEdit refuse before pathname reads or effects', async () => {
-  const observed = [], owners: { root: string; id: string }[] = [];
+test('external Edit publishes a stable grant and refuses changed grants', async () => {
+  const observed: { name: 'edit_file' | 'notebook_edit'; transition: 'stable' | 'revoke' | 'replace'; error: boolean }[] = [];
+  const owners: { root: string; id: string }[] = [];
   for (const name of ['edit_file', 'notebook_edit'] as const) for (const transition of ['stable', 'revoke', 'replace'] as const) {
     const root = workspace(), outside = workspace(), moved = `${outside}-original`, tools = [...createTools(), ...createNotebookTools()];
     roots.push(moved);
@@ -2279,55 +2280,50 @@ test('external Edit and NotebookEdit refuse before pathname reads or effects', a
       ...(transition === 'replace' ? [{ type: 'addRules' as const, behavior: 'ask' as const, destination: 'session' as const, rules: [{ toolName: name }] }] : [])]);
     const tool = tools.find(tool => tool.schema.name === name)!;
     const execute = tool.execute;
-    let reads = 0, history = 0, effects = 0, prompts = 0;
+    let effects = 0;
     tool.execute = (input, context) => execute(input, { ...context,
-      fileHistory: file => { history++; context.fileHistory?.(file); },
       hostResult: effect => { effects++; context.hostResult?.(effect); } });
-    const read = fs.promises.readFile, readSync = fs.readFileSync;
-    const afterRead = (file: unknown) => {
-      if (file !== target) return;
-      reads++;
-      if (transition === 'revoke') session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
-    };
-    Object.defineProperty(fs.promises, 'readFile', { configurable: true, writable: true, value: async (...args: unknown[]) => {
-      const value = await Reflect.apply(read, fs.promises, args); afterRead(args[0]); return value;
-    } });
-    Object.defineProperty(fs, 'readFileSync', { configurable: true, writable: true, value: (...args: unknown[]) => {
-      const value = Reflect.apply(readSync, fs, args); afterRead(args[0]); return value;
-    } });
     try {
       const input = name === 'edit_file' ? { path: target, old_string: 'ORIGINAL_EXTERNAL_VALUE', new_string: 'EDIT_MARKER' }
         : { path: target, cell_id: 'fixture', new_source: 'EDIT_MARKER' };
-      await new Agent(session, new ScriptedProvider([response([call('external-edit', name, input)], 'tool_use'), done()]), tools, {
+      const calls = name === 'edit_file' ? [call('external-edit', name, input)]
+        : [call('external-read', 'notebook_read', { path: target }), call('external-edit', name, input)];
+      let prompts = 0;
+      await new Agent(session, new ScriptedProvider([response(calls, 'tool_use'), done()]), tools, {
         permissionPrompt: 'interactive', permission: async () => {
-          prompts++; fs.renameSync(outside, moved); fs.mkdirSync(outside); fs.writeFileSync(target, original);
+          prompts++;
+          fs.renameSync(outside, moved); fs.mkdirSync(outside); fs.writeFileSync(target, original);
           return true;
         },
+        status: message => {
+          if (transition === 'revoke' && message === `tool: ${name}`)
+            session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+        },
       }).run('edit external fixture');
-    } finally {
-      Object.defineProperty(fs.promises, 'readFile', { configurable: true, writable: true, value: read });
-      Object.defineProperty(fs, 'readFileSync', { configurable: true, writable: true, value: readSync });
-    }
-    try {
-      const result = resultBatches(session)[0]?.[0];
-      observed.push({ name, transition, error: result?.is_error === true, reads, history, effects,
-        cache: session.fileReadCache.size,
-        unchanged: fs.readFileSync(target, 'utf8') === original,
-        originalUnchanged: transition !== 'replace' || fs.readFileSync(path.join(moved, path.basename(target)), 'utf8') === original });
-      assert.equal(prompts, transition === 'replace' ? 1 : 0);
-      assert.match(JSON.stringify(result), /edits through additional directory grants are not implemented/);
+      const result = resultBatches(session)[0]?.find(block => block.tool_use_id === 'external-edit');
+      const error = result?.is_error === true;
+      assert.equal(prompts, transition === 'replace' ? 1 : 0, `${name}/${transition} prompts`);
+      if (transition === 'stable') {
+        assert.equal(error, false, `${name}/stable: ${JSON.stringify(result)}`);
+        assert.match(fs.readFileSync(target, 'utf8'), /EDIT_MARKER/);
+        assert.equal(effects, 1, `${name}/stable effect`);
+      } else {
+        assert.equal(error, true, `${name}/${transition}: ${JSON.stringify(result)}`);
+        assert.equal(fs.readFileSync(target, 'utf8'), original, `${name}/${transition} target`);
+        if (transition === 'replace') assert.equal(fs.readFileSync(path.join(moved, path.basename(target)), 'utf8'), original);
+        assert.equal(effects, 0, `${name}/${transition} effect`);
+      }
+      observed.push({ name, transition, error });
       owners.push({ root, id: session.id });
     } finally { await session.close(); }
   }
-  assert.deepEqual(observed, ['edit_file', 'notebook_edit'].flatMap(name => ['stable', 'revoke', 'replace'].map(transition =>
-    ({ name, transition, error: true, reads: 0, history: 0, effects: 0, cache: 0, unchanged: true, originalUnchanged: true }))));
   const reader = `import {Session} from './src/session.ts'; const results=[]; for(const {root,id} of JSON.parse(process.argv[1])) {
     const s=Session.open(root,{id}); const row=s.events.find(e=>e.kind==='tool_result'&&e.result.tool_use_id==='external-edit');
-    results.push({error:row?.result.is_error===true,success:s.events.some(e=>e.kind==='tool_effect'&&e.result.tool_use_id==='external-edit'&&!e.result.is_error),history:s.events.some(e=>e.kind==='file_history'),cache:s.fileReadCache.size});await s.close();}
+    results.push({error:row?.result.is_error===true,success:s.events.some(e=>e.kind==='tool_effect'&&e.result.tool_use_id==='external-edit'&&!e.result.is_error),history:s.events.some(e=>e.kind==='file_history')});await s.close();}
     process.stdout.write(JSON.stringify(results));`;
   for (let i = 0; i < 2; i++) assert.deepEqual(JSON.parse(execFileSync(process.execPath,
     ['--import', 'tsx', '--input-type=module', '-e', reader, JSON.stringify(owners)], { encoding: 'utf8' })),
-    owners.map(() => ({ error: true, success: false, history: false, cache: 0 })));
+    observed.map(row => ({ error: row.error, success: row.transition === 'stable', history: false })));
 });
 
 test('mutation directory gates preserve workspace and owned-plan edits', async () => {
