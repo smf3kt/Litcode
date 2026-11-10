@@ -1,3 +1,7 @@
+### W385 thirty-second full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4367 pass, 0 fail, 0 cancelled, 7 skipped; duration 1051334 ms. Cold matrix 449298 ms. Nested shell depth overflow, wrapper/deep/inner-prefix sampling and all prior approval/stash tests pass. Identity `3a2d3f5d0962cb37a6ee173efa5f68c89cd6fb3309737b6a141cb2ac6ddfb678`; build `4b7607333278f7454490c39d9c2f454bc505d61d0987278fb99c26e06e10a134`.
+
 ### W385 thirty-first full-suite checkpoint (2026-11-11, one known flake)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4366 pass, 1 fail, 0 cancelled, 7 skipped; duration 1049017 ms. The single failure is the known `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which has passed alone in prior runs. Cold matrix 449854 ms. Inner nested declaration-prefix sampling and all prior shell/approval/stash tests are otherwise validated. Identity `3a2d3f5d0962cb37a6ee173efa5f68c89cd6fb3309737b6a141cb2ac6ddfb678`; build `4b7607333278f7454490c39d9c2f454bc505d61d0987278fb99c26e06e10a134`.
