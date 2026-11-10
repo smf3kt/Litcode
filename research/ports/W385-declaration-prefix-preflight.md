@@ -1,3 +1,7 @@
+### W385 peer file consumer inspection (2026-11-10, verified bounded slice; no product change)
+
+`send_peer_files` does not rely on a stale pre-approval: it validates the raw path, then for each file resolves through `confineResolved`, re-runs `permissionDecision` on the resolved path with `context.workspace`, and stages the copy through `stageLocalPeerFile`/`readPeerFileBounded`, which opens with `O_NOFOLLOW` and verifies the resolved dev/ino identity on the opened handle. A retarget between the resolved permission check and the read is therefore rejected by the identity check. `test/local-peer-files.test.ts` passes 3/3. Skill result-file reads use `read_file`, already covered by the approval-time observation and landing check. No product change; only platform coverage and consumers outside these paths remain.
+
 ### W385 approval-to-use retarget driver green (2026-11-10, verified acceptance)
 
 `node scripts/smoke-approval-retarget-cli.mjs` (driver SHA-256 `3104477d6a810e342ad7bd03632286687015f605613c6d84c6ca2cd8fc0cb75c`) now completes 18/18 rows: six tools × `stable`/`retarget`/`direct`, stable allowed, retarget and direct denied, two model calls per case, protected and public fixtures unchanged. The tools are `read_file`, `write_file`, `edit_file`, `notebook_read`, `notebook_edit` and `read_media`, through the real inline CLI.
@@ -8,7 +12,7 @@ Post-resolution landing check: `ToolContext.readApproval` carries the approved l
 
 Identity `fddaa69fb2e1c88fe60621346e224182d3d7d778ab2c0a602d11fc7f00886e73`; inputs `e948307656216ad83beb9c04053eef9fd05ebd1b8ac127bdf3b1a28d986a7ba3` (1078), validation `d04f27a91cf8cac45872bb65d27915ea62de1c2c6cbe02ba48375b530aab329e` (417), build `a192236f0a6223e3c332053c59e5f8cdd792ccc8ac38b5e9a1fc38b6d350ff5c` (746).
 
-Remaining: peer/skill result-file consumers and platform coverage (the five read/search tools now bind approval to resolution). This supersedes the read portion of the earlier "retarget CLI driver remains red" entry; the driver is the acceptance gate and is green.
+Remaining: platform coverage and consumers outside the five read/search tools, `read_file` skill-result paths and the inspected peer-file sender. This supersedes the read portion of the earlier "retarget CLI driver remains red" entry; the driver is the acceptance gate and is green.
 
 ### W385 approval-time read path observation (2026-11-10, verified bounded slice)
 
