@@ -140,16 +140,20 @@ test('CLI demo persists paired results and resumes a saved final response offlin
     } finally { session.close(); }
     const journal = path.join(workspace, '.agent', `${id}.jsonl`);
     const lines = fs.readFileSync(journal, 'utf8').trimEnd().split('\n');
-    assert.equal(JSON.parse(lines.at(-1)!).kind, 'turn_end');
+    const parsed = lines.map(line => JSON.parse(line));
+    const turnEnd = parsed.findLastIndex(event => event.kind === 'turn_end');
+    assert.ok(turnEnd >= 0);
+    assert.ok(parsed.slice(turnEnd + 1).every(event => event.kind === 'agent_display_observer'));
     assert.doesNotMatch(lines.join('\n'), /offline-fixture-key/);
     // Model response committed, process interrupted before the turn-end record.
-    fs.writeFileSync(journal, lines.slice(0, -1).join('\n') + '\n');
+    fs.writeFileSync(journal, lines.slice(0, turnEnd).join('\n') + '\n');
     const resumed = invoke(['--workspace', workspace, '--resume', id, '--continue'], 'offline-fixture-key');
     assert.equal(resumed.status, 0, resumed.stderr);
     assert.match(resumed.stderr, /model calls: 0/);
     assert.match(resumed.stdout, /Offline demo passed/);
     const resumedJournal = fs.readFileSync(journal, 'utf8');
-    assert.equal(JSON.parse(resumedJournal.trimEnd().split('\n').at(-1)!).kind, 'turn_end');
+    const resumedRows = resumedJournal.trimEnd().split('\n').map(line => JSON.parse(line));
+    assert.equal(resumedRows.filter(event => event.kind !== 'agent_display_observer').at(-1)?.kind, 'turn_end');
     assert.doesNotMatch(resumedJournal, /offline-fixture-key/);
   } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
 });
