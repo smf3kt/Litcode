@@ -2998,6 +2998,7 @@ test('fork descendants retain verified historical checkpoint witnesses', { timeo
     parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
     await new Agent(parent, new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: false }),
       call('track-missing', 'write_file', { path: missing, content: 'BLOCKED' })], 'tool_use'), done()]), tools).run('track external paths');
+    fs.rmSync(missing, { force: true });
     const captured = await checkpointConversationWithDirectoryWitness(parent, 'history-before-late', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     const original = inspectDirectoryCheckpointWitness(parent, 'history-before-late'); assert.equal(original.kind, 'available');
