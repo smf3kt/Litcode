@@ -1,3 +1,7 @@
+### W385 twenty-ninth full-suite checkpoint (2026-11-10, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4367 pass, 0 fail, 0 cancelled, 7 skipped; duration 1038998 ms. Cold matrix 450554 ms. The nested `bash -c` denial adaption and declaration-prefix sampling refinement pass, plus all prior approval/stash/write/leaf tests. Identity `b3cbb3278fdd7b7a250ef658dce2952251b8fb748927210336471dee5af71af4`; build `fcabc754c55bb0ed63aea2a2546c81fe331a883239d0b2255254f929256ac975`.
+
 ### W385 nested `bash -c` denial (2026-11-10, verified product)
 
 The observed host miss allowed `bash -c 'rm -rf /tmp/x'` when `Bash(bash -c:*)` was allowed and `Bash(rm:*)` denied. `applyShellReadings` now calls `nestedShellDenial` before its early rule gate: it parses the outer command with `E6`/`vS`, finds a direct shell argv (`bash`/`sh`/`zsh`/`dash`/`ksh`) with a `-c`-containing flag, and re-checks the script with `decideOnce`. Any nested deny returns a deny; asks are left to the baseline.
