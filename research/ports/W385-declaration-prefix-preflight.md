@@ -1,3 +1,7 @@
+### W385 fortieth full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4380 tests, 4373 pass, 0 fail, 0 cancelled, 7 skipped; duration 1054572 ms. Cold matrix 449584 ms. Realpath/symlink identity in the shell read block and all prior nested-shell/approval/stash tests pass. Identity `ac18b52798eecd4794c514fa33e96c1399497491d4e322bfa799466dc84eb08e`; build `78383020d768f8ae830910b683c5d451b61b89b2b8c6048f5fea8b78ff54cbdd`.
+
 ### W385 thirty-ninth full-suite checkpoint (2026-11-11, one known flake)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4379 tests, 4371 pass, 1 fail, 0 cancelled, 7 skipped; duration 1054245 ms. The single failure is the known `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which has passed alone in prior runs. Cold matrix 449173 ms. Pattern-first shell read-block checks and all prior tests are otherwise validated. Identity `f3ba3cc776d1d10f4a5433041fed05a12c4b9b972b54c328fdbcba58921321d4`; build `f86de6221f08b78c9b0ad092b8002bae46880245b41d3b25bd368690809e0331`.
