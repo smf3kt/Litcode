@@ -1,3 +1,7 @@
+### W385 path-observation callback item resolved (2026-11-10, verified contract)
+
+Todo #137 is marked resolved. The withdrawn shared path-observation callback is replaced by the per-call `PathApprovalCall`/source stash plus approval-time observation/landing and the approved-ask read consumer. Production uses this Agent boundary, so there is no shared mutable observation, closure input mutation or rewritten denial priority. Controlled-handle pipe scope, stalled-read cancellation and source decoding remain handle-reader boundaries tracked under #138.
+
 ### W385 twenty-sixth full-suite checkpoint (2026-11-10, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4372 tests, 4365 pass, 0 fail, 0 cancelled, 7 skipped; duration 1083962 ms. Cold matrix 448837 ms. External ancestor Write/Edit/notebook read+edit and history pass, plus all prior approval/stash/leaf tests. Identity `c3d6e29d740dbb7eb6b5965b319e4634cd320ad3004c933576ef25becbbca632`; build `4c446210204c7ac0a93975313dc52cf8f102d0530d1e18c6af955a73c07b4bb5`.
