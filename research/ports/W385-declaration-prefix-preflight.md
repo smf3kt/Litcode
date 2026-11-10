@@ -6,7 +6,9 @@ Driver: `node scripts/smoke-approval-retarget-cli.mjs` now gets past `read_file`
 
 Validation: `path-leaf-permission` + `tools` + `path-approval-binding-source` 66/66; Agent read/notebook/media focused 14 pass with the pre-existing stale external-Edit failure; `agent-cold-history` 75 pass/5 skips; the in-process retarget test passes; check/build pass.
 
-Remaining: the check-to-open window for these tools (no handle binding), `notebook_edit`/`read_media` driver coverage and the driver's read-before-edit precondition. Identity `702e67835cffe32e2d240236eed81c735b2ef8c4791ad01c8994e2133d315d34`; inputs `49fbb100c6cd3557080bb5844f1a5ee39c0dca6486fe965d35c71f8ac1875041` (1078), validation `2325b6156105bd3dfe15aa410450cc045535a249dab2e2fe89b216687146560f` (417), build `b6447fd3de7ac75c25d3e9a7b815775ec9c87dab65e60b9435a5871694fc7aa7` (746).
+`read_media` retargeting is additionally covered by an in-process Agent regression (`read_media approval observation rejects status-callback retargeting`): a status callback retargets `alias.png` from public to protected, and the execution check returns `read_media: read approval changed` without exposing protected bytes. The driver still stops at the `notebook_edit/stable` read-before-edit precondition before reaching `read_media`.
+
+Remaining: the check-to-open window for these tools (no handle binding), `notebook_edit` driver coverage/priming and the driver's read-before-edit precondition. Identity `702e67835cffe32e2d240236eed81c735b2ef8c4791ad01c8994e2133d315d34`; inputs `49fbb100c6cd3557080bb5844f1a5ee39c0dca6486fe965d35c71f8ac1875041` (1078), validation `2325b6156105bd3dfe15aa410450cc045535a249dab2e2fe89b216687146560f` (417), build `b6447fd3de7ac75c25d3e9a7b815775ec9c87dab65e60b9435a5871694fc7aa7` (746).
 
 ### W385 retarget CLI driver remains red (2026-11-10, no product change)
 

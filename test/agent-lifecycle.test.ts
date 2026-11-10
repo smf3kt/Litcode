@@ -9130,6 +9130,34 @@ test('direct read approval check rejects link retargeting in the status callback
   } finally { session.close(); }
 });
 
+test('read_media approval observation rejects status-callback retargeting', async () => {
+  const root = workspace(), tools = createMediaTools();
+  const media = tools.find(tool => tool.schema.name === 'read_media')!;
+  const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==', 'base64');
+  fs.writeFileSync(path.join(root, 'public.png'), image);
+  fs.writeFileSync(path.join(root, 'protected.png'), Buffer.concat([image, Buffer.from('PROTECTED_FIXTURE')]));
+  fs.symlinkSync('public.png', path.join(root, 'alias.png'));
+  const session = Session.open(root, { config: config(root, [media], { permissions: { mode: 'ask', allow: [], deny: [] } }) });
+  const provider = new ScriptedProvider([response([call('media', 'read_media', { path: 'alias.png' })], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(session, provider, [media], {
+      permission: async () => true,
+      status: message => {
+        if (message === 'tool: read_media') {
+          fs.unlinkSync(path.join(root, 'alias.png'));
+          fs.symlinkSync('protected.png', path.join(root, 'alias.png'));
+          retargeted = true;
+        }
+      },
+    }).run('read media fixture');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true);
+    assert.match(String(result?.content), /read_media: read approval changed/);
+  } finally { session.close(); }
+});
+
 test('PreToolUse callback cannot change the authorized file through its event input', async () => {
   for (const scenario of ['stable', 'mutate', 'explicit-rewrite', 'direct-deny'] as const) {
     const root = workspace();
