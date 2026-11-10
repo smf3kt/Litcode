@@ -1073,3 +1073,39 @@ test("read_media refuses a landing changed after approval", async () => {
   }), /read_media: read approval changed/);
   assert.equal(retargeted, true);
 });
+
+test("list_files refuses a landing changed after approval", async () => {
+  const root = tmpDir();
+  fs.mkdirSync(path.join(root, "public")); fs.mkdirSync(path.join(root, "protected"));
+  fs.writeFileSync(path.join(root, "public", "file.txt"), "PUBLIC");
+  fs.writeFileSync(path.join(root, "protected", "file.txt"), "PROTECTED");
+  fs.symlinkSync("public", path.join(root, "alias"));
+  const landing = fs.realpathSync(path.join(root, "public"));
+  let retargeted = false;
+  await assert.rejects(tool("list_files").execute({ path: "alias" }, {
+    ...makeContext(root), readApproval: { landing, spellings: [landing] },
+    workingDirectories: () => {
+      if (!retargeted) { retargeted = true; fs.unlinkSync(path.join(root, "alias")); fs.symlinkSync("protected", path.join(root, "alias")); }
+      return [];
+    },
+  }), /list_files: read approval changed/);
+  assert.equal(retargeted, true);
+});
+
+test("search refuses a landing changed after approval", async () => {
+  const root = tmpDir();
+  fs.mkdirSync(path.join(root, "public")); fs.mkdirSync(path.join(root, "protected"));
+  fs.writeFileSync(path.join(root, "public", "file.txt"), "PUBLIC");
+  fs.writeFileSync(path.join(root, "protected", "file.txt"), "PROTECTED");
+  fs.symlinkSync("public", path.join(root, "alias"));
+  const landing = fs.realpathSync(path.join(root, "public"));
+  let retargeted = false;
+  await assert.rejects(tool("search").execute({ pattern: "PUBLIC", path: "alias" }, {
+    ...makeContext(root), readApproval: { landing, spellings: [landing] },
+    workingDirectories: () => {
+      if (!retargeted) { retargeted = true; fs.unlinkSync(path.join(root, "alias")); fs.symlinkSync("protected", path.join(root, "alias")); }
+      return [];
+    },
+  }), /search: read approval changed/);
+  assert.equal(retargeted, true);
+});

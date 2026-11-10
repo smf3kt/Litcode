@@ -1302,9 +1302,11 @@ export class Agent {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
           const implementation = snapshotToolImplementation(tool);
-          const readPath = (tool.schema.name === 'read_file' || tool.schema.name === 'notebook_read' || tool.schema.name === 'read_media') &&
-            typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
+          const readPathTool = tool.schema.name === 'read_file' || tool.schema.name === 'notebook_read' ||
+            tool.schema.name === 'read_media' || tool.schema.name === 'search' || tool.schema.name === 'list_files';
+          const inputPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
             ? (input as { path: string }).path : undefined;
+          const readPath = readPathTool ? (inputPath ?? (tool.schema.name === 'search' || tool.schema.name === 'list_files' ? '.' : undefined)) : undefined;
           if (readPath !== undefined) {
             try { readApproval = { path: readPath, observation: observePermissionPath(c.workspace, readPath) }; }
             catch { readApproval = undefined; }
@@ -1458,8 +1460,9 @@ export class Agent {
           const startedAt = Date.now();
           try {
             if (readApproval) {
-              const currentPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
+              const currentInputPath = typeof input === 'object' && input !== null && typeof (input as { path?: unknown }).path === 'string'
                 ? (input as { path: string }).path : undefined;
+              const currentPath = currentInputPath ?? (tool.schema.name === 'search' || tool.schema.name === 'list_files' ? '.' : undefined);
               if (currentPath !== readApproval.path) throw new Error(`${tool.schema.name}: read input changed`);
               const current = observePermissionPath(c.workspace, readApproval.path);
               if (current.unresolved || readApproval.observation.unresolved ||

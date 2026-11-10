@@ -1503,6 +1503,8 @@ function listFilesTool(): ToolDefinition {
       const { path: userPath = ".", glob, limit = LIST_DEFAULT_LIMIT } = listFilesSchema.parse(input);
       const root = workspaceReal(context.workspace);
       const real = confine(root, userPath, true, context.workingDirectories?.(true));
+      if (context.readApproval && real !== context.readApproval.landing)
+        throw new Error('list_files: read approval changed');
       const relTarget = path.relative(root, real) || ".";
       const args = ["--files", "--color=never", "--hidden"];
       if (glob) args.push("--glob", glob);
@@ -1593,6 +1595,8 @@ function searchTool(): ToolDefinition {
       } = searchSchema.parse(input);
       const root = workspaceReal(context.workspace);
       const real = confine(root, userPath, true, context.workingDirectories?.(true));
+      if (context.readApproval && real !== context.readApproval.landing)
+        throw new Error('search: read approval changed');
       const relTarget = path.relative(root, real) || ".";
       const args = ["--no-heading", "--color=never", "-n", "--hidden"];
       // `-e` always marks the pattern, even in literal mode, so a pattern that
