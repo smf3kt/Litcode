@@ -143,7 +143,7 @@ test('standalone slider owns arrows and acceptance, retains the draft and releas
 });
 
 test('request effort honors concrete and auto overrides while preserving the chosen session level', async () => {
-  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'effort-wire-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'effort-wire-')));
   const config = defaultConfig(root, []); config.model = 'fixture'; config.effort = 'low';
   const session = Session.open(root, { config });
   const seen: ModelRequest[] = [];
