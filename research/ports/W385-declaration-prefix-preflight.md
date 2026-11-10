@@ -1,3 +1,7 @@
+### W385 twenty-second full-suite checkpoint (2026-11-10, load flakes)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4369 tests, 4358 pass, 4 fail, 0 cancelled, 7 skipped; duration 1053980 ms. The failures are checkpoint/rewind flakes under load: `a killed checkpoint intent cannot claim another Session's same-name manifest`, `crashed replacement rejects missing or altered intent...`, `directory backup survives independent writer death at ordered persistence barriers`, and `rewind existing` (`Unexpected end of JSON input`). The first three pass alone (416/416 patterns); external ancestor publication is otherwise validated. Cold matrix 453500 ms.
+
 ### W385 twenty-first full-suite checkpoint (2026-11-10, one known flake)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4368 tests, 4360 pass, 1 fail, 0 cancelled, 7 skipped; duration 1040500 ms. The single failure is `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which passes when rerun alone. Live cold matrix 451854 ms.
