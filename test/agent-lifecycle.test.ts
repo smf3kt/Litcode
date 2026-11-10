@@ -9431,6 +9431,24 @@ test('a new file through an ancestor directory symlink is allowed inside the wor
   } finally { session.close(); }
 });
 
+test('an external write creates through an ancestor link inside its grant', async () => {
+  const root = workspace(), outside = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(outside, 'real'));
+  fs.symlinkSync('real', path.join(outside, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+  const target = path.join(outside, 'aliasdir', 'created.txt');
+  const provider = new ScriptedProvider([response([call('external-ancestor-write', 'write_file',
+    { path: target, content: 'EXTERNAL_ANCESTOR_OK' })], 'tool_use'), done()]);
+  try {
+    await new Agent(session, provider, tools).run('write through the granted ancestor link');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(result?.is_error, undefined, JSON.stringify(result));
+    assert.equal(fs.readFileSync(path.join(outside, 'real', 'created.txt'), 'utf8'), 'EXTERNAL_ANCESTOR_OK');
+    assert.equal(fs.lstatSync(path.join(outside, 'aliasdir')).isSymbolicLink(), true);
+  } finally { session.close(); }
+});
+
 test('a fork inherits an external directory grant and revokes it independently', async () => {
   const root = workspace(), outside = workspace(), tools = createTools();
   fs.mkdirSync(outside, { recursive: true });

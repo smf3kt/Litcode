@@ -1,3 +1,9 @@
+### W385 external ancestor-link create (2026-11-10, verified product)
+
+A granted external directory can create a new file through an ancestor directory symlink inside the grant. `outside/aliasdir/created.txt` with `aliasdir` → `real` previously failed `write_file: directory backup unavailable` because the missing-backup probe and native publication used the lexical relative path. `Session.recordMissingDirectoryBackup` and `publishDirectoryFileTransaction` now accept an optional resolved grant-relative path; the write tool passes `path.relative(grant.root, resolvedLanding)` when it differs from the lexical relative, while `lexicalPath` remains the policy/witness identity. The missing witness parent and native publication use the resolved path.
+
+Validation: the new external-ancestor test (file lands in `real/created.txt`, alias remains), external Write/fork/notebook tests, cold-history suite, 18-case driver, check/build. Existing external targets through an ancestor link still use the lexical relative backup path and remain a separate boundary.
+
 ### W385 twentieth full-suite checkpoint (2026-11-10, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4367 tests, 4360 pass, 0 fail, 0 cancelled, 7 skipped; duration 1069459 ms. The source-stash write lane is recorded by the Agent and consumed by the builtin writers; the PermissionRequest deny/interrupt path is preserved. Cold mixed matrix 464933 ms. Identity `1d6f659dfe56bb9d9e3bb15223eaa6c08b3908e7016b34d2d1a1ddef377cc27e`; build `d15fa40268264355b2749b9687757a6144131954b2818a4983c811929c2fbb38`.

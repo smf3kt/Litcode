@@ -1843,10 +1843,10 @@ export class Session {
   // Fet/T$n, sfn1dbxq [4731316,4732048)/[4739060,4739632), UTF-16;
   // the host records a pinned-parent witness instead of a pathname null backup.
   recordMissingDirectoryBackup(input: { id: string; toolUseId: string; lexicalPath: string; grant: DirectoryReadHandle;
-    value: unknown; signal: AbortSignal }): boolean {
+    value: unknown; signal: AbortSignal; resolvedRelative?: string }): boolean {
     const assertOwner = () => this.assertDirectorySnapshotOwner(input.signal, input.grant);
     assertOwner();
-    const relative = path.relative(input.grant.root, input.lexicalPath);
+    const relative = input.resolvedRelative ?? path.relative(input.grant.root, input.lexicalPath);
     const messageContext = this.directoryBackupMessageContext(input.toolUseId, this.events.length);
     const writeInput = describeDirectoryWriteInput(this, input.value);
     const start = this.events.findLast(row => row.kind === 'tool_start' && row.id === input.toolUseId);
@@ -2776,7 +2776,7 @@ export class Session {
   // and f606a53w [7111,7501)/[12501,15618), UTF-16. The source has no owner-bound receipt.
   publishDirectoryFileTransaction(input: { toolUseId: string; backupId: string; grant: DirectoryReadHandle; lexicalPath: string;
     content: Uint8Array; signal: AbortSignal; authorizationSignal: AbortSignal; approvalCall: PathApprovalCall;
-    authorization?: DirectoryPublicationAuthorization; strategy?: 'retained' }): DirectoryPublication | DirectoryRetainedPublication {
+    authorization?: DirectoryPublicationAuthorization; strategy?: 'retained'; resolvedRelative?: string }): DirectoryPublication | DirectoryRetainedPublication {
     if (input.strategy !== undefined && input.strategy !== 'retained') throw new Error('Directory publication strategy invalid');
     const content = Buffer.from(input.content);
     const contentWitness = { bytes: content.length, sha256: createHash('sha256').update(content).digest('hex') };
@@ -2823,7 +2823,7 @@ export class Session {
       ('kind' in expected ? entry.reference.kind === 'missing' && JSON.stringify(entry.reference.parent) === JSON.stringify(expected.parent)
         : entry.reference.kind === 'present')))
       throw new Error('Directory publication snapshot unavailable');
-    const relative = path.relative(input.grant.root, input.lexicalPath);
+    const relative = input.resolvedRelative ?? path.relative(input.grant.root, input.lexicalPath);
     const id = randomUUID(), intent = directoryPublicationIntentSchema.parse({ kind: 'directory_publication_intent', id, owner: this.id,
       toolUseId: input.toolUseId, messageContext, lexicalPath: input.lexicalPath, grant: witness.grant, backupId: input.backupId,
       expected, content: contentWitness, ...('kind' in expected ? { overwrite: authorization.overwrite } : {}),

@@ -1771,6 +1771,7 @@ function writeFileTool(): ToolDefinition {
         const grant = directories?.filter(directory => isWithin(directory, requested)).sort((a, b) => b.length - a.length)[0];
         const owned = grant && directories?.readHandle?.(grant);
         const relative = owned && path.relative(owned.root, requested);
+        const resolvedRelative = owned && path.relative(owned.root, real);
         if (context.session && context.toolUseId && owned && owned.owner === context.session.id && relative &&
             relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) {
           context.readGrantSignal?.(owned.signal);
@@ -1781,7 +1782,8 @@ function writeFileTool(): ToolDefinition {
           try {
             signal.throwIfAborted();
             missing = context.session.recordMissingDirectoryBackup({ id, toolUseId: context.toolUseId, lexicalPath: requested,
-              grant: owned, value: { path: userPath, content, overwrite }, signal });
+              grant: owned, value: { path: userPath, content, overwrite }, signal,
+              ...(resolvedRelative && resolvedRelative !== relative ? { resolvedRelative } : {}) });
             if (!missing) {
               await captureDirectoryBackup(context.session, context.toolUseId, owned, requested, relative, id, signal);
             }
@@ -1811,7 +1813,8 @@ function writeFileTool(): ToolDefinition {
             const publication = context.session.publishDirectoryFileTransaction({ toolUseId: context.toolUseId, backupId: id,
               grant: owned, lexicalPath: requested, content: Buffer.from(content, 'utf8'), signal: context.signal,
               authorizationSignal: context.authorizationIdentity.signal, approvalCall: context.pathApprovalCall,
-              authorization: context.directoryPublicationAuthorization, ...(missing ? {} : { strategy: 'retained' }) });
+              authorization: context.directoryPublicationAuthorization, ...(missing ? {} : { strategy: 'retained' }),
+              ...(resolvedRelative && resolvedRelative !== relative ? { resolvedRelative } : {}) });
             if (publication.kind !== 'durable') throw new Error(`write_file: directory publication ${publication.kind}: ${publication.detail}`);
             const observed = publication.observation;
             return finishFileWrite(context, requested, requested, path.relative(root, requested) || userPath,
