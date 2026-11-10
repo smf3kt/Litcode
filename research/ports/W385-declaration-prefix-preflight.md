@@ -1,3 +1,7 @@
+### W385 thirtieth full-suite checkpoint (2026-11-11, one known flake)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4366 pass, 1 fail, 0 cancelled, 7 skipped; duration 1039665 ms. The single failure is the known `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which passes alone. Cold matrix 449202 ms. The wrapper/deep nested-shell and declaration-prefix sampling changes are otherwise validated. Identity `e44827a91e9a3c258c5e650fb21cbad9f7b226c9b4b0e3f001b75280bfde7bf0`; build `dc0b21fa7b45d830fa98435679acf3022ab8dcae4d3ed426e63dc4d4b0d51f3b`.
+
 ### W385 twenty-ninth full-suite checkpoint (2026-11-10, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4374 tests, 4367 pass, 0 fail, 0 cancelled, 7 skipped; duration 1038998 ms. Cold matrix 450554 ms. The nested `bash -c` denial adaption and declaration-prefix sampling refinement pass, plus all prior approval/stash/write/leaf tests. Identity `b3cbb3278fdd7b7a250ef658dce2952251b8fb748927210336471dee5af71af4`; build `fcabc754c55bb0ed63aea2a2546c81fe331a883239d0b2255254f929256ac975`.
