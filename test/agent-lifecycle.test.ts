@@ -9203,6 +9203,38 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('a fork inherits an external directory grant and revokes it independently', async () => {
+  const root = workspace(), outside = workspace(), tools = createTools();
+  fs.mkdirSync(outside, { recursive: true });
+  const parent = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+  const resultFor = (session: Session, id: string) => resultBatches(session).flat().find(block => block.tool_use_id === id);
+  let fork: Session | undefined;
+  try {
+    parent.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    await new Agent(parent, new ScriptedProvider([response([call('parent-write', 'write_file',
+      { path: path.join(outside, 'parent.txt'), content: 'parent' })], 'tool_use'), done()]), tools).run('write outside');
+    assert.equal(resultFor(parent, 'parent-write')?.is_error, undefined);
+    fork = forkSession(parent);
+    const inherited = new ScriptedProvider([response([call('fork-write-inherited', 'write_file',
+      { path: path.join(outside, 'fork-inherited.txt'), content: 'inherited' })], 'tool_use'), done()]);
+    await new Agent(fork, inherited, tools).run('write with the inherited grant');
+    assert.equal(resultFor(fork, 'fork-write-inherited')?.is_error, undefined, JSON.stringify(resultFor(fork, 'fork-write-inherited')));
+    assert.equal(fs.readFileSync(path.join(outside, 'fork-inherited.txt'), 'utf8'), 'inherited');
+    fork.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [outside], destination: 'session' }]);
+    const denied = new ScriptedProvider([response([call('fork-write-denied', 'write_file',
+      { path: path.join(outside, 'fork-denied.txt'), content: 'denied' })], 'tool_use'), done()]);
+    await new Agent(fork, denied, tools).run('write after revocation');
+    assert.equal(resultFor(fork, 'fork-write-denied')?.is_error, true, JSON.stringify(resultFor(fork, 'fork-write-denied')));
+    assert.equal(fs.existsSync(path.join(outside, 'fork-denied.txt')), false);
+    fork.adoptPermissionUpdates([{ type: 'addDirectories', directories: [outside], destination: 'session' }]);
+    const allowed = new ScriptedProvider([response([call('fork-write-allowed', 'write_file',
+      { path: path.join(outside, 'fork-allowed.txt'), content: 'fork' })], 'tool_use'), done()]);
+    await new Agent(fork, allowed, tools).run('write after regrant');
+    assert.equal(resultFor(fork, 'fork-write-inherited')?.is_error, undefined, JSON.stringify(resultFor(fork, 'fork-write-inherited')));
+    assert.equal(fs.readFileSync(path.join(outside, 'fork-allowed.txt'), 'utf8'), 'fork');
+  } finally { fork?.close(); parent.close(); }
+});
+
 test('per-call read approvals isolate a retarget from a sibling', async () => {
   const root = workspace(), tools = createTools();
   write(root, 'public-a.txt', 'PUBLIC_A');
