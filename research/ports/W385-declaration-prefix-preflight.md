@@ -1,3 +1,9 @@
+### W385 product declaration-prefix sampling connected (2026-11-10, verified product)
+
+The host `permissionDecision` now consumes the `pyr` declaration-prefix plan's `exhaustive` flag. A non-exhaustive plan marks `samplingUncertain`; a four-prefix command with an exact command allow now asks (`{decision:'ask', floor:'readings'}`) unless a whole-tool allow rule or bypass mode applies. The three-prefix command remains allow. The product test mirrors the copied-source six-case composition for three/four prefixes, whole-tool allow and bypass.
+
+Validation: `permissions` and shell-source suites, 18-case driver, check/build. Read-block and nested-shell branches remain under #122/#123; this connects the declaration-prefix sampling completeness previously unconnected.
+
 ### W385 observation/handle call-lifecycle item resolved (2026-11-10, verified contract)
 
 Todo #138 is marked resolved. Main/model/MCP owners, per-call `PathApprovalCall`s, approval-time observation/landing, the approved-ask read consumer and the write-lane record/consume are in production and covered by the green full suite; the actual Agent file-tool authorization handoff is complete. Multi-path consumers, handle-object identity variants and other platforms are scoped out to their own boundaries.

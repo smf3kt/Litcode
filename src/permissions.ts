@@ -494,7 +494,8 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
         const sampledDenial: PermissionDecision | undefined = withShellAnalysisHome(shellAnalysisHome(process.env.HOME ?? ''), () => {
           const initial = E6(command, tree);
           if (initial.declarationPrefixes !== undefined) {
-            const { readings: vectors } = pyr(initial.declarationPrefixes, initial.declarationPrefixBashKeeps);
+            const { readings: vectors, exhaustive: prefixesExhaustive } = pyr(initial.declarationPrefixes, initial.declarationPrefixBashKeeps);
+            if (!prefixesExhaustive) samplingUncertain = true;
             for (const declarationPrefix of vectors) {
               const options = { plainUnquotedHeredocs: false, declarationPrefix };
               const analysis = E6(command, tree, options);
@@ -551,7 +552,11 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
   if (winnerReading !== undefined) {
     return { ...winner, reason: `Alternate command reading requires approval: ${winnerReading}` };
   }
-  if (samplingUncertain && winner.decision === 'allow') {
+  const wholeToolAllowed = [...(policy?.allow ?? []), ...(session?.allow ?? [])].some(text => {
+    const rule = Un(text);
+    return rule.ruleContent === undefined && ruleToolMatches(rule.toolName, tool.schema.name);
+  });
+  if (samplingUncertain && winner.decision === 'allow' && mode !== 'bypass' && !wholeToolAllowed) {
     return { decision: 'ask', floor: 'readings', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
   }
   if (baseline.decision === 'allow' && mode !== 'bypass' && !exhaustive) {

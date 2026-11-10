@@ -327,3 +327,15 @@ test('a managed document that drops permissions removes the policySettings layer
   assert.deepEqual(config.permissions?.layers?.map(layer => layer.source), ['policySettings', 'cliArg']);
   assert.deepEqual(config.permissions?.layers?.[0]?.autoMode, { allow: ['sleep'] });
 });
+
+test('product shell sampling applies the incomplete declaration reading', () => {
+  const four = 'A=1 B=2 C=3 D=4 export X; printf ok > marker.txt';
+  const three = 'A=1 B=2 C=3 export X; printf ok > marker.txt';
+  const exact = (command: string) => permissionDecision(policy({ allow: [`Bash(${command})`] }), tool('Bash', false), { command });
+  assert.equal(exact(three).decision, 'allow');
+  assert.equal(exact(four).decision, 'ask');
+  const whole = permissionDecision(policy({ allow: ['Bash'] }), tool('Bash', false), { command: four });
+  assert.equal(whole.decision, 'allow');
+  const bypass = permissionDecision(policy({ mode: 'bypass', allow: [] }), tool('Bash', false), { command: four });
+  assert.equal(bypass.decision, 'allow');
+});
