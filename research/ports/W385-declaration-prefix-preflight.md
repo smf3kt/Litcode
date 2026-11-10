@@ -1,3 +1,7 @@
+### W385 thirteenth full-suite checkpoint (2026-11-10, green again)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4359 tests, 4352 pass, 0 fail, 0 cancelled, 7 skipped; duration 1093864 ms. Includes the six new fork/relocated/leaf/per-call tests and the approved-ask read consumer fix. The cold mixed matrix passes in 470715 ms. Identity `a52121d052e2b640957a7bcb2380a08ffbeb72813b64783699d241576f460634`; build `8ecb09ac5d9583ac8b6c1f09daff3d82cc306a9974f959d6b68537b0a033815e`.
+
 ### W385 approved-ask read consumer fix (2026-11-10, verified product)
 
 The per-call read-isolation test exposed that the builtin `AsyncReadHandleConsumer` rechecked the live decision and accepted only `allow`; an ask that the host had already approved therefore failed with `read approval changed` even when its landing was unchanged. The consumer now accepts `allow` or `ask`, while `deny`, unresolved observations and landing/spelling changes remain fatal. The Agent's approval-time observation is still the primary retarget guard, so the direct retarget and read_media tests continue to deny.
