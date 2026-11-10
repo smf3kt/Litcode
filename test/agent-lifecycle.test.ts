@@ -2866,6 +2866,9 @@ test('an actual checkpoint retains external present and missing witnesses', asyn
     const provider = new ScriptedProvider([response([call('track-present', 'write_file', { path: present, content: 'BLOCKED', overwrite: false }),
       call('track-missing', 'write_file', { path: missing, content: 'BLOCKED' })], 'tool_use'), done()]);
     await new Agent(session, provider, tools).run('track both external paths');
+    // The external Write now creates the previously missing target; remove it so
+    // the checkpoint still exercises a missing-path observation.
+    fs.rmSync(missing, { force: true });
     const captured = await checkpointConversationWithDirectoryWitness(session, 'external-boundary', new AbortController().signal);
     assert.ok('external_witness' in captured); assert.equal(captured.external_witness, 'available');
     assert.ok('external_tracked_paths' in captured); assert.equal(captured.external_tracked_paths, 2);
