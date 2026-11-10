@@ -357,4 +357,7 @@ test('product nested shell evaluates a denied inner command', () => {
     { command: "bash -c 'A=1 B=2 C=3 D=4 export X; rm -rf /tmp/x'" }).decision, 'deny');
   assert.equal(permissionDecision(current, shell,
     { command: "bash -c 'A=1 B=2 C=3 D=4 export X; printf hi'" }).decision, 'allow');
+  let deep = 'rm -rf /tmp/x';
+  for (let i = 0; i < 4; i++) deep = `bash -c ${JSON.stringify(deep)}`;
+  assert.equal(permissionDecision(current, shell, { command: deep }).decision, 'deny');
 });

@@ -542,13 +542,19 @@ function nestedPrefixDenial(policy: PermissionPolicy | undefined, tool: ToolDefi
 
 function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, command: string,
   session?: SessionPermissionUpdates, depth = 0): PermissionDecision | undefined {
-  if (depth > 3) return undefined;
   let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
   try { tree = vS().parse(command, undefined); } catch { return undefined; }
   if (!tree) return undefined;
   let analysis: ReturnType<typeof E6>;
   try { analysis = E6(command, tree); } catch { return undefined; }
   if (analysis.kind !== 'simple') return undefined;
+  if (depth > 3) {
+    const commands = analysis.commands as { argv: readonly string[] }[];
+    if (commands.some(entry => nestedShellScript(entry.argv) !== undefined)) {
+      return { decision: 'ask', floor: 'readings', reason: `This command has nested shells that cannot all be checked: ${tool.schema.name}` };
+    }
+    return undefined;
+  }
   for (const entry of analysis.commands) {
     const script = nestedShellScript(entry.argv);
     if (script === undefined) continue;
