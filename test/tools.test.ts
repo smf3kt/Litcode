@@ -9,6 +9,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 
 import { bindScopedChildTool, bindRuntimeTool, createTools, copyStableDirectoryFile, executeAgentTool, snapshotBuiltinMutationInput, type ToolContext, type ToolDefinition } from "../src/tools.js";
+import { createMediaTools } from "../src/media.js";
 import { createNotebookTools } from "../src/notebooks.js";
 import { publishDirectoryFile, removeDirectoryFile } from '../src/directory-file-state.js';
 import { SourceReadCache } from '../src/controlled-read-projection-source.js';
@@ -1024,5 +1025,51 @@ test("read_file refuses a landing changed after approval", async () => {
       return [];
     },
   }), /read approval changed/);
+  assert.equal(retargeted, true);
+});
+
+test("notebook_read refuses a landing changed after approval", async () => {
+  const root = tmpDir();
+  const notebook = Buffer.from(JSON.stringify({ cells: [], metadata: {}, nbformat: 4, nbformat_minor: 5 }));
+  fs.writeFileSync(path.join(root, "public.ipynb"), notebook);
+  fs.writeFileSync(path.join(root, "protected.ipynb"), notebook);
+  fs.symlinkSync("public.ipynb", path.join(root, "alias.ipynb"));
+  const landing = fs.realpathSync(path.join(root, "public.ipynb"));
+  const tool = createNotebookTools().find(value => value.schema.name === "notebook_read")!;
+  let retargeted = false;
+  await assert.rejects(tool.execute({ path: "alias.ipynb" }, {
+    ...makeContext(root), readApproval: { landing, spellings: [landing] },
+    workingDirectories: () => {
+      if (!retargeted) {
+        retargeted = true;
+        fs.unlinkSync(path.join(root, "alias.ipynb"));
+        fs.symlinkSync("protected.ipynb", path.join(root, "alias.ipynb"));
+      }
+      return [];
+    },
+  }), /notebook_read: read approval changed/);
+  assert.equal(retargeted, true);
+});
+
+test("read_media refuses a landing changed after approval", async () => {
+  const root = tmpDir();
+  const image = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==", "base64");
+  fs.writeFileSync(path.join(root, "public.png"), image);
+  fs.writeFileSync(path.join(root, "protected.png"), image);
+  fs.symlinkSync("public.png", path.join(root, "alias.png"));
+  const landing = fs.realpathSync(path.join(root, "public.png"));
+  const tool = createMediaTools().find(value => value.schema.name === "read_media")!;
+  let retargeted = false;
+  await assert.rejects(tool.execute({ path: "alias.png" }, {
+    ...makeContext(root), readApproval: { landing, spellings: [landing] },
+    workingDirectories: () => {
+      if (!retargeted) {
+        retargeted = true;
+        fs.unlinkSync(path.join(root, "alias.png"));
+        fs.symlinkSync("protected.png", path.join(root, "alias.png"));
+      }
+      return [];
+    },
+  }), /read_media: read approval changed/);
   assert.equal(retargeted, true);
 });

@@ -20,7 +20,7 @@ export const IMAGE_MAX_HEIGHT = 2000;
 export const IMAGE_MAX_BASE64_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TARGET_RAW_BYTES = (IMAGE_MAX_BASE64_BYTES / 4) * 3;
 export function base64Length(bytes: number): number { return Math.ceil(bytes / 3) * 4; }
-export type MediaContext = Pick<ToolContext, 'workspace' | 'signal' | 'workingDirectories'>;
+export type MediaContext = Pick<ToolContext, 'workspace' | 'signal' | 'workingDirectories' | 'readApproval'>;
 export type MediaOptions = { pages?: string };
 export const mediaInputSchema = z.object({ path: z.string().min(1).max(4096), pages: z.string().min(1).max(256).optional() }).strict();
 export type MediaAttachment = z.infer<typeof mediaInputSchema>;
@@ -177,6 +177,8 @@ async function readBytes(userPath: string, context: MediaContext): Promise<Buffe
   }
   const file = context.workingDirectories?.(true).length
     ? confineResolved(root, userPath, true, context.workingDirectories(true)).path : await confine(root, userPath);
+  if (context.readApproval && file !== context.readApproval.landing)
+    throw new Error('read_media: read approval changed');
   checkAbort(context.signal);
   const handle = await fsp.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {

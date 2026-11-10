@@ -180,6 +180,8 @@ function notebookReadTool(): ToolDefinition {
       const root = workspaceReal(context.workspace);
       const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(true));
       const real = resolved.path;
+      if (context.readApproval && real !== context.readApproval.landing)
+        throw new Error('notebook_read: read approval changed');
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error(`notebook_read: not a Jupyter notebook (.ipynb): ${userPath}`);
       }
