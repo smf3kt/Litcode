@@ -2888,7 +2888,19 @@ test('fork skill crash at synchronous persistence barriers preserves prior histo
       const barrier = path.join(workspace, 'barrier.json');
       await until(() => fs.existsSync(barrier) || worker.exitCode !== null);
       assert.ok(fs.existsSync(barrier), `${stage}: worker exited: ${stderr}`);
-      const ids = JSON.parse(fs.readFileSync(barrier, 'utf8')) as { parent: string; prior: string; child: string };
+      let parsedBarrier: { parent: string; prior: string; child: string } | undefined;
+      await until(() => {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(barrier, 'utf8')) as { parent?: unknown; prior?: unknown; child?: unknown };
+          if (typeof parsed.parent === 'string' && typeof parsed.prior === 'string' && typeof parsed.child === 'string') {
+            parsedBarrier = parsed as { parent: string; prior: string; child: string };
+            return true;
+          }
+        } catch { /* The child is still writing the barrier. */ }
+        return false;
+      });
+      assert.ok(parsedBarrier, `${stage}: barrier did not become readable`);
+      const ids = parsedBarrier!;
       worker.kill('SIGKILL'); await exited;
       const parentFile = path.join(workspace, '.agent', `${ids.parent}.jsonl`);
       const before = fs.readFileSync(parentFile);

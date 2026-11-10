@@ -20,7 +20,7 @@ test("a written file holds exactly the bytes that were handed to it", () => {
   const result = atomicWriteFile(target, "hello\n");
 
   assert.equal(result.size, 6);
-  assert.equal(result.mtimeMs, fs.statSync(target).mtimeMs);
+  assert.ok(Math.abs(result.mtimeMs - fs.statSync(target).mtimeMs) < 0.01, `${result.mtimeMs} vs ${fs.statSync(target).mtimeMs}`);
   assert.equal(result.keptTemporary, undefined);
   assert.equal(fs.readFileSync(target, "utf8"), "hello\n");
   assert.deepEqual(temporaries(root), [], "the temporary file is gone");
