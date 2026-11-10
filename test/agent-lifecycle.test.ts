@@ -9179,6 +9179,30 @@ test('write through a terminal symlink is denied by the source leaf check', asyn
   } finally { session.close(); }
 });
 
+test('edit and notebook writes through terminal symlinks are denied', async () => {
+  for (const name of ['edit_file', 'notebook_edit'] as const) {
+    const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
+    const target = name === 'edit_file' ? 'target.txt' : 'target.ipynb';
+    const alias = name === 'edit_file' ? 'alias.txt' : 'alias.ipynb';
+    const original = name === 'edit_file' ? 'ORIGINAL' : JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {},
+      cells: [{ id: 'fixture', cell_type: 'code', metadata: {}, execution_count: null, outputs: [], source: 'ORIGINAL' }] });
+    fs.writeFileSync(path.join(root, target), original);
+    fs.symlinkSync(target, path.join(root, alias));
+    const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+    const input = name === 'edit_file'
+      ? { path: alias, old_string: 'ORIGINAL', new_string: 'CHANGED' }
+      : { path: alias, cell_id: 'fixture', new_source: 'CHANGED' };
+    try {
+      await new Agent(session, new ScriptedProvider([response([call(`leaf-${name}`, name, input)], 'tool_use'), done()]), tools).run('write through the leaf');
+      const result = resultBatches(session)[0]?.[0];
+      assert.equal(result?.is_error, true, `${name}: ${JSON.stringify(result)}`);
+      assert.match(String(result?.content), /symbolic link/i);
+      assert.equal(fs.readFileSync(path.join(root, target), 'utf8'), original);
+      assert.equal(fs.lstatSync(path.join(root, alias)).isSymbolicLink(), true);
+    } finally { session.close(); }
+  }
+});
+
 test('fork read approval observation denies a status retarget', async () => {
   const root = workspace(), tools = createTools();
   write(root, 'public.txt', 'PUBLIC');
