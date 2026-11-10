@@ -9203,6 +9203,42 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('a relocated write ancestor retarget after approval is denied', async () => {
+  const parent = workspace(), child = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(child, 'real'));
+  fs.mkdirSync(path.join(child, 'protected'));
+  fs.writeFileSync(path.join(child, 'real', 'file.txt'), 'ORIGINAL');
+  fs.writeFileSync(path.join(child, 'protected', 'file.txt'), 'PROTECTED_FIXTURE');
+  fs.symlinkSync('real', path.join(child, 'aliasdir'));
+  const source = Session.open(parent, { config: config(parent, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['write_file'] },
+  }) });
+  let relocated: Session | undefined;
+  try {
+    await new Agent(source, new ScriptedProvider([done()]), tools).run('relocation fixture');
+    relocated = relocateSession(source, child, () => tools);
+    const provider = new ScriptedProvider([response([call('relocated-ancestor-write', 'write_file',
+      { path: 'aliasdir/file.txt', content: 'CHANGED', overwrite: true })], 'tool_use'), done()]);
+    let retargeted = false;
+    await new Agent(relocated, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: write_file') {
+          retargeted = true;
+          fs.unlinkSync(path.join(child, 'aliasdir'));
+          fs.symlinkSync('protected', path.join(child, 'aliasdir'));
+        }
+      },
+    }).run('write on the relocated session');
+    const result = resultBatches(relocated)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /write approval changed/);
+    assert.equal(fs.readFileSync(path.join(child, 'protected', 'file.txt'), 'utf8'), 'PROTECTED_FIXTURE');
+    assert.equal(fs.readFileSync(path.join(child, 'real', 'file.txt'), 'utf8'), 'ORIGINAL');
+  } finally { await relocated?.close(); await source.close(); }
+});
+
 test('a fork write ancestor retarget after approval is denied', async () => {
   const root = workspace(), tools = createTools();
   fs.mkdirSync(path.join(root, 'real'));
