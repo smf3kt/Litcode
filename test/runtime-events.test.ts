@@ -167,7 +167,9 @@ test('notebook edits execute through runtime with metadata preservation', async 
     await tool.execute({ path: 'sample.ipynb', cell_id: 'a', new_source: 'print(1)', cell_type: 'code' }, f.context);
     const nb = JSON.parse(fs.readFileSync(path.join(f.workspace, 'sample.ipynb'), 'utf8'));
     assert.deepEqual(nb.metadata, { keep: true }); assert.deepEqual(nb.cells[0].metadata, { custom: 1 });
-    assert.deepEqual(nb.cells[0].outputs, []); assert.equal(nb.cells[0].execution_count, null);
+    // Source resets execution fields by the original cell type: a promoted
+    // markdown cell gains no code-only fields.
+    assert.equal(nb.cells[0].outputs, undefined); assert.equal(nb.cells[0].execution_count, undefined);
   } finally { await runtime.close(); f.cleanup(); }
 });
 

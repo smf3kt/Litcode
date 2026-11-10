@@ -132,8 +132,10 @@ test("read_file records descriptor metadata and bounded visible content", async 
     let record: unknown;
     const output = await tool.execute({ path: "input" }, { workspace: dir, signal: new AbortController().signal,
       allowShell: false, maxOutputBytes: 5, hostResult: value => { record = value; } });
-    assert.deepEqual(record, { kind: "file_read", filePath: await realpath(filename), content: output,
+    const real = await realpath(filename), metadata = await stat(filename, { bigint: true });
+    assert.deepEqual(record, { kind: "file_read", filePath: real, cacheKey: real, content: output,
       mtimeMs: (await stat(filename)).mtimeMs,
+      identity: { dev: String(metadata.dev), ino: String(metadata.ino) },
       offset: 1, limit: 2000, truncated: true });
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
