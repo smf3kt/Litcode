@@ -1,3 +1,7 @@
+### W385 eighteenth full-suite checkpoint (2026-11-10, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4367 tests, 4360 pass, 0 fail, 0 cancelled, 7 skipped; duration 1043533 ms. The cold mixed matrix passes in 450390 ms. All write-side approval/ancestor-retarget tests and the root/fork/relocated evidence are included; the prior worker-death flake did not recur. Identity `1910f401f8fa1ca78e557a3a197d4d1a9fac5bbb3308646bcc368c43acbb148f`; build `37616e8ea5c59e1f13e0f5c22b2a7c963b0f17dcc72e22c9e238d20924a8f853`.
+
 ### W385 seventeenth full-suite checkpoint (2026-11-10, one flake)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4362 tests, 4354 pass, 1 fail, 0 cancelled, 7 skipped; duration 1036716 ms. The single failure is the known `explicit stop writer death preserves history and fences across two cold processes`, which passes when rerun alone. The write-approval permission-update regression is fixed. Cold matrix 449787 ms.
