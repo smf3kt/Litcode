@@ -9203,6 +9203,39 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('an edit ancestor retarget after approval is denied', async () => {
+  const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
+  fs.mkdirSync(path.join(root, 'real'));
+  fs.mkdirSync(path.join(root, 'protected'));
+  fs.writeFileSync(path.join(root, 'real', 'file.txt'), 'ORIGINAL');
+  fs.writeFileSync(path.join(root, 'protected', 'file.txt'), 'PROTECTED_FIXTURE');
+  fs.symlinkSync('real', path.join(root, 'aliasdir'));
+  const session = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['edit_file'] },
+  }) });
+  const provider = new ScriptedProvider([response([call('ancestor-retarget-edit', 'edit_file',
+    { path: 'aliasdir/file.txt', old_string: 'ORIGINAL', new_string: 'CHANGED' })], 'tool_use'), done()]);
+  let retargeted = false;
+  try {
+    await new Agent(session, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: edit_file') {
+          retargeted = true;
+          fs.unlinkSync(path.join(root, 'aliasdir'));
+          fs.symlinkSync('protected', path.join(root, 'aliasdir'));
+        }
+      },
+    }).run('edit through the ancestor link');
+    const result = resultBatches(session)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /write approval changed/);
+    assert.equal(fs.readFileSync(path.join(root, 'protected', 'file.txt'), 'utf8'), 'PROTECTED_FIXTURE');
+    assert.equal(fs.readFileSync(path.join(root, 'real', 'file.txt'), 'utf8'), 'ORIGINAL');
+  } finally { session.close(); }
+});
+
 test('per-call write approvals isolate an ancestor retarget from a sibling', async () => {
   const root = workspace(), tools = createTools();
   fs.mkdirSync(path.join(root, 'real'));
