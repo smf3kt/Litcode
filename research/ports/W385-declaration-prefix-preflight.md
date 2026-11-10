@@ -1,3 +1,7 @@
+### W385 twenty-eighth full-suite checkpoint (2026-11-10, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4373 tests, 4366 pass, 0 fail, 0 cancelled, 7 skipped; duration 1088465 ms. Cold matrix 475389 ms. The declaration-prefix sampling refinement (hard uncertainty asks in bypass; non-exhaustive prefix ask only with a matching command allow and no whole-tool/bypass allow) passes both shell-permissions regressions and all prior tests. Identity `cfa4f8d51cd103dba7f53761e06c2aca90358f5e3e14e0345480ba98ab37bfec`; build `10cf003e619d99e4fdf0ab82f78e572af5b26636c7420d43374275f93ccba01c`.
+
 ### W385 product declaration-prefix sampling connected (2026-11-10, verified product)
 
 The host `permissionDecision` now consumes the `pyr` declaration-prefix plan's `exhaustive` flag. A non-exhaustive plan marks `samplingUncertain`; a four-prefix command with an exact command allow now asks (`{decision:'ask', floor:'readings'}`) unless a whole-tool allow rule or bypass mode applies. The three-prefix command remains allow. The product test mirrors the copied-source six-case composition for three/four prefixes, whole-tool allow and bypass.
