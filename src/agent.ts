@@ -1471,7 +1471,11 @@ export class Agent {
                   current.landing !== readApproval.observation.landing ||
                   JSON.stringify(current.spellings) !== JSON.stringify(readApproval.observation.spellings))
                 throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
-              if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates, c.workspace).decision === 'deny')
+              // The current write was authorized (possibly by a PermissionRequest
+              // allow that also adopts plan mode or other updates); a live deny
+              // applies to later calls, not retroactively to this one. The landing
+              // check above remains the retarget guard.
+              if (!writePathTool && permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates, c.workspace).decision === 'deny')
                 throw new Error(`${tool.schema.name}: ${pathLabel} approval changed`);
             }
             result = this.result(call.id, await executeAgentTool(tool, input, executionContext,
