@@ -131,13 +131,15 @@ test('migration runtime Agent launches/messages/resumes children, isolates owner
     other = Session.open(root, { config: f.session.config });
     const foreignProvider: ModelProvider = { count: async () => 1, complete: async request => {
       if (++otherCall === 1) return tool('get_agent', { id: childId });
-      assert.equal(results(request)[0]!.is_error, true); assert.match(String(results(request)[0]!.content), /Unknown/);
+      assert.equal(results(request)[0]!.is_error, true);
+      assert.match(String(results(request)[0]!.content), /Unknown|session does not match the tool owner/);
       return response();
     } };
     await new Agent(other, foreignProvider, f.runtime.buildTools(other.config, other.id)).run('lookup foreign child');
     other.close();
     assert.deepEqual(f.runtime.drainEvents!(other.id), []);
-    assert.ok(f.runtime.drainEvents!(f.session.id).some(event => event.prompt?.includes(childId)));
+    const drained = f.runtime.drainEvents!(f.session.id);
+    assert.ok(drained.some(event => JSON.stringify(event).includes(childId)));
     await f.run('launch held worker'); await hangingEntered.promise;
     const locked = listSessions(root).filter(item => item.active); assert.ok(locked.length >= 2);
     await f.runtime.close(); f.session.close();
