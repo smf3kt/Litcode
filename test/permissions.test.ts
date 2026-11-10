@@ -404,3 +404,16 @@ test('product shell read block follows glob matches', () => {
     assert.equal(permissionDecision(current, shell, { command: `cat ${outside}/missing-*.txt` }, undefined, workspace).decision, 'ask');
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
+
+test('product shell read block exempts the owned plan file', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const planFile = '/tmp/read-block-plan.md';
+  const current = policy({ blockReadsOutsideWorkingDirectories: true, allow: ['Bash(cat:*)'] });
+  const session = { ...emptySessionPermissionUpdates(), planFile };
+  assert.equal(permissionDecision(current, shell, { command: `cat ${planFile}` }, session, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat /tmp/read-block-plan-agent-alpha.md' }, session, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'cat /tmp/read-block-plan-other.md' }, session, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: `cat < ${planFile}` }, session, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: `cat ${planFile}` }, undefined, workspace).decision, 'ask');
+});
