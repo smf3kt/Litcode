@@ -4,9 +4,9 @@
 
 ### W385 nested `bash -c` denial (2026-11-10, verified product)
 
-The observed host miss allowed `bash -c 'rm -rf /tmp/x'` when `Bash(bash -c:*)` was allowed and `Bash(rm:*)` denied. `applyShellReadings` now calls `nestedShellDenial` before its early rule gate: it parses the outer command with `E6`/`vS`, finds a direct shell argv (`bash`/`sh`/`zsh`/`dash`/`ksh`) with a `-c`-containing flag, and re-checks the script with `decideOnce`. Any nested deny returns a deny; asks are left to the baseline.
+The observed host miss allowed `bash -c 'rm -rf /tmp/x'` when `Bash(bash -c:*)` was allowed and `Bash(rm:*)` denied. `applyShellReadings` now calls `nestedShellDenial` before its early rule gate: it parses the outer command with `E6`/`vS`, unwraps a direct or wrapper-prefixed shell argv (`sudo`/`doas`/`env`/`command`/`builtin`/`nohup`/`time`/`timeout`/`nice`/`stdbuf`/`exec`), finds a `-c`-containing flag, and re-checks the script with `decideOnce`, recursing to depth 3. A nested deny returns deny; a nested rule ask is retained; other asks remain with the baseline.
 
-This adapts the source nested policy (`jcn` [3213895,3215588), `Fcn` [3243430,3246934) in `chunk-sfn1dbxq.js` SHA-256 `4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da`). It is deliberately one-level and denial-only: wrappers such as `sudo`/`env`, nested asks, deeper recursion, declaration-prefix budget and the production policy callback chain remain open under #122. Product tests cover allow-outer/deny-inner, `-lc`, and a benign inner command. Permissions/shell suites, 18-case driver and check/build pass; no original-application execution was performed.
+This adapts the source nested policy (`jcn` [3213895,3215588), `Fcn` [3243430,3246934) in `chunk-sfn1dbxq.js` SHA-256 `4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da`). Sandbox state, declaration-prefix budget and the complete source callback chain remain open under #122. Product tests cover allow-outer/deny-inner, `-lc`, benign inner, `sudo`/`env` wrappers, nested `bash -c` depth and an explicit inner ask rule. Permissions/shell suites, 18-case driver and check/build pass; no original-application execution was performed.
 
 ### W385 twenty-eighth full-suite checkpoint (2026-11-10, green)
 

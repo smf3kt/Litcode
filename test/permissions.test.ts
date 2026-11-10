@@ -346,4 +346,11 @@ test('product nested shell evaluates a denied inner command', () => {
   assert.equal(permissionDecision(current, shell, { command: "bash -c 'rm -rf /tmp/x'" }).decision, 'deny');
   assert.equal(permissionDecision(current, shell, { command: "bash -lc 'rm -rf /tmp/x'" }).decision, 'deny');
   assert.equal(permissionDecision(current, shell, { command: "bash -c 'printf hi'" }).decision, 'allow');
+  const wrapped = policy({ allow: ['Bash(sudo:*)', 'Bash(env:*)'], deny: ['Bash(rm:*)'] });
+  assert.equal(permissionDecision(wrapped, shell, { command: "sudo bash -c 'rm -rf /tmp/x'" }).decision, 'deny');
+  assert.equal(permissionDecision(wrapped, shell, { command: "env FOO=1 bash -c 'rm -rf /tmp/x'" }).decision, 'deny');
+  const deeper = policy({ allow: ['Bash(bash -c:*)'], deny: ['Bash(rm:*)'] });
+  assert.equal(permissionDecision(deeper, shell, { command: "bash -c \"bash -c 'rm -rf /tmp/x'\"" }).decision, 'deny');
+  const asked = policy({ allow: ['Bash(bash -c:*)'], ask: ['Bash(printf:*)'] });
+  assert.equal(permissionDecision(asked, shell, { command: "bash -c 'printf hi'" }).decision, 'ask');
 });

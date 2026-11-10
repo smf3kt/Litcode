@@ -480,13 +480,44 @@ function readingRank(decision: PermissionDecision): number {
  * [3213895,3215588)/[3243430,3246934)) evaluates a shell script passed to
  * `bash -c` instead of judging only the outer argv. The host's readings do
  * not parse that script, so a denied inner command behind an allowed outer
- * `bash -c` escaped. Re-check direct `bash -c`/`sh -c` scripts with the same
- * rules before an allow. This is a one-level conservative adaption: only a
- * nested denial is returned; asks and deeper wrappers remain with the
- * source-policy package.
+ * `bash -c` escaped. Re-check direct and wrapper-prefixed shell scripts with
+ * the same rules before an allow. This is still a conservative adaption:
+ * only nested denials and rule asks are returned; sandbox, declaration budget
+ * and the complete source callback chain remain with the source-policy item.
  */
+function nestedShellScript(argv: readonly string[]): string | undefined {
+  const shells = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
+  const wrappers = new Set(['sudo', 'doas', 'env', 'command', 'builtin', 'nohup', 'time', 'timeout', 'nice', 'stdbuf', 'exec']);
+  const valueOptions = new Set(['-u', '-g', '-U', '-C', '-D', '-h', '-p', '-r', '-R', '-t', '-T', '--user', '--group',
+    '--other-user', '--close-from', '--chdir', '--host', '--prompt', '--role', '--chroot', '--type', '--command-timeout',
+    '--auth-type', '-n', '--interval', '-c', '-i', '-o', '-e']);
+  let index = 0;
+  while (index < argv.length) {
+    const arg = argv[index]!;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) { index++; continue; }
+    const base = path.basename(arg);
+    if (shells.has(base)) {
+      for (let position = index + 1; position < argv.length; position++) {
+        if (!/^-[A-Za-z]*c[A-Za-z]*$/.test(argv[position]!)) continue;
+        const script = argv[position + 1];
+        return script !== undefined && script.trim() !== '' ? script : undefined;
+      }
+      return undefined;
+    }
+    if (!wrappers.has(base)) return undefined;
+    index++;
+    while (index < argv.length && argv[index]!.startsWith('-')) {
+      const option = argv[index]!;
+      index += valueOptions.has(option) && index + 1 < argv.length ? 2 : 1;
+    }
+    if (base === 'timeout' && index < argv.length) index++;
+  }
+  return undefined;
+}
+
 function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, command: string,
-  session?: SessionPermissionUpdates): PermissionDecision | undefined {
+  session?: SessionPermissionUpdates, depth = 0): PermissionDecision | undefined {
+  if (depth > 3) return undefined;
   let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
   try { tree = vS().parse(command, undefined); } catch { return undefined; }
   if (!tree) return undefined;
@@ -494,17 +525,15 @@ function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefin
   try { analysis = E6(command, tree); } catch { return undefined; }
   if (analysis.kind !== 'simple') return undefined;
   for (const entry of analysis.commands) {
-    const argv = entry.argv;
-    if (!Array.isArray(argv) || argv.length < 3) continue;
-    const base = path.basename(argv[0] ?? '');
-    if (!['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(base)) continue;
-    const index = argv.findIndex((arg, position) => position > 0 && /^-[A-Za-z]*c[A-Za-z]*$/.test(arg));
-    const script = index >= 0 ? argv[index + 1] : undefined;
-    if (script === undefined || script.trim() === '') continue;
+    const script = nestedShellScript(entry.argv);
+    if (script === undefined) continue;
+    const deeper = nestedShellDenial(policy, tool, withCommand(input, script), script, session, depth + 1);
+    if (deeper !== undefined) return deeper;
     const nested = decideOnce(policy, tool, withCommand(input, script), session);
     if (nested.decision === 'deny') {
       return { decision: 'deny', reason: `Permission to run this command was denied for a nested shell: ${tool.schema.name}` };
     }
+    if (nested.decision === 'ask' && nested.floor === 'rule') return nested;
   }
   return undefined;
 }
