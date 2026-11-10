@@ -1005,3 +1005,24 @@ test("run_command keeps a UTF-8 boundary at the truncated tail (no U+FFFD)", asy
     assert.match(out, /abc|😀/, `cap ${cap} should keep a decodable tail: ${JSON.stringify(out)}`);
   }
 });
+
+test("read_file refuses a landing changed after approval", async () => {
+  const root = tmpDir();
+  fs.writeFileSync(path.join(root, "public.txt"), "PUBLIC");
+  fs.writeFileSync(path.join(root, "protected.txt"), "PROTECTED");
+  fs.symlinkSync("public.txt", path.join(root, "alias.txt"));
+  const landing = fs.realpathSync(path.join(root, "public.txt"));
+  let retargeted = false;
+  await assert.rejects(tool("read_file").execute({ path: "alias.txt" }, {
+    ...makeContext(root), readApproval: { landing, spellings: [landing] },
+    workingDirectories: () => {
+      if (!retargeted) {
+        retargeted = true;
+        fs.unlinkSync(path.join(root, "alias.txt"));
+        fs.symlinkSync("protected.txt", path.join(root, "alias.txt"));
+      }
+      return [];
+    },
+  }), /read approval changed/);
+  assert.equal(retargeted, true);
+});

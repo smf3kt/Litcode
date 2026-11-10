@@ -1401,6 +1401,8 @@ export class Agent {
           }
           const observeContext = createToolContextObserver(this.session, call.id, 'agent');
           let executionContext: ToolContext = { ...context, signal, abortController, pathApprovalCall, authorizationIdentity: identity.current, toolUseId: call.id,
+            ...(readApproval && !readApproval.observation.unresolved
+              ? { readApproval: { landing: readApproval.observation.landing, spellings: readApproval.observation.spellings } } : {}),
             ...(readHandleConsumer ? { readHandleConsumer } : {}),
             workingDirectories: readOnly => observeContext('workingDirectories', readOnly, () => this.session.workingDirectories(readOnly)),
             fileHistory: file => observeContext('fileHistory', file, () => this.session.touchFile(file)),

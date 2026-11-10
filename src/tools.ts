@@ -44,6 +44,8 @@ export type ToolContext = {
   maxOutputBytes: number;
   pathApprovalCall?: PathApprovalCall;
   /** Host-owned approval-to-use checker for a builtin read (revalidates and binds the approved identity). */
+  /** Approved landing captured before hooks; the reader refuses a later landing change. */
+  readApproval?: { landing: string; spellings: readonly string[] };
   readHandleConsumer?: {
     check(input: { path: string }): Promise<boolean>;
     readLinesWithMetadata(offset: number, limit: number, maxBytes: number): Promise<{
@@ -1399,6 +1401,8 @@ function readFileTool(): ToolDefinition {
       ] });
       const resolved = (context.planMode && resolveOwnedPlanFile(root, userPath, context.planMode.ownership, true))
         || confineResolved(root, userPath, true, readDirectories);
+      if (context.readApproval && resolved.path !== context.readApproval.landing)
+        throw new Error('read_file: read approval changed');
       const requested = path.resolve(root, userPath);
       const grant = [...directories].filter(directory => isWithin(directory, requested))
         .sort((a, b) => b.length - a.length)[0];

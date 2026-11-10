@@ -4,7 +4,11 @@
 
 Basis: the Agent's approval-time path observation for the read tools (commit `d1eb02d`) plus the existing write/edit/notebook publication authorization. The fixture primes `notebook_edit` with a `notebook_read` in the same model turn because the product requires read-before-edit; this is a fixture correction, not a product relaxation. The earlier builtin-consumer experiment remains reverted.
 
-Remaining: the check-to-open window for read tools (the final path does not use the approved handle), plus platform and other read-consumer coverage. This supersedes the read portion of the earlier "retarget CLI driver remains red" entry; the driver is the acceptance gate and is green.
+Post-resolution landing check: `ToolContext.readApproval` carries the approved landing/spellings; `read_file` compares `resolved.path` with the approved landing after `confineResolved` and before `readFileLines`. The new `read_file refuses a landing changed after approval` test retargets the alias inside `workingDirectories` resolution: it is red without the check (protected bytes are read) and green with `read approval changed`. This closes the read_file check-to-open window; `notebook_read`/`read_media` still rely on the Agent pre-execution observation. After the check the driver remains 18/18, path/tools/approval suites are 67/67, Agent read/notebook/media focused is 15 pass with the pre-existing stale external-Edit failure, and check/build pass.
+
+Identity `8d3eb848178c6959fdd67c6468d6c93977ca4cdd114c953c0df830ccdb957373`; inputs `f700c34967168fec623ec5054fd8ae7f2042196fc37195f76d0b35449735d5b9` (1078), validation `089c69cd59e75e11410b931b47a10d561c83722af458b95d74f83034926a821e` (417), build `a5f3c335d8376e9caf88e6e9a285c3439ab693b891e635983224b5cfcf939d5c` (746).
+
+Remaining: the check-to-open window for `notebook_read`/`read_media` (they do not consume `readApproval`), platform and other read-consumer coverage. This supersedes the read portion of the earlier "retarget CLI driver remains red" entry; the driver is the acceptance gate and is green.
 
 ### W385 approval-time read path observation (2026-11-10, verified bounded slice)
 
