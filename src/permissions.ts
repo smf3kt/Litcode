@@ -515,6 +515,31 @@ function nestedShellScript(argv: readonly string[]): string | undefined {
   return undefined;
 }
 
+function nestedPrefixDenial(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, script: string,
+  session?: SessionPermissionUpdates): PermissionDecision | undefined {
+  let tree: ReturnType<typeof vS>['parse'] extends (...args: never[]) => infer R ? R : never;
+  try { tree = vS().parse(script, undefined); } catch { return undefined; }
+  if (!tree) return undefined;
+  let initial: ReturnType<typeof E6>;
+  try { initial = E6(script, tree); } catch { return undefined; }
+  if (initial.kind !== 'simple' || initial.declarationPrefixes === undefined) return undefined;
+  let readings: boolean[][];
+  try { readings = pyr(initial.declarationPrefixes, initial.declarationPrefixBashKeeps).readings; } catch { return undefined; }
+  for (const declarationPrefix of readings) {
+    let analysis: ReturnType<typeof E6>;
+    const options = { plainUnquotedHeredocs: false, declarationPrefix };
+    try { analysis = E6(script, tree, options); } catch { continue; }
+    if (analysis.kind !== 'simple') continue;
+    for (const entry of analysis.commands) {
+      const nested = decideOnce(policy, tool, withCommand(input, entry.text), session);
+      if (nested.decision === 'deny') {
+        return { decision: 'deny', reason: `Permission to run this command was denied for a nested shell reading: ${tool.schema.name}` };
+      }
+    }
+  }
+  return undefined;
+}
+
 function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown, command: string,
   session?: SessionPermissionUpdates, depth = 0): PermissionDecision | undefined {
   if (depth > 3) return undefined;
@@ -529,6 +554,8 @@ function nestedShellDenial(policy: PermissionPolicy | undefined, tool: ToolDefin
     if (script === undefined) continue;
     const deeper = nestedShellDenial(policy, tool, withCommand(input, script), script, session, depth + 1);
     if (deeper !== undefined) return deeper;
+    const sampled = nestedPrefixDenial(policy, tool, input, script, session);
+    if (sampled !== undefined) return sampled;
     const nested = decideOnce(policy, tool, withCommand(input, script), session);
     if (nested.decision === 'deny') {
       return { decision: 'deny', reason: `Permission to run this command was denied for a nested shell: ${tool.schema.name}` };
