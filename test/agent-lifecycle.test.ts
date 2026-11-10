@@ -9203,6 +9203,39 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('relocated read approval observation denies a status retarget', async () => {
+  const parent = workspace(), child = workspace(), tools = createTools();
+  write(child, 'public.txt', 'PUBLIC');
+  write(child, 'protected.txt', 'PROTECTED');
+  fs.symlinkSync('public.txt', path.join(child, 'alias.txt'));
+  const source = Session.open(parent, { config: config(parent, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['read_file'] },
+  }) });
+  const sourceProvider = new ScriptedProvider([done()]);
+  let relocated: Session | undefined;
+  try {
+    await new Agent(source, sourceProvider, tools).run('hello');
+    relocated = relocateSession(source, child, () => tools);
+    const provider = new ScriptedProvider([response([call('relocated-read', 'read_file', { path: 'alias.txt' })], 'tool_use'), done()]);
+    let retargeted = false;
+    await new Agent(relocated, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (message === 'tool: read_file') {
+          fs.unlinkSync(path.join(child, 'alias.txt'));
+          fs.symlinkSync('protected.txt', path.join(child, 'alias.txt'));
+          retargeted = true;
+        }
+      },
+    }).run('read on the relocated session');
+    const result = resultBatches(relocated)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true);
+    assert.match(String(result?.content), /read approval changed/);
+    assert.doesNotMatch(String(result?.content), /PROTECTED/);
+  } finally { await relocated?.close(); await source.close(); }
+});
+
 test('fork read approval observation denies a status retarget', async () => {
   const root = workspace(), tools = createTools();
   write(root, 'public.txt', 'PUBLIC');
