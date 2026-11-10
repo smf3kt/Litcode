@@ -105,10 +105,13 @@ test("the detail view scrolls through a hunk longer than the screen", async () =
   try {
     assert.equal(await dialog.open(), "");
     dialog.rowsFor(100, 30);
-    // The untracked session file sorts first; step to the changed file before opening the detail.
+    // The untracked session journal and its lock sort first; step twice to the changed file.
+    dialog.handleAction("diff:nextFile");
     dialog.handleAction("diff:nextFile");
     dialog.rowsFor(100, 30);
     assert.equal(dialog.handleAction("select:accept"), true, "the detail view opens");
+    // Let the opened detail flush its focus/scroll effects before driving the viewport.
+    await new Promise(resolve => setImmediate(resolve));
 
     const numbered = (rows: string[]): number => {
       const row = text(rows).find((line) => /^\d+\s/.test(line));
@@ -119,6 +122,7 @@ test("the detail view scrolls through a hunk longer than the screen", async () =
 
     dialog.handleAction("scroll:pageDown");
     dialog.handleAction("scroll:pageDown");
+    await new Promise(resolve => setImmediate(resolve));
     const after = numbered(dialog.rowsFor(100, 30));
     assert.ok(after > before, `the detail view scrolled (${before} -> ${after})`);
 
