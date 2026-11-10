@@ -1,3 +1,7 @@
+### W385 twenty-first full-suite checkpoint (2026-11-10, one known flake)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4368 tests, 4360 pass, 1 fail, 0 cancelled, 7 skipped; duration 1040500 ms. The single failure is `crashed replacement rejects missing or altered intent and failed downstream checks without a witness`, which passes when rerun alone. Live cold matrix 451854 ms.
+
 ### W385 external ancestor-link create (2026-11-10, verified product)
 
 A granted external directory can create a new file through an ancestor directory symlink inside the grant. `outside/aliasdir/created.txt` with `aliasdir` → `real` previously failed `write_file: directory backup unavailable` because the missing-backup probe and native publication used the lexical relative path. `Session.recordMissingDirectoryBackup` and `publishDirectoryFileTransaction` now accept an optional resolved grant-relative path; the write tool passes `path.relative(grant.root, resolvedLanding)` when it differs from the lexical relative, while `lexicalPath` remains the policy/witness identity. The missing witness parent and native publication use the resolved path.
