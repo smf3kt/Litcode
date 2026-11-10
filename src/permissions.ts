@@ -599,17 +599,24 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
     'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
   const patternFirst = new Set(['grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
   const cwd = workspace ?? process.cwd();
-  const outside = (candidate: string) => roots.every(root => {
+  const realRoots = [...new Set(roots.flatMap(root => {
+    try { const real = fs.realpathSync(root); return real === root ? [root] : [root, real]; } catch { return [root]; }
+  }))];
+  const outsideOf = (candidate: string, candidates: readonly string[]) => candidates.every(root => {
     const relative = path.relative(root, candidate);
     return path.isAbsolute(relative) || relative === '..' || relative.startsWith(`..${path.sep}`);
   });
+  const outside = (candidate: string, candidates: readonly string[] = roots) => outsideOf(candidate, candidates);
   const askOutside = (display: string) => ({ decision: 'ask' as const, floor: 'readings' as const,
     reason: `This command reads outside the working directories: ${display}` });
   const safeDevice = new Set(['/dev/null', '/dev/stdin', '/dev/stdout', '/dev/stderr', '/dev/tty']);
   const resolvedPlan = planFile === undefined ? undefined : path.resolve(planFile);
-  const planStem = resolvedPlan?.endsWith('.md') ? resolvedPlan.slice(0, -3) : resolvedPlan;
-  const isPlanPath = (candidate: string) => resolvedPlan !== undefined &&
-    (candidate === resolvedPlan || (planStem !== undefined && candidate.startsWith(`${planStem}-agent-`) && candidate.endsWith('.md')));
+  let realPlan = resolvedPlan;
+  if (resolvedPlan !== undefined) { try { realPlan = fs.realpathSync(resolvedPlan); } catch { /* a plan not yet written keeps its lexical path */ } }
+  const planPaths = [...new Set([resolvedPlan, realPlan].filter((value): value is string => value !== undefined))];
+  const planStems = planPaths.map(plan => plan.endsWith('.md') ? plan.slice(0, -3) : plan);
+  const isPlanPath = (candidate: string) => planPaths.includes(candidate) ||
+    planStems.some(stem => candidate.startsWith(`${stem}-agent-`) && candidate.endsWith('.md'));
   const checkOperand = (operand: string): PermissionDecision | undefined => {
     if (operand === '' || operand === '--' || operand === '|' || operand === ';') return undefined;
     if (operand.startsWith('-') && operand !== '-') return undefined;
@@ -628,8 +635,11 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
       }
     }
     const candidate = path.resolve(cwd, expanded);
-    if (isPlanPath(candidate)) return undefined;
-    const readRules = (policy?.inputRules ?? []).filter(rule => inputRuleMatches(rule, 'read_file', { path: candidate }));
+    let identity = candidate;
+    try { identity = fs.realpathSync(candidate); } catch { /* a missing path has no distinct identity */ }
+    if (isPlanPath(candidate) || isPlanPath(identity)) return undefined;
+    const readRules = (policy?.inputRules ?? []).filter(rule => [candidate, identity]
+      .some(value => inputRuleMatches(rule, 'read_file', { path: value })));
     if (readRules.some(rule => rule.decision === 'deny')) {
       return { decision: 'deny', reason: `This command reads a path denied by a read rule: ${operand}` };
     }
@@ -637,7 +647,7 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
       return { decision: 'ask', floor: 'rule', reason: `This command reads a path that requires approval: ${operand}` };
     }
     if (readRules.some(rule => rule.decision === 'allow')) return undefined;
-    if (outside(candidate)) return askOutside(operand);
+    if (outside(candidate) || outside(identity, realRoots)) return askOutside(operand);
     return undefined;
   };
   for (const entry of analysis.commands) {
@@ -666,8 +676,10 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
         if (typeof redirect.target !== 'string') continue;
         if (safeDevice.has(redirect.target)) continue;
         const target = path.resolve(cwd, redirect.target);
-        if (isPlanPath(target)) continue;
-        if (outside(target)) return askOutside(redirect.target);
+        let identity = target;
+        try { identity = fs.realpathSync(target); } catch { /* missing target */ }
+        if (isPlanPath(target) || isPlanPath(identity)) continue;
+        if (outside(target) || outside(identity, realRoots)) return askOutside(redirect.target);
       }
     }
   }

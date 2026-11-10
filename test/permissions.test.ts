@@ -439,3 +439,20 @@ test('product shell read block skips pattern arguments', () => {
   assert.equal(permissionDecision(current, shell, { command: "awk '{print}' /tmp/read-block-outside/secret" }, undefined, workspace).decision, 'ask');
   assert.equal(permissionDecision(current, shell, { command: 'sed -n p /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
 });
+
+test('product shell read block follows symlink identity', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'read-block-link-'));
+  const workspace = path.join(base, 'workspace'), outside = path.join(base, 'outside');
+  fs.mkdirSync(workspace); fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(outside, 'secret.txt'), 'secret');
+  fs.writeFileSync(path.join(workspace, 'inside.txt'), 'inside');
+  fs.symlinkSync(path.join(outside, 'secret.txt'), path.join(workspace, 'link.txt'));
+  fs.symlinkSync(path.join(workspace, 'inside.txt'), path.join(workspace, 'inside-link.txt'));
+  const shell = tool('Bash', false);
+  const current = policy({ mode: 'bypass', blockReadsOutsideWorkingDirectories: true, allow: [] });
+  try {
+    assert.equal(permissionDecision(current, shell, { command: 'cat ./link.txt' }, undefined, workspace).decision, 'ask');
+    assert.equal(permissionDecision(current, shell, { command: 'cat ./inside-link.txt' }, undefined, workspace).decision, 'allow');
+    assert.equal(permissionDecision(current, shell, { command: 'cat < ./link.txt' }, undefined, workspace).decision, 'ask');
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
