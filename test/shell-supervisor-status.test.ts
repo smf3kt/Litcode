@@ -4,12 +4,19 @@ import { once } from 'node:events';
 import { Readable } from 'node:stream';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodeSupervisorStatus, SupervisorStatusReader, supervisorEffectDisposition } from '../src/shell-supervisor-status.js';
 import { runShellSupervisor } from '../src/shell-supervisor-status.js';
 
 const supervisor = fileURLToPath(new URL('../native/shell-supervisor/supervisor', import.meta.url));
+
+function supervisorTemporary(prefix: string): string {
+  const base = process.env.CLAUDE_JOB_DIR ? join(process.env.CLAUDE_JOB_DIR, 'tmp') : join(tmpdir(), 'supervisor-status');
+  mkdirSync(base, { recursive: true });
+  return mkdtempSync(join(base, prefix));
+}
 
 test('caller distinguishes real exit 125, exec failure and a truncated protocol', { skip: process.platform !== 'darwin' }, async () => {
   async function run(file: string, args: string[]) {
@@ -106,9 +113,7 @@ test('malformed or contradictory protocol never establishes a terminal effect', 
 });
 
 test('supervisor API drains output and preserves cancellation after a real effect', { skip: process.platform !== 'darwin' }, async () => {
-  const root = process.env.CLAUDE_JOB_DIR;
-  assert.ok(root);
-  const directory = mkdtempSync(join(root, 'tmp', 'supervisor-api-'));
+  const directory = supervisorTemporary('supervisor-api-');
   const marker = join(directory, 'marker');
   try {
     const controller = new AbortController();
@@ -177,9 +182,7 @@ test('output overflow cancels a running supervisor and keeps the effect unknown'
 });
 
 test('immediate supervisor cancellation does not run a TERM trap', { skip: process.platform !== 'darwin', timeout: 10000 }, async () => {
-  const root = process.env.CLAUDE_JOB_DIR;
-  assert.ok(root);
-  const directory = mkdtempSync(join(root, 'tmp', 'supervisor-immediate-'));
+  const directory = supervisorTemporary('supervisor-immediate-');
   const marker = join(directory, 'term');
   const controller = new AbortController();
   try {
