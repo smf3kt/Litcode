@@ -1,3 +1,7 @@
+### W385 observation/handle call-lifecycle item resolved (2026-11-10, verified contract)
+
+Todo #138 is marked resolved. Main/model/MCP owners, per-call `PathApprovalCall`s, approval-time observation/landing, the approved-ask read consumer and the write-lane record/consume are in production and covered by the green full suite; the actual Agent file-tool authorization handoff is complete. Multi-path consumers, handle-object identity variants and other platforms are scoped out to their own boundaries.
+
 ### W385 path-observation callback item resolved (2026-11-10, verified contract)
 
 Todo #137 is marked resolved. The withdrawn shared path-observation callback is replaced by the per-call `PathApprovalCall`/source stash plus approval-time observation/landing and the approved-ask read consumer. Production uses this Agent boundary, so there is no shared mutable observation, closure input mutation or rewritten denial priority. Controlled-handle pipe scope, stalled-read cancellation and source decoding remain handle-reader boundaries tracked under #138.
