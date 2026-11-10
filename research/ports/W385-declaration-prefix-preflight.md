@@ -1,3 +1,9 @@
+### W385 ancestor-link create fix (2026-11-10, verified product)
+
+`confineResolved` previously rejected any unresolved leaf with a nonempty hop list as a dangling symlink. That also refused creating a file under an in-workspace ancestor directory symlink (e.g. `aliasdir/file.txt`, `aliasdir` → `real`) even though `real` is a real directory inside the workspace. The resolver now distinguishes the terminal `leafIsSymlink` bit from ancestor hops: a missing leaf is allowed only when `path.dirname(resolved.path)` is within an allowed root and is an existing directory. A terminal link to a missing target, a link whose parent lands outside/ungranted, and a missing intermediate directory still fail closed.
+
+Validation: new-file and existing-leaf controls pass; terminal-symlink write/edit/notebook and relocated terminal tests still deny; path-leaf/tools/path-approval-binding/path-identity suites, the 18-case driver, check/build pass. Identity `fd2b2b64dcb74a9880cd2c7fa6eb53708673a974c9b6613aae499329ca5bb311`; inputs `46790b935e9b52f5af61dcb605f0c4fc64696f177630f3d6f42054151839b689` (1078), validation `5a8d9bd7ab8fb373e411597a9711063e3091bbba434bd5eac91631996066a9eb` (417), build `bd6f6cbd8ef9f7e6af46e6fef76534df5d23b6fb0987f34d8f7cb090baac922b` (746).
+
 ### W385 thirteenth full-suite checkpoint (2026-11-10, green again)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4359 tests, 4352 pass, 0 fail, 0 cancelled, 7 skipped; duration 1093864 ms. Includes the six new fork/relocated/leaf/per-call tests and the approved-ask read consumer fix. The cold mixed matrix passes in 470715 ms. Identity `a52121d052e2b640957a7bcb2380a08ffbeb72813b64783699d241576f460634`; build `8ecb09ac5d9583ac8b6c1f09daff3d82cc306a9974f959d6b68537b0a033815e`.

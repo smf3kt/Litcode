@@ -191,6 +191,18 @@ function isWithin(root: string, candidate: string): boolean {
   return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
 }
 
+function unresolvedUnderLink(resolved: ResolvedPath, roots: readonly string[]): boolean {
+  if (resolved.identity !== undefined) return false;
+  // A terminal link to a missing target is a dangling write target.
+  if (resolved.leafIsSymlink === true) return true;
+  if (resolved.hops.length === 0) return false;
+  // An ancestor directory link is safe to follow for a create only when the
+  // missing leaf's parent still lands inside an allowed root and is a directory.
+  const parent = path.dirname(resolved.path);
+  if (!roots.some(root => isWithin(root, parent))) return true;
+  try { return !fs.statSync(parent).isDirectory(); } catch { return true; }
+}
+
 function rejectAgentSegment(root: string, target: string): void {
   const rel = path.relative(root, target);
   if (rel === "") return;
@@ -219,7 +231,7 @@ export function confineResolved(root: string, userPath: string, mustExist: boole
       if (spelling.split(path.sep).includes(AGENT_DIR)) throw new Error(`path is inside the reserved "${AGENT_DIR}" directory`);
       if (!roots.some(allowed => isWithin(allowed, spelling))) throw new Error(`path escapes the workspace through an ungranted spelling: ${userPath}`);
     }
-    if (!resolved.identity && (mustExist || resolved.hops.length)) throw new Error(`path does not exist or has a dangling symlink: ${userPath}`);
+    if (!resolved.identity && (mustExist || unresolvedUnderLink(resolved, roots))) throw new Error(`path does not exist or has a dangling symlink: ${userPath}`);
     return resolved;
   }
   if (path.isAbsolute(userPath)) {
@@ -259,7 +271,7 @@ export function confineResolved(root: string, userPath: string, mustExist: boole
   }
   // A chain that ends on nothing is a dangling link, which is refused here even
   // when the caller would otherwise be allowed to create the target.
-  if (resolved.identity === undefined && resolved.hops.length > 0) {
+  if (unresolvedUnderLink(resolved, [root])) {
     throw new Error(`path escapes the workspace through a dangling symlink: ${userPath}`);
   }
   rejectAgentSegment(root, resolved.path);
