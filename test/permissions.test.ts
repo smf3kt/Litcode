@@ -374,6 +374,15 @@ test('product shell read block asks outside paths', () => {
   assert.equal(permissionDecision(current, shell, { command: 'cat < ./inside' }, undefined, workspace).decision, 'allow');
   assert.equal(permissionDecision(current, shell, { command: 'cat ~/secret' }, undefined, workspace).decision, 'ask');
   assert.equal(permissionDecision(current, shell, { command: 'cat < /dev/null' }, undefined, workspace).decision, 'allow');
+  const ruled = policy({ blockReadsOutsideWorkingDirectories: true, allow: ['Bash(cat:*)'], inputRules: [
+    { tool: 'read_file', path: '/tmp/read-block-outside/allowed', decision: 'allow' },
+    { tool: 'read_file', path: '/tmp/read-block-outside/denied', decision: 'deny' },
+    { tool: 'read_file', path: '/tmp/read-block-outside/asked', decision: 'ask' },
+  ] });
+  assert.equal(permissionDecision(ruled, shell, { command: 'cat /tmp/read-block-outside/allowed' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(ruled, shell, { command: 'cat /tmp/read-block-outside/denied' }, undefined, workspace).decision, 'deny');
+  const ruledAsk = permissionDecision(ruled, shell, { command: 'cat /tmp/read-block-outside/asked' }, undefined, workspace);
+  assert.equal(ruledAsk.decision, 'ask'); assert.equal(ruledAsk.floor, 'rule');
   assert.equal(permissionDecision(policy({ allow: ['Bash(cat:*)'] }), shell,
     { command: 'cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'allow');
 });

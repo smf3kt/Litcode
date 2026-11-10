@@ -607,7 +607,16 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
     if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(operand)) return undefined;
     if (safeDevice.has(operand)) return undefined;
     const expanded = operand === '~' ? os.homedir() : operand.startsWith('~/') ? path.join(os.homedir(), operand.slice(2)) : operand;
-    if (outside(path.resolve(cwd, expanded))) return askOutside(operand);
+    const candidate = path.resolve(cwd, expanded);
+    const readRules = (policy?.inputRules ?? []).filter(rule => inputRuleMatches(rule, 'read_file', { path: candidate }));
+    if (readRules.some(rule => rule.decision === 'deny')) {
+      return { decision: 'deny', reason: `This command reads a path denied by a read rule: ${operand}` };
+    }
+    if (readRules.some(rule => rule.decision === 'ask')) {
+      return { decision: 'ask', floor: 'rule', reason: `This command reads a path that requires approval: ${operand}` };
+    }
+    if (readRules.some(rule => rule.decision === 'allow')) return undefined;
+    if (outside(candidate)) return askOutside(operand);
     return undefined;
   };
   for (const entry of analysis.commands) {
