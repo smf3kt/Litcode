@@ -9203,6 +9203,42 @@ test('edit and notebook writes through terminal symlinks are denied', async () =
   }
 });
 
+test('a fork write ancestor retarget after approval is denied', async () => {
+  const root = workspace(), tools = createTools();
+  fs.mkdirSync(path.join(root, 'real'));
+  fs.mkdirSync(path.join(root, 'protected'));
+  fs.writeFileSync(path.join(root, 'real', 'file.txt'), 'ORIGINAL');
+  fs.writeFileSync(path.join(root, 'protected', 'file.txt'), 'PROTECTED_FIXTURE');
+  fs.symlinkSync('real', path.join(root, 'aliasdir'));
+  const parent = Session.open(root, { config: config(root, tools, {
+    permissions: { mode: 'default', allow: [], deny: [], ask: ['write_file'] },
+  }) });
+  let fork: Session | undefined;
+  try {
+    await new Agent(parent, new ScriptedProvider([done()]), tools).run('fork fixture');
+    fork = forkSession(parent);
+    const provider = new ScriptedProvider([response([call('fork-ancestor-write', 'write_file',
+      { path: 'aliasdir/file.txt', content: 'CHANGED', overwrite: true })], 'tool_use'), done()]);
+    let retargeted = false;
+    await new Agent(fork, provider, tools, {
+      permission: async () => true,
+      status: message => {
+        if (!retargeted && message === 'tool: write_file') {
+          retargeted = true;
+          fs.unlinkSync(path.join(root, 'aliasdir'));
+          fs.symlinkSync('protected', path.join(root, 'aliasdir'));
+        }
+      },
+    }).run('write on the fork');
+    const result = resultBatches(fork)[0]?.[0];
+    assert.equal(retargeted, true);
+    assert.equal(result?.is_error, true, JSON.stringify(result));
+    assert.match(String(result?.content), /write approval changed/);
+    assert.equal(fs.readFileSync(path.join(root, 'protected', 'file.txt'), 'utf8'), 'PROTECTED_FIXTURE');
+    assert.equal(fs.readFileSync(path.join(root, 'real', 'file.txt'), 'utf8'), 'ORIGINAL');
+  } finally { fork?.close(); parent.close(); }
+});
+
 test('a notebook edit ancestor retarget after approval is denied', async () => {
   const root = workspace(), tools = [...createTools(), ...createNotebookTools()];
   fs.mkdirSync(path.join(root, 'real'));
