@@ -456,3 +456,13 @@ test('product shell read block follows symlink identity', () => {
     assert.equal(permissionDecision(current, shell, { command: 'cat < ./link.txt' }, undefined, workspace).decision, 'ask');
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
+
+test('product shell read block unwraps launchers', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const current = policy({ mode: 'bypass', blockReadsOutsideWorkingDirectories: true, allow: [] });
+  assert.equal(permissionDecision(current, shell, { command: 'sudo cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'sudo -u root cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'env FOO=1 cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'sudo cat ./inside' }, undefined, workspace).decision, 'allow');
+});

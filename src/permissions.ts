@@ -485,8 +485,7 @@ function readingRank(decision: PermissionDecision): number {
  * only nested denials and rule asks are returned; sandbox, declaration budget
  * and the complete source callback chain remain with the source-policy item.
  */
-function nestedShellScript(argv: readonly string[]): string | undefined {
-  const shells = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
+function commandAfterWrappers(argv: readonly string[]): string[] {
   const wrappers = new Set(['sudo', 'doas', 'env', 'command', 'builtin', 'nohup', 'time', 'timeout', 'nice', 'stdbuf', 'exec']);
   const valueOptions = new Set(['-u', '-g', '-U', '-C', '-D', '-h', '-p', '-r', '-R', '-t', '-T', '--user', '--group',
     '--other-user', '--close-from', '--chdir', '--host', '--prompt', '--role', '--chroot', '--type', '--command-timeout',
@@ -496,21 +495,26 @@ function nestedShellScript(argv: readonly string[]): string | undefined {
     const arg = argv[index]!;
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) { index++; continue; }
     const base = path.basename(arg);
-    if (shells.has(base)) {
-      for (let position = index + 1; position < argv.length; position++) {
-        if (!/^-[A-Za-z]*c[A-Za-z]*$/.test(argv[position]!)) continue;
-        const script = argv[position + 1];
-        return script !== undefined && script.trim() !== '' ? script : undefined;
-      }
-      return undefined;
-    }
-    if (!wrappers.has(base)) return undefined;
+    if (!wrappers.has(base)) return argv.slice(index);
     index++;
     while (index < argv.length && argv[index]!.startsWith('-')) {
       const option = argv[index]!;
       index += valueOptions.has(option) && index + 1 < argv.length ? 2 : 1;
     }
     if (base === 'timeout' && index < argv.length) index++;
+  }
+  return [];
+}
+
+function nestedShellScript(argv: readonly string[]): string | undefined {
+  const shells = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
+  const effective = commandAfterWrappers(argv);
+  const base = path.basename(effective[0] ?? '');
+  if (!shells.has(base)) return undefined;
+  for (let position = 1; position < effective.length; position++) {
+    if (!/^-[A-Za-z]*c[A-Za-z]*$/.test(effective[position]!)) continue;
+    const script = effective[position + 1];
+    return script !== undefined && script.trim() !== '' ? script : undefined;
   }
   return undefined;
 }
@@ -652,11 +656,12 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
   };
   for (const entry of analysis.commands) {
     const argv = entry.argv;
-    if (Array.isArray(argv) && argv.length >= 2) {
-      const base = path.basename(argv[0] ?? '');
+    const effective = Array.isArray(argv) ? commandAfterWrappers(argv) : [];
+    if (effective.length >= 2) {
+      const base = path.basename(effective[0] ?? '');
       if (readCommands.has(base)) {
         let skipPattern = patternFirst.has(base);
-        const args = argv.slice(1);
+        const args = effective.slice(1);
         for (let position = 0; position < args.length; position++) {
           const operand = args[position]!;
           if (operand.startsWith('-')) {
