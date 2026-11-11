@@ -1,3 +1,7 @@
+### W385 nested-shell denial item resolved for the host path (2026-11-11, verified security fix)
+
+Todo #122 is marked resolved for the host path. The observed `bash -c` denial miss is fixed for direct, launcher-prefixed and nested scripts, with inner declaration-prefix sampling, depth-overflow ask and explicit inner rule asks. The host has no sandbox/feature callback surface; the source budget is approximated by depth 3. Open todo items: 5.
+
 ### W385 read-block path chain resolved for the host (2026-11-11, verified integration)
 
 Todo #123 is marked resolved for the host permission surface. The read-block maps the launcher walk, `<`/`<>` redirects, realpath/symlink identity, read allow/ask/deny precedence, the owned/agent plan-file Xce exception, glob matches, pattern-first and directory readers, and workspace/additional/session grant roots. The host decision has no sandbox state or separate skill/registry launch-root surface, and concurrent replacement is inherently a decision-time observation; those are scoped out rather than silently claimed. Open todo items: 6.
