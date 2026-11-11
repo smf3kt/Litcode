@@ -1109,3 +1109,18 @@ test("search refuses a landing changed after approval", async () => {
   }), /search: read approval changed/);
   assert.equal(retargeted, true);
 });
+
+test("run_command uses the native supervisor when opted in", async t => {
+  const supervisor = path.join(process.cwd(), "native/shell-supervisor/supervisor");
+  if (process.platform !== "darwin" || !fs.existsSync(supervisor)) return t.skip("Darwin supervisor unavailable");
+  const previous = process.env.LITCODE_SHELL_SUPERVISOR;
+  process.env.LITCODE_SHELL_SUPERVISOR = "1";
+  try {
+    const out = await run("run_command", { command: "printf supervisor-out; exit 0" }, makeContext(tmpDir(), { allowShell: true }));
+    assert.match(out, /supervisor-out/);
+    assert.match(out, /exit code 0/);
+  } finally {
+    if (previous === undefined) delete process.env.LITCODE_SHELL_SUPERVISOR;
+    else process.env.LITCODE_SHELL_SUPERVISOR = previous;
+  }
+});

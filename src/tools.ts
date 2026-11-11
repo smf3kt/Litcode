@@ -11,6 +11,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import { types as utilTypes } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -29,6 +30,7 @@ import { sourceBunHashString } from './wyhash-source.js';
 import { decodeFileBytes, lwe } from './path-approval-decoder-source.js';
 import { ZMe } from './edit-match-source.js';
 import { skillResultsDirectory } from './skill-output-source.js';
+import { runShellSupervisor } from './shell-supervisor-status.js';
 import { copyStableDirectoryFile } from './directory-file-state.js';
 import { directoryEditInputSchema as editFileSchema, directoryWriteInputSchema, renderFileEdit } from './directory-publication-authorization.js';
 export { copyStableDirectoryFile } from './directory-file-state.js';
@@ -950,7 +952,93 @@ const runCommandSchema = z
 // run_command implementation
 // ---------------------------------------------------------------------------
 
+const SHELL_SUPERVISOR = fileURLToPath(new URL('../native/shell-supervisor/supervisor', import.meta.url));
+
+/** Darwin uses the native supervisor by default when installed; `LITCODE_SHELL_SUPERVISOR=0` keeps the spawn fallback. */
+function shellSupervisorEnabled(): boolean {
+  return process.platform === 'darwin' && process.env.LITCODE_SHELL_SUPERVISOR !== '0' && fs.existsSync(SHELL_SUPERVISOR);
+}
+
+function signalName(signal: number): string {
+  return Object.entries(os.constants.signals).find(([, value]) => value === signal)?.[0] ?? `signal ${signal}`;
+}
+
+function runShellSupervised(command: string, cwd: string, timeoutMs: number, maxBytes: number, signal: AbortSignal,
+  onProgress?: (progress: ShellProgress) => void, shellHome?: { value: string | undefined }): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    if (signal.aborted) { reject(abortError()); return; }
+    const controller = new AbortController();
+    let timedOut = false, totalBytes = 0, totalLines = 0, tail: Buffer = Buffer.alloc(0), settled = false;
+    const started = Date.now();
+    const append = (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      for (let at = chunk.indexOf(0x0a); at !== -1; at = chunk.indexOf(0x0a, at + 1)) totalLines += 1;
+      tail = tail.length === 0 ? chunk : Buffer.concat([tail, chunk]);
+      if (tail.length > maxBytes) tail = tail.subarray(tail.length - maxBytes);
+    };
+    const emitProgress = () => {
+      if (onProgress === undefined) return;
+      onProgress({ output: tail.toString('utf8'), fullOutput: tail.toString('utf8'),
+        elapsedTimeSeconds: Math.floor((Date.now() - started) / 1000), totalLines, totalBytes,
+        ...(timeoutMs > 0 ? { timeoutMs } : {}) });
+    };
+    const progressTimer = onProgress === undefined ? undefined : setInterval(emitProgress, SHELL_PROGRESS_INTERVAL_MS);
+    const onAbort = () => controller.abort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    const timer = timeoutMs > 0 ? setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs) : undefined;
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (progressTimer !== undefined) clearInterval(progressTimer);
+      signal.removeEventListener('abort', onAbort);
+    };
+    runShellSupervisor({ supervisor: SHELL_SUPERVISOR, command: '/bin/sh', args: ['-c', command], cwd,
+      env: shellHome === undefined ? process.env : { ...process.env, HOME: shellHome.value },
+      signal: controller.signal, maxOutputBytes: maxBytes, stopOnOutputLimit: false,
+      onOutput: (_stream, chunk) => append(chunk), stopGraceMs: 2000, drainMs: 500,
+    }).then(result => {
+      if (settled) return;
+      settled = true; cleanup();
+      const { outcome } = result;
+      if (outcome.kind === 'not-started') {
+        reject(new Error(`run_command: supervisor ${outcome.stage} failed (errno ${outcome.errno})`));
+        return;
+      }
+      if (outcome.kind === 'unknown') {
+        reject(new Error(`run_command: supervisor outcome unknown: ${outcome.reason}`));
+        return;
+      }
+      let note: string;
+      if (timedOut) note = `[run_command: timed out after ${timeoutMs}ms; process group killed]`;
+      else if (signal.aborted) note = "[run_command: aborted; process group killed]";
+      else if (outcome.kind === 'cancelled') note = "[run_command: aborted; process group killed]";
+      else if (outcome.kind === 'signalled') note = `[run_command: exit code null, signal ${signalName(outcome.signal)}]`;
+      else note = `[run_command: exit code ${outcome.code}]`;
+      const start = utf8SuffixStart(tail, maxBytes);
+      const body = tail.subarray(start).toString('utf8');
+      const prefix = totalBytes > maxBytes ? `[run_command: output truncated; showing last ${maxBytes} of ${totalBytes} bytes]\n` : '';
+      resolve(`${prefix}${body}\n${note}`);
+    }, error => {
+      if (settled) return;
+      settled = true; cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    });
+  });
+}
+
 function runShell(
+  command: string,
+  cwd: string,
+  timeoutMs: number,
+  maxBytes: number,
+  signal: AbortSignal,
+  onProgress?: (progress: ShellProgress) => void,
+  shellHome?: { value: string | undefined },
+): Promise<string> {
+  if (shellSupervisorEnabled()) return runShellSupervised(command, cwd, timeoutMs, maxBytes, signal, onProgress, shellHome);
+  return runShellSpawn(command, cwd, timeoutMs, maxBytes, signal, onProgress, shellHome);
+}
+
+function runShellSpawn(
   command: string,
   cwd: string,
   timeoutMs: number,

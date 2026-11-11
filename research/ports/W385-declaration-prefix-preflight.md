@@ -1,3 +1,9 @@
+### W385 native supervisor default for `run_command` (2026-11-11, verified product slice)
+
+`runShell` now selects the native supervisor on Darwin when `native/shell-supervisor/supervisor` exists and `LITCODE_SHELL_SUPERVISOR` is not `0`; otherwise it keeps the existing spawn/process-group path. The supervisor path maps `exited`/`signalled`/`cancelled`/`not-started`/`unknown` to the existing run-command output and exit notes, preserves stdout/stderr tail truncation and the 2000 ms progress cadence, and uses a 2000 ms stop grace with 500 ms drain.
+
+Validation: all 10 `run_command` tests (timeout/abort/detached descendant/progress/UTF-8 tail) and 55 `tools` tests pass on the default supervisor path; 18-case driver, check and build pass. Remaining #79 boundaries: simultaneous supervisor/watcher loss, escaped descendants, reciprocal watcher, non-Darwin, and the known post-start supervisor-SIGKILL orphan. Identity `7e96965e982350e6929a921577c9aed5288a25a1f83d8cedcec607366d46867b`; build `4d91ca5859af6b0ddbbd07e173dab28df534e90100454709aee0d90f16394a57`.
+
 ### W385 forty-fourth full-suite checkpoint (2026-11-11, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4382 tests, 4375 pass, 0 fail, 0 cancelled, 7 skipped; duration 1041706 ms. Cold matrix 448911 ms. The stabilized barrier/rewind marker reads and all prior shell/approval/stash tests pass; this is the second consecutive green full suite after the flake fixes. Identity `3dbc5f634c23ff83df7741d6b0546b96bc8ccd844f1bf7f142312cf47b94059c`; build `2b3a1dfa47d714eb76f101923b05ad76a055b89ed2f6d8d20902fc4f89abf545`.
