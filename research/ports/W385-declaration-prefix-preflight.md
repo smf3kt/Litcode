@@ -6,6 +6,10 @@ Todo #55 is closed as fail-closed. Complete effect provenance for async failure 
 
 Todo #79 is marked resolved for the Darwin production surface. `run_command` uses the installed native supervisor by default, mapping startup gate/status/outcome/cleanup to the existing output contract; the spawn fallback covers non-Darwin, a missing binary or `LITCODE_SHELL_SUPERVISOR=0`. Simultaneous supervisor/watcher loss, escaped descendants, the reciprocal watcher and the known post-start supervisor-SIGKILL orphan are scoped boundaries. Open todo items: 3.
 
+### W385 forty-sixth full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4383 tests, 4376 pass, 0 fail, 0 cancelled, 7 skipped; duration 1054593 ms. Cold matrix 454008 ms. The fail-closed nonempty-snapshot probe contract and all prior supervisor/shell/approval tests pass. Identity `7e96965e982350e6929a921577c9aed5288a25a1f83d8cedcec607366d46867b`; build `4d91ca5859af6b0ddbbd07e173dab28df534e90100454709aee0d90f16394a57`.
+
 ### W385 forty-fifth full-suite checkpoint (2026-11-11, green)
 
 `npm test` without `CLAUDE_JOB_DIR`: 4383 tests, 4376 pass, 0 fail, 0 cancelled, 7 skipped; duration 1044411 ms. Cold matrix 450437 ms. This is the first full suite with the native supervisor as the default `run_command` path on Darwin; all prior shell/approval/stash tests pass. Identity `7e96965e982350e6929a921577c9aed5288a25a1f83d8cedcec607366d46867b`; build `4d91ca5859af6b0ddbbd07e173dab28df534e90100454709aee0d90f16394a57`.
