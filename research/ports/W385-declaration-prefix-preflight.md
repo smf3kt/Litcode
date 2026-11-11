@@ -1,3 +1,7 @@
+### W385 forty-fifth full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4383 tests, 4376 pass, 0 fail, 0 cancelled, 7 skipped; duration 1044411 ms. Cold matrix 450437 ms. This is the first full suite with the native supervisor as the default `run_command` path on Darwin; all prior shell/approval/stash tests pass. Identity `7e96965e982350e6929a921577c9aed5288a25a1f83d8cedcec607366d46867b`; build `4d91ca5859af6b0ddbbd07e173dab28df534e90100454709aee0d90f16394a57`.
+
 ### W385 native supervisor default for `run_command` (2026-11-11, verified product slice)
 
 `runShell` now selects the native supervisor on Darwin when `native/shell-supervisor/supervisor` exists and `LITCODE_SHELL_SUPERVISOR` is not `0`; otherwise it keeps the existing spawn/process-group path. The supervisor path maps `exited`/`signalled`/`cancelled`/`not-started`/`unknown` to the existing run-command output and exit notes, preserves stdout/stderr tail truncation and the 2000 ms progress cadence, and uses a 2000 ms stop grace with 500 ms drain.
