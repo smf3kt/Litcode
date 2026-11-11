@@ -466,3 +466,14 @@ test('product shell read block unwraps launchers', () => {
   assert.equal(permissionDecision(current, shell, { command: 'env FOO=1 cat /tmp/read-block-outside/secret' }, undefined, workspace).decision, 'ask');
   assert.equal(permissionDecision(current, shell, { command: 'sudo cat ./inside' }, undefined, workspace).decision, 'allow');
 });
+
+test('product shell read block covers directory readers', () => {
+  const shell = tool('Bash', false);
+  const workspace = '/tmp/read-block-workspace';
+  const current = policy({ mode: 'bypass', blockReadsOutsideWorkingDirectories: true, allow: [] });
+  assert.equal(permissionDecision(current, shell, { command: 'ls /tmp/read-block-outside' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'du -sh /tmp/read-block-outside' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'tree -L 1 /tmp/read-block-outside' }, undefined, workspace).decision, 'ask');
+  assert.equal(permissionDecision(current, shell, { command: 'ls ./inside' }, undefined, workspace).decision, 'allow');
+  assert.equal(permissionDecision(current, shell, { command: 'du ./inside' }, undefined, workspace).decision, 'allow');
+});

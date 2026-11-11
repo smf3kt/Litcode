@@ -600,7 +600,7 @@ function shellReadBlockDecision(policy: PermissionPolicy | undefined, command: s
     return { decision: 'ask', floor: 'readings', reason: 'This command cannot be checked against the read block (permissions.blockReadsOutsideWorkingDirectories)' };
   }
   const readCommands = new Set(['cat', 'head', 'tail', 'less', 'more', 'wc', 'file', 'stat', 'od', 'strings', 'nl', 'tac', 'sort', 'uniq',
-    'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
+    'grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk', 'ls', 'du', 'tree']);
   const patternFirst = new Set(['grep', 'egrep', 'fgrep', 'rg', 'sed', 'awk']);
   const cwd = workspace ?? process.cwd();
   const realRoots = [...new Set(roots.flatMap(root => {
