@@ -1,3 +1,7 @@
+### W385 forty-third full-suite checkpoint (2026-11-11, green)
+
+`npm test` without `CLAUDE_JOB_DIR`: 4382 tests, 4375 pass, 0 fail, 0 cancelled, 7 skipped; duration 1035990 ms. Cold matrix 449507 ms. The stabilized `crashed replacement...` barrier test and all prior shell/approval/stash tests pass; the previously recurring flake did not appear. Identity `3dbc5f634c23ff83df7741d6b0546b96bc8ccd844f1bf7f142312cf47b94059c`; build `2b3a1dfa47d714eb76f101923b05ad76a055b89ed2f6d8d20902fc4f89abf545`.
+
 ### W385 checkpoint barrier stability (2026-11-11, test-only)
 
 The `crashed replacement rejects missing or altered intent and failed downstream checks without a witness` cold-history test waited only for `barrier.json` existence, then parsed it; under load the worker can still be writing the barrier, producing an intermittent JSON parse failure. The test now polls until the barrier parses to string `parent`/`child` IDs (or the worker exits). Three consecutive focused runs pass. No product behavior changed.
