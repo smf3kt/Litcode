@@ -1,3 +1,7 @@
+### W385 per-task withdrawal closed fail-closed (2026-11-11, verified contract)
+
+Todo #77 is closed as fail-closed. The source gate remains disabled and no per-task withdrawal/abort transaction is exposed. The existing interactive changed-batch rejection, the real two-job cold-unknown fixture and the separate CLI just-cold-retry check remain. Cross-batch transaction and source owner/inner/keepalive mapping are unresolved; implementing a partial rollback without them would be unsafe. Open todo items: 0.
+
 ### W385 checkpoint recovery residual branches closed fail-closed (2026-11-11, verified contract)
 
 Todo #57 is marked resolved. Remaining precommit/orphan, legacy/unconfirmed-lock, snapshots-before-recovery and deeper-chain branches fail closed as unknown and retain their locks; no uncertain branch is silently reclaimed. Mixed workspace/external rewind and default external mutations stay covered by the 136-case cold matrix and real-Agent publication tests. Nonempty-snapshot reclamation is the separate #55 fail-closed decision. Open todo items: 1 (#77).
