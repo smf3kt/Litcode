@@ -2991,9 +2991,16 @@ test('crashed replacement rejects missing or altered intent and failed downstrea
     const exited = new Promise<void>(resolve => worker.once('exit', () => resolve()));
     try {
       const barrier = path.join(workspace, 'barrier.json');
-      await until(() => fs.existsSync(barrier) || worker.exitCode !== null);
-      assert.ok(fs.existsSync(barrier), mutation);
-      const ids = JSON.parse(fs.readFileSync(barrier, 'utf8')) as { parent: string; child: string };
+      let ids: { parent: string; child: string } | undefined;
+      await until(() => {
+        if (worker.exitCode !== null) return true;
+        try {
+          const value = JSON.parse(fs.readFileSync(barrier, 'utf8')) as { parent?: unknown; child?: unknown };
+          if (typeof value.parent === 'string' && typeof value.child === 'string') { ids = { parent: value.parent, child: value.child }; return true; }
+        } catch { /* the worker may still be writing the barrier */ }
+        return false;
+      });
+      assert.ok(ids, mutation);
       worker.kill('SIGKILL'); await exited;
       const parentFile = path.join(workspace, '.agent', `${ids.parent}.jsonl`);
       const sidecar = path.join(workspace, '.agent', 'subagents', ids.parent, `${ids.child}.meta.json`);

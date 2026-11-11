@@ -1,3 +1,7 @@
+### W385 checkpoint barrier stability (2026-11-11, test-only)
+
+The `crashed replacement rejects missing or altered intent and failed downstream checks without a witness` cold-history test waited only for `barrier.json` existence, then parsed it; under load the worker can still be writing the barrier, producing an intermittent JSON parse failure. The test now polls until the barrier parses to string `parent`/`child` IDs (or the worker exits). Three consecutive focused runs pass. No product behavior changed.
+
 ### W385 nested-shell denial item resolved for the host path (2026-11-11, verified security fix)
 
 Todo #122 is marked resolved for the host path. The observed `bash -c` denial miss is fixed for direct, launcher-prefixed and nested scripts, with inner declaration-prefix sampling, depth-overflow ask and explicit inner rule asks. The host has no sandbox/feature callback surface; the source budget is approximated by depth 3. Open todo items: 5.
