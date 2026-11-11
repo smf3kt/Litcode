@@ -622,11 +622,15 @@ test("a killed checkpoint intent cannot claim another Session's same-name manife
         { cwd: process.cwd(), stdio: ["ignore", "ignore", "pipe"] });
       const exited = once(child, "exit"); let errors = ""; child.stderr!.on("data", chunk => { errors += String(chunk); });
       const deadline = Date.now() + 10000;
-      while (!fs.existsSync(marker)) {
+      let id: string | undefined;
+      while (id === undefined) {
         assert.ok(Date.now() < deadline && child.exitCode === null && child.signalCode === null, errors);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        try {
+          const value = JSON.parse(fs.readFileSync(marker, "utf8")) as { id?: unknown };
+          if (typeof value.id === "string") id = value.id;
+        } catch { /* the writer may still be completing the marker */ }
+        if (id === undefined) await new Promise(resolve => setTimeout(resolve, 10));
       }
-      const { id } = JSON.parse(fs.readFileSync(marker, "utf8"));
       while (!spawnSync("ps", ["-o", "state=", "-p", String(child.pid)], { encoding: "utf8", timeout: 5000 }).stdout.trim().startsWith("T")) {
         assert.ok(Date.now() < deadline && child.exitCode === null && child.signalCode === null, errors);
         await new Promise(resolve => setTimeout(resolve, 10));

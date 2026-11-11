@@ -4,7 +4,7 @@
 
 ### W385 checkpoint barrier stability (2026-11-11, test-only)
 
-The `crashed replacement rejects missing or altered intent and failed downstream checks without a witness` cold-history test waited only for `barrier.json` existence, then parsed it; under load the worker can still be writing the barrier, producing an intermittent JSON parse failure. The test now polls until the barrier parses to string `parent`/`child` IDs (or the worker exits). Three consecutive focused runs pass. No product behavior changed.
+The `crashed replacement rejects missing or altered intent and failed downstream checks without a witness` cold-history test waited only for `barrier.json` existence, then parsed it; under load the worker can still be writing the barrier, producing an intermittent JSON parse failure. The test now polls until the barrier parses to string `parent`/`child` IDs (or the worker exits), and the narrowed IDs are captured so `npm run check` passes. The `a killed checkpoint intent cannot claim another Session's same-name manifest` rewind test similarly retries its marker JSON instead of parsing the first visible write. Three consecutive focused runs pass for each. No product behavior changed.
 
 ### W385 nested-shell denial item resolved for the host path (2026-11-11, verified security fix)
 

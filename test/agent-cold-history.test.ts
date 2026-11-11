@@ -3000,12 +3000,13 @@ test('crashed replacement rejects missing or altered intent and failed downstrea
         } catch { /* the worker may still be writing the barrier */ }
         return false;
       });
-      assert.ok(ids, mutation);
+      if (ids === undefined) throw new Error(`missing barrier: ${mutation}`);
+      const barrierIds = ids as { parent: string; child: string };
       worker.kill('SIGKILL'); await exited;
-      const parentFile = path.join(workspace, '.agent', `${ids.parent}.jsonl`);
-      const sidecar = path.join(workspace, '.agent', 'subagents', ids.parent, `${ids.child}.meta.json`);
+      const parentFile = path.join(workspace, '.agent', `${barrierIds.parent}.jsonl`);
+      const sidecar = path.join(workspace, '.agent', 'subagents', barrierIds.parent, `${barrierIds.child}.meta.json`);
       const events = fs.readFileSync(parentFile, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
-      const index = events.findLastIndex(event => event.kind === 'agent_history_intent' && event.id === ids.child);
+      const index = events.findLastIndex(event => event.kind === 'agent_history_intent' && event.id === barrierIds.child);
       assert.ok(index >= 0);
       const intent = events[index];
       if (mutation === 'legacy') events.splice(index, 1);
@@ -3015,17 +3016,17 @@ test('crashed replacement rejects missing or altered intent and failed downstrea
       if (mutation === 'child') intent.id = '00000000-0000-4000-8000-000000000000';
       if (mutation === 'journal') intent.journal.sha256 = '0'.repeat(64);
       fs.writeFileSync(parentFile, events.map(event => JSON.stringify(event)).join('\n') + '\n');
-      if (mutation === 'scope') fs.unlinkSync(path.join(workspace, '.agent', `${ids.child}.forked-skill.json`));
-      if (mutation === 'journal-data') fs.appendFileSync(path.join(workspace, '.agent', `${ids.child}.jsonl`), '{"kind":"turn_end","reason":"foreign"}\n');
+      if (mutation === 'scope') fs.unlinkSync(path.join(workspace, '.agent', `${barrierIds.child}.forked-skill.json`));
+      if (mutation === 'journal-data') fs.appendFileSync(path.join(workspace, '.agent', `${barrierIds.child}.jsonl`), '{"kind":"turn_end","reason":"foreign"}\n');
       const originalParent = fs.readFileSync(parentFile), originalSidecar = fs.readFileSync(sidecar);
-      const child = Session.open(workspace, { id: ids.child, recoverLock: true }); child.close();
-      const parent = Session.open(workspace, { id: ids.parent, recoverLock: true });
+      const child = Session.open(workspace, { id: barrierIds.child, recoverLock: true }); child.close();
+      const parent = Session.open(workspace, { id: barrierIds.parent, recoverLock: true });
       const provider: ModelProvider = { count: async () => 0, complete: async () => { throw new Error('unexpected provider call'); } };
       const runtime = await createRuntime(parent.config, provider, new AbortController().signal);
       try {
         const registry = new AgentRegistry({ source: parent.config, provider, tools: mutation === 'tools' ? [] : runtime.tools });
         assert.ok(registry.bindHistory(parent).length, mutation);
-        assert.equal(registry.list().some(entry => entry.id === ids.child), false, mutation);
+        assert.equal(registry.list().some(entry => entry.id === barrierIds.child), false, mutation);
         await registry.close();
         assert.deepEqual(fs.readFileSync(parentFile), originalParent, mutation);
         assert.deepEqual(fs.readFileSync(sidecar), originalSidecar, mutation);
