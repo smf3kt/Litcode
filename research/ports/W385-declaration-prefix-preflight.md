@@ -1,3 +1,7 @@
+### W385 nonempty-snapshot reclamation closed fail-closed (2026-11-11, verified contract)
+
+Todo #55 is closed as fail-closed. Complete effect provenance for async failure hooks, caller-supplied result observers and runtime-wrapper callbacks is not available, so nonempty snapshots retain their source lock instead of being reclaimed. The opt-in `W385_NONEMPTY_SNAPSHOT_PROBE` branch that elevated the two nonempty scenarios to the "reclaimed" expectation was removed; the CLI recovery matrix now passes both with and without that env (about 82 s each), and `npm run check` passes. #57 continues to track precommit/orphan, legacy locks and deeper chains; nonempty reclamation is intentionally outside that contract. Open todo items: 2.
+
 ### W385 supervisor item resolved for the Darwin production surface (2026-11-11, verified product)
 
 Todo #79 is marked resolved for the Darwin production surface. `run_command` uses the installed native supervisor by default, mapping startup gate/status/outcome/cleanup to the existing output contract; the spawn fallback covers non-Darwin, a missing binary or `LITCODE_SHELL_SUPERVISOR=0`. Simultaneous supervisor/watcher loss, escaped descendants, the reciprocal watcher and the known post-start supervisor-SIGKILL orphan are scoped boundaries. Open todo items: 3.

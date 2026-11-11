@@ -4778,12 +4778,10 @@ test('CLI restart preserves recovery uncertainty across writer death', { timeout
       }
       const retried = retry(true);
       assert.equal(retried.status, 0, retried.stderr + retried.stdout);
-      const nonemptyProbe = (scenario === 'write-nonempty-snapshot' || scenario === 'write-nonempty-snapshot-cli') &&
-        process.env.W385_NONEMPTY_SNAPSHOT_PROBE === '1';
-      if (scenario === 'write' || scenario === 'write-suffix' || scenario === 'write-title' || scenario === 'write-text' || scenario === 'write-text-disabled' || nonemptyProbe ||
+      if (scenario === 'write' || scenario === 'write-suffix' || scenario === 'write-title' || scenario === 'write-text' || scenario === 'write-text-disabled' ||
           (scenario.startsWith('write-text-snapshot') && scenario !== 'write-text-snapshot-cleanup-death') || scenario === 'write-history' || scenario === 'write-history-tracked' || scenario === 'write-after-suffix' || scenario === 'write-after-text' || scenario === 'after') assert.match(retried.stderr, /Checkpoint recovery source lock reclaimed/);
       else assert.doesNotMatch(retried.stderr, /Checkpoint recovery source lock reclaimed/);
-      assert.equal(fs.existsSync(`${source.file}.lock`), phase === 'partial' || (scenario.startsWith('write-nonempty-snapshot') && !nonemptyProbe) || (scenario.startsWith('write-text-') && scenario !== 'write-text-disabled' &&
+      assert.equal(fs.existsSync(`${source.file}.lock`), phase === 'partial' || scenario.startsWith('write-nonempty-snapshot') || (scenario.startsWith('write-text-') && scenario !== 'write-text-disabled' &&
         (!scenario.startsWith('write-text-snapshot') || scenario === 'write-text-snapshot-cleanup-death')) || scenario === 'write-unsupported' || scenario === 'write-history-touch' || scenario === 'write-history-external' || scenario === 'write-live' || scenario === 'write-replaced' ||
         scenario === 'write-cleanup-failure' || scenario === 'write-cleanup-death');
       if (scenario === 'write-history-tracked') {
