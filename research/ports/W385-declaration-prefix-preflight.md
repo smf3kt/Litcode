@@ -1,3 +1,7 @@
+### W385 checkpoint recovery residual branches closed fail-closed (2026-11-11, verified contract)
+
+Todo #57 is marked resolved. Remaining precommit/orphan, legacy/unconfirmed-lock, snapshots-before-recovery and deeper-chain branches fail closed as unknown and retain their locks; no uncertain branch is silently reclaimed. Mixed workspace/external rewind and default external mutations stay covered by the 136-case cold matrix and real-Agent publication tests. Nonempty-snapshot reclamation is the separate #55 fail-closed decision. Open todo items: 1 (#77).
+
 ### W385 nonempty-snapshot reclamation closed fail-closed (2026-11-11, verified contract)
 
 Todo #55 is closed as fail-closed. Complete effect provenance for async failure hooks, caller-supplied result observers and runtime-wrapper callbacks is not available, so nonempty snapshots retain their source lock instead of being reclaimed. The opt-in `W385_NONEMPTY_SNAPSHOT_PROBE` branch that elevated the two nonempty scenarios to the "reclaimed" expectation was removed; the CLI recovery matrix now passes both with and without that env (about 82 s each), and `npm run check` passes. #57 continues to track precommit/orphan, legacy locks and deeper chains; nonempty reclamation is intentionally outside that contract. Open todo items: 2.
